@@ -311,13 +311,12 @@ const EFFEKT_KATEGORIEN = [
   { key: 'removal', query: 'otag:removal' },
   {
     key: 'counterspell',
-    query:
-      '(otag:counterspell or otag:counterspell-noncreature or otag:counterspell-creature or otag:counterspell-sorcery or otag:counterspell-instant or otag:counterspell-artifact or otag:counterspell-enchantment or otag:counterspell-planeswalker or otag:counterspell-ability or otag:counterspell-reusable or otag:counterspell-exile or otag:counterspell-free)',
+    query: 'otag:counterspell',
   },
   { key: 'boardwipe', query: 'otag:board-wipe' },
   {
     key: 'ramp',
-    query: '(otag:ramp or otag:land-ramp or otag:extra-land or otag:play-additional-land) -t:land',
+    query: 'otag:ramp -t:land',
   },
   { key: 'draw', query: 'otag:draw' },
   { key: 'tokens', query: 'o:create o:token' },
@@ -326,8 +325,7 @@ const EFFEKT_KATEGORIEN = [
   { key: 'proliferate', query: 'keyword:proliferate' },
   {
     key: 'reanimate',
-    query:
-      '(otag:reanimate or otag:reanimate-creature or otag:reanimate-artifact or otag:reanimate-enchantment or otag:reanimate-planeswalker or otag:reanimate-permanent)',
+    query: 'otag:reanimate',
   },
   { key: 'sacrifice', query: 'otag:sacrifice-outlet' },
   { key: 'extracombat', query: 'otag:extra-combat' },
