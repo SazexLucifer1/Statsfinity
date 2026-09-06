@@ -174,6 +174,18 @@ export const deckView = {
     'deckView.bracketVerdictSpellbookMissing': 'Zweitmeinung Commander Spellbook: nicht erreichbar',
     'deckView.bracketVerdictTuning': 'Tuning-Grad: {{percent}}',
     'deckView.bracketVerdictPrecon': 'Unveränderter Precon – die Feinbewertung hebt nicht an',
+    'deckView.bracketTuningExplain':
+      'Der Tuning-Grad misst, wie durchgängig auf Tempo gebaut das Deck ist. Er legt das Bracket nicht fest, sondern nur die Position darin – und hebt es erst ab 85 % um eine Stufe an.',
+    'deckView.bracketTuningShowValues': 'Werte anzeigen',
+    'deckView.bracketTuningHideValues': 'Werte ausblenden',
+    'deckView.bracketTuning.tutors': 'Tutoren je 100 Karten',
+    'deckView.bracketTuning.averageCmc': 'Ø Manawert',
+    'deckView.bracketTuning.nonBasicLands': 'Nichtbasis-Länder',
+    'deckView.bracketTuning.gameChangers': 'Game Changer',
+    'deckView.bracketTuningScale': 'Skala {{from}} → {{to}}',
+    'deckView.bracketPowerHeading': 'Power {{power}} von 10',
+    'deckView.bracketPowerExplain':
+      'Die vertraute 1–10-Skala, paarweise auf die Brackets gerastet: 1–2 Exhibition, 3–4 Core, 5–6 Upgraded, 7–8 Optimized, 9–10 cEDH. Das Bracket bestimmt die Spanne, der Tuning-Grad die Position darin.',
     'deckView.bracketSources':
       'Bracket-Regeln nach dem offiziellen Commander-Format, Kartendaten von Scryfall, Combo- und Kartenmarkierungen von Commander Spellbook.',
     'deckView.loadingAnalysis': 'Lade Analyse …',
@@ -430,6 +442,18 @@ export const deckView = {
     'deckView.bracketVerdictSpellbookMissing': 'Second opinion Commander Spellbook: unavailable',
     'deckView.bracketVerdictTuning': 'Tuning level: {{percent}}',
     'deckView.bracketVerdictPrecon': 'Unchanged precon – the fine rating does not raise it',
+    'deckView.bracketTuningExplain':
+      'The tuning level measures how consistently the deck is built for speed. It does not set the bracket, only the position within it – and only raises it by one step from 85 % upwards.',
+    'deckView.bracketTuningShowValues': 'Show values',
+    'deckView.bracketTuningHideValues': 'Hide values',
+    'deckView.bracketTuning.tutors': 'Tutors per 100 cards',
+    'deckView.bracketTuning.averageCmc': 'Avg. mana value',
+    'deckView.bracketTuning.nonBasicLands': 'Nonbasic lands',
+    'deckView.bracketTuning.gameChangers': 'Game Changers',
+    'deckView.bracketTuningScale': 'scale {{from}} → {{to}}',
+    'deckView.bracketPowerHeading': 'Power {{power}} out of 10',
+    'deckView.bracketPowerExplain':
+      'The familiar 1–10 scale, paired onto the brackets: 1–2 Exhibition, 3–4 Core, 5–6 Upgraded, 7–8 Optimized, 9–10 cEDH. The bracket sets the range, the tuning level the position within it.',
     'deckView.bracketSources':
       'Bracket rules from the official Commander format, card data from Scryfall, combo and card markings from Commander Spellbook.',
     'deckView.loadingAnalysis': 'Loading analysis …',

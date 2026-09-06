@@ -742,6 +742,17 @@ export class DeckViewerService {
   }
 
   /**
+   * Zweite Ebene innerhalb der Begründung: die vier Messgrößen hinter dem Tuning-Grad. Bewusst
+   * eingeklappt - der Aufklapper ist auf dem iPhone ohnehin lang, und die Erklärsätze darüber
+   * beantworten die Frage schon für alle, die es nicht nachrechnen wollen.
+   */
+  readonly showTuningDetails = signal(false);
+
+  toggleTuningDetails(): void {
+    this.showTuningDetails.update((v) => !v);
+  }
+
+  /**
    * Beschriftung des "Automatisch"-Eintrags im Auswahlfeld. Zeigt die berechnete Stufe gleich mit
    * an, damit beim Aufklappen sichtbar ist, wogegen man sich entscheidet.
    */
@@ -2387,6 +2398,7 @@ export class DeckViewerService {
     // Wie die anderen Info-Klappen daneben: eingeklappt starten. Blieb die Begründung offen,
     // stünde beim nächsten Deck sofort eine seitenlange Erklärung über der Kartenliste.
     this.showBracketWhy.set(false);
+    this.showTuningDetails.set(false);
     this.resetCardFilters();
     this.effectFilterBusy.set(false);
     this.editMode.set(false);

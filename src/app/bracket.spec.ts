@@ -8,6 +8,7 @@ import {
   presentCombos,
   rulesVerdict,
   spellbookVerdict,
+  tuningParts,
   tuningVerdict,
 } from './bracket';
 import type { SpellbookCardFlags, SpellbookTwoCardCombo } from './card-data.service';
@@ -231,6 +232,67 @@ describe('bracket - Urteil C: Tuning-Grad', () => {
       }),
     );
     expect(wert).toBe(1);
+  });
+});
+
+describe('bracket - Tuning-Grad aufgeschluesselt', () => {
+  const teil = (input: BracketInput, key: string) => tuningParts(input).find((t) => t.key === key);
+
+  it('meldet je Messgroesse den gemessenen Wert und die Spannenenden', () => {
+    const parts = tuningParts(basis({ tutorCount: 4, totalCards: 100, averageCmc: 2.8 }));
+    expect(parts.map((p) => p.key)).toEqual([
+      'tutors',
+      'averageCmc',
+      'nonBasicLands',
+      'gameChangers',
+    ]);
+    expect(teil(basis({ tutorCount: 4, totalCards: 100 }), 'tutors')).toMatchObject({
+      value: 4,
+      from: 0,
+      to: 8,
+      score: 0.5,
+    });
+  });
+
+  it('dreht die Spanne dort um, wo weniger staerker ist', () => {
+    // Beim Manawert zaehlt der NIEDRIGERE Wert als staerker - deshalb from > to.
+    expect(teil(basis({ averageCmc: 3.4 }), 'averageCmc')?.score).toBe(0);
+    expect(teil(basis({ averageCmc: 2.2 }), 'averageCmc')?.score).toBe(1);
+    expect(teil(basis({ averageCmc: 2.8 }), 'averageCmc')?.score).toBeCloseTo(0.5, 5);
+  });
+
+  it('kappt Werte ausserhalb der Spanne bei 0 und 1', () => {
+    expect(teil(basis({ averageCmc: 5 }), 'averageCmc')?.score).toBe(0);
+    expect(teil(basis({ nonBasicLandPercent: 100 }), 'nonBasicLands')?.score).toBe(1);
+  });
+
+  it('laesst fehlende Werte ganz weg, statt sie als 0 zu zaehlen', () => {
+    const parts = tuningParts(
+      basis({ averageCmc: null, nonBasicLandPercent: null, totalCards: 0 }),
+    );
+    expect(parts.map((p) => p.key)).toEqual(['gameChangers']);
+  });
+
+  /**
+   * Die wichtigste Zusage: was die Oberflaeche aufschluesselt, ergibt genau den Prozentwert, den
+   * sie daneben anzeigt. Ohne diesen Test koennten beide unbemerkt auseinanderlaufen.
+   */
+  it('mittelt sich exakt zum angezeigten Tuning-Grad', () => {
+    for (const input of [
+      basis(),
+      basis({ tutorCount: 6, averageCmc: 2.5, nonBasicLandPercent: 70 }),
+      basis({ cards: Array.from({ length: 4 }, (_, i) => karte(`GC${i}`, { gameChanger: true })) }),
+      basis({ averageCmc: null, nonBasicLandPercent: null }),
+    ]) {
+      const parts = tuningParts(input);
+      const mittel = parts.reduce((s, t) => s + t.score, 0) / parts.length;
+      expect(tuningVerdict(input)).toBeCloseTo(mittel, 10);
+    }
+  });
+
+  it('liefert dieselben Teile ueber analyzeBracket()', () => {
+    const input = basis({ tutorCount: 5, averageCmc: 2.6 });
+    expect(analyzeBracket(input).verdicts.tuningParts).toEqual(tuningParts(input));
   });
 });
 
