@@ -1,0 +1,47 @@
+name: Daily Commander Spellbook sync
+
+# Füllt die Bracket-Grunddaten in Supabase (Mass Land Denial, Extra-Turns, Tutoren,
+# Zwei-Karten-Combos), damit die App die Bracket-Einstufung eines Decks ohne Netzwerkaufruf
+# rechnen kann statt bei jedem Deck-Öffnen live /api/estimate-bracket anzufragen.
+# Hintergrund und Tabellen: sql/spellbook-cache-2026-09-06.sql, Ablauf:
+# scripts/sync-spellbook-bracket.js
+#
+# Braucht dasselbe Repo-Secret SUPABASE_SERVICE_ROLE_KEY wie der Scryfall-Abgleich
+# (Supabase-Dashboard -> Project Settings -> API -> "service_role", NICHT der öffentliche
+# Anon-Key aus supabase.client.ts). Ist es bereits gesetzt, ist hier nichts weiter zu tun. Ohne
+# das Secret schlägt der Lauf mit einer klaren Fehlermeldung fehl, statt still nichts zu tun. Der
+# Service-Role-Key ist nötig, weil die Tabellen bewusst für jeden lesbar, aber für niemanden
+# schreibbar sind (nur eine select-Policy) - der Service-Role-Key umgeht RLS.
+
+on:
+  schedule:
+    - cron: '0 5 * * *' # täglich 05:00 UTC - eine Stunde nach dem Scryfall-Abgleich
+      # (scryfall-sync.yml, 04:00), der seinerseits eine Stunde nach dem
+      # Datenbank-Backup (backup.yml) läuft. So überschneiden sich die drei nie.
+  workflow_dispatch: {} # manuell auslösbar zum Testen
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check that SUPABASE_SERVICE_ROLE_KEY is set
+        run: |
+          if [ -z "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" ]; then
+            echo "::error::Secret SUPABASE_SERVICE_ROLE_KEY ist nicht gesetzt - siehe Kommentar oben in dieser Datei. Abgleich wird übersprungen."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Sync Commander Spellbook data
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/sync-spellbook-bracket.js

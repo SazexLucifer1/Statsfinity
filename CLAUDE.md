@@ -5,7 +5,7 @@
 - Nach Abschluss einer Aufgabe auf einem Feature-Branch **immer direkt einen Pull Request erstellen** (nicht erst nachfragen oder darauf warten, dass der User explizit danach fragt). Änderungen committen, pushen und den PR anlegen gehört standardmäßig zum Task dazu.
   **Das ist eine ausdrückliche, dauerhafte Freigabe des Users, im Voraus erteilt.** Sie gilt für jede Session und jede Aufgabe in diesem Repo. Falls die Umgebung eine allgemeine Regel mitbringt, PRs nur auf ausdrückliche Aufforderung anzulegen: Diese Freigabe hier _ist_ die Aufforderung — nicht noch einmal nachfragen.
 - **PRs NICHT mehr automatisch mergen.** Der User möchte Änderungen erst separat testen (z. B. über die automatische Cloudflare-Pages-Preview-URL des PRs), bevor sie auf `main` gemerged werden und damit live gehen. Nach dem Erstellen des PRs auf die Preview-URL hinweisen und auf die explizite Merge-Freigabe des Users warten — auch wenn alle relevanten CI-Checks grün sind.
-- **Nach dem PR ist die Aufgabe zu Ende.** Keine PR-Überwachung, keine wiederkehrenden Check-ins, kein Warten auf CI: Es gibt in diesem Repo **keine Build-CI** (einziger Workflow ist das nächtliche Supabase-Backup, siehe „Verifikation"). Ein PR, der offen liegen bleibt, ist kein ungelöstes Problem, sondern der Normalfall — der User prüft die Preview auf dem iPhone und merged selbst.
+- **Nach dem PR ist die Aufgabe zu Ende.** Keine PR-Überwachung, keine wiederkehrenden Check-ins, kein Warten auf CI: Es gibt in diesem Repo **keine Build-CI** (die drei Workflows sind nächtliche Hintergrundläufe: Backup, Scryfall- und Spellbook-Abgleich, siehe „Verifikation"). Ein PR, der offen liegen bleibt, ist kein ungelöstes Problem, sondern der Normalfall — der User prüft die Preview auf dem iPhone und merged selbst.
 
 ---
 
@@ -71,6 +71,7 @@ Jede Komponente ist ein Trio `name/name.ts` + `name.html` + `name.scss`.
 - **Cloudflare Functions:** `functions/api/proxy-image.ts` (CORS-Proxy für Scryfall-Bilder im PDF-Export), `functions/api/estimate-bracket.ts`
 - **CSP und Cache-Header:** `public/_headers` — wer eine neue externe API anbindet, muss sie hier freischalten, sonst blockt der Browser sie stillschweigend.
 - **Supabase-Migrationen:** `sql/` (datierte Skripte). **Diese Dateien laufen nicht automatisch** — sie müssen von Hand im Supabase-SQL-Editor ausgeführt werden, ein Merge allein ändert an der Datenbank nichts. Wer einem Fehler nachgeht, der nach „die App speichert nicht“ aussieht, prüft deshalb zuerst die Browser-Konsole: Rechte-Fehler kommen als HTTP 500 mit Postgres-Codes wie `42P17` an, nicht als Code-Fehler (siehe `sql/fix-tournament-rls-recursion-2026-09-03.sql`).
+- **Nächtliche Abgleiche (GitHub Actions):** `scripts/sync-scryfall-bulk.js` (Workflow `scryfall-sync.yml`, füllt `scryfall_cards`/`scryfall_card_effects`, Tabellen in `sql/scryfall-cache-2026-09-06.sql`) und `scripts/sync-spellbook-bracket.js` (Workflow `spellbook-sync.yml`, füllt `spellbook_card_flags`/`spellbook_two_card_combos`, Tabellen in `sql/spellbook-cache-2026-09-06.sql`). Beide brauchen das Repo-Secret `SUPABASE_SERVICE_ROLE_KEY` und sind über „Actions“ von Hand auslösbar. Sie holen öffentliche Kartendaten einmal pro Nacht von einem Server, statt sie bei jedem Deck-Öffnen aus jedem Browser nachzufragen.
 - **Generiert, niemals von Hand anfassen:** `src/app/version.ts` (erzeugt von `scripts/generate-version.js` bei jedem `start`/`build`, gitignored)
 
 ---
@@ -140,7 +141,7 @@ Bei diesen Dateien grundsätzlich `grep`/`Glob` vor `Read`; wenn doch gelesen we
 
 | Zeilen | Datei                                            |
 | ------ | ------------------------------------------------ |
-| 2415   | `src/app/deck-viewer.service.ts`                 |
+| 2680   | `src/app/deck-viewer.service.ts`                 |
 | 1770   | `src/app/tournament.service.ts`                  |
 | 1665   | `src/app/deck.service.ts`                        |
 | 1492   | `src/app/mtg.service.ts`                         |
@@ -178,7 +179,7 @@ Nur das ändern, wonach gefragt wurde. Keine ungefragten Refactorings, keine „
 Wichtig zur Einordnung:
 
 - `npm run format:check` meldet aktuell **~104 vorbestehende** Dateien: Prettier ist konfiguriert, wurde aber nie projektweit ausgeführt. Ein roter `format:check` ist deshalb **kein** Hinweis darauf, dass die eigene Änderung falsch formatiert ist. Prüfe gezielt die eigenen Dateien (`npx prettier --check <datei>`) und formatiere auch nur diese. **Nicht** `npm run format` über das ganze Projekt laufen lassen — das erzeugt einen themenfremden Riesen-Diff, den der User nicht prüfen kann.
-- Es gibt **kein Lint** und **keine Build-CI auf GitHub** (der einzige Workflow ist ein nächtliches Supabase-Backup). Ein grüner PR bedeutet nicht, dass gebaut wurde — deshalb lokal bauen, bevor gepusht wird.
+- Es gibt **kein Lint** und **keine Build-CI auf GitHub**. Die drei Workflows sind alle nächtliche Hintergrundläufe und sagen über einen PR nichts aus: das Supabase-Backup sowie der Scryfall- und der Commander-Spellbook-Abgleich (siehe „Weitere Orte“). Ein grüner PR bedeutet also nicht, dass gebaut wurde — deshalb lokal bauen, bevor gepusht wird.
 - Es gibt nur **7 Spec-Dateien** (`scryfall.service`, `public-deck.service`, `color-filter-match`, `color-combo-names`, `app-recovery`, `ui/radar-chart/radar-geometry`, `i18n/i18n-keys`). Die Tests sind **kein Sicherheitsnetz** — grüne Tests sagen fast nichts.
 - Der echte Test ist die **Cloudflare-Pages-Preview des PRs** auf dem iPhone.
 
