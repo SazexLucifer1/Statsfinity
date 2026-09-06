@@ -170,7 +170,7 @@ export const deckView = {
     'deckView.bracketVerdictRules': 'Offizielle Kriterien: Bracket {{level}}',
     'deckView.bracketVerdictSpellbook': 'Zweitmeinung Commander Spellbook: Bracket {{level}}',
     'deckView.bracketVerdictSpellbookMissing': 'Zweitmeinung Commander Spellbook: nicht erreichbar',
-    'deckView.bracketVerdictTuning': 'Tuning-Grad: {{percent}} %',
+    'deckView.bracketVerdictTuning': 'Tuning-Grad: {{percent}}',
     'deckView.bracketVerdictPrecon': 'Unveränderter Precon – die Feinbewertung hebt nicht an',
     'deckView.bracketSources':
       'Bracket-Regeln nach dem offiziellen Commander-Format, Kartendaten von Scryfall, Combo- und Kartenmarkierungen von Commander Spellbook.',
@@ -424,7 +424,7 @@ export const deckView = {
     'deckView.bracketVerdictRules': 'Official criteria: Bracket {{level}}',
     'deckView.bracketVerdictSpellbook': 'Second opinion Commander Spellbook: Bracket {{level}}',
     'deckView.bracketVerdictSpellbookMissing': 'Second opinion Commander Spellbook: unavailable',
-    'deckView.bracketVerdictTuning': 'Tuning level: {{percent}} %',
+    'deckView.bracketVerdictTuning': 'Tuning level: {{percent}}',
     'deckView.bracketVerdictPrecon': 'Unchanged precon – the fine rating does not raise it',
     'deckView.bracketSources':
       'Bracket rules from the official Commander format, card data from Scryfall, combo and card markings from Commander Spellbook.',

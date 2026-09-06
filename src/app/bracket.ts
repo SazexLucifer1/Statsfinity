@@ -47,11 +47,15 @@ export const AUTO_BRACKET_MIN = 2;
 export const AUTO_BRACKET_MAX = 4;
 
 /**
- * Ab diesem Power-Wert bekommt ein Bracket-4-Deck den cEDH-Hinweis. 8,5 ist keine eigene
- * Erfindung: Draftsim, dessen Methodik hier an mehreren Stellen Pate stand, gibt für cEDH-Decks
- * ausdrücklich "8.5-10" auf der 1-10-Skala an.
+ * Ab diesem Tuning-Grad (0-1) bekommt ein Bracket-4-Deck den cEDH-Hinweis.
+ *
+ * Bewusst an den Tuning-Grad gehängt und nicht an den Power-Wert: der Power-Wert ist aus dem
+ * Bracket abgeleitet, ihn wieder zur Bedingung zu machen wäre im Kreis gerechnet. Beim Prüfen in
+ * der laufenden App fiel genau das auf - ein Deck mit fünf Game Changern und Tuning-Grad 0,64 kam
+ * auf Power 8,6 und bekam den cEDH-Hinweis, obwohl "recht durchgebaut" noch lange kein
+ * Turnierdeck ist. 0,85 verlangt, dass praktisch alle Anzeichen zugleich zutreffen.
  */
-export const CEDH_POWER_HINT = 8.5;
+export const CEDH_TUNING_HINT = 0.85;
 
 /**
  * Ab diesem Tuning-Wert (0-1) hebt die Feinbewertung das Bracket um eine Stufe an. Bewusst hoch
@@ -327,15 +331,16 @@ function anteil(wert: number, von: number, bis: number): number {
 }
 
 /**
- * Power-Spanne je Bracket. Die 1-10-Skala rastet paarweise auf den Brackets ein (1-2 Exhibition,
- * 3-4 Core, 5-6 Upgraded, 7-8 Optimized, 9-10 cEDH); Bracket 4 reicht hier bewusst bis 9,5, weil
- * es die höchste automatisch vergebene Stufe ist und cEDH-verdächtige Decks genau dort landen.
+ * Power-Spanne je Bracket. Die 1-10-Skala rastet paarweise auf den Brackets ein: 1-2 Exhibition,
+ * 3-4 Core, 5-6 Upgraded, 7-8 Optimized, 9-10 cEDH. Bewusst genau diese Paarung und keine
+ * gedehnte Spanne für Bracket 4 - nur so bleibt der Wert gegen die verbreitete 1-10-Skala
+ * lesbar, statt eine eigene zu sein, die zufällig auch von 1 bis 10 geht.
  */
 const POWER_SPANNE: Record<BracketLevel, [number, number]> = {
   1: [1, 2.9],
   2: [3, 4.9],
   3: [5, 6.9],
-  4: [7, 9.5],
+  4: [7, 8.9],
   5: [9, 10],
 };
 
@@ -381,7 +386,7 @@ export function analyzeBracket(input: BracketInput): BracketAnalysis {
     power,
     confidence,
     reasons,
-    suggestsCedh: bracket === AUTO_BRACKET_MAX && power >= CEDH_POWER_HINT,
+    suggestsCedh: bracket === AUTO_BRACKET_MAX && tuning >= CEDH_TUNING_HINT,
     verdicts: { rules, spellbook, tuning, precon: input.isPrecon },
   };
 }

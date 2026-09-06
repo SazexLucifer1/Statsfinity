@@ -2,7 +2,7 @@ import {
   AUTO_BRACKET_MAX,
   BracketCard,
   BracketInput,
-  CEDH_POWER_HINT,
+  CEDH_TUNING_HINT,
   analyzeBracket,
   powerLevel,
   presentCombos,
@@ -243,7 +243,7 @@ describe('bracket - Power-Level', () => {
 
   it('nutzt die Spanne innerhalb eines Brackets aus', () => {
     expect(powerLevel(2, 1)).toBe(4.9);
-    expect(powerLevel(4, 1)).toBe(9.5);
+    expect(powerLevel(4, 1)).toBe(8.9);
   });
 });
 
@@ -305,7 +305,7 @@ describe('bracket - Zusammenführung', () => {
     expect(ergebnis.bracket).toBe(AUTO_BRACKET_MAX);
   });
 
-  it('weist bei sehr hoch bewerteten Bracket-4-Decks auf cEDH hin', () => {
+  it('weist bei durchweg durchoptimierten Bracket-4-Decks auf cEDH hin', () => {
     const ergebnis = analyzeBracket(
       basis({
         cards: Array.from({ length: 8 }, (_, i) => karte(`GC${i}`, { gameChanger: true })),
@@ -314,8 +314,23 @@ describe('bracket - Zusammenführung', () => {
         tutorCount: 15,
       }),
     );
-    expect(ergebnis.power).toBeGreaterThanOrEqual(CEDH_POWER_HINT);
+    expect(ergebnis.verdicts.tuning).toBeGreaterThanOrEqual(CEDH_TUNING_HINT);
     expect(ergebnis.suggestsCedh).toBe(true);
+  });
+
+  it('weist ein bloss ordentlich gebautes Bracket-4-Deck nicht als cEDH aus', () => {
+    // Genau der Fall, der beim Pruefen in der laufenden App auffiel: fuenf Game Changer, sonst
+    // unauffaellig. Tuning-Grad um 0,6 - das ist ein starkes Deck, aber kein Turnierdeck.
+    const ergebnis = analyzeBracket(
+      basis({
+        cards: Array.from({ length: 5 }, (_, i) => karte(`GC${i}`, { gameChanger: true })),
+        averageCmc: 2.8,
+        nonBasicLandPercent: 70,
+        tutorCount: 3,
+      }),
+    );
+    expect(ergebnis.bracket).toBe(4);
+    expect(ergebnis.suggestsCedh).toBe(false);
   });
 
   it('weist ein gewöhnliches Bracket-4-Deck nicht als cEDH aus', () => {
