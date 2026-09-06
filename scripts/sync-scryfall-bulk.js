@@ -67,24 +67,54 @@ function frontName(name) {
 
 const normalizedFrontName = (name) => normalizeCardName(frontName(name));
 
-/** Wiederholt bei Netz-/Rate-Limit-Fehlern mit wachsender Pause - analog ScryfallService.fetchWithRetry(). */
-async function fetchJson(url, { allow404 = false } = {}) {
-  for (let attempt = 0; attempt < 4; attempt++) {
+/**
+ * Wiederholt bei Netz-/Rate-Limit-Fehlern mit wachsender Pause - analog
+ * ScryfallService.fetchWithRetry(), aber deutlich geduldiger: der erste echte Lauf scheiterte hier
+ * (Run #1, otag:removal Seite 23 von 37), obwohl die Seite selbst einwandfrei ist. Vier Versuche
+ * mit 2/4/6 s reichten also nicht.
+ *
+ * Wichtig ist außerdem, dass der GRUND im Fehlertext landet: die erste Fassung meldete nur "nach
+ * 4 Versuchen aufgegeben" und verschluckte, ob es 429, 5xx oder ein Verbindungsabbruch war -
+ * damit ließ sich der Fehlschlag aus dem Lauf-Protokoll heraus nicht einordnen.
+ */
+const VERSUCHE = 6;
+
+async function fetchMitWiederholung(url, { allow404 = false } = {}) {
+  let letzterGrund = 'unbekannt';
+
+  for (let versuch = 0; versuch < VERSUCHE; versuch++) {
+    let wartezeit = 3000 * 2 ** versuch; // 3, 6, 12, 24, 48 s
     try {
       const res = await fetch(url, { headers: HEADERS });
-      if (res.ok) return await res.json();
+      if (res.ok) return res;
       // Scryfall antwortet bei null Treffern mit 404 - das ist ein gültiges Ergebnis, kein Fehler
       // (dieselbe Unterscheidung trifft ScryfallService.fetchWithRetry()).
       if (res.status === 404 && allow404) return null;
       if (res.status < 500 && res.status !== 429) {
-        throw new Error(`${url} -> HTTP ${res.status}`);
+        throw new Error(`HTTP ${res.status}`);
       }
+      letzterGrund = `HTTP ${res.status}`;
+      // Bei 429 sagt Scryfall oft selbst, wie lange zu warten ist - das schlägt jede eigene Schätzung.
+      const retryAfter = Number(res.headers.get('retry-after'));
+      if (Number.isFinite(retryAfter) && retryAfter > 0)
+        wartezeit = Math.max(wartezeit, retryAfter * 1000);
     } catch (err) {
-      if (attempt === 3) throw err;
+      // Verbindungsabbrüche landen hier - anders als ein Statuscode sind sie sonst unsichtbar.
+      letzterGrund = err.message;
+      if (versuch === VERSUCHE - 1) break;
     }
-    await sleep(2000 * (attempt + 1));
+    console.log(
+      `    Versuch ${versuch + 1}/${VERSUCHE} fehlgeschlagen (${letzterGrund}), erneut in ${wartezeit / 1000}s ...`,
+    );
+    await sleep(wartezeit);
   }
-  throw new Error(`${url} -> nach 4 Versuchen aufgegeben`);
+
+  throw new Error(`${url} -> nach ${VERSUCHE} Versuchen aufgegeben, zuletzt: ${letzterGrund}`);
+}
+
+async function fetchJson(url, options) {
+  const res = await fetchMitWiederholung(url, options);
+  return res ? await res.json() : null;
 }
 
 async function readSyncState(id) {
@@ -98,17 +128,15 @@ async function readSyncState(id) {
 }
 
 async function writeSyncState(id, sourceUpdatedAt, rowCount) {
-  const { error } = await supabase
-    .from('scryfall_sync_state')
-    .upsert(
-      {
-        id,
-        source_updated_at: sourceUpdatedAt,
-        synced_at: new Date().toISOString(),
-        row_count: rowCount,
-      },
-      { onConflict: 'id' },
-    );
+  const { error } = await supabase.from('scryfall_sync_state').upsert(
+    {
+      id,
+      source_updated_at: sourceUpdatedAt,
+      synced_at: new Date().toISOString(),
+      row_count: rowCount,
+    },
+    { onConflict: 'id' },
+  );
   if (error)
     throw new Error(`Konnte scryfall_sync_state (${id}) nicht schreiben: ${error.message}`);
 }
@@ -305,22 +333,106 @@ const EFFEKT_KATEGORIEN = [
   { key: 'extracombat', query: 'otag:extra-combat' },
 ];
 
+/** Scryfall liefert pro Ergebnisseite höchstens so viele Treffer - gilt für JSON wie für CSV. */
+const TREFFER_PRO_SEITE = 175;
+
+/**
+ * Zerlegt EINE CSV-Zeile nach RFC4180 (Anführungszeichen, verdoppelte Anführungszeichen als
+ * Escape, Kommas innerhalb eines Feldes). Nötig, weil sehr viele Kartennamen ein Komma enthalten
+ * ("Krenko, Mob Boss") und Scryfall solche Felder quotet - ein naives split(',') würde sie
+ * zerreißen und die Kategorien still mit Namensfragmenten füllen.
+ */
+function parseCsvLine(line) {
+  const felder = [];
+  let feld = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (inQuotes) {
+      if (c !== '"') feld += c;
+      else if (line[i + 1] === '"') {
+        feld += '"';
+        i++;
+      } else inQuotes = false;
+    } else if (c === '"') inQuotes = true;
+    else if (c === ',') {
+      felder.push(feld);
+      feld = '';
+    } else feld += c;
+  }
+
+  felder.push(feld);
+  return felder;
+}
+
+/**
+ * Trennt den CSV-Text in Datensätze. Nicht einfach an "\n" splitten: ein gequotetes Feld darf
+ * selbst Zeilenumbrüche enthalten, ein Datensatz kann also über mehrere Textzeilen gehen. Ein
+ * Datensatz ist zu Ende, sobald die Anzahl der Anführungszeichen darin gerade ist.
+ */
+function splitCsvRecords(text) {
+  const records = [];
+  let aktuell = '';
+  let quotes = 0;
+
+  for (const line of text.split('\n')) {
+    aktuell = aktuell ? `${aktuell}\n${line}` : line;
+    quotes += (line.match(/"/g) ?? []).length;
+    if (quotes % 2 === 0) {
+      if (aktuell.trim()) records.push(aktuell);
+      aktuell = '';
+    }
+  }
+  if (aktuell.trim()) records.push(aktuell);
+
+  return records;
+}
+
+/**
+ * Holt alle Kartennamen einer Kategorie.
+ *
+ * Bewusst format=csv statt JSON: Scryfalls JSON-Suche liefert vollständige Kartenobjekte, also
+ * rund 892 kB je Ergebnisseite, obwohl hier NUR der Name gebraucht wird. Über alle 139 Seiten
+ * waren das ~110 MB in wenigen Minuten - vermutlich der Grund, warum Run #1 mitten in
+ * "otag:removal" abbrach, obwohl die betroffene Seite einzeln abgerufen einwandfrei antwortet.
+ * Dieselbe Seite als CSV ist rund 49 kB, also etwa ein Zwanzigstel. Die Treffermengen sind
+ * geprüft identisch (extracombat 46, proliferate 99, counterspell 546).
+ *
+ * CSV kennt kein "has_more"/"next_page", deshalb wird über page=N geblättert. Schluss ist bei
+ * einer nicht vollen Seite - und zur Sicherheit auch bei 404, falls die letzte Seite zufällig
+ * exakt voll war.
+ */
 async function ladeKategorie(query) {
   const namen = new Set();
-  let url = `${API}/cards/search?q=${encodeURIComponent(query)}&unique=cards`;
   let seiten = 0;
 
-  while (url) {
+  for (let page = 1; ; page++) {
+    const url = `${API}/cards/search?q=${encodeURIComponent(query)}&unique=cards&format=csv&page=${page}`;
     // allow404: Scryfall antwortet bei null Treffern mit 404. Das ist ein gültiges Ergebnis und
     // trifft aktuell tatsächlich zu - "otag:gives-1-1-counters" (Kachel "+1/+1-Marken") findet
     // nichts mehr, das Tag existiert bei Scryfall nicht. Diese Kategorie steht daher schon vor
     // dieser Umstellung dauerhaft auf 0; das Skript darf daran nicht scheitern.
-    const seite = await fetchJson(url, { allow404: true });
-    if (!seite) break;
+    const res = await fetchMitWiederholung(url, { allow404: true });
+    if (!res) break;
     seiten++;
-    for (const karte of seite.data ?? []) namen.add(normalizedFrontName(karte.name));
-    url = seite.has_more ? seite.next_page : null;
-    if (url) await sleep(100); // Scryfalls empfohlene Pause zwischen Anfragen
+
+    const records = splitCsvRecords(await res.text());
+    const spalten = parseCsvLine(records[0] ?? '');
+    const nameIdx = spalten.indexOf('name');
+    // Lieber laut scheitern als still leere Kategorien schreiben, falls Scryfall die Spalten umbaut.
+    if (nameIdx < 0) throw new Error(`CSV ohne Spalte "name" (Spalten: ${spalten.join('|')})`);
+
+    const zeilen = records.slice(1);
+    for (const zeile of zeilen) namen.add(normalizedFrontName(parseCsvLine(zeile)[nameIdx]));
+
+    if (zeilen.length < TREFFER_PRO_SEITE) break;
+    // Deutlich großzügiger als Scryfalls Mindestempfehlung von 50-100 ms: über 139 Seiten hinweg
+    // greift offenbar ein Dauerlast-Budget. Mit 250 ms kamen im Testlauf immer noch drei 429er
+    // (Scryfall antwortete jeweils mit "Retry-After: 60"), und 60 s Zwangspause kosten mehr als
+    // die zusätzlichen Pausen hier. Die Wiederholung oben bleibt trotzdem die eigentliche
+    // Absicherung - dieser Wert soll den Fall nur seltener machen, nicht ausschließen.
+    await sleep(500);
   }
 
   return { namen, seiten };
@@ -328,16 +440,25 @@ async function ladeKategorie(query) {
 
 async function syncEffekte() {
   console.log('--- Teil 2: Effekt-Kategorien ---');
-  let gesamt = 0;
 
+  // ERST alle Kategorien vollständig laden, DANN schreiben. Vorher wurde je Kategorie sofort
+  // gelöscht und eingefügt - bricht der Lauf dann bei Kategorie 5 ab (genau das ist in Run #1
+  // passiert), stehen 1-4 in der Tabelle und 5-12 fehlen. Die App würde für die fehlenden
+  // Kategorien einfach 0 anzeigen, ohne dass irgendwo ein Fehler sichtbar wäre. Die ~23.000
+  // kurzen Zeichenketten im Speicher zu halten kostet dagegen praktisch nichts.
+  const geladen = [];
   for (const { key, query } of EFFEKT_KATEGORIEN) {
     const { namen, seiten } = await ladeKategorie(query);
     console.log(`  ${key}: ${namen.size} Karten (${seiten} Seiten)`);
+    geladen.push({ key, namen });
+  }
 
+  let gesamt = 0;
+  for (const { key, namen } of geladen) {
     // Ersetzen statt zusammenführen, damit Karten verschwinden, deren Tag Scryfall zurückgenommen
-    // hat. supabase-js kennt keine Transaktion über mehrere Aufrufe - für ein paar Sekunden
+    // hat. supabase-js kennt keine Transaktion über mehrere Aufrufe - für einen kurzen Moment
     // mitten in der Nacht kann eine Kategorie deshalb unvollständig sein. Bewusst akzeptiert;
-    // dafür bleibt das Skript ohne eigene Datenbankfunktion auskommend.
+    // dafür kommt das Skript ohne eigene Datenbankfunktion aus.
     const { error: deleteError } = await supabase
       .from('scryfall_card_effects')
       .delete()
