@@ -54,6 +54,11 @@
             @if (deck.isPrecon) {<span [title]="i18n.t('deck.preconBadge')">📦</span>}
             @if (deck.isPrivate) {<span [title]="i18n.t('deck.privateBadge')">🔒</span>}
             @if (deck.isOutdated) {<span [title]="i18n.t('deck.outdatedBadge')">🗄️</span>}
+            <!-- Nur die Stufe, ohne Namen: die Kachel ist auf 300px Mindestbreite ausgelegt und
+                 der Deckname braucht den Platz. -->
+            @if (bracketOf(deck); as bracket) {
+              <app-bracket-badge [bracket]="bracket.level" [source]="bracket.source" [compact]="true" />
+            }
             {{ deck.name }}
           </span>
           @if (!hideStats()) {

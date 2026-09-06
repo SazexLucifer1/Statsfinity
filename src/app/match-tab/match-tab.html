@@ -623,6 +623,11 @@
                 </div>
                 <span class="player-name">
                   @if (option.isPrecon) {<span title="Precon">📦</span>}
+                  <!-- Damit beim Zusammenstellen einer Runde sichtbar ist, ob die Decks überhaupt
+                       zueinander passen, ohne jedes einzeln aufzumachen. -->
+                  @if (deckPickerBracket(option); as bracket) {
+                    <app-bracket-badge [bracket]="bracket.level" [source]="bracket.source" [compact]="true" />
+                  }
                   {{ option.deckName }}
                 </span>
                 @if (option.ownerName) {

@@ -27,6 +27,17 @@ export const deck = {
     'deck.showOutdated': '🗄️ Nur Outdated',
     'deck.msg.confirmDelete': 'Deck „{{name}}" wirklich löschen?',
 
+    // --- Commander-Bracket (Abzeichen, siehe ui/bracket-badge) ---
+    // Die Stufennamen sind die offiziellen englischen Begriffe und bleiben in beiden Sprachen
+    // gleich - genau so heissen sie am Tisch, eine Uebersetzung wuerde nur Verwirrung stiften.
+    'deck.bracket.name1': 'Exhibition',
+    'deck.bracket.name2': 'Core',
+    'deck.bracket.name3': 'Upgraded',
+    'deck.bracket.name4': 'Optimized',
+    'deck.bracket.name5': 'cEDH',
+    'deck.bracket.badgeAuto': 'Bracket {{level}} · {{name}} (geschätzt)',
+    'deck.bracket.badgeManual': 'Bracket {{level}} · {{name}} (selbst festgelegt)',
+
     // --- Deck-Viewer (Deckansicht) ---
     'deckViewer.bracketHint13': 'Bracket 1–3 möglich',
     'deckViewer.bracketHintMin3': 'mindestens Bracket 3',
@@ -139,6 +150,15 @@ export const deck = {
     'deck.outdatedBadge': 'Outdated - hidden from the normal view',
     'deck.showOutdated': '🗄️ Only outdated',
     'deck.msg.confirmDelete': 'Really delete deck "{{name}}"?',
+
+    // --- Commander bracket (badge, see ui/bracket-badge) ---
+    'deck.bracket.name1': 'Exhibition',
+    'deck.bracket.name2': 'Core',
+    'deck.bracket.name3': 'Upgraded',
+    'deck.bracket.name4': 'Optimized',
+    'deck.bracket.name5': 'cEDH',
+    'deck.bracket.badgeAuto': 'Bracket {{level}} · {{name}} (estimated)',
+    'deck.bracket.badgeManual': 'Bracket {{level}} · {{name}} (set by you)',
 
     // --- Deck viewer ---
     'deckViewer.bracketHint13': 'Bracket 1–3 possible',

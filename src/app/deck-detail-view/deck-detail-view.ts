@@ -11,10 +11,11 @@ import { BarChart } from '../ui/bar-chart/bar-chart';
 import { OverflowMenu } from '../ui/overflow-menu/overflow-menu';
 import { ColorFilter } from '../ui/color-filter/color-filter';
 import { CmcFilter } from '../ui/cmc-filter/cmc-filter';
+import { BracketBadge } from '../ui/bracket-badge/bracket-badge';
 
 @Component({
   selector: 'app-deck-detail-view',
-  imports: [CurrencyPipe, DatePipe, DecimalPipe, PercentPipe, FormsModule, CardImage, BarChart, OverflowMenu, ColorFilter, CmcFilter],
+  imports: [CurrencyPipe, DatePipe, DecimalPipe, PercentPipe, FormsModule, CardImage, BarChart, OverflowMenu, ColorFilter, CmcFilter, BracketBadge],
   templateUrl: './deck-detail-view.html',
   styleUrl: './deck-detail-view.scss',
 })

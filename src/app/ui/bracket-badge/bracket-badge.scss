@@ -1,0 +1,62 @@
+:host {
+  display: inline-flex;
+  min-width: 0;
+}
+
+.bracket-badge {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  padding: 2px var(--sp-3);
+  border-radius: var(--r-pill);
+  border: 1px solid transparent;
+  background: var(--bracket-color);
+  // Dunkler Text auf der farbigen Fläche: die fünf Farben sind bewusst hell genug gewählt, dass
+  // heller Text darauf nicht mehr auf 4.5:1 käme.
+  color: #16112a;
+  font-weight: 600;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  white-space: nowrap;
+
+  &.compact {
+    padding: 1px var(--sp-2);
+    font-size: 0.72rem;
+  }
+}
+
+// Geschätzt gegen selbst festgelegt. Ein gestrichelter Rand statt einer eigenen Farbe: die Farbe
+// ist hier schon für die Stufe vergeben, ein zweiter Farbcode darüber wäre nicht mehr lesbar.
+.bracket-badge.estimated {
+  background: transparent;
+  border-color: var(--bracket-color);
+  border-style: dashed;
+  color: var(--bracket-color);
+}
+
+.bracket-name {
+  font-weight: 500;
+  // Auf sehr schmalen Kacheln lieber den Namen abschneiden als die Zeile umbrechen - die Stufe
+  // links davon ist die eigentliche Information.
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// Sequentielle Skala von kühl nach warm - die Brackets sind eine Leiter, kein Gut/Schlecht.
+// Verankert an den vorhandenen Tokens (--accent, --gold, --danger), damit es sich nicht wie eine
+// zweite, fremde Palette anfühlt.
+.bracket-badge[data-bracket='1'] {
+  --bracket-color: #9fb8e8;
+}
+.bracket-badge[data-bracket='2'] {
+  --bracket-color: #8ab4ff;
+}
+.bracket-badge[data-bracket='3'] {
+  --bracket-color: #ffd166;
+}
+.bracket-badge[data-bracket='4'] {
+  --bracket-color: #ffa257;
+}
+.bracket-badge[data-bracket='5'] {
+  --bracket-color: #ff8f8f;
+}

@@ -41,6 +41,18 @@ export interface Deck {
    * einzelnes Dropdown, keine Mehrfachauswahl.
    */
   creatureType: string | null;
+  /**
+   * Selbst festgelegte Commander-Bracket-Stufe 1-5, oder null für "automatisch bestimmen".
+   * Angezeigt wird immer bracket, und nur wenn das null ist, bracketAuto.
+   */
+  bracket: number | null;
+  /**
+   * Zuletzt berechnete Stufe der Automatik (siehe src/app/bracket.ts). Wird beim Öffnen eines
+   * Decks nachgeführt und existiert nur, damit Deck-Liste und Match-Auswahl ein Abzeichen zeigen
+   * können, ohne für jedes Deck die ganze Kartenliste nachzuladen.
+   */
+  bracketAuto: number | null;
+  bracketAutoAt: string | null;
 }
 
 /**
@@ -226,6 +238,45 @@ export class DeckService {
   private readonly preconService = inject(PreconService);
 
   /**
+   * Spaltenliste für die Deck-Abfragen.
+   *
+   * Die Bracket-Spalten kommen aus sql/deck-bracket-2026-09-06.sql, und dieses Skript läuft NICHT
+   * automatisch mit dem Deployment - es wird von Hand im Supabase-SQL-Editor ausgeführt. Stünden
+   * sie fest in der Liste, würde PostgREST bis dahin jede Deck-Abfrage mit "column does not exist"
+   * (42703) ablehnen und die komplette Deck-Liste bliebe leer. Ein fehlendes Abzeichen ist ein
+   * hinnehmbarer Zustand, eine leere Deck-Liste nicht.
+   *
+   * Deshalb einmal je Sitzung: beim ersten 42703 auf eine Bracket-Spalte wird abgeschaltet und die
+   * Abfrage ohne sie wiederholt. Nach dem Ausführen der Migration greift beim nächsten Laden
+   * wieder die vollständige Liste.
+   */
+  private static bracketSpaltenVerfuegbar = true;
+
+  private static readonly BASIS_SPALTEN =
+    'id, user_id, player_id, name, format, updated_at, created_at, is_precon, precon_release_year, edhrec_tag, is_private, is_outdated, commander_types, players ( group_id )';
+  private static readonly BRACKET_SPALTEN = 'bracket, bracket_auto, bracket_auto_at';
+
+  private static deckColumns(): string {
+    return DeckService.bracketSpaltenVerfuegbar
+      ? `${DeckService.BASIS_SPALTEN}, ${DeckService.BRACKET_SPALTEN}`
+      : DeckService.BASIS_SPALTEN;
+  }
+
+  /**
+   * true = der Fehler kam von den noch fehlenden Bracket-Spalten und der Aufrufer soll es ohne sie
+   * erneut versuchen. Schaltet dabei gleich für den Rest der Sitzung um.
+   */
+  private static istFehlendeBracketSpalte(error: { code?: string; message?: string } | null): boolean {
+    if (!error || !DeckService.bracketSpaltenVerfuegbar) return false;
+    if (error.code !== '42703' && !(error.message ?? '').includes('bracket')) return false;
+    console.warn(
+      'Bracket-Spalten fehlen noch - sql/deck-bracket-2026-09-06.sql im Supabase-SQL-Editor ausführen. Decks werden solange ohne Bracket geladen.'
+    );
+    DeckService.bracketSpaltenVerfuegbar = false;
+    return true;
+  }
+
+  /**
    * Löst einen DeckOwner zu den betroffenen players.id auf - bei einem echten Account können das
    * mehrere sein (eine Spieler-Zeile pro Gruppe), bei einem virtuellen Spieler ist die playerId
    * bereits selbst die einzige relevante ID, kein Lookup nötig. Öffentlich, da auch DeckViewerService
@@ -238,15 +289,20 @@ export class DeckService {
   }
 
   async loadDecksForOwner(owner: DeckOwner): Promise<Deck[]> {
-    let query = supabase
-      .from('decks')
-      .select(
-        'id, user_id, player_id, name, format, updated_at, created_at, is_precon, precon_release_year, edhrec_tag, is_private, is_outdated, commander_types, players ( group_id )'
-      )
-      .order('updated_at', { ascending: false });
-    query = owner.kind === 'user' ? query.eq('user_id', owner.userId) : query.eq('player_id', owner.playerId);
+    const abfrage = () => {
+      const query = supabase
+        .from('decks')
+        .select(DeckService.deckColumns())
+        .order('updated_at', { ascending: false });
+      return owner.kind === 'user'
+        ? query.eq('user_id', owner.userId)
+        : query.eq('player_id', owner.playerId);
+    };
 
-    const { data, error } = await query;
+    let { data, error } = await abfrage();
+    // Migration noch nicht ausgeführt - ohne die Bracket-Spalten erneut versuchen, statt die
+    // Deck-Liste leer zu lassen (siehe deckColumns()).
+    if (DeckService.istFehlendeBracketSpalte(error)) ({ data, error } = await abfrage());
 
     if (error) {
       console.error('Konnte Decks nicht laden:', error);
@@ -268,18 +324,20 @@ export class DeckService {
       isPrivate: row.is_private ?? false,
       isOutdated: row.is_outdated ?? false,
       creatureType: row.commander_types?.[0] ?? null,
+      bracket: row.bracket ?? null,
+      bracketAuto: row.bracket_auto ?? null,
+      bracketAutoAt: row.bracket_auto_at ?? null,
     }));
   }
 
   /** Lädt ein einzelnes Deck per ID, unabhängig vom Besitzer - z.B. für den Direkt-Sprung aus der Stats-Rangliste. */
   async getDeckById(deckId: string): Promise<Deck | null> {
-    const { data, error } = await supabase
-      .from('decks')
-      .select(
-        'id, user_id, player_id, name, format, updated_at, created_at, is_precon, precon_release_year, edhrec_tag, is_private, is_outdated, commander_types, players ( group_id )'
-      )
-      .eq('id', deckId)
-      .maybeSingle();
+    const abfrage = () =>
+      supabase.from('decks').select(DeckService.deckColumns()).eq('id', deckId).maybeSingle();
+
+    let { data, error } = await abfrage();
+    // Siehe loadDecksForOwner(): ohne Bracket-Spalten erneut versuchen, statt gar kein Deck zu liefern.
+    if (DeckService.istFehlendeBracketSpalte(error)) ({ data, error } = await abfrage());
 
     if (error || !data) {
       console.error('Konnte Deck nicht laden:', error);
@@ -302,6 +360,9 @@ export class DeckService {
       isPrivate: row.is_private ?? false,
       isOutdated: row.is_outdated ?? false,
       creatureType: row.commander_types?.[0] ?? null,
+      bracket: row.bracket ?? null,
+      bracketAuto: row.bracket_auto ?? null,
+      bracketAutoAt: row.bracket_auto_at ?? null,
     };
   }
 
@@ -1011,6 +1072,45 @@ export class DeckService {
 
     if (error) {
       console.error('Konnte Outdated-Status nicht ändern:', error);
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * Setzt die selbst gewählte Bracket-Stufe. null = "automatisch bestimmen" (dann gilt wieder
+   * bracket_auto).
+   */
+  async setDeckBracket(deckId: string, bracket: number | null): Promise<boolean> {
+    const { error } = await supabase.from('decks').update({ bracket }).eq('id', deckId);
+
+    if (error) {
+      console.error('Konnte Bracket nicht ändern:', error);
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * Schreibt das Ergebnis der Automatik zurück, damit Deck-Liste und Match-Auswahl ein Abzeichen
+   * zeigen können, ohne selbst zu rechnen (siehe sql/deck-bracket-2026-09-06.sql).
+   *
+   * Bewusst OHNE updated_at anzufassen: das ist der Zeitstempel der letzten inhaltlichen Änderung
+   * am Deck und sortiert die Deck-Liste. Ein reiner Nachtrag der Automatik ist keine Änderung
+   * durch den Nutzer und darf das Deck nicht nach oben schieben.
+   *
+   * Fehler landen hier nur in der Konsole: Steht die Migration noch aus, soll die Deck-Ansicht
+   * trotzdem normal funktionieren - das Bracket wird dann eben bei jedem Öffnen neu gerechnet,
+   * statt gespeichert zu werden.
+   */
+  async saveDeckAutoBracket(deckId: string, bracketAuto: number): Promise<boolean> {
+    const { error } = await supabase
+      .from('decks')
+      .update({ bracket_auto: bracketAuto, bracket_auto_at: new Date().toISOString() })
+      .eq('id', deckId);
+
+    if (error) {
+      console.error('Konnte das automatisch bestimmte Bracket nicht speichern:', error);
       return false;
     }
     return true;

@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { supabase } from './supabase.client';
 import { chunk, normalizeCardName } from './array-utils';
 import { ScryfallService, ScryfallCard } from './scryfall.service';
+import type { SpellbookBracketTag } from './commander-spellbook.service';
 
 /**
  * Die drei kuratierten Markierungen von Commander Spellbook, die es bei Scryfall nicht gibt und
@@ -12,6 +13,24 @@ export interface SpellbookCardFlags {
   massLandDenial: boolean;
   extraTurn: boolean;
   tutor: boolean;
+}
+
+/**
+ * Eine Zwei-Karten-Combo aus Commander Spellbook. cardA/cardB sind normalisierte
+ * Vorderseiten-Namen, also derselbe Schlüssel wie in SpellbookCardFlags.
+ */
+export interface SpellbookTwoCardCombo {
+  id: string;
+  cardA: string;
+  cardB: string;
+  /** true = die Combo zählt nur, wenn diese Karte der Commander ist. */
+  aMustBeCommander: boolean;
+  bMustBeCommander: boolean;
+  /** Zusätzlich nötiges Mana, um die Combo abzuschließen. */
+  manaValueNeeded: number | null;
+  /** Spellbooks Note für DIESE Combo (R/S/P/O/C/E/B) - bewertet Tempo und Härte der Combo. */
+  bracketTag: SpellbookBracketTag | null;
+  popularity: number | null;
 }
 
 /**
@@ -278,5 +297,58 @@ export class CardDataService {
   /** Schlüssel, unter dem eine Karte in spellbookCardFlags() steht. */
   spellbookKey(cardName: string): string {
     return this.lookupKey(cardName);
+  }
+
+  /**
+   * Alle Zwei-Karten-Combos, bei denen die ERSTE Karte im Deck liegt.
+   *
+   * Bewusst nur über card_a_normalized abgefragt, obwohl die Reihenfolge in der Quelle beliebig
+   * ist: eine Combo ist nur dann vollständig, wenn BEIDE Karten im Deck liegen - dann ist auch
+   * die erste dabei und die Abfrage findet sie. Die zweite Karte prüft presentCombos() in
+   * bracket.ts, zusammen mit der mustBeCommander-Bedingung. Eine zusätzliche Abfrage über
+   * card_b_normalized würde also nur Zeilen liefern, die ohnehin wieder wegfielen.
+   *
+   * Leeres Ergebnis bei einem Fehler (Tabelle noch nicht angelegt, kein Netz): die Einstufung
+   * läuft dann ohne Combo-Kriterium weiter, statt ganz auszufallen.
+   */
+  async twoCardCombosFor(cardNames: string[]): Promise<SpellbookTwoCardCombo[]> {
+    const keys = [...new Set(cardNames.map((n) => this.lookupKey(n)).filter(Boolean))];
+    if (keys.length === 0) return [];
+
+    const combos: SpellbookTwoCardCombo[] = [];
+    // Klein gehalten, weil eine einzelne verbreitete Karte (Sol Ring & Co.) in vielen Combos
+    // steckt - so bleibt jeder Block sicher unter der 1000-Zeilen-Grenze von PostgREST, ab der
+    // Treffer stillschweigend abgeschnitten würden.
+    for (const block of chunk(keys, 40)) {
+      const { data, error } = await supabase
+        .from('spellbook_two_card_combos')
+        .select(
+          'id, card_a_normalized, card_b_normalized, a_must_be_commander, b_must_be_commander, mana_value_needed, bracket_tag, popularity'
+        )
+        .in('card_a_normalized', block);
+
+      if (error) {
+        console.warn(
+          'Spellbook-Combos konnten nicht geladen werden, Bracket-Einstufung ohne Combo-Kriterium:',
+          error.message
+        );
+        return [];
+      }
+
+      for (const row of data ?? []) {
+        combos.push({
+          id: row.id as string,
+          cardA: row.card_a_normalized as string,
+          cardB: row.card_b_normalized as string,
+          aMustBeCommander: row.a_must_be_commander as boolean,
+          bMustBeCommander: row.b_must_be_commander as boolean,
+          manaValueNeeded: (row.mana_value_needed as number | null) ?? null,
+          bracketTag: (row.bracket_tag as SpellbookBracketTag | null) ?? null,
+          popularity: (row.popularity as number | null) ?? null,
+        });
+      }
+    }
+
+    return combos;
   }
 }

@@ -1,0 +1,14 @@
+@if (bracket(); as level) {
+  <span
+    class="bracket-badge"
+    [class.compact]="compact()"
+    [class.estimated]="source() === 'auto'"
+    [attr.data-bracket]="level"
+    [title]="title()"
+  >
+    <span class="bracket-level">B{{ level }}</span>
+    @if (!compact()) {
+      <span class="bracket-name">{{ name() }}</span>
+    }
+  </span>
+}
