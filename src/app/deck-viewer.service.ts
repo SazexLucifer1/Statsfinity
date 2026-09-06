@@ -2026,7 +2026,7 @@ export class DeckViewerService {
     if (missing.length === 0) return;
 
     this.edhrecCategoryImagesBusy.update((set) => new Set(set).add(tag));
-    const found = await this.scryfall.findCardsBulk(missing);
+    const found = await this.cardData.findCardsBulk(missing);
     this.edhrecCardDetails.update((current) => new Map([...current, ...found]));
     this.edhrecCategoryImagesBusy.update((set) => {
       const next = new Set(set);
@@ -2123,7 +2123,7 @@ export class DeckViewerService {
   /** Löst den EDHREC-Kartennamen zu vollen Scryfall-Daten auf (EDHREC selbst liefert nur Name+Statistik) und staged ihn wie addCard(). */
   async addEdhrecCard(cardName: string): Promise<void> {
     this.addCardBusy.set(true);
-    const found = await this.scryfall.findCard(cardName);
+    const found = await this.cardData.findCard(cardName);
     this.addCardBusy.set(false);
     if (!found) {
       this.addCardMessage.set(this.i18n.t('deckViewer.msg.notFoundOnScryfall', { name: cardName }));
@@ -2243,7 +2243,7 @@ export class DeckViewerService {
   private async loadCardDetails(cards: DeckCard[]): Promise<void> {
     this.analysisBusy.set(true);
     const names = [...new Set(cards.map((c) => c.cardName))];
-    const found = await this.scryfall.findCardsBulk(names);
+    const found = await this.cardData.findCardsBulk(names);
     this.viewingCardDetails.set(found);
     this.analysisBusy.set(false);
   }
@@ -2551,7 +2551,7 @@ export class DeckViewerService {
       const missing = cards.filter((c) => !c.imageUrl).map((c) => c.cardName);
       if (missing.length === 0) return cards;
 
-      const found = await this.scryfall.findCardsBulk(missing);
+      const found = await this.cardData.findCardsBulk(missing);
       return cards.map((c) => {
         if (c.imageUrl) return c;
         const scryfallCard = found.get(c.cardName.toLowerCase());

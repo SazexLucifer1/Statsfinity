@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { supabase } from './supabase.client';
 import { ScryfallService, ScryfallCard } from './scryfall.service';
+import { CardDataService } from './card-data.service';
 import { isPlayerWinner } from './match-utils';
 import { sleep } from './array-utils';
 import { GroupService } from './group.service';
@@ -220,6 +221,7 @@ function commanderMetadataFrom(
 @Injectable({ providedIn: 'root' })
 export class DeckService {
   private readonly scryfall = inject(ScryfallService);
+  private readonly cardData = inject(CardDataService);
   private readonly groupService = inject(GroupService);
   private readonly preconService = inject(PreconService);
 
@@ -419,7 +421,7 @@ export class DeckService {
     const parsed = this.parseDecklistText(rawText);
     if (parsed.length === 0) return null;
 
-    const cardMap = await this.scryfall.findCardsBulk(parsed.map((p) => p.name));
+    const cardMap = await this.cardData.findCardsBulk(parsed.map((p) => p.name));
     // Farb-/Typal-Metadaten für den öffentlichen Decks-Suchreiter (siehe
     // sql/public-deck-browse-2026-08-26.sql) direkt beim Import/Neuanlegen mitschreiben - vorher
     // wurden sie erst befüllt, sobald später im Deck-Editor die Commander-Markierung geändert

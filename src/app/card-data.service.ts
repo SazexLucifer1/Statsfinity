@@ -1,6 +1,7 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { supabase } from './supabase.client';
 import { chunk, normalizeCardName } from './array-utils';
+import { ScryfallService, ScryfallCard } from './scryfall.service';
 
 /**
  * Lesezugriff auf den eigenen Kartendatenbestand, den der nächtliche Abgleich füllt
@@ -18,6 +19,12 @@ import { chunk, normalizeCardName } from './array-utils';
  */
 @Injectable({ providedIn: 'root' })
 export class CardDataService {
+  private readonly scryfall = inject(ScryfallService);
+
+  /** Spalten, aus denen sich ein vollständiges ScryfallCard zusammensetzen lässt (siehe toCard()). */
+  private static readonly KARTEN_SPALTEN =
+    'oracle_id, name, front_name_normalized, type_line, cmc, mana_cost, color_identity, produced_mana, game_changer, oracle_text, keywords, image_url, back_image_url, back_type_line, all_parts';
+
   /**
    * Nachgeschlagen wird immer mit dem normalisierten Vorderseiten-Namen - genau der Schlüssel, den
    * der Abgleich in front_name_normalized ablegt (siehe normalizedFrontName() im Sync-Skript) und
@@ -106,5 +113,105 @@ export class CardDataService {
     }
 
     return bekannt;
+  }
+
+  /** Wandelt eine Tabellenzeile in dasselbe ScryfallCard um, das ScryfallService.toCard() liefert. */
+  private toCard(row: Record<string, unknown>): ScryfallCard {
+    const wert = <T>(feld: string): T | undefined => (row[feld] ?? undefined) as T | undefined;
+    return {
+      name: row['name'] as string,
+      imageUrl: wert<string>('image_url'),
+      typeLine: wert<string>('type_line'),
+      cmc: wert<number>('cmc'),
+      manaCost: wert<string>('mana_cost'),
+      colorIdentity: wert<string[]>('color_identity'),
+      producedMana: wert<string[]>('produced_mana'),
+      gameChanger: wert<boolean>('game_changer'),
+      oracleText: wert<string>('oracle_text'),
+      keywords: wert<string[]>('keywords'),
+      backImageUrl: wert<string>('back_image_url'),
+      backTypeLine: wert<string>('back_type_line'),
+      allParts: wert<ScryfallCard['allParts']>('all_parts'),
+      oracleId: wert<string>('oracle_id'),
+    };
+  }
+
+  /**
+   * Wie ScryfallService.findCardsBulk(), aber erst aus der eigenen Datenbank - nur die dort
+   * unbekannten Namen gehen noch ins Netz.
+   *
+   * Das behebt mehr als nur Wartezeit: Scheitert die Scryfall-Abfrage (unter Last antwortet
+   * Scryfall mit 429, was im Browser als CORS-Fehler ankommt und den Chunk stillschweigend
+   * verschluckt), fehlen in der Deck-Analyse schlagartig Pip-Verteilung, Manaquellen, Game-Changer-
+   * Kennzeichnung, Tutoren-Erkennung und die Kartenbilder - ohne dass irgendwo ein Fehler sichtbar
+   * wäre. Manakurve und Typverteilung bleiben dabei korrekt, weil sie aus deck_cards kommen; genau
+   * dieses halb gefüllte Bild war reproduzierbar zu sehen.
+   *
+   * Die Schlüssel der Ergebnis-Map sind identisch zu ScryfallService.findCardsBulk(): der
+   * ursprüngliche (volle) Kartenname in Kleinschreibung, denn genau so schlägt die Deck-Ansicht
+   * nach (details.get(card.cardName.toLowerCase())). Nachgeschlagen wird dagegen über den
+   * normalisierten Vorderseiten-Namen - dieselbe Trennung wie dort, aus demselben Grund
+   * (Scryfall liefert Apostrophe teils in einer anderen Unicode-Variante als die gespeicherten
+   * Decklisten).
+   */
+  async findCardsBulk(cardNames: string[]): Promise<Map<string, ScryfallCard>> {
+    const result = new Map<string, ScryfallCard>();
+    const unique = [...new Set(cardNames.map((n) => n.trim()).filter(Boolean))];
+    if (unique.length === 0) return result;
+
+    const keyToOriginal = new Map<string, string>();
+    for (const name of unique) keyToOriginal.set(this.lookupKey(name), name);
+
+    for (const block of chunk([...keyToOriginal.keys()], 200)) {
+      const { data, error } = await supabase
+        .from('scryfall_cards')
+        .select(CardDataService.KARTEN_SPALTEN)
+        .in('front_name_normalized', block);
+
+      if (error) {
+        // Ganz auf Scryfall zurückfallen statt mit halben Daten weiterzumachen.
+        console.warn(
+          'Kartendaten konnten nicht geladen werden, Rückfall auf Scryfall:',
+          error.message,
+        );
+        return this.scryfall.findCardsBulk(unique);
+      }
+
+      for (const row of (data ?? []) as unknown as Record<string, unknown>[]) {
+        const original = keyToOriginal.get(row['front_name_normalized'] as string);
+        if (original) result.set(original.toLowerCase(), this.toCard(row));
+      }
+    }
+
+    // Was der nächtliche Abgleich noch nicht kennt (frische Spoiler), kommt weiterhin live dazu.
+    const fehlend = unique.filter((name) => !result.has(name.toLowerCase()));
+    if (fehlend.length > 0) {
+      for (const [key, card] of await this.scryfall.findCardsBulk(fehlend)) result.set(key, card);
+    }
+
+    return result;
+  }
+
+  /**
+   * Wie ScryfallService.findCard(), aber erst exakt in der eigenen Datenbank.
+   *
+   * Der Rückfall auf Scryfall ist hier keine reine Absicherung, sondern fachlich nötig: Diese
+   * Methode bekommt von Hand getippte Namen und muss deshalb Tippfehler und fremdsprachige
+   * gedruckte Namen auffangen. Beides kann nur Scryfalls Fuzzy-Suche - unsere Tabelle enthält
+   * ausschließlich die englischen Namen in exakter Schreibweise.
+   */
+  async findCard(cardName: string): Promise<ScryfallCard | null> {
+    if (!cardName.trim()) return null;
+
+    const { data, error } = await supabase
+      .from('scryfall_cards')
+      .select(CardDataService.KARTEN_SPALTEN)
+      .eq('front_name_normalized', this.lookupKey(cardName))
+      .limit(1);
+
+    if (!error && data && data.length > 0) {
+      return this.toCard(data[0] as unknown as Record<string, unknown>);
+    }
+    return this.scryfall.findCard(cardName);
   }
 }
