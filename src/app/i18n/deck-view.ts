@@ -136,6 +136,8 @@ export const deckView = {
     'deckView.bracket.ruthless': 'Ruthless – sehr kompetitiv, cEDH-nah',
     'deckView.bracket.banned': 'Banned – enthält für Brackets gesperrte Karten',
     // --- Commander-Bracket in der Deck-Ansicht ---
+    'deckView.spellbookDetailsMissing':
+      'Commander Spellbook ist gerade nicht erreichbar – was die Combos genau erzeugen, fehlt deshalb. Die Karten oben stammen aus dem nächtlichen Abgleich und sind vollständig.',
     'deckView.bracketSectionTitle': 'Bracket',
     'deckView.bracketComputing': 'wird berechnet …',
     'deckView.bracketUnknown': 'noch nicht bestimmt',
@@ -390,6 +392,8 @@ export const deckView = {
     'deckView.bracket.ruthless': 'Ruthless – very competitive, cEDH-adjacent',
     'deckView.bracket.banned': 'Banned – contains cards banned for brackets',
     // --- Commander bracket in the deck view ---
+    'deckView.spellbookDetailsMissing':
+      'Commander Spellbook is currently unavailable, so what the combos actually produce is missing. The cards above come from the nightly sync and are complete.',
     'deckView.bracketSectionTitle': 'Bracket',
     'deckView.bracketComputing': 'calculating …',
     'deckView.bracketUnknown': 'not determined yet',

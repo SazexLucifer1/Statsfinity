@@ -2,7 +2,13 @@ import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { DeckService, Deck, DeckCard, DeckChangeEntry, DeckGameStats } from './deck.service';
 import { ScryfallService, ScryfallCard, ScryfallPrinting } from './scryfall.service';
 import { CardDataService, SpellbookCardFlags, SpellbookTwoCardCombo } from './card-data.service';
-import { AUTO_BRACKET_MAX, BracketAnalysis, BracketCard, analyzeBracket } from './bracket';
+import {
+  AUTO_BRACKET_MAX,
+  BracketAnalysis,
+  BracketCard,
+  analyzeBracket,
+  presentCombos,
+} from './bracket';
 import { PdfSourceCard } from './deck-pdf.service';
 import {
   CommanderSpellbookService,
@@ -612,16 +618,15 @@ export class DeckViewerService {
    * bekannt, und das Ergebnis wäre verlässlich "Bracket 2" - was dann auch noch zurückgeschrieben
    * würde. Lieber kurz "wird berechnet" anzeigen als eine falsche Zahl festschreiben.
    */
-  readonly bracketAnalysis = computed<BracketAnalysis | null>(() => {
-    if (!this.showsBracket() || this.analysisBusy()) return null;
-
+  /**
+   * Die Deck-Karten in der Form, die die Bracket-Rechnung braucht. Eigener computed, weil außer der
+   * Einstufung selbst auch die Combo-Liste in der Analyse-Sektion darauf zugreift.
+   */
+  private readonly bracketCards = computed<BracketCard[]>(() => {
     const details = this.viewingCardDetails();
-    if (details.size === 0) return null;
+    if (details.size === 0) return [];
 
-    const deck = this.viewingDeck();
-    if (!deck) return null;
-
-    const cards: BracketCard[] = this.analysisDeckCards().map((c) => {
+    return this.analysisDeckCards().map((c) => {
       const detail = details.get(c.cardName.toLowerCase());
       return {
         name: c.cardName,
@@ -632,6 +637,26 @@ export class DeckViewerService {
         isCommander: c.isCommander,
       };
     });
+  });
+
+  /**
+   * Die im Deck vollständig vorhandenen Zwei-Karten-Combos aus der gespiegelten Tabelle.
+   *
+   * Deckt in der Analyse-Sektion den Fall ab, dass Commander Spellbook gerade nicht erreichbar ist:
+   * dann fehlt zwar die Angabe, WAS eine Combo erzeugt, aber welche Combos im Deck stecken, wissen
+   * wir aus dem Nachtlauf trotzdem.
+   */
+  readonly localTwoCardCombos = computed(() =>
+    presentCombos(this.bracketCards(), this.spellbookCombos(), this.spellbookCardFlags())
+  );
+
+  readonly bracketAnalysis = computed<BracketAnalysis | null>(() => {
+    if (!this.showsBracket() || this.analysisBusy()) return null;
+
+    const deck = this.viewingDeck();
+    if (!deck) return null;
+
+    const cards = this.bracketCards();
     if (cards.length === 0) return null;
 
     return analyzeBracket({
