@@ -927,7 +927,7 @@ export class DeckViewerService {
       query: '(otag:ramp or otag:land-ramp or otag:extra-land or otag:play-additional-land) -t:land',
     },
     { value: 'lifegain', label: 'Lebenspunkte gewinnen', query: 'otag:lifegain' },
-    { value: 'counters', label: '+1/+1-Zähler', query: 'otag:gives-1-1-counters' },
+    { value: 'counters', label: '+1/+1-Zähler', query: 'o:"+1/+1 counter"' },
     { value: 'proliferate', label: 'Proliferate', query: 'keyword:proliferate' },
     { value: 'protection', label: 'Schutz gewähren', query: 'otag:protection' },
     {
@@ -2327,10 +2327,15 @@ export class DeckViewerService {
     {
       key: 'counters',
       labelKey: 'deckView.countersTile',
-      // "gives-1-1-counters" statt "counters-matter" - Letzteres ist die breitere
-      // Payoff-Kategorie (Karten, die von +1/+1-Zählern profitieren), nicht die Karten, die
-      // sie tatsächlich verteilen (recherchiert).
-      query: 'otag:gives-1-1-counters',
+      // Oracle-Text-Näherung statt Tagger-Tag, wie schon bei "Marken erzeugen": Das früher
+      // hier genutzte "otag:gives-1-1-counters" existiert bei Scryfall NICHT MEHR und lieferte
+      // null Treffer - die Kachel stand dadurch dauerhaft auf 0, ohne dass irgendwo ein Fehler
+      // sichtbar war. "otag:counters-matter" ist kein Ersatz: das ist die Payoff-Kategorie und
+      // verfehlt geprüft sogar Cathars' Crusade. Die Oracle-Suche trifft dagegen alle
+      // gegengeprüften Marken-Karten (Cathars' Crusade, Hardened Scales, Rishkar, Ozolith) und
+      // schließt Sol Ring/Lightning Bolt korrekt aus. Sie hängt zudem an Scryfalls eigenem
+      // Kartentext statt an einem Community-Tag, das wieder verschwinden kann.
+      query: 'o:"+1/+1 counter"',
     },
     {
       key: 'proliferate',

@@ -322,7 +322,7 @@ const EFFEKT_KATEGORIEN = [
   { key: 'draw', query: 'otag:draw' },
   { key: 'tokens', query: 'o:create o:token' },
   { key: 'lifegain', query: 'otag:lifegain' },
-  { key: 'counters', query: 'otag:gives-1-1-counters' },
+  { key: 'counters', query: 'o:"+1/+1 counter"' },
   { key: 'proliferate', query: 'keyword:proliferate' },
   {
     key: 'reanimate',
@@ -409,10 +409,11 @@ async function ladeKategorie(query) {
 
   for (let page = 1; ; page++) {
     const url = `${API}/cards/search?q=${encodeURIComponent(query)}&unique=cards&format=csv&page=${page}`;
-    // allow404: Scryfall antwortet bei null Treffern mit 404. Das ist ein gültiges Ergebnis und
-    // trifft aktuell tatsächlich zu - "otag:gives-1-1-counters" (Kachel "+1/+1-Marken") findet
-    // nichts mehr, das Tag existiert bei Scryfall nicht. Diese Kategorie steht daher schon vor
-    // dieser Umstellung dauerhaft auf 0; das Skript darf daran nicht scheitern.
+    // allow404: Scryfall antwortet bei null Treffern mit 404. Das ist ein gültiges Ergebnis, kein
+    // Fehler - genau daran wäre das Skript sonst gescheitert, als "otag:gives-1-1-counters"
+    // (Kachel "+1/+1-Marken") ins Leere lief, weil Scryfall dieses Tag zurückgezogen hatte.
+    // Aktuell liefert jede Kategorie Treffer; die Behandlung bleibt trotzdem, weil ein
+    // zurückgezogenes Tag jederzeit wieder passieren kann.
     const res = await fetchMitWiederholung(url, { allow404: true });
     if (!res) break;
     seiten++;
@@ -447,9 +448,21 @@ async function syncEffekte() {
   // Kategorien einfach 0 anzeigen, ohne dass irgendwo ein Fehler sichtbar wäre. Die ~23.000
   // kurzen Zeichenketten im Speicher zu halten kostet dagegen praktisch nichts.
   const geladen = [];
+  const leereKategorien = [];
   for (const { key, query } of EFFEKT_KATEGORIEN) {
     const { namen, seiten } = await ladeKategorie(query);
     console.log(`  ${key}: ${namen.size} Karten (${seiten} Seiten)`);
+    // Eine leere Kategorie ist fast immer ein zurückgezogenes Tagger-Tag, kein echtes Ergebnis -
+    // genau so konnte sich "otag:gives-1-1-counters" monatelang verstecken: die Kachel stand auf 0
+    // und nichts wies darauf hin. Deshalb hier laut werden. Bewusst nur eine Warnung und kein
+    // Abbruch: eine Kategorie kann legitim leer sein, und der Rest des Abgleichs soll trotzdem
+    // durchlaufen.
+    if (namen.size === 0) {
+      console.warn(
+        `  ::warning::Kategorie "${key}" liefert null Treffer - Abfrage prüfen: ${query}`,
+      );
+      leereKategorien.push(key);
+    }
     geladen.push({ key, namen });
   }
 
@@ -477,6 +490,11 @@ async function syncEffekte() {
 
   await writeSyncState('effects', null, gesamt);
   console.log(`Teil 2 fertig: ${gesamt} Zeilen über ${EFFEKT_KATEGORIEN.length} Kategorien.`);
+  if (leereKategorien.length > 0) {
+    console.warn(
+      `ACHTUNG: ohne Treffer geblieben: ${leereKategorien.join(', ')} - die zugehörigen Kacheln stehen damit auf 0.`,
+    );
+  }
 }
 
 async function main() {
