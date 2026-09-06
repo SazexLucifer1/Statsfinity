@@ -1,0 +1,45 @@
+name: Daily Scryfall card sync
+
+# Füllt die Kartendaten-Tabellen in Supabase, damit die App sie nicht mehr bei jedem Deck-Öffnen
+# live aus dem Browser des Nutzers bei Scryfall holen muss. Hintergrund und Tabellen:
+# sql/scryfall-cache-2026-09-06.sql, Ablauf: scripts/sync-scryfall-bulk.js
+#
+# Braucht das Repo-Secret SUPABASE_SERVICE_ROLE_KEY (Supabase-Dashboard -> Project Settings ->
+# API -> "service_role", NICHT der öffentliche Anon-Key aus supabase.client.ts) - einzutragen
+# unter GitHub-Repo -> Settings -> Secrets and variables -> Actions -> "New repository secret".
+# Ohne dieses Secret schlägt der Lauf mit einer klaren Fehlermeldung fehl, statt still nichts zu
+# tun. Der Service-Role-Key ist nötig, weil die Tabellen bewusst für jeden lesbar, aber für
+# niemanden schreibbar sind (nur eine select-Policy) - der Service-Role-Key umgeht RLS.
+
+on:
+  schedule:
+    - cron: '0 4 * * *' # täglich 04:00 UTC - eine Stunde nach dem Datenbank-Backup (backup.yml),
+      # damit sich die beiden Läufe nicht überschneiden. Scryfall erzeugt
+      # seine Bulk-Dateien etwa täglich gegen 21:00 UTC.
+  workflow_dispatch: {} # manuell auslösbar zum Testen
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check that SUPABASE_SERVICE_ROLE_KEY is set
+        run: |
+          if [ -z "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" ]; then
+            echo "::error::Secret SUPABASE_SERVICE_ROLE_KEY ist nicht gesetzt - siehe Kommentar oben in dieser Datei. Abgleich wird übersprungen."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Sync Scryfall data
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/sync-scryfall-bulk.js
