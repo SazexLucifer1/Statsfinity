@@ -4,6 +4,17 @@ import { chunk, normalizeCardName } from './array-utils';
 import { ScryfallService, ScryfallCard } from './scryfall.service';
 
 /**
+ * Die drei kuratierten Markierungen von Commander Spellbook, die es bei Scryfall nicht gibt und
+ * die die offiziellen Bracket-Kriterien brauchen. Gefüllt von scripts/sync-spellbook-bracket.js,
+ * Tabelle in sql/spellbook-cache-2026-09-06.sql.
+ */
+export interface SpellbookCardFlags {
+  massLandDenial: boolean;
+  extraTurn: boolean;
+  tutor: boolean;
+}
+
+/**
  * Lesezugriff auf den eigenen Kartendatenbestand, den der nächtliche Abgleich füllt
  * (scripts/sync-scryfall-bulk.js, Tabellen in sql/scryfall-cache-2026-09-06.sql).
  *
@@ -213,5 +224,59 @@ export class CardDataService {
       return this.toCard(data[0] as unknown as Record<string, unknown>);
     }
     return this.scryfall.findCard(cardName);
+  }
+
+  /**
+   * Einmal je Sitzung geladen und dann wiederverwendet: die Tabelle hat nur rund 200 Zeilen, und
+   * die Liste ändert sich höchstens einmal pro Nacht.
+   */
+  private spellbookFlagsPromise: Promise<Map<string, SpellbookCardFlags>> | null = null;
+
+  /**
+   * Die kuratierten Kartenmarkierungen von Commander Spellbook (Mass Land Denial, Extra-Turns,
+   * Tutoren), Schlüssel ist der normalisierte Vorderseiten-Name.
+   *
+   * Bewusst die GANZE Tabelle statt einer .in()-Abfrage über die Decknamen. Sie enthält nur
+   * Karten mit mindestens einem Flag (~200 Zeilen), und deshalb wäre bei einer gefilterten
+   * Abfrage "null Treffer" nicht mehr von "Tabelle noch leer" zu unterscheiden - genau diese
+   * Unterscheidung braucht der Aufrufer aber, um zu entscheiden, ob er auf seine alte Näherung
+   * zurückfallen muss. Eine leere Map heißt hier also eindeutig: noch kein Nachtlauf (oder die
+   * Migration ist noch nicht ausgeführt).
+   */
+  async spellbookCardFlags(): Promise<Map<string, SpellbookCardFlags>> {
+    this.spellbookFlagsPromise ??= (async () => {
+      const { data, error } = await supabase
+        .from('spellbook_card_flags')
+        .select('name_normalized, mass_land_denial, extra_turn, tutor');
+
+      if (error) {
+        console.warn(
+          'Spellbook-Kartenmarkierungen konnten nicht geladen werden, Rückfall auf die Textnäherung:',
+          error.message,
+        );
+        // Nicht merken: beim nächsten Versuch soll es wieder gehen dürfen (z.B. wenn die
+        // Migration zwischenzeitlich ausgeführt wurde).
+        this.spellbookFlagsPromise = null;
+        return new Map<string, SpellbookCardFlags>();
+      }
+
+      return new Map(
+        (data ?? []).map((row) => [
+          row.name_normalized as string,
+          {
+            massLandDenial: row.mass_land_denial as boolean,
+            extraTurn: row.extra_turn as boolean,
+            tutor: row.tutor as boolean,
+          },
+        ]),
+      );
+    })();
+
+    return this.spellbookFlagsPromise;
+  }
+
+  /** Schlüssel, unter dem eine Karte in spellbookCardFlags() steht. */
+  spellbookKey(cardName: string): string {
+    return this.lookupKey(cardName);
   }
 }

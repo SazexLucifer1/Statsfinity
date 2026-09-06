@@ -1,7 +1,7 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { DeckService, Deck, DeckCard, DeckChangeEntry, DeckGameStats } from './deck.service';
 import { ScryfallService, ScryfallCard, ScryfallPrinting } from './scryfall.service';
-import { CardDataService } from './card-data.service';
+import { CardDataService, SpellbookCardFlags } from './card-data.service';
 import { PdfSourceCard } from './deck-pdf.service';
 import {
   CommanderSpellbookService,
@@ -485,7 +485,19 @@ export class DeckViewerService {
     return this.i18n.t('deckViewer.bracketHint45');
   });
 
-  // NEU
+  /**
+   * Kuratierte Kartenmarkierungen von Commander Spellbook (Mass Land Denial, Extra-Turns,
+   * Tutoren), gespiegelt vom Nachtlauf - siehe CardDataService.spellbookCardFlags(). Leer, solange
+   * die Migration nicht ausgeführt oder der erste Lauf nicht durch ist.
+   */
+  readonly spellbookCardFlags = signal<Map<string, SpellbookCardFlags>>(new Map());
+
+  /**
+   * Rückfall-Erkennung für Tutoren, solange spellbookCardFlags() noch leer ist. Reine
+   * Texterkennung im Oracle-Text und damit nur eine Näherung ("search your library for ...") -
+   * genau deshalb hat die kuratierte Liste sie abgelöst. Sie steht hier nur noch, damit die
+   * Tutoren-Anzeige zwischen Merge und erstem Nachtlauf nicht kommentarlos leer bleibt.
+   */
   private static readonly TUTOR_RE =
     /search(?:es)?\s+(?:your|a|their|that player'?s)\s+library\s+for/i;
   // Erfasst neben "... for a land card" auch Karten, die eine Basisland-Art direkt beim Namen
@@ -495,11 +507,21 @@ export class DeckViewerService {
     /search(?:es)?\s+(?:your|a|their|that player'?s)\s+library\s+for\s+(?:up to \w+\s+)?(?:an?|the|\d+)?\s*(?:[a-z]+\s+){0,2}(?:lands?|plains|islands?|swamps?|mountains?|forests?)\b/i;
 
   /**
-   * Tutoren (außer für Länder, wie im offiziellen Bracket-Kriterium) - per Texterkennung im
-   * Oracle-Text ("search your library for ..."), da Scryfall dafür kein eigenes Flag hat (anders
-   * als bei Game Changers). Nur eine Näherung, keine exakte Erkennung.
+   * Tutoren (außer für Länder, wie im offiziellen Bracket-Kriterium).
+   *
+   * Quelle ist Commander Spellbooks kuratierte Liste, die der Nachtlauf spiegelt - das offizielle
+   * Kriterium meint genau diese Auswahl, und Scryfall hat dafür kein eigenes Flag (anders als bei
+   * Game Changers). Solange die Liste noch nicht da ist, greift die Textnäherung von oben, damit
+   * die Anzeige nicht still leer läuft.
    */
   readonly tutorCards = computed<GameChangerEntry[]>(() => {
+    const flags = this.spellbookCardFlags();
+    if (flags.size > 0) {
+      return this.analysisDeckCards()
+        .filter((c) => flags.get(this.cardData.spellbookKey(c.cardName))?.tutor === true)
+        .map((c) => ({ cardName: c.cardName, quantity: c.quantity }));
+    }
+
     const details = this.viewingCardDetails();
     return this.analysisDeckCards()
       .filter((c) => {
@@ -2251,8 +2273,14 @@ export class DeckViewerService {
   private async loadCardDetails(cards: DeckCard[]): Promise<void> {
     this.analysisBusy.set(true);
     const names = [...new Set(cards.map((c) => c.cardName))];
-    const found = await this.cardData.findCardsBulk(names);
+    // Parallel: die Kartenmarkierungen sind eine einzige kleine Abfrage (~200 Zeilen, danach je
+    // Sitzung zwischengespeichert) und sollen die Kartendetails nicht verzögern.
+    const [found, flags] = await Promise.all([
+      this.cardData.findCardsBulk(names),
+      this.cardData.spellbookCardFlags(),
+    ]);
     this.viewingCardDetails.set(found);
+    this.spellbookCardFlags.set(flags);
     this.analysisBusy.set(false);
   }
 
