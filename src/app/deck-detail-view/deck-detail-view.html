@@ -152,6 +152,14 @@
                 }
               </ul>
 
+              <!-- Ein Precon über Bracket 2 sieht nach einem Fehler aus, ist aber keiner: das
+                   Bracket-Update vom Februar 2026 hat Precons von Bracket 2 entkoppelt und im
+                   selben Zug Farewell und Biorhythm auf die Game-Changer-Liste gesetzt. Der Satz
+                   steht genau dort, wo die Verwunderung entsteht. -->
+              @if (analysis.verdicts.precon && analysis.bracket > 2) {
+                <p class="hint">{{ viewer.i18n.t('deckView.bracketPreconNote') }}</p>
+              }
+
               <!-- "36 %" allein sagt niemandem etwas. Der Satz erklärt, wozu der Wert dient; die
                    vier Messgrößen dahinter zeigen, woraus er entsteht - bewusst hinter einem
                    zweiten Tipp, weil dieser Aufklapper auf dem iPhone ohnehin lang ist. -->

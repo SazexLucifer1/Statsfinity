@@ -386,9 +386,16 @@ export function powerLevel(bracket: BracketLevel, tuning: number): number {
  * Führt die vier Urteile zusammen.
  *
  * Untergrenze ist das höhere aus A und B. Die Feinbewertung (C) darf danach um höchstens eine
- * Stufe ANHEBEN und niemals senken - ein hartes Kriterium aus A lässt sich so nie wegrechnen. Bei
- * unveränderten Precons hebt sie gar nicht an: die sitzen per Definition in Bracket 2, und ein
- * Precon mit guter Manabasis ist immer noch ein Precon (Urteil D).
+ * Stufe ANHEBEN und niemals senken - ein hartes Kriterium aus A lässt sich so nie wegrechnen.
+ *
+ * Bei unveränderten Precons hebt C gar nicht an (Urteil D). Achtung, der Grund dafür ist NICHT
+ * "Precons sind Bracket 2": das Bracket-Update vom 9.2.2026 hat Precons ausdrücklich von Bracket 2
+ * entkoppelt, seither ist das keine Regel mehr. Der Grund ist enger: die Feinbewertung ist eine
+ * weiche Heuristik über Manakurve und Manabasis, und ein Precon ist genau dafür gebaut - ihn
+ * deswegen eine Stufe hochzuschieben, obwohl niemand etwas daran geändert hat, wäre falsch. Die
+ * HARTEN Kriterien aus A gelten für Precons dagegen unverändert: eine einzige Game-Changer-Karte
+ * hebt auch einen fabrikfrischen Precon auf mindestens Bracket 3 (aktueller Fall: Farewell, im
+ * selben Februar-Update neu auf die Game-Changer-Liste gesetzt).
  */
 export function analyzeBracket(input: BracketInput): BracketAnalysis {
   const { level: rules, reasons } = rulesVerdict(input);
