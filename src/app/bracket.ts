@@ -93,6 +93,8 @@ export interface BracketVerdicts {
   spellbook: BracketLevel | null;
   /** Urteil C: Tuning-Grad 0-1 aus Tutorendichte, Manakurve, Manabasis und Game-Changer-Dichte. */
   tuning: number;
+  /** Dieselben vier Messgrößen einzeln - damit die Oberfläche den Prozentwert aufschlüsseln kann. */
+  tuningParts: TuningPart[];
   /** Urteil D: true, wenn es ein unveränderter Precon ist (dann hebt Urteil C nicht an). */
   precon: boolean;
 }
@@ -301,26 +303,56 @@ export function spellbookVerdict(tag: SpellbookBracketTag | null): BracketLevel 
  * zählen - sonst würde ein halb geladenes Deck systematisch zu niedrig bewertet.
  */
 export function tuningVerdict(input: BracketInput): number {
-  const teile: number[] = [];
+  const teile = tuningParts(input);
+  if (teile.length === 0) return 0;
+  return teile.reduce((summe, t) => summe + t.score, 0) / teile.length;
+}
+
+/** Eine der Messgrößen, aus denen sich der Tuning-Grad mittelt. */
+export interface TuningPart {
+  key: 'tutors' | 'averageCmc' | 'nonBasicLands' | 'gameChangers';
+  /** Gemessener Wert in genau der Einheit, in der er angezeigt wird. */
+  value: number;
+  /** Spannenende, an dem der Teil 0 zählt. */
+  from: number;
+  /** Spannenende, an dem der Teil 1 zählt. Kleiner als `from`, wenn weniger stärker ist. */
+  to: number;
+  /** Beitrag dieses Teils, 0 bis 1. */
+  score: number;
+}
+
+/**
+ * Die Messgrößen einzeln - dieselbe Rechnung wie tuningVerdict(), nur aufgeschlüsselt.
+ *
+ * Existiert, damit die Oberfläche nicht bloß "36 %" hinschreiben muss: ohne die gemessenen Werte
+ * UND die Spannenenden ist so ein Prozentwert nicht nachvollziehbar. Weil tuningVerdict() über
+ * genau diese Liste mittelt, können angezeigte Aufschlüsselung und angezeigte Prozentzahl nicht
+ * auseinanderlaufen - bracket.spec.ts nagelt das als Invariante fest.
+ */
+export function tuningParts(input: BracketInput): TuningPart[] {
+  const teile: TuningPart[] = [];
+  const teil = (key: TuningPart['key'], value: number, from: number, to: number) =>
+    teile.push({ key, value, from, to, score: anteil(value, from, to) });
 
   if (input.totalCards > 0) {
     // Acht Tutoren auf 100 Karten sind dicht; das erreichen sonst nur sehr zielgerichtete Decks.
-    teile.push(anteil((input.tutorCount / input.totalCards) * 100, 0, 8));
+    teil('tutors', (input.tutorCount / input.totalCards) * 100, 0, 8);
   }
   if (input.averageCmc !== null) {
     // Niedriger ist stärker, deshalb die Spanne andersherum.
-    teile.push(anteil(input.averageCmc, 3.4, 2.2));
+    teil('averageCmc', input.averageCmc, 3.4, 2.2);
   }
   if (input.nonBasicLandPercent !== null) {
-    teile.push(anteil(input.nonBasicLandPercent, 30, 90));
+    teil('nonBasicLands', input.nonBasicLandPercent, 30, 90);
   }
-  const gameChangerCount = input.cards
-    .filter((c) => c.gameChanger)
-    .reduce((sum, c) => sum + c.quantity, 0);
-  teile.push(anteil(gameChangerCount, 0, 6));
+  teil(
+    'gameChangers',
+    input.cards.filter((c) => c.gameChanger).reduce((sum, c) => sum + c.quantity, 0),
+    0,
+    6,
+  );
 
-  if (teile.length === 0) return 0;
-  return teile.reduce((a, b) => a + b, 0) / teile.length;
+  return teile;
 }
 
 /** Wert linear auf 0..1 abbilden. von > bis dreht die Richtung um (kleiner = stärker). */
@@ -387,6 +419,6 @@ export function analyzeBracket(input: BracketInput): BracketAnalysis {
     confidence,
     reasons,
     suggestsCedh: bracket === AUTO_BRACKET_MAX && tuning >= CEDH_TUNING_HINT,
-    verdicts: { rules, spellbook, tuning, precon: input.isPrecon },
+    verdicts: { rules, spellbook, tuning, tuningParts: tuningParts(input), precon: input.isPrecon },
   };
 }

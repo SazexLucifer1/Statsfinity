@@ -152,6 +152,32 @@
                 }
               </ul>
 
+              <!-- "36 %" allein sagt niemandem etwas. Der Satz erklärt, wozu der Wert dient; die
+                   vier Messgrößen dahinter zeigen, woraus er entsteht - bewusst hinter einem
+                   zweiten Tipp, weil dieser Aufklapper auf dem iPhone ohnehin lang ist. -->
+              <p class="hint">{{ viewer.i18n.t('deckView.bracketTuningExplain') }}</p>
+              <div class="chip-row">
+                <button class="glass-chip small" (click)="viewer.toggleTuningDetails()">
+                  {{ viewer.i18n.t(viewer.showTuningDetails() ? 'deckView.bracketTuningHideValues' : 'deckView.bracketTuningShowValues') }}
+                </button>
+              </div>
+              @if (viewer.showTuningDetails()) {
+                <ul class="game-changer-list">
+                  @for (part of analysis.verdicts.tuningParts; track part.key) {
+                    <li>
+                      {{ viewer.i18n.t('deckView.bracketTuning.' + part.key) }}:
+                      <strong>{{ part.value | number: '1.0-1' }}</strong>
+                      <span class="bracket-caveat">{{ viewer.i18n.t('deckView.bracketTuningScale', { from: (part.from | number: '1.0-1') ?? '', to: (part.to | number: '1.0-1') ?? '' }) }}</span>
+                    </li>
+                  }
+                </ul>
+              }
+
+              <p class="hint">
+                <strong>{{ viewer.i18n.t('deckView.bracketPowerHeading', { power: (analysis.power | number: '1.1-1') ?? '' }) }}</strong>
+              </p>
+              <p class="hint">{{ viewer.i18n.t('deckView.bracketPowerExplain') }}</p>
+
               <p class="hint">
                 @switch (analysis.confidence) {
                   @case ('high') { {{ viewer.i18n.t('deckView.bracketConfidenceHigh') }} }
