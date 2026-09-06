@@ -810,26 +810,44 @@ export class ScryfallService {
    * fehlen einfach im Ergebnis). Gleiches Chunking-Muster wie filterNamesByQueryChecked() (Gruppen statt
    * einer Anfrage pro Karte, um bei größeren Decks nicht an Scryfalls Rate-Limit zu geraten).
    */
-  async cheapestPrices(cardNames: string[]): Promise<Map<string, number>> {
-    const result = new Map<string, number>();
+  async cheapestPrices(cardNames: string[]): Promise<{ prices: Map<string, number>; incomplete: boolean }> {
+    const prices = new Map<string, number>();
     const frontFaceName = (name: string) => name.split(' // ')[0].trim();
     const unique = [...new Set(cardNames.map((n) => frontFaceName(n.trim())).filter(Boolean))];
+    let incomplete = false;
 
     for (let i = 0; i < unique.length; i += 30) {
       if (i > 0) await sleep(300); // Pause zwischen Chunks - vermeidet Bursts gegen Scryfalls Rate-Limit
       const chunk = unique.slice(i, i + 30);
       const nameClause = '(' + chunk.map((n) => `!"${n.replace(/"/g, '')}"`).join(' or ') + ')';
       const q = encodeURIComponent(`${nameClause} eur>0 -is:digital unique:cards order:eur dir:asc`);
-      const res = await this.fetchWithRetry(`${API}/cards/search?q=${q}`);
-      if (!res?.ok) continue;
+      // Geduldiger als der Standard (2 Versuche): Diese Abfrage ist seit der Umstellung auf den
+      // eigenen Kartenbestand die EINZIGE, die beim Öffnen eines Decks noch zu Scryfall geht - sie
+      // darf also ruhig warten, es hängt nichts anderes dahinter. Scheitert ein Chunk trotzdem,
+      // fehlen dessen Karten im Ergebnis und die Summe wäre STILL zu niedrig; genau das ist
+      // passiert (277 € statt 388 € an einem echten Deck). Deshalb wird der Ausfall gemeldet,
+      // statt ihn zu verschlucken.
+      //
+      // Ein Warten nach Scryfalls "Retry-After" ist hier bewusst NICHT möglich: Eine 429-Antwort
+      // trägt selbst keine CORS-Header, der Browser blockt sie komplett, und JS sieht nur einen
+      // generischen Fehler ohne Status und ohne Header (siehe fetchWithRetry()).
+      const res = await this.fetchWithRetry(`${API}/cards/search?q=${q}`, 4);
+      if (!res?.ok) {
+        incomplete = true;
+        continue;
+      }
       const data = await res.json();
       for (const card of (data.data as any[]) ?? []) {
         const name = normalizeCardName(card.name as string);
         const price = parseFloat(card.prices?.eur);
-        if (!result.has(name) && !Number.isNaN(price)) result.set(name, price);
+        if (!prices.has(name) && !Number.isNaN(price)) prices.set(name, price);
       }
     }
-    return result;
+
+    // incomplete meint AUSDRÜCKLICH nur "eine Anfrage ist gescheitert" - nicht "eine Karte hat
+    // keinen Preis". Letzteres ist der Normalfall (eur>0 blendet preislose Drucke aus) und würde
+    // die Kennzeichnung sonst praktisch immer auslösen und damit wertlos machen.
+    return { prices, incomplete };
   }
 
   private toCard(data: any): ScryfallCard {

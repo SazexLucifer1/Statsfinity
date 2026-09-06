@@ -479,6 +479,16 @@ h3 {
     font-weight: 700;
   }
 
+  /* Vorsatz "ab"/"from" vor einem Kennzahl-Wert, wenn die Zahl nur eine Untergrenze ist (siehe
+     deckPriceIncomplete in deck-viewer.service.ts). Bewusst klein und normal gewichtet: Die Zahl
+     soll die Kachel weiter dominieren, und es soll nach einer Einordnung aussehen, nicht nach
+     einer Fehlermeldung. */
+  .stat-value-prefix {
+    font-size: 0.6em;
+    font-weight: 500;
+    margin-right: 0.2em;
+  }
+
   .stat-label {
     font-size: 0.78rem;
     opacity: 0.8;

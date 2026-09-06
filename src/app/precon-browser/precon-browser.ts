@@ -210,7 +210,10 @@ export class PreconBrowser {
   private async loadCardPrices(cards: PreconCardEntry[]): Promise<void> {
     this.priceBusy.set(true);
     const names = [...new Set(cards.map((c) => c.card.name))];
-    const prices = await this.scryfall.cheapestPrices(names);
+    // Nur die Preise; das incomplete-Flag wertet bislang allein die Deck-Ansicht aus ("ab X €",
+    // siehe deckPriceIncomplete in deck-viewer.service.ts). Von der geduldigeren Wiederholung
+    // in cheapestPrices() profitiert diese Ansicht trotzdem.
+    const { prices } = await this.scryfall.cheapestPrices(names);
     let total = 0;
     for (const c of cards) {
       const price = prices.get(normalizeCardName(c.card.name.split(' // ')[0].trim()));
