@@ -351,6 +351,13 @@ export class DeckViewerService {
   /** Gesamtpreis (USD, billigste Druckvariante je Karte) - null solange noch nicht geladen. */
   readonly totalDeckPrice = signal<number | null>(null);
   readonly priceBusy = signal(false);
+  /**
+   * Ob mindestens eine Preisabfrage gescheitert ist und die Summe deshalb zu niedrig steht - dann
+   * zeigt die Kachel "ab X €" statt "X €". Bewusst KEIN Fehlerhinweis: Die Zahl ist nicht falsch,
+   * sie ist nur eine Untergrenze, und genau das sagt "ab". Nicht gesetzt, wenn eine Karte
+   * schlicht keinen Preis hat - das ist der Normalfall (siehe ScryfallService.cheapestPrices()).
+   */
+  readonly deckPriceIncomplete = signal(false);
 
   readonly effectCategoryCountsBusy = signal(false);
 
@@ -2206,6 +2213,7 @@ export class DeckViewerService {
     this.viewMode.set('visual');
     this.cardSortMode.set('type');
     this.totalDeckPrice.set(null);
+    this.deckPriceIncomplete.set(false);
     this.tagBasedEffectStats.set(null);
     this.effectCategoryPopup.set(null);
     this.deckStatsScope.set('mine');
@@ -2262,13 +2270,14 @@ export class DeckViewerService {
     this.priceBusy.set(true);
     const realCards = cards.filter((c) => !c.isMaybeboard && !c.isToken);
     const names = [...new Set(realCards.map((c) => c.cardName))];
-    const prices = await this.scryfall.cheapestPrices(names);
+    const { prices, incomplete } = await this.scryfall.cheapestPrices(names);
     let total = 0;
     for (const card of realCards) {
       const price = prices.get(normalizeCardName(card.cardName.split(' // ')[0].trim()));
       if (price != null) total += price * card.quantity;
     }
     this.totalDeckPrice.set(total);
+    this.deckPriceIncomplete.set(incomplete);
     this.priceBusy.set(false);
   }
 
@@ -2505,6 +2514,7 @@ export class DeckViewerService {
     this.bracketEstimateFailed.set(false);
     this.bracketEstimateErrorDetail.set(null);
     this.totalDeckPrice.set(null);
+    this.deckPriceIncomplete.set(false);
     this.priceBusy.set(false);
     this.tagBasedEffectStats.set(null);
     this.effectCategoryCountsBusy.set(false);

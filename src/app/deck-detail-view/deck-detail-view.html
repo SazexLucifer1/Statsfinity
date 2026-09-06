@@ -643,7 +643,11 @@
                     @if (viewer.priceBusy()) {
                       <span class="stat-value">…</span>
                     } @else if (viewer.totalDeckPrice(); as price) {
-                      <span class="stat-value">{{ price | currency: 'EUR' }}</span>
+                      <span class="stat-value">
+                        @if (viewer.deckPriceIncomplete()) {
+                          <span class="stat-value-prefix">{{ viewer.i18n.t('deckView.priceFrom') }}</span>
+                        }{{ price | currency: 'EUR' }}
+                      </span>
                     } @else {
                       <span class="stat-value">–</span>
                     }
