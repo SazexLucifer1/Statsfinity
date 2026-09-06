@@ -132,7 +132,8 @@ export interface BracketInput {
   spellbookTag: SpellbookBracketTag | null;
   isPrecon: boolean;
   averageCmc: number | null;
-  nonBasicLandPercent: number | null;
+  /** Anteil Länder, die nicht bedingungslos getappt ins Spiel kommen (0-100). */
+  untappedLandPercent: number | null;
   /** Anzahl Tutoren im Deck (aus der kuratierten Liste). */
   tutorCount: number;
   /** Gesamtzahl Karten - Bezugsgröße für die Tutorendichte. */
@@ -298,7 +299,7 @@ export function spellbookVerdict(tag: SpellbookBracketTag | null): BracketLevel 
  * Urteil C - Tuning-Grad von 0 bis 1.
  *
  * Vier Anzeichen dafür, dass ein Deck durchoptimiert ist, ohne dass eine einzelne Karte ein hartes
- * Kriterium verletzt: viele Tutoren, niedrige Manakurve, teure Manabasis, viele Game Changer.
+ * Kriterium verletzt: viele Tutoren, niedrige Manakurve, schnelle Manabasis, viele Game Changer.
  * Fehlt ein Wert (z.B. weil die Kartendetails noch laden), fließt er nicht ein, statt als Null zu
  * zählen - sonst würde ein halb geladenes Deck systematisch zu niedrig bewertet.
  */
@@ -310,7 +311,7 @@ export function tuningVerdict(input: BracketInput): number {
 
 /** Eine der Messgrößen, aus denen sich der Tuning-Grad mittelt. */
 export interface TuningPart {
-  key: 'tutors' | 'averageCmc' | 'nonBasicLands' | 'gameChangers';
+  key: 'tutors' | 'averageCmc' | 'untappedLands' | 'gameChangers';
   /** Gemessener Wert in genau der Einheit, in der er angezeigt wird. */
   value: number;
   /** Spannenende, an dem der Teil 0 zählt. */
@@ -342,8 +343,12 @@ export function tuningParts(input: BracketInput): TuningPart[] {
     // Niedriger ist stärker, deshalb die Spanne andersherum.
     teil('averageCmc', input.averageCmc, 3.4, 2.2);
   }
-  if (input.nonBasicLandPercent !== null) {
-    teil('nonBasicLands', input.nonBasicLandPercent, 30, 90);
+  if (input.untappedLandPercent !== null) {
+    // Gemessen an echten Decks: Precons liegen bei 70-80 %, ab ~95 % ist die Manabasis praktisch
+    // durchgängig ungetappt. Was das Maß bewusst nicht kann: Ein einfarbiges Deck aus lauter
+    // Standardländern braucht kein Fixing und bekommt die volle Punktzahl geschenkt. Der Preis
+    // dafür, Tempo statt Fixing zu messen - und einer von vier gemittelten Werten, also gedämpft.
+    teil('untappedLands', input.untappedLandPercent, 70, 95);
   }
   teil(
     'gameChangers',
@@ -386,9 +391,16 @@ export function powerLevel(bracket: BracketLevel, tuning: number): number {
  * Führt die vier Urteile zusammen.
  *
  * Untergrenze ist das höhere aus A und B. Die Feinbewertung (C) darf danach um höchstens eine
- * Stufe ANHEBEN und niemals senken - ein hartes Kriterium aus A lässt sich so nie wegrechnen. Bei
- * unveränderten Precons hebt sie gar nicht an: die sitzen per Definition in Bracket 2, und ein
- * Precon mit guter Manabasis ist immer noch ein Precon (Urteil D).
+ * Stufe ANHEBEN und niemals senken - ein hartes Kriterium aus A lässt sich so nie wegrechnen.
+ *
+ * Bei unveränderten Precons hebt C gar nicht an (Urteil D). Achtung, der Grund dafür ist NICHT
+ * "Precons sind Bracket 2": das Bracket-Update vom 9.2.2026 hat Precons ausdrücklich von Bracket 2
+ * entkoppelt, seither ist das keine Regel mehr. Der Grund ist enger: die Feinbewertung ist eine
+ * weiche Heuristik über Manakurve und Manabasis, und ein Precon ist genau dafür gebaut - ihn
+ * deswegen eine Stufe hochzuschieben, obwohl niemand etwas daran geändert hat, wäre falsch. Die
+ * HARTEN Kriterien aus A gelten für Precons dagegen unverändert: eine einzige Game-Changer-Karte
+ * hebt auch einen fabrikfrischen Precon auf mindestens Bracket 3 (aktueller Fall: Farewell, im
+ * selben Februar-Update neu auf die Game-Changer-Liste gesetzt).
  */
 export function analyzeBracket(input: BracketInput): BracketAnalysis {
   const { level: rules, reasons } = rulesVerdict(input);

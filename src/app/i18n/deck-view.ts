@@ -174,13 +174,15 @@ export const deckView = {
     'deckView.bracketVerdictSpellbookMissing': 'Zweitmeinung Commander Spellbook: nicht erreichbar',
     'deckView.bracketVerdictTuning': 'Tuning-Grad: {{percent}}',
     'deckView.bracketVerdictPrecon': 'Unveränderter Precon – die Feinbewertung hebt nicht an',
+    'deckView.bracketPreconNote':
+      'Precons sind seit dem Bracket-Update vom Februar 2026 nicht mehr automatisch Bracket 2. Eine einzige Game-Changer-Karte hebt jedes Deck auf mindestens Bracket 3 – auch einen unveränderten Precon.',
     'deckView.bracketTuningExplain':
       'Der Tuning-Grad misst, wie durchgängig auf Tempo gebaut das Deck ist. Er legt das Bracket nicht fest, sondern nur die Position darin – und hebt es erst ab 85 % um eine Stufe an.',
     'deckView.bracketTuningShowValues': 'Werte anzeigen',
     'deckView.bracketTuningHideValues': 'Werte ausblenden',
     'deckView.bracketTuning.tutors': 'Tutoren je 100 Karten',
     'deckView.bracketTuning.averageCmc': 'Ø Manawert',
-    'deckView.bracketTuning.nonBasicLands': 'Nichtbasis-Länder',
+    'deckView.bracketTuning.untappedLands': 'Ungetappte Länder',
     'deckView.bracketTuning.gameChangers': 'Game Changer',
     'deckView.bracketTuningScale': 'Skala {{from}} → {{to}}',
     'deckView.bracketPowerHeading': 'Power {{power}} von 10',
@@ -442,13 +444,15 @@ export const deckView = {
     'deckView.bracketVerdictSpellbookMissing': 'Second opinion Commander Spellbook: unavailable',
     'deckView.bracketVerdictTuning': 'Tuning level: {{percent}}',
     'deckView.bracketVerdictPrecon': 'Unchanged precon – the fine rating does not raise it',
+    'deckView.bracketPreconNote':
+      'Since the February 2026 bracket update, precons are no longer automatically Bracket 2. A single Game Changer raises any deck to at least Bracket 3 – an unchanged precon included.',
     'deckView.bracketTuningExplain':
       'The tuning level measures how consistently the deck is built for speed. It does not set the bracket, only the position within it – and only raises it by one step from 85 % upwards.',
     'deckView.bracketTuningShowValues': 'Show values',
     'deckView.bracketTuningHideValues': 'Hide values',
     'deckView.bracketTuning.tutors': 'Tutors per 100 cards',
     'deckView.bracketTuning.averageCmc': 'Avg. mana value',
-    'deckView.bracketTuning.nonBasicLands': 'Nonbasic lands',
+    'deckView.bracketTuning.untappedLands': 'Untapped lands',
     'deckView.bracketTuning.gameChangers': 'Game Changers',
     'deckView.bracketTuningScale': 'scale {{from}} → {{to}}',
     'deckView.bracketPowerHeading': 'Power {{power}} out of 10',

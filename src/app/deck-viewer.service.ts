@@ -322,6 +322,39 @@ export class DeckViewerService {
     return Math.round((nonBasic / total) * 100);
   });
 
+  // Ein Land kommt bedingungslos getappt, wenn sein Regeltext "enters tapped" sagt und die Karte
+  // keinen Ausweg anbietet. Die Ausnahmen trennen genau die Premium-Länder ab, die formal denselben
+  // Satz tragen: Schockländer ("unless you pay 2 life"), Check- und Slowlands ("unless you control
+  // ...") und Fastlands ("unless you control two or fewer other lands"). Die alte Scryfall-Formel
+  // "enters the battlefield tapped" ist mit abgedeckt, falls einzelne Karten noch nicht auf die
+  // neue Schablone umgestellt sind.
+  private static readonly ENTERS_TAPPED_RE = /enters (?:the battlefield )?tapped/i;
+  private static readonly TAPPED_AUSNAHME_RE = /unless|you may pay/i;
+
+  /**
+   * Anteil Länder, die nicht bedingungslos getappt ins Spiel kommen (0-100), null ohne Länder.
+   *
+   * Das ist das Tempo-Maß der Manabasis - nicht der Nichtbasis-Anteil: Ein Precon steckt voller
+   * Guildgates, Triomes und Tempel, also Nichtbasisländern, die das Deck gerade langsam machen.
+   * Gemessen an echten Decks liegen Precons hier bei 70-80 %.
+   */
+  readonly untappedLandPercent = computed<number | null>(() => {
+    const lands = this.landCards();
+    const total = lands.reduce((sum, c) => sum + c.quantity, 0);
+    if (total === 0) return null;
+    const details = this.viewingCardDetails();
+    const getappt = lands
+      .filter((c) => {
+        const text = details.get(c.cardName.toLowerCase())?.oracleText ?? '';
+        return (
+          DeckViewerService.ENTERS_TAPPED_RE.test(text) &&
+          !DeckViewerService.TAPPED_AUSNAHME_RE.test(text)
+        );
+      })
+      .reduce((sum, c) => sum + c.quantity, 0);
+    return Math.round(((total - getappt) / total) * 100);
+  });
+
   /**
    * Genau eine Kategorie pro Karte (nach fester Priorität, mehrfachtypige Karten wie "Artifact
    * Creature" landen bei der spielrelevanteren Kategorie) - Summe der Balken ergibt so immer die
@@ -666,7 +699,7 @@ export class DeckViewerService {
       spellbookTag: this.bracketEstimate()?.bracketTag ?? null,
       isPrecon: deck.isPrecon,
       averageCmc: this.averageCmc(),
-      nonBasicLandPercent: this.nonBasicLandPercent(),
+      untappedLandPercent: this.untappedLandPercent(),
       tutorCount: this.tutorCards().reduce((sum, c) => sum + c.quantity, 0),
       totalCards: this.viewingTotalCards(),
     });
