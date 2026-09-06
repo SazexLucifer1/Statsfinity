@@ -11,6 +11,8 @@ import { GoldfishService } from '../goldfish.service';
 import { CardImage } from '../card-image/card-image';
 import { OverflowMenu } from '../ui/overflow-menu/overflow-menu';
 import { Pager } from '../ui/pager/pager';
+import { BracketBadge } from '../ui/bracket-badge/bracket-badge';
+import { storedDeckBracket } from '../bracket';
 
 export type DeckSortMode = 'alpha' | 'winRate' | 'games';
 
@@ -44,7 +46,7 @@ function gridBreakpointPx(): number {
 
 @Component({
   selector: 'app-deck-list',
-  imports: [DecimalPipe, FormsModule, CardImage, OverflowMenu, Pager],
+  imports: [DecimalPipe, FormsModule, CardImage, OverflowMenu, Pager, BracketBadge],
   templateUrl: './deck-list.html',
   styleUrl: './deck-list.scss',
 })
@@ -171,6 +173,15 @@ export class DeckList {
   }
 
   /** Kartenbild für ein Deck - individuell gewähltes Artwork des Commanders hat Vorrang vor dem generischen Scryfall-Bild zum Namen. */
+  /**
+   * Bracket-Abzeichen der Kachel. Kommt ausschließlich aus den gespeicherten Spalten - die Liste
+   * darf für ein Abzeichen nicht die Kartenlisten aller Decks nachladen. Gefüllt werden sie beim
+   * Öffnen des jeweiligen Decks (siehe DeckViewerService.autoBracketPersist).
+   */
+  bracketOf(deck: DeckWithStats): { level: number; source: 'manual' | 'auto' } | null {
+    return storedDeckBracket(deck);
+  }
+
   commanderImage(deck: DeckWithStats): string | null {
     if (deck.commanderImageUrl) return deck.commanderImageUrl;
     if (!deck.commander) return null;

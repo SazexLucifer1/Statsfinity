@@ -1,7 +1,14 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { DeckService, Deck, DeckCard, DeckChangeEntry, DeckGameStats } from './deck.service';
 import { ScryfallService, ScryfallCard, ScryfallPrinting } from './scryfall.service';
-import { CardDataService, SpellbookCardFlags } from './card-data.service';
+import { CardDataService, SpellbookCardFlags, SpellbookTwoCardCombo } from './card-data.service';
+import {
+  AUTO_BRACKET_MAX,
+  BracketAnalysis,
+  BracketCard,
+  analyzeBracket,
+  presentCombos,
+} from './bracket';
 import { PdfSourceCard } from './deck-pdf.service';
 import {
   CommanderSpellbookService,
@@ -544,17 +551,51 @@ export class DeckViewerService {
   readonly bracketEstimateFailed = signal(false);
   readonly bracketEstimateErrorDetail = signal<string | null>(null);
 
+  /**
+   * Mass Land Denial und Extra-Turn-Karten kommen aus der gespiegelten, kuratierten Liste - damit
+   * sind sie ohne Netzwerkaufruf verfügbar und stehen auch dann, wenn Commander Spellbook gerade
+   * nicht erreichbar ist. Solange der Nachtlauf noch nichts geliefert hat, greift die bisherige
+   * Live-Auswertung als Rückfall.
+   */
+  private cardsWithFlag(
+    waehle: (f: SpellbookCardFlags) => boolean,
+    ausEstimate: (c: { massLandDenial: boolean; extraTurn: boolean }) => boolean
+  ): GameChangerEntry[] {
+    const flags = this.spellbookCardFlags();
+    if (flags.size > 0) {
+      return this.analysisDeckCards()
+        .filter((c) => {
+          const f = flags.get(this.cardData.spellbookKey(c.cardName));
+          return f ? waehle(f) : false;
+        })
+        .map((c) => ({ cardName: c.cardName, quantity: c.quantity }));
+    }
+    return (this.bracketEstimate()?.cards ?? [])
+      .filter(ausEstimate)
+      .map((c) => ({ cardName: c.cardName, quantity: c.quantity }));
+  }
+
   readonly massLandDenialCards = computed<GameChangerEntry[]>(() =>
-    (this.bracketEstimate()?.cards ?? [])
-      .filter((c) => c.massLandDenial)
-      .map((c) => ({ cardName: c.cardName, quantity: c.quantity }))
+    this.cardsWithFlag(
+      (f) => f.massLandDenial,
+      (c) => c.massLandDenial
+    )
   );
 
   readonly extraTurnCards = computed<GameChangerEntry[]>(() =>
-    (this.bracketEstimate()?.cards ?? [])
-      .filter((c) => c.extraTurn)
-      .map((c) => ({ cardName: c.cardName, quantity: c.quantity }))
+    this.cardsWithFlag(
+      (f) => f.extraTurn,
+      (c) => c.extraTurn
+    )
   );
+
+  /**
+   * Zwei-Karten-Combos aus der gespiegelten Tabelle, gefiltert auf die Karten dieses Decks.
+   * Grundlage der Bracket-Einstufung (siehe bracketAnalysis) - bewusst getrennt von
+   * twoCardCombos(), das für die Detailliste weiterhin die Live-Auswertung nutzt, weil dort auch
+   * steht, WAS eine Combo erzeugt.
+   */
+  readonly spellbookCombos = signal<SpellbookTwoCardCombo[]>([]);
 
   readonly twoCardCombos = computed<BracketCombo[]>(() =>
     (this.bracketEstimate()?.combos ?? []).filter((c) => c.definitelyTwoCard || c.arguablyTwoCard)
@@ -563,6 +604,152 @@ export class DeckViewerService {
   readonly spellbookBracketLabel = computed(() => {
     const tag = this.bracketEstimate()?.bracketTag;
     return tag ? SPELLBOOK_BRACKET_LABELS[tag] : null;
+  });
+
+  // --- Commander-Bracket (siehe src/app/bracket.ts) ---
+
+  /** Brackets gibt es nur im Commander - für Brawl, PDH und den Rest bleibt die Anzeige aus. */
+  readonly showsBracket = computed(() => this.viewingDeck()?.format === 'Commander');
+
+  /**
+   * Die automatische Einstufung des gerade offenen Decks.
+   *
+   * null, solange die Kartendetails noch laden: ohne sie wären weder Game Changer noch Manabeträge
+   * bekannt, und das Ergebnis wäre verlässlich "Bracket 2" - was dann auch noch zurückgeschrieben
+   * würde. Lieber kurz "wird berechnet" anzeigen als eine falsche Zahl festschreiben.
+   */
+  /**
+   * Die Deck-Karten in der Form, die die Bracket-Rechnung braucht. Eigener computed, weil außer der
+   * Einstufung selbst auch die Combo-Liste in der Analyse-Sektion darauf zugreift.
+   */
+  private readonly bracketCards = computed<BracketCard[]>(() => {
+    const details = this.viewingCardDetails();
+    if (details.size === 0) return [];
+
+    return this.analysisDeckCards().map((c) => {
+      const detail = details.get(c.cardName.toLowerCase());
+      return {
+        name: c.cardName,
+        key: this.cardData.spellbookKey(c.cardName),
+        quantity: c.quantity,
+        cmc: detail?.cmc ?? c.cmc ?? 0,
+        gameChanger: detail?.gameChanger === true,
+        isCommander: c.isCommander,
+      };
+    });
+  });
+
+  /**
+   * Die im Deck vollständig vorhandenen Zwei-Karten-Combos aus der gespiegelten Tabelle.
+   *
+   * Deckt in der Analyse-Sektion den Fall ab, dass Commander Spellbook gerade nicht erreichbar ist:
+   * dann fehlt zwar die Angabe, WAS eine Combo erzeugt, aber welche Combos im Deck stecken, wissen
+   * wir aus dem Nachtlauf trotzdem.
+   */
+  readonly localTwoCardCombos = computed(() =>
+    presentCombos(this.bracketCards(), this.spellbookCombos(), this.spellbookCardFlags())
+  );
+
+  readonly bracketAnalysis = computed<BracketAnalysis | null>(() => {
+    if (!this.showsBracket() || this.analysisBusy()) return null;
+
+    const deck = this.viewingDeck();
+    if (!deck) return null;
+
+    const cards = this.bracketCards();
+    if (cards.length === 0) return null;
+
+    return analyzeBracket({
+      cards,
+      flags: this.spellbookCardFlags(),
+      combos: this.spellbookCombos(),
+      spellbookTag: this.bracketEstimate()?.bracketTag ?? null,
+      isPrecon: deck.isPrecon,
+      averageCmc: this.averageCmc(),
+      nonBasicLandPercent: this.nonBasicLandPercent(),
+      tutorCount: this.tutorCards().reduce((sum, c) => sum + c.quantity, 0),
+      totalCards: this.viewingTotalCards(),
+    });
+  });
+
+  /**
+   * Was tatsächlich angezeigt wird: die selbst gewählte Stufe schlägt immer die Automatik. Ist
+   * noch nichts gewählt, gilt die frisch gerechnete Einstufung - und solange die noch läuft, der
+   * beim letzten Öffnen gespeicherte Wert, damit das Abzeichen nicht kurz verschwindet.
+   */
+  readonly effectiveBracket = computed<{ level: number; source: 'manual' | 'auto' } | null>(() => {
+    const deck = this.viewingDeck();
+    if (!deck || !this.showsBracket()) return null;
+    if (deck.bracket != null) return { level: deck.bracket, source: 'manual' };
+
+    const level = this.bracketAnalysis()?.bracket ?? deck.bracketAuto;
+    return level != null ? { level, source: 'auto' } : null;
+  });
+
+  readonly bracketSaving = signal(false);
+
+  /**
+   * Setzt die Stufe von Hand. null = wieder automatisch bestimmen.
+   *
+   * Speichert sofort statt über einen Entwurf mit Speichern-Knopf - gleiche Begründung wie bei
+   * setArchetype(): es ist ein einzelner Wert aus einer festen Auswahl, ein zweiter Klick zum
+   * Bestätigen wäre reine Reibung.
+   */
+  async setBracket(bracket: number | null): Promise<void> {
+    const deck = this.viewingDeck();
+    if (!deck || !this.canEditViewingDeck()) return;
+
+    this.bracketSaving.set(true);
+    const ok = await this.deckService.setDeckBracket(deck.id, bracket);
+    this.bracketSaving.set(false);
+    if (ok) this.viewingDeck.set({ ...deck, bracket });
+  }
+
+  /**
+   * Schreibt das Ergebnis der Automatik zurück, sobald es sich geändert hat.
+   *
+   * Nötig, damit Deck-Liste und Match-Auswahl ein Abzeichen zeigen können, ohne für jedes Deck die
+   * Kartenliste nachzuladen. Bewusst an einen effect() gehängt statt an das Ende einer Ladefunktion:
+   * die Einstufung hängt an mehreren unabhängig eintreffenden Quellen (Kartendetails, Markierungen,
+   * Combos, Live-Zweitmeinung), und erst wenn die letzte davon da ist, steht der endgültige Wert.
+   * Der Vergleich mit dem gespeicherten Wert sorgt dafür, dass daraus trotzdem höchstens ein
+   * Schreibvorgang je Deck-Öffnung wird.
+   */
+  private readonly autoBracketPersist = effect(() => {
+    const deck = this.viewingDeck();
+    const analysis = this.bracketAnalysis();
+    if (!deck || !analysis || analysis.bracket === deck.bracketAuto) return;
+    if (!this.canEditViewingDeck()) return;
+
+    const level = analysis.bracket;
+    void this.deckService.saveDeckAutoBracket(deck.id, level).then((ok) => {
+      // Lokal nachziehen, sonst liefe der effect() bei der nächsten Änderung erneut an.
+      if (ok) this.viewingDeck.update((d) => (d && d.id === deck.id ? { ...d, bracketAuto: level } : d));
+    });
+  });
+
+  /** Die fünf Stufen für das Auswahlfeld, in Anzeigereihenfolge. */
+  readonly bracketOptions: readonly number[] = [1, 2, 3, 4, 5];
+
+  /** Höchste Stufe, die die Automatik von sich aus vergibt - für den Hinweistext am Auswahlfeld. */
+  readonly autoBracketMax = AUTO_BRACKET_MAX;
+
+  /** Begründung der Einstufung ein-/ausklappen. */
+  readonly showBracketWhy = signal(false);
+
+  toggleBracketWhy(): void {
+    this.showBracketWhy.update((v) => !v);
+  }
+
+  /**
+   * Beschriftung des "Automatisch"-Eintrags im Auswahlfeld. Zeigt die berechnete Stufe gleich mit
+   * an, damit beim Aufklappen sichtbar ist, wogegen man sich entscheidet.
+   */
+  readonly bracketAutoOptionLabel = computed(() => {
+    const level = this.bracketAnalysis()?.bracket ?? this.viewingDeck()?.bracketAuto;
+    return level == null
+      ? this.i18n.t('deckView.bracketAutoOptionPending')
+      : this.i18n.t('deckView.bracketAutoOption', { level: String(level) });
   });
 
   /** Reihenfolge der Typ-Abschnitte (Commander steht immer separat ganz vorn). */
@@ -2197,6 +2384,9 @@ export class DeckViewerService {
     this.selectedChangeGroupKey.set(null);
     this.showDeckStatsInfo.set(false);
     this.showDeckAnalysis.set(false);
+    // Wie die anderen Info-Klappen daneben: eingeklappt starten. Blieb die Begründung offen,
+    // stünde beim nächsten Deck sofort eine seitenlange Erklärung über der Kartenliste.
+    this.showBracketWhy.set(false);
     this.resetCardFilters();
     this.effectFilterBusy.set(false);
     this.editMode.set(false);
@@ -2229,6 +2419,7 @@ export class DeckViewerService {
     this.showDeckAnalysisInfo.set(false);
     this.viewingCardDetails.set(new Map());
     this.flippedDeckCardKeys.set(new Set());
+    this.spellbookCombos.set([]);
     this.bracketEstimate.set(null);
     this.bracketEstimateFailed.set(false);
     this.bracketEstimateErrorDetail.set(null);
@@ -2273,14 +2464,17 @@ export class DeckViewerService {
   private async loadCardDetails(cards: DeckCard[]): Promise<void> {
     this.analysisBusy.set(true);
     const names = [...new Set(cards.map((c) => c.cardName))];
-    // Parallel: die Kartenmarkierungen sind eine einzige kleine Abfrage (~200 Zeilen, danach je
-    // Sitzung zwischengespeichert) und sollen die Kartendetails nicht verzögern.
-    const [found, flags] = await Promise.all([
+    // Parallel: Markierungen (eine kleine Abfrage, danach je Sitzung zwischengespeichert) und
+    // Combos sind die Grundlage der Bracket-Einstufung und sollen die Kartendetails nicht
+    // verzögern.
+    const [found, flags, combos] = await Promise.all([
       this.cardData.findCardsBulk(names),
       this.cardData.spellbookCardFlags(),
+      this.cardData.twoCardCombosFor(names),
     ]);
     this.viewingCardDetails.set(found);
     this.spellbookCardFlags.set(flags);
+    this.spellbookCombos.set(combos);
     this.analysisBusy.set(false);
   }
 
@@ -2537,6 +2731,7 @@ export class DeckViewerService {
     this.deckStatsScope.set('mine');
     this.viewingCardDetails.set(new Map());
     this.flippedDeckCardKeys.set(new Set());
+    this.spellbookCombos.set([]);
     this.bracketEstimate.set(null);
     this.bracketEstimateBusy.set(false);
     this.bracketEstimateFailed.set(false);

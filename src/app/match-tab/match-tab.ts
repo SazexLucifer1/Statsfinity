@@ -15,6 +15,8 @@ import { DialogService } from '../dialog.service';
 import { GAME_MODES, TEAM_OPTIONS, Match, LIVE_TRACKING_START_DATE, DECK_FORMATS } from '../models';
 import { ARCHENEMY_OTHERS, DRAW, teamMemberLabel, gameModeLabel } from '../match-utils';
 import { CardImage } from '../card-image/card-image';
+import { BracketBadge } from '../ui/bracket-badge/bracket-badge';
+import { storedDeckBracket } from '../bracket';
 
 /** Ein einzelnes Spiel oder eine zu einer Karte zusammengefasste BO3-Turnierpartie (2-3 Einzelspiele) im Verlauf. */
 export type HistoryRow =
@@ -32,7 +34,7 @@ export type HistoryRow =
 
 @Component({
   selector: 'app-match-tab',
-  imports: [FormsModule, DatePipe, NgTemplateOutlet, PlayerAvatar, CardImage],
+  imports: [FormsModule, DatePipe, NgTemplateOutlet, PlayerAvatar, CardImage, BracketBadge],
   templateUrl: './match-tab.html',
   styleUrl: './match-tab.scss',
 })
@@ -206,6 +208,10 @@ export class MatchTab {
       commanderImageUrl?: string | null;
       createdAt: string;
       preconReleaseYear: number | null;
+      /** Nur fuer das Bracket-Abzeichen - siehe storedDeckBracket() in bracket.ts. */
+      format: string | null;
+      bracket: number | null;
+      bracketAuto: number | null;
     }[]
   >([]);
   readonly deckPickerBusy = signal(false);
@@ -278,6 +284,9 @@ export class MatchTab {
       isPrecon: d.isPrecon,
       createdAt: d.createdAt,
       preconReleaseYear: d.preconReleaseYear,
+      format: d.format,
+      bracket: d.bracket,
+      bracketAuto: d.bracketAuto,
     }));
     this.deckPickerOptions.set(options);
     if (decks.length === 0) {
@@ -328,6 +337,9 @@ export class MatchTab {
       ownerName: owner,
       createdAt: d.createdAt,
       preconReleaseYear: d.preconReleaseYear,
+      format: d.format,
+      bracket: d.bracket,
+      bracketAuto: d.bracketAuto,
     }));
     this.deckPickerOptions.set(options);
     if (decks.length === 0) {
@@ -335,6 +347,18 @@ export class MatchTab {
     }
     this.deckPickerBusy.set(false);
     await this.loadDeckPickerCommanders(options);
+  }
+
+  /**
+   * Bracket-Abzeichen eines Eintrags in der Deck-Auswahl. Rein aus den gespeicherten Spalten -
+   * für eine Auswahlliste die Kartenlisten aller Decks zu laden wäre nicht vertretbar.
+   */
+  deckPickerBracket(option: {
+    format: string | null;
+    bracket: number | null;
+    bracketAuto: number | null;
+  }): { level: number; source: 'manual' | 'auto' } | null {
+    return storedDeckBracket(option);
   }
 
   backToBorrowOwners(): void {

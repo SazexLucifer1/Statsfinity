@@ -231,6 +231,11 @@ export class DeckImportService {
         isPrivate: false,
         isOutdated: false,
         creatureType: null,
+        // Ein frisch angelegtes leeres Deck hat noch keine Karten - es gibt also weder etwas
+        // festzulegen noch etwas zu berechnen. Beides füllt sich, sobald das Deck geöffnet wird.
+        bracket: null,
+        bracketAuto: null,
+        bracketAutoAt: null,
       });
     } else {
       this.newDeckMessage.set(this.i18n.t('importDialog.msg.createFailed'));

@@ -48,7 +48,7 @@ Jede Komponente ist ein Trio `name/name.ts` + `name.html` + `name.scss`.
 
 ### Wiederverwendbare UI-Bausteine — hier zuerst nachsehen
 
-`src/app/ui/` enthält: `bar-chart`, `radar-chart`, `meter`, `split-bar`, `pager`, `podium`, `overflow-menu`, `multi-select`, `color-filter`, `cmc-filter`, `mana-symbol` sowie `chart-scale.ts`.
+`src/app/ui/` enthält: `bar-chart`, `radar-chart`, `meter`, `split-bar`, `pager`, `podium`, `overflow-menu`, `multi-select`, `color-filter`, `cmc-filter`, `mana-symbol`, `bracket-badge` sowie `chart-scale.ts`.
 
 **Regel: bevor ein Diagramm, ein Filter, ein Menü oder eine Blätterfunktion neu gebaut wird, prüfen, ob es das hier schon gibt.**
 
@@ -61,7 +61,7 @@ Jede Komponente ist ein Trio `name/name.ts` + `name.html` + `name.scss`.
 | Spiel & Turnier       | `game-session.service.ts`, `goldfish.service.ts`, `tournament.service.ts`                                                                                                                                                                           |
 | Konto & Gruppe        | `auth.service.ts`, `profile.service.ts`, `group.service.ts`, `group-permissions.ts`, `login-overlay.service.ts`                                                                                                                                     |
 | Infrastruktur         | `navigation.service.ts`, `dialog.service.ts`, `i18n.service.ts`, `app-recovery.service.ts`, `global-error-handler.ts`, `page-visibility.service.ts`, `background.service.ts`, `feedback.service.ts`, `legal-page.service.ts`, `tutorial.service.ts` |
-| Hilfsfunktionen       | `array-utils.ts`, `match-utils.ts`, `color-filter-match.ts`, `color-combo-names.ts`, `card-effect-filters.ts`, `commander-archetype-filters.ts`, `rank-sort.ts`                                                                                     |
+| Hilfsfunktionen       | `array-utils.ts`, `match-utils.ts`, `color-filter-match.ts`, `color-combo-names.ts`, `card-effect-filters.ts`, `commander-archetype-filters.ts`, `rank-sort.ts`, `bracket.ts`                                                                       |
 
 ### Weitere Orte
 
@@ -141,13 +141,13 @@ Bei diesen Dateien grundsätzlich `grep`/`Glob` vor `Read`; wenn doch gelesen we
 
 | Zeilen | Datei                                            |
 | ------ | ------------------------------------------------ |
-| 2680   | `src/app/deck-viewer.service.ts`                 |
+| 2846   | `src/app/deck-viewer.service.ts`                 |
 | 1770   | `src/app/tournament.service.ts`                  |
-| 1665   | `src/app/deck.service.ts`                        |
+| 1866   | `src/app/deck.service.ts`                        |
 | 1492   | `src/app/mtg.service.ts`                         |
 | 1386   | `src/app/stats-tab/stats-tab.ts`                 |
 | 1111   | `src/app/game-session.service.ts`                |
-| 1089   | `src/app/deck-detail-view/deck-detail-view.html` |
+| 1271   | `src/app/deck-detail-view/deck-detail-view.html` |
 
 `src/app/excel-import.service.ts` wird von grep als binär erkannt (eingebettete Daten) — nicht am Stück lesen.
 
@@ -180,7 +180,7 @@ Wichtig zur Einordnung:
 
 - `npm run format:check` meldet aktuell **~104 vorbestehende** Dateien: Prettier ist konfiguriert, wurde aber nie projektweit ausgeführt. Ein roter `format:check` ist deshalb **kein** Hinweis darauf, dass die eigene Änderung falsch formatiert ist. Prüfe gezielt die eigenen Dateien (`npx prettier --check <datei>`) und formatiere auch nur diese. **Nicht** `npm run format` über das ganze Projekt laufen lassen — das erzeugt einen themenfremden Riesen-Diff, den der User nicht prüfen kann.
 - Es gibt **kein Lint** und **keine Build-CI auf GitHub**. Die drei Workflows sind alle nächtliche Hintergrundläufe und sagen über einen PR nichts aus: das Supabase-Backup sowie der Scryfall- und der Commander-Spellbook-Abgleich (siehe „Weitere Orte“). Ein grüner PR bedeutet also nicht, dass gebaut wurde — deshalb lokal bauen, bevor gepusht wird.
-- Es gibt nur **7 Spec-Dateien** (`scryfall.service`, `public-deck.service`, `color-filter-match`, `color-combo-names`, `app-recovery`, `ui/radar-chart/radar-geometry`, `i18n/i18n-keys`). Die Tests sind **kein Sicherheitsnetz** — grüne Tests sagen fast nichts.
+- Es gibt nur **8 Spec-Dateien** (`scryfall.service`, `public-deck.service`, `color-filter-match`, `color-combo-names`, `app-recovery`, `bracket`, `ui/radar-chart/radar-geometry`, `i18n/i18n-keys`). Die Tests sind **kein Sicherheitsnetz** — grüne Tests sagen fast nichts.
 - Der echte Test ist die **Cloudflare-Pages-Preview des PRs** auf dem iPhone.
 
 ---

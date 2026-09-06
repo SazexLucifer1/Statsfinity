@@ -71,6 +71,105 @@
         <p class="hint">{{ viewer.i18n.t('deckView.cardsCount', { count: viewer.viewingTotalCards() }) }}</p>
       }
 
+      <!-- Bracket direkt unter der Format-Zeile: dort steht schon, WAS für ein Deck das ist, und
+           die Stufe gehört zur selben Frage. Nur im Commander - für Brawl und PDH gibt es keine
+           Brackets. -->
+      @if (viewer.showsBracket()) {
+        <div class="bracket-row" data-tutorial="deck-bracket">
+          @if (viewer.effectiveBracket(); as current) {
+            @if (current.source === 'auto') {
+              <span class="hint">{{ viewer.i18n.t('deckView.bracketMinimum') }}</span>
+            }
+            <app-bracket-badge [bracket]="current.level" [source]="current.source" />
+            <!-- Der Power-Wert gehört zur Automatik: er wird aus der berechneten Stufe abgeleitet.
+                 Neben einer selbst gesetzten Stufe stünde er im Widerspruch dazu ("Bracket 5 ·
+                 Power 5,4"), deshalb nur im Automatik-Fall. -->
+            @if (current.source === 'auto') {
+              @if (viewer.bracketAnalysis(); as analysis) {
+                <span class="hint">{{ viewer.i18n.t('deckView.bracketPower', { power: (analysis.power | number: '1.1-1') ?? '' }) }}</span>
+              }
+            }
+          } @else if (viewer.analysisBusy()) {
+            <span class="hint">{{ viewer.i18n.t('deckView.bracketComputing') }}</span>
+          } @else {
+            <span class="hint">{{ viewer.i18n.t('deckView.bracketUnknown') }}</span>
+          }
+          <button class="icon-button" (click)="viewer.toggleBracketWhy()" [attr.aria-label]="viewer.i18n.t('deckView.bracketWhyToggle')">
+            ⓘ
+          </button>
+        </div>
+
+        @if (viewer.canEditViewingDeck()) {
+          <label class="bracket-select-row">
+            <span class="hint">{{ viewer.i18n.t('deckView.bracketSetLabel') }}</span>
+            <select
+              class="glass-input small"
+              [disabled]="viewer.bracketSaving()"
+              [ngModel]="deck.bracket"
+              (ngModelChange)="viewer.setBracket($event)"
+            >
+              <option [ngValue]="null">{{ viewer.bracketAutoOptionLabel() }}</option>
+              @for (level of viewer.bracketOptions; track level) {
+                <option [ngValue]="level">
+                  {{ viewer.i18n.t('deckView.bracketOption', { level: level, name: viewer.i18n.t('deck.bracket.name' + level) }) }}
+                </option>
+              }
+            </select>
+          </label>
+        }
+
+        @if (viewer.showBracketWhy()) {
+          <div class="bracket-why">
+            @if (viewer.bracketAnalysis(); as analysis) {
+              <p class="hint">{{ viewer.i18n.t('deckView.bracketFloorNote') }}</p>
+
+              <p class="hint"><strong>{{ viewer.i18n.t('deckView.bracketReasonHeading') }}</strong></p>
+              <ul class="game-changer-list">
+                @for (reason of analysis.reasons; track reason.key) {
+                  <li>
+                    {{ viewer.i18n.t('deckView.bracketReason.' + reason.key) }}
+                    @if (reason.key !== 'nothing') {
+                      <span class="hint"> · {{ viewer.i18n.t('deckView.bracketReasonMinimum', { level: reason.minimum }) }}</span>
+                    }
+                    @if (reason.cards.length > 0) {
+                      <span class="bracket-reason-cards">{{ reason.cards.join(', ') }}</span>
+                    }
+                  </li>
+                }
+              </ul>
+
+              <p class="hint"><strong>{{ viewer.i18n.t('deckView.bracketVerdictHeading') }}</strong></p>
+              <ul class="game-changer-list">
+                <li>{{ viewer.i18n.t('deckView.bracketVerdictRules', { level: analysis.verdicts.rules }) }}</li>
+                @if (analysis.verdicts.spellbook !== null) {
+                  <li>{{ viewer.i18n.t('deckView.bracketVerdictSpellbook', { level: analysis.verdicts.spellbook }) }}</li>
+                } @else {
+                  <li>{{ viewer.i18n.t('deckView.bracketVerdictSpellbookMissing') }}</li>
+                }
+                <li>{{ viewer.i18n.t('deckView.bracketVerdictTuning', { percent: (analysis.verdicts.tuning | percent: '1.0-0') ?? '' }) }}</li>
+                @if (analysis.verdicts.precon) {
+                  <li>{{ viewer.i18n.t('deckView.bracketVerdictPrecon') }}</li>
+                }
+              </ul>
+
+              <p class="hint">
+                @switch (analysis.confidence) {
+                  @case ('high') { {{ viewer.i18n.t('deckView.bracketConfidenceHigh') }} }
+                  @case ('low') { {{ viewer.i18n.t('deckView.bracketConfidenceLow') }} }
+                  @default { {{ viewer.i18n.t('deckView.bracketConfidenceMedium') }} }
+                }
+              </p>
+
+              @if (analysis.suggestsCedh) {
+                <p class="hint bracket-cedh-hint">{{ viewer.i18n.t('deckView.bracketCedhHint') }}</p>
+              }
+            }
+            <p class="hint">{{ viewer.i18n.t('deckView.bracketNeverAutoNote') }}</p>
+            <p class="hint bracket-caveat">{{ viewer.i18n.t('deckView.bracketSources') }}</p>
+          </div>
+        }
+      }
+
       @if (viewer.hideViewingDeckStats()) {
         <p class="hint">{{ viewer.i18n.t('profile.statsLockedHint') }}</p>
       } @else if (viewer.viewingDeckGameStats(); as gameStats) {
@@ -751,14 +850,14 @@
 
               <section class="analysis-section">
                 <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.mldTitle') }}</h4>
-                @if (viewer.bracketEstimateBusy()) {
+                <!-- Mass Land Denial, Extra-Turns und die Combo-Paare kommen inzwischen aus dem
+                     nächtlichen Abgleich und stehen damit auch dann, wenn Commander Spellbook
+                     gerade nicht erreichbar ist. Nur WAS eine Combo erzeugt, weiß allein deren
+                     Live-Auswertung - fehlt sie, wird das unten als Fußnote gesagt, statt die
+                     ganze Sektion für nicht verfügbar zu erklären. -->
+                @if (viewer.bracketEstimateBusy() && viewer.spellbookCardFlags().size === 0) {
                   <p class="hint">{{ viewer.i18n.t('deckView.loadingSpellbookEval') }}</p>
-                } @else if (viewer.bracketEstimateFailed()) {
-                  <p class="hint">{{ viewer.i18n.t('deckView.spellbookUnavailable') }}</p>
-                  @if (viewer.bracketEstimateErrorDetail(); as detail) {
-                    <p class="hint bracket-caveat">{{ viewer.i18n.t('deckView.technicalMessage', { detail }) }}</p>
-                  }
-                } @else if (viewer.bracketEstimate()) {
+                } @else {
                   @if (viewer.massLandDenialCards().length > 0) {
                     <p class="hint"><strong>{{ viewer.i18n.t('deckView.massLandDenialLabel') }}</strong></p>
                     <ul class="game-changer-list">
@@ -788,16 +887,36 @@
                         </li>
                       }
                     </ul>
+                  } @else if (viewer.localTwoCardCombos().length > 0) {
+                    <!-- Ohne Live-Auswertung: die Paare aus dem Nachtlauf, ohne die Angabe, was sie erzeugen. -->
+                    <p class="hint"><strong>{{ viewer.i18n.t('deckView.twoCardComboLabel') }}</strong></p>
+                    <ul class="game-changer-list">
+                      @for (combo of viewer.localTwoCardCombos(); track combo.combo.id) {
+                        <li>
+                          @for (card of combo.cards; track card.key; let last = $last) {
+                            <button class="card-name-link" (click)="viewer.openCardPreview(card.name)">{{ card.name }}</button>
+                            @if (!last) { <span> + </span> }
+                          }
+                        </li>
+                      }
+                    </ul>
                   }
                   @if (
                     viewer.massLandDenialCards().length === 0 &&
                     viewer.extraTurnCards().length === 0 &&
-                    viewer.twoCardCombos().length === 0
+                    viewer.twoCardCombos().length === 0 &&
+                    viewer.localTwoCardCombos().length === 0
                   ) {
                     <p class="hint">{{ viewer.i18n.t('deckView.noneOfThisFound') }}</p>
                   }
                   @if (viewer.spellbookBracketLabel(); as label) {
                     <p class="hint">{{ viewer.i18n.t('deckView.spellbookEstimateLabel') }} <strong>{{ label }}</strong></p>
+                  }
+                  @if (viewer.bracketEstimateFailed()) {
+                    <p class="hint bracket-caveat">{{ viewer.i18n.t('deckView.spellbookDetailsMissing') }}</p>
+                    @if (viewer.bracketEstimateErrorDetail(); as detail) {
+                      <p class="hint bracket-caveat">{{ viewer.i18n.t('deckView.technicalMessage', { detail }) }}</p>
+                    }
                   }
                 }
               </section>
