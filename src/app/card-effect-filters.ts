@@ -18,10 +18,10 @@ export const CARD_EFFECT_FILTERS: CardEffectFilter[] = [
   {
     value: 'counterspell',
     query:
-      '(otag:counterspell or otag:counterspell-noncreature or otag:counterspell-creature or otag:counterspell-sorcery or otag:counterspell-instant or otag:counterspell-artifact or otag:counterspell-enchantment or otag:counterspell-planeswalker or otag:counterspell-ability or otag:counterspell-reusable or otag:counterspell-exile or otag:counterspell-free)',
+      'otag:counterspell',
   },
   { value: 'boardwipe', query: 'otag:board-wipe' },
-  { value: 'ramp', query: '(otag:ramp or otag:land-ramp or otag:extra-land or otag:play-additional-land) -t:land' },
+  { value: 'ramp', query: 'otag:ramp -t:land' },
   { value: 'lifegain', query: 'otag:lifegain' },
   { value: 'counters', query: 'o:"+1/+1 counter"' },
   { value: 'proliferate', query: 'keyword:proliferate' },
@@ -29,7 +29,7 @@ export const CARD_EFFECT_FILTERS: CardEffectFilter[] = [
   {
     value: 'reanimate',
     query:
-      '(otag:reanimate or otag:reanimate-creature or otag:reanimate-artifact or otag:reanimate-enchantment or otag:reanimate-planeswalker or otag:reanimate-permanent)',
+      'otag:reanimate',
   },
   { value: 'recursion', query: 'otag:recursion' },
   { value: 'sacrifice', query: 'otag:sacrifice-outlet' },

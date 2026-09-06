@@ -918,13 +918,13 @@ export class DeckViewerService {
       value: 'counterspell',
       label: 'Konter',
       query:
-        '(otag:counterspell or otag:counterspell-noncreature or otag:counterspell-creature or otag:counterspell-sorcery or otag:counterspell-instant or otag:counterspell-artifact or otag:counterspell-enchantment or otag:counterspell-planeswalker or otag:counterspell-ability or otag:counterspell-reusable or otag:counterspell-exile or otag:counterspell-free)',
+        'otag:counterspell',
     },
     { value: 'boardwipe', label: 'Bretträumung', query: 'otag:board-wipe' },
     {
       value: 'ramp',
       label: 'Rampe',
-      query: '(otag:ramp or otag:land-ramp or otag:extra-land or otag:play-additional-land) -t:land',
+      query: 'otag:ramp -t:land',
     },
     { value: 'lifegain', label: 'Lebenspunkte gewinnen', query: 'otag:lifegain' },
     { value: 'counters', label: '+1/+1-Zähler', query: 'o:"+1/+1 counter"' },
@@ -934,7 +934,7 @@ export class DeckViewerService {
       value: 'reanimate',
       label: 'Wiederbelebung',
       query:
-        '(otag:reanimate or otag:reanimate-creature or otag:reanimate-artifact or otag:reanimate-enchantment or otag:reanimate-planeswalker or otag:reanimate-permanent)',
+        'otag:reanimate',
     },
     { value: 'recursion', label: 'Rekursion', query: 'otag:recursion' },
     { value: 'tutor', label: 'Tutor', query: '' },
@@ -2275,10 +2275,27 @@ export class DeckViewerService {
   /**
    * Die 12 Effekt-Kategorien, die sich nur über eine Scryfall-Tag-/Text-Suche ermitteln lassen (im
    * Gegensatz zu Tutor/Extra-Runde/Mass Land Denial, die bereits über andere, zuverlässigere Wege
-   * geladen werden - siehe effectCategoryStats). Ramp schließt Länder explizit aus (-t:land), Konter
-   * verknüpft die Oberkategorie mit allen bekannten Unter-Tags (siehe PR zur Konter-Erkennung:
-   * Scryfalls Tagger-System taggt z.B. Dovin's Veto nur als "counterspell-noncreature", nicht als
-   * bloßes "counterspell").
+   * geladen werden - siehe effectCategoryStats). Ramp schließt Länder explizit aus (-t:land).
+   *
+   * KEINE Unter-Tags aufzählen. Konter, Rampe und Wiederbelebung führten früher alle bekannten
+   * Unter-Tags einzeln auf ("otag:counterspell or otag:counterspell-noncreature or ..."), weil
+   * Scryfalls Tagger Dovin's Veto seinerzeit nur als "counterspell-noncreature" führte. Das gilt
+   * nicht mehr: Scryfalls otag:-Suche ist hierarchisch, jede Karte mit einem Unter-Tag matcht auch
+   * das Eltern-Tag. Nachgeprüft, jeweils null Treffer:
+   *
+   *   (otag:counterspell-noncreature or ... or otag:counterspell-free) -otag:counterspell
+   *   (otag:reanimate-creature or ... or otag:reanimate-permanent)     -otag:reanimate
+   *   (otag:land-ramp or otag:extra-land or otag:play-additional-land) -otag:ramp
+   *
+   * Dovin's Veto selbst ist inzwischen ebenfalls unter "otag:counterspell" zu finden. Die
+   * Trefferzahlen sind vor und nach dem Kürzen identisch (546 / 1064 / 2166). Die Aufzählung
+   * brachte also nichts, machte die Abfrage aber 349 Zeichen lang - und presste damit im
+   * Rückfallpfad (filterNamesByQueryChecked(), 800-Zeichen-Limit) unnötig wenige Kartennamen in
+   * jede Anfrage.
+   *
+   * NICHT zu verwechseln mit den ODER-Listen in commander-archetype-filters.ts: Die fassen
+   * VERSCHIEDENE Tags zu einem Archetyp zusammen (z.B. blink or flicker) und duerfen nicht
+   * gekuerzt werden.
    */
   // NEU - Verifikationsrunde: nur eine Kategorie gleichzeitig neu aktiv, bis sie über mehrere
   // Wiederholungen hinweg stabil und korrekt ist (siehe Plan), danach die nächste einkommentieren.
@@ -2295,7 +2312,7 @@ export class DeckViewerService {
       key: 'counterspell',
       labelKey: 'deckView.counterspellTile',
       query:
-        '(otag:counterspell or otag:counterspell-noncreature or otag:counterspell-creature or otag:counterspell-sorcery or otag:counterspell-instant or otag:counterspell-artifact or otag:counterspell-enchantment or otag:counterspell-planeswalker or otag:counterspell-ability or otag:counterspell-reusable or otag:counterspell-exile or otag:counterspell-free)',
+        'otag:counterspell',
     },
     {
       key: 'boardwipe',
@@ -2305,7 +2322,7 @@ export class DeckViewerService {
     {
       key: 'ramp',
       labelKey: 'deckView.rampTile',
-      query: '(otag:ramp or otag:land-ramp or otag:extra-land or otag:play-additional-land) -t:land',
+      query: 'otag:ramp -t:land',
     },
     {
       key: 'draw',
@@ -2349,7 +2366,7 @@ export class DeckViewerService {
       // nur mit einem spezifischeren Unter-Tag getaggt sind, nicht automatisch in die Oberkategorie
       // hoch (recherchiert, siehe reanimate-creature/-artifact/-enchantment/-planeswalker).
       query:
-        '(otag:reanimate or otag:reanimate-creature or otag:reanimate-artifact or otag:reanimate-enchantment or otag:reanimate-planeswalker or otag:reanimate-permanent)',
+        'otag:reanimate',
     },
     {
       key: 'sacrifice',
