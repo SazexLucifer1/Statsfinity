@@ -23,7 +23,7 @@ export const CARD_EFFECT_FILTERS: CardEffectFilter[] = [
   { value: 'boardwipe', query: 'otag:board-wipe' },
   { value: 'ramp', query: '(otag:ramp or otag:land-ramp or otag:extra-land or otag:play-additional-land) -t:land' },
   { value: 'lifegain', query: 'otag:lifegain' },
-  { value: 'counters', query: 'otag:gives-1-1-counters' },
+  { value: 'counters', query: 'o:"+1/+1 counter"' },
   { value: 'proliferate', query: 'keyword:proliferate' },
   { value: 'protection', query: 'otag:protection' },
   {
