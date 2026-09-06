@@ -1,6 +1,7 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { DeckService, Deck, DeckCard, DeckChangeEntry, DeckGameStats } from './deck.service';
 import { ScryfallService, ScryfallCard, ScryfallPrinting } from './scryfall.service';
+import { CardDataService } from './card-data.service';
 import { PdfSourceCard } from './deck-pdf.service';
 import {
   CommanderSpellbookService,
@@ -96,6 +97,7 @@ export interface DeckChangeGroup {
 export class DeckViewerService {
   private readonly deckService = inject(DeckService);
   private readonly scryfall = inject(ScryfallService);
+  private readonly cardData = inject(CardDataService);
   private readonly commanderSpellbook = inject(CommanderSpellbookService);
   private readonly edhrec = inject(EdhrecService);
   private readonly auth = inject(AuthService);
@@ -2024,7 +2026,7 @@ export class DeckViewerService {
     if (missing.length === 0) return;
 
     this.edhrecCategoryImagesBusy.update((set) => new Set(set).add(tag));
-    const found = await this.scryfall.findCardsBulk(missing);
+    const found = await this.cardData.findCardsBulk(missing);
     this.edhrecCardDetails.update((current) => new Map([...current, ...found]));
     this.edhrecCategoryImagesBusy.update((set) => {
       const next = new Set(set);
@@ -2121,7 +2123,7 @@ export class DeckViewerService {
   /** Löst den EDHREC-Kartennamen zu vollen Scryfall-Daten auf (EDHREC selbst liefert nur Name+Statistik) und staged ihn wie addCard(). */
   async addEdhrecCard(cardName: string): Promise<void> {
     this.addCardBusy.set(true);
-    const found = await this.scryfall.findCard(cardName);
+    const found = await this.cardData.findCard(cardName);
     this.addCardBusy.set(false);
     if (!found) {
       this.addCardMessage.set(this.i18n.t('deckViewer.msg.notFoundOnScryfall', { name: cardName }));
@@ -2241,7 +2243,7 @@ export class DeckViewerService {
   private async loadCardDetails(cards: DeckCard[]): Promise<void> {
     this.analysisBusy.set(true);
     const names = [...new Set(cards.map((c) => c.cardName))];
-    const found = await this.scryfall.findCardsBulk(names);
+    const found = await this.cardData.findCardsBulk(names);
     this.viewingCardDetails.set(found);
     this.analysisBusy.set(false);
   }
@@ -2393,35 +2395,60 @@ export class DeckViewerService {
   });
 
   /**
-   * Klassifiziert das Deck in die 12 Scryfall-Tag-Kategorien nach. Bewusst NACHEINANDER statt
-   * parallel (mit kleiner Pause dazwischen) - vermeidet Bursts gegen Scryfalls Rate-Limit. Dank des
-   * dauerhaften Caches in classifyCards() betrifft das nach dem ersten Laden ohnehin nur noch
-   * Karten, die noch nie klassifiziert wurden.
+   * Klassifiziert das Deck in die 12 Scryfall-Tag-Kategorien nach - jetzt aus dem eigenen
+   * Kartenbestand (CardDataService, gefüllt vom nächtlichen Abgleich) statt live bei Scryfall.
+   *
+   * Vorher lief hier eine Schleife über alle 12 Kategorien, jede über classifyCards() in Chunks von
+   * ~15 Kartennamen mit 300 ms Zwangspause - bei kaltem Cache rund 100 aufeinander folgende
+   * Suchanfragen und damit etwa eine Minute Wartezeit, und das auf jedem Gerät erneut, weil der
+   * Cache im localStorage liegt. Jetzt sind es zwei Datenbankabfragen.
+   *
+   * Der Weg über Scryfall bleibt als Rückfallebene erhalten, aber nur noch für Karten, die der
+   * Abgleich nicht kennt - also frische Spoiler, die seit dem letzten Nachtlauf erschienen sind.
+   * Fällt die Datenbank ganz aus, gilt jede Karte als unbekannt und es läuft exakt das alte
+   * Verhalten: dann ist die App so langsam wie vorher, aber nicht kaputt.
    */
   private async loadEffectCategoryCounts(cards: DeckCard[]): Promise<void> {
     this.effectCategoryCountsBusy.set(true);
     const names = [...new Set(cards.filter((c) => !c.isMaybeboard && !c.isToken).map((c) => c.cardName))];
 
-    // Vorderseiten-Name für den Abgleich - classifyCards() klassifiziert Doppelkarten unter ihrem
-    // Vorderseiten-Namen (siehe dort), der volle Deck-Kartenname ("A // B") würde hier nie matchen.
+    // Vorderseiten-Name für den Abgleich - sowohl der Abgleich als auch classifyCards()
+    // klassifizieren Doppelkarten unter ihrem Vorderseiten-Namen, der volle Deck-Kartenname
+    // ("A // B") würde hier nie matchen.
     const entriesFromMatched = (matched: Set<string>): GameChangerEntry[] =>
       cards
         .filter((c) => !c.isMaybeboard && !c.isToken && matched.has(normalizeCardName(c.cardName.split(' // ')[0].trim())))
         .map((c) => ({ cardName: c.cardName, quantity: c.quantity }));
     const countOf = (entries: GameChangerEntry[]) => entries.reduce((sum, c) => sum + c.quantity, 0);
 
-    const total = DeckViewerService.EFFECT_TAG_CATEGORIES.length;
-    const stats: EffectCategoryStat[] = [];
-    for (let i = 0; i < total; i++) {
-      if (i > 0) await sleep(300);
-      const category = DeckViewerService.EFFECT_TAG_CATEGORIES[i];
-      const matched = await this.scryfall.classifyCards(category.key, category.query, names);
-      const entries = entriesFromMatched(matched);
-      stats.push({ key: category.key, labelKey: category.labelKey, count: countOf(entries), cards: entries });
-      this.effectCategoryProgress.set({ done: i + 1, total });
+    const categories = DeckViewerService.EFFECT_TAG_CATEGORIES;
+    const [ausDatenbank, bekannt] = await Promise.all([
+      this.cardData.effectCategories(names),
+      this.cardData.knownCardNames(names),
+    ]);
+    const matchedByKey = new Map<string, Set<string>>(
+      categories.map((category) => [category.key, new Set(ausDatenbank.get(category.key) ?? [])])
+    );
+
+    // Nur Karten, die der Abgleich noch nicht kennt, gehen überhaupt noch ins Netz. Das ist im
+    // Normalfall eine leere Liste - dann bleibt die ganze Schleife samt Pausen einfach aus.
+    const unbekannt = names.filter((name) => !bekannt.has(normalizeCardName(name.split(' // ')[0].trim())));
+    if (unbekannt.length > 0) {
+      for (let i = 0; i < categories.length; i++) {
+        if (i > 0) await sleep(300); // Wie bisher: vermeidet Bursts gegen Scryfalls Rate-Limit.
+        const category = categories[i];
+        const frisch = await this.scryfall.classifyCards(category.key, category.query, unbekannt);
+        for (const name of frisch) matchedByKey.get(category.key)!.add(name);
+        this.effectCategoryProgress.set({ done: i + 1, total: categories.length });
+      }
     }
 
-    this.tagBasedEffectStats.set(stats);
+    this.tagBasedEffectStats.set(
+      categories.map((category) => {
+        const entries = entriesFromMatched(matchedByKey.get(category.key)!);
+        return { key: category.key, labelKey: category.labelKey, count: countOf(entries), cards: entries };
+      })
+    );
     this.effectCategoryCountsBusy.set(false);
     this.effectCategoryProgress.set(null);
   }
@@ -2524,7 +2551,7 @@ export class DeckViewerService {
       const missing = cards.filter((c) => !c.imageUrl).map((c) => c.cardName);
       if (missing.length === 0) return cards;
 
-      const found = await this.scryfall.findCardsBulk(missing);
+      const found = await this.cardData.findCardsBulk(missing);
       return cards.map((c) => {
         if (c.imageUrl) return c;
         const scryfallCard = found.get(c.cardName.toLowerCase());
