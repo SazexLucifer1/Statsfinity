@@ -63,7 +63,7 @@ const basis = (extra: Partial<BracketInput> = {}): BracketInput => ({
   spellbookTag: null,
   isPrecon: false,
   averageCmc: 3.4,
-  nonBasicLandPercent: 30,
+  untappedLandPercent: 70,
   tutorCount: 0,
   totalCards: 100,
   ...extra,
@@ -213,7 +213,7 @@ describe('bracket - Urteil C: Tuning-Grad', () => {
       basis({
         cards: Array.from({ length: 6 }, (_, i) => karte(`GC${i}`, { gameChanger: true })),
         averageCmc: 2.0,
-        nonBasicLandPercent: 95,
+        untappedLandPercent: 95,
         tutorCount: 10,
       }),
     );
@@ -227,7 +227,7 @@ describe('bracket - Urteil C: Tuning-Grad', () => {
       basis({
         cards: Array.from({ length: 6 }, (_, i) => karte(`GC${i}`, { gameChanger: true })),
         averageCmc: null,
-        nonBasicLandPercent: null,
+        untappedLandPercent: null,
         totalCards: 0,
       }),
     );
@@ -243,7 +243,7 @@ describe('bracket - Tuning-Grad aufgeschluesselt', () => {
     expect(parts.map((p) => p.key)).toEqual([
       'tutors',
       'averageCmc',
-      'nonBasicLands',
+      'untappedLands',
       'gameChangers',
     ]);
     expect(teil(basis({ tutorCount: 4, totalCards: 100 }), 'tutors')).toMatchObject({
@@ -261,14 +261,22 @@ describe('bracket - Tuning-Grad aufgeschluesselt', () => {
     expect(teil(basis({ averageCmc: 2.8 }), 'averageCmc')?.score).toBeCloseTo(0.5, 5);
   });
 
+  it('verankert die Manabasis an gemessenen Decks', () => {
+    // 70 % ungetappt ist Precon-Niveau (nachgemessen: 70/72/79 %) und gibt deshalb keinen Punkt;
+    // ab 95 % ist die Manabasis praktisch durchgaengig ungetappt.
+    expect(teil(basis({ untappedLandPercent: 70 }), 'untappedLands')?.score).toBe(0);
+    expect(teil(basis({ untappedLandPercent: 95 }), 'untappedLands')?.score).toBe(1);
+    expect(teil(basis({ untappedLandPercent: 82.5 }), 'untappedLands')?.score).toBeCloseTo(0.5, 5);
+  });
+
   it('kappt Werte ausserhalb der Spanne bei 0 und 1', () => {
     expect(teil(basis({ averageCmc: 5 }), 'averageCmc')?.score).toBe(0);
-    expect(teil(basis({ nonBasicLandPercent: 100 }), 'nonBasicLands')?.score).toBe(1);
+    expect(teil(basis({ untappedLandPercent: 100 }), 'untappedLands')?.score).toBe(1);
   });
 
   it('laesst fehlende Werte ganz weg, statt sie als 0 zu zaehlen', () => {
     const parts = tuningParts(
-      basis({ averageCmc: null, nonBasicLandPercent: null, totalCards: 0 }),
+      basis({ averageCmc: null, untappedLandPercent: null, totalCards: 0 }),
     );
     expect(parts.map((p) => p.key)).toEqual(['gameChangers']);
   });
@@ -280,9 +288,9 @@ describe('bracket - Tuning-Grad aufgeschluesselt', () => {
   it('mittelt sich exakt zum angezeigten Tuning-Grad', () => {
     for (const input of [
       basis(),
-      basis({ tutorCount: 6, averageCmc: 2.5, nonBasicLandPercent: 70 }),
+      basis({ tutorCount: 6, averageCmc: 2.5, untappedLandPercent: 85 }),
       basis({ cards: Array.from({ length: 4 }, (_, i) => karte(`GC${i}`, { gameChanger: true })) }),
-      basis({ averageCmc: null, nonBasicLandPercent: null }),
+      basis({ averageCmc: null, untappedLandPercent: null }),
     ]) {
       const parts = tuningParts(input);
       const mittel = parts.reduce((s, t) => s + t.score, 0) / parts.length;
@@ -333,7 +341,7 @@ describe('bracket - Zusammenführung', () => {
       basis({
         cards: Array.from({ length: 3 }, (_, i) => karte(`GC${i}`, { gameChanger: true })),
         averageCmc: 2.0,
-        nonBasicLandPercent: 95,
+        untappedLandPercent: 95,
         tutorCount: 10,
       }),
     );
@@ -347,7 +355,7 @@ describe('bracket - Zusammenführung', () => {
       basis({
         isPrecon: true,
         averageCmc: 2.0,
-        nonBasicLandPercent: 95,
+        untappedLandPercent: 95,
         tutorCount: 10,
       }),
     );
@@ -359,7 +367,7 @@ describe('bracket - Zusammenführung', () => {
       basis({
         cards: Array.from({ length: 8 }, (_, i) => karte(`GC${i}`, { gameChanger: true })),
         averageCmc: 1.5,
-        nonBasicLandPercent: 100,
+        untappedLandPercent: 100,
         tutorCount: 15,
         spellbookTag: 'R',
       }),
@@ -372,7 +380,7 @@ describe('bracket - Zusammenführung', () => {
       basis({
         cards: Array.from({ length: 8 }, (_, i) => karte(`GC${i}`, { gameChanger: true })),
         averageCmc: 1.5,
-        nonBasicLandPercent: 100,
+        untappedLandPercent: 100,
         tutorCount: 15,
       }),
     );
@@ -382,12 +390,12 @@ describe('bracket - Zusammenführung', () => {
 
   it('weist ein bloss ordentlich gebautes Bracket-4-Deck nicht als cEDH aus', () => {
     // Genau der Fall, der beim Pruefen in der laufenden App auffiel: fuenf Game Changer, sonst
-    // unauffaellig. Tuning-Grad um 0,6 - das ist ein starkes Deck, aber kein Turnierdeck.
+    // unauffaellig. Tuning-Grad um 0,55 - das ist ein starkes Deck, aber kein Turnierdeck.
     const ergebnis = analyzeBracket(
       basis({
         cards: Array.from({ length: 5 }, (_, i) => karte(`GC${i}`, { gameChanger: true })),
         averageCmc: 2.8,
-        nonBasicLandPercent: 70,
+        untappedLandPercent: 82.5,
         tutorCount: 3,
       }),
     );
