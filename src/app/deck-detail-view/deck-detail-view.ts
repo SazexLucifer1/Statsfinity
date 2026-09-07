@@ -1,7 +1,7 @@
 import { Component, effect, inject } from '@angular/core';
-import { CurrencyPipe, DatePipe, DecimalPipe, PercentPipe } from '@angular/common';
+import { CurrencyPipe, DatePipe, DecimalPipe, NgTemplateOutlet, PercentPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { DeckViewerService, DeckChangeGroup } from '../deck-viewer.service';
+import { AnalysisCombo, DeckViewerService, DeckChangeGroup, GameChangerEntry } from '../deck-viewer.service';
 import { DeckService, DeckCard, DeckOwner } from '../deck.service';
 import { DeckImportService } from '../deck-import.service';
 import { DeckPdfService } from '../deck-pdf.service';
@@ -15,15 +15,26 @@ import { BracketBadge } from '../ui/bracket-badge/bracket-badge';
 
 @Component({
   selector: 'app-deck-detail-view',
-  imports: [CurrencyPipe, DatePipe, DecimalPipe, PercentPipe, FormsModule, CardImage, BarChart, OverflowMenu, ColorFilter, CmcFilter, BracketBadge],
+  imports: [CurrencyPipe, DatePipe, DecimalPipe, NgTemplateOutlet, PercentPipe, FormsModule, CardImage, BarChart, OverflowMenu, ColorFilter, CmcFilter, BracketBadge],
   templateUrl: './deck-detail-view.html',
   styleUrl: './deck-detail-view.scss',
 })
 export class DeckDetailView {
   readonly viewer = inject(DeckViewerService);
+
   private readonly deckService = inject(DeckService);
   private readonly importService = inject(DeckImportService);
   private readonly pdfService = inject(DeckPdfService);
+
+  /**
+   * Die beiden Karten einer Combo in der Form, die das Karten-Raster der Analyse erwartet - so
+   * zeigt das Combo-Fenster dieselben anklickbaren Vorschaubilder wie die Abschnitte darüber.
+   * Anzahl immer 1: eine Combo nennt jede Karte genau einmal, die Deck-Anzahl spielt hier keine
+   * Rolle.
+   */
+  comboCardEntries(combo: AnalysisCombo): GameChangerEntry[] {
+    return combo.cardNames.map((cardName) => ({ cardName, quantity: 1 }));
+  }
 
   /**
    * Öffnet den bestehenden Import-Dialog wieder (Copy-Paste einer kompletten Liste inkl.

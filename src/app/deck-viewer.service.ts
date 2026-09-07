@@ -15,7 +15,6 @@ import { PdfSourceCard } from './deck-pdf.service';
 import {
   CommanderSpellbookService,
   BracketEstimate,
-  BracketCombo,
   SPELLBOOK_BRACKET_LABELS,
 } from './commander-spellbook.service';
 import { EdhrecService, EdhrecCardlist, EdhrecTag } from './edhrec.service';
@@ -55,6 +54,26 @@ export interface ManaSourceCount {
 export interface GameChangerEntry {
   cardName: string;
   quantity: number;
+}
+
+/**
+ * Eine Zwei-Karten-Combo, wie das Combo-Fenster sie zeigt - aus der Live-Auswertung von Commander
+ * Spellbook oder aus dem nächtlichen Abgleich zusammengeführt (siehe analysisCombos). produces und
+ * description sind leer, wenn die Combo aus dem Nachtlauf stammt; extraMana und bracketLabel sind
+ * umgekehrt nur dort bekannt.
+ */
+export interface AnalysisCombo {
+  id: string;
+  cardNames: string[];
+  produces: string[];
+  /**
+   * Der Ablauf als einzelne Schritte. Spellbook liefert ihn als einen Text mit einem
+   * Zeilenumbruch je Schritt; aufgeteilt ist er als nummerierte Liste zu lesen, und die
+   * Beschreibungen verweisen selbst auf Schrittnummern ("Repeat from step 4").
+   */
+  steps: string[];
+  extraMana: number | null;
+  bracketLabel: string | null;
 }
 
 export interface TypeBreakdownEntry {
@@ -651,19 +670,74 @@ export class DeckViewerService {
   /**
    * Zwei-Karten-Combos aus der gespiegelten Tabelle, gefiltert auf die Karten dieses Decks.
    * Grundlage der Bracket-Einstufung (siehe bracketAnalysis) - bewusst getrennt von
-   * twoCardCombos(), das für die Detailliste weiterhin die Live-Auswertung nutzt, weil dort auch
-   * steht, WAS eine Combo erzeugt.
+   * analysisCombos(), das für die Anzeige die Live-Auswertung bevorzugt, weil dort auch steht,
+   * WAS eine Combo erzeugt.
    */
   readonly spellbookCombos = signal<SpellbookTwoCardCombo[]>([]);
 
-  readonly twoCardCombos = computed<BracketCombo[]>(() =>
-    (this.bracketEstimate()?.combos ?? []).filter((c) => c.definitelyTwoCard || c.arguablyTwoCard)
+  /**
+   * ALLE im Deck gefundenen Combos für die Anzeige, aus beiden Quellen auf eine Form gebracht:
+   * bevorzugt die Live-Auswertung (die als einzige weiß, WAS eine Combo erzeugt und wie sie
+   * abläuft), sonst die Paare aus dem Nachtlauf.
+   *
+   * Bewusst ohne Spellbooks Zwei-Karten-Kennzeichen vorgefiltert: das zählt eine Combo auch dann
+   * als "arguably two-card", wenn eine der drei Karten der Commander ist - unter der Überschrift
+   * "Zwei-Karten-Combos" standen dadurch Combos mit drei Karten. Die Aufteilung macht jetzt
+   * schlicht die Anzahl der beteiligten Karten (siehe twoCardComboList/moreCardComboList).
+   */
+  readonly analysisCombos = computed<AnalysisCombo[]>(() => {
+    const live = this.bracketEstimate()?.combos ?? [];
+    if (live.length > 0) {
+      return live.map((c) => ({
+        id: c.cardNames.join('+'),
+        cardNames: c.cardNames,
+        produces: c.produces,
+        steps: c.description
+          .split('\n')
+          .map((step) => step.trim())
+          .filter(Boolean),
+        extraMana: null,
+        bracketLabel: null,
+      }));
+    }
+
+    return this.localTwoCardCombos().map((c) => ({
+      id: c.combo.id,
+      cardNames: c.cards.map((card) => card.name),
+      produces: [],
+      steps: [],
+      extraMana: c.combo.manaValueNeeded,
+      bracketLabel: c.combo.bracketTag ? SPELLBOOK_BRACKET_LABELS[c.combo.bracketTag] : null,
+    }));
+  });
+
+  /** Combos aus genau zwei Karten - die, die das offizielle Kriterium meint. */
+  readonly twoCardComboList = computed(() =>
+    this.analysisCombos().filter((c) => c.cardNames.length <= 2)
   );
 
-  readonly spellbookBracketLabel = computed(() => {
-    const tag = this.bracketEstimate()?.bracketTag;
-    return tag ? SPELLBOOK_BRACKET_LABELS[tag] : null;
-  });
+  /** Alle übrigen Combos: drei oder mehr beteiligte Karten. */
+  readonly moreCardComboList = computed(() =>
+    this.analysisCombos().filter((c) => c.cardNames.length > 2)
+  );
+
+  /**
+   * Welche der beiden Combo-Listen das Fenster gerade zeigt - null heißt zu. Die Combos stehen
+   * nicht mehr ausgeklappt in der Analyse, dort steht nur noch ihre Anzahl.
+   */
+  readonly comboPopupKind = signal<'two' | 'more' | null>(null);
+
+  readonly comboPopupCombos = computed(() =>
+    this.comboPopupKind() === 'more' ? this.moreCardComboList() : this.twoCardComboList()
+  );
+
+  openComboPopup(kind: 'two' | 'more'): void {
+    this.comboPopupKind.set(kind);
+  }
+
+  closeComboPopup(): void {
+    this.comboPopupKind.set(null);
+  }
 
   // --- Commander-Bracket (siehe src/app/bracket.ts) ---
 
@@ -2442,16 +2516,30 @@ export class DeckViewerService {
     this.previewCardName.set(null);
   }
 
+  /**
+   * Bild-URLs zu einem bloßen Kartennamen aus den ohnehin geladenen Kartendetails des Decks.
+   *
+   * Die Analyse-Abschnitte zeigen ihre Karten als kleine Vorschaubilder statt als Textlinks; sie
+   * kennen aber - genau wie die große Vorschau - nur den Namen, weil Combo-Karten nicht zwingend
+   * als DeckCard vorliegen. null heißt "kein Bild bekannt", der Aufrufer zeigt dann wie überall
+   * sonst den Namen als Platzhalter.
+   */
+  cardImageUrlFor(name: string): string | null {
+    return this.viewingCardDetails().get(name.toLowerCase())?.imageUrl ?? null;
+  }
+
+  cardBackImageUrlFor(name: string): string | null {
+    return this.viewingCardDetails().get(name.toLowerCase())?.backImageUrl ?? null;
+  }
+
   previewCardImageUrl(): string | null {
     const name = this.previewCardName();
-    if (!name) return null;
-    return this.viewingCardDetails().get(name.toLowerCase())?.imageUrl ?? null;
+    return name ? this.cardImageUrlFor(name) : null;
   }
 
   previewCardBackImageUrl(): string | null {
     const name = this.previewCardName();
-    if (!name) return null;
-    return this.viewingCardDetails().get(name.toLowerCase())?.backImageUrl ?? null;
+    return name ? this.cardBackImageUrlFor(name) : null;
   }
 
   /** Löst den EDHREC-Kartennamen zu vollen Scryfall-Daten auf (EDHREC selbst liefert nur Name+Statistik) und staged ihn wie addCard(). */
@@ -2765,13 +2853,13 @@ export class DeckViewerService {
       { key: 'tutor', labelKey: 'deckView.tutorsTitle', count: countOf(this.tutorCards()), cards: this.tutorCards() },
       {
         key: 'extraturn',
-        labelKey: 'deckView.extraTurnsLabel',
+        labelKey: 'deckView.extraTurnsTitle',
         count: countOf(this.extraTurnCards()),
         cards: this.extraTurnCards(),
       },
       {
         key: 'mld',
-        labelKey: 'deckView.massLandDenialLabel',
+        labelKey: 'deckView.massLandDenialTitle',
         count: countOf(this.massLandDenialCards()),
         cards: this.massLandDenialCards(),
       },

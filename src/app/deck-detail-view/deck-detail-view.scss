@@ -213,6 +213,17 @@
   cursor: pointer;
 }
 
+// Kartenraster der Analyse-Abschnitte (Game Changer, Tutoren, Mass Land Denial, Extra-Turns,
+// Kategorie- und Combo-Fenster). Feste Mindestbreite statt fester Spaltenzahl: die Abschnitte
+// liegen selbst schon in einem Raster (siehe .deck-analysis), ihre Breite schwankt also je nach
+// Bildschirm - die Kartenbilder sollen dabei gleich groß bleiben und lieber umbrechen.
+.analysis-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 6px;
+  margin: 8px 0;
+}
+
 .card-name-preview-overlay {
   position: fixed;
   inset: 0;
@@ -727,7 +738,6 @@
     margin-top: 0;
   }
 }
-
 
 // NEU
 // Gemeinsames Kartenbild-Raster für Add-Karten-Suche UND EDHREC-Vorschläge - liegt bewusst
