@@ -614,9 +614,33 @@ h3 {
   font-weight: 700;
 }
 
-// Spellbooks Combo-Beschreibung kommt mit echten Zeilenumbrüchen (ein Schritt je Zeile).
-.combo-entry-description {
-  white-space: pre-line;
+// Label über einer der beiden Aufzählungen ("Erzeugt:") - ohne den Abstand klebt es an der
+// Zeile darüber, weil die Liste darunter selbst schon eng steht.
+.combo-entry-label {
+  margin-top: 8px;
+}
+
+// Was die Combo erzeugt bzw. wie sie abläuft - beides als Aufzählung statt als Komma- bzw.
+// Zeilenumbruch-Wurst, damit die einzelnen Punkte und Schritte auf einen Blick trennbar sind.
+.combo-produces-list,
+.combo-step-list {
+  margin: 4px 0 0;
+  padding-left: 1.3em;
+}
+
+.combo-produces-list {
+  list-style: disc;
+}
+
+.combo-step-list {
+  list-style: decimal;
+  // Etwas mehr Luft nach oben als bei der Erzeugt-Liste: der Ablauf ist der zweite Block und
+  // soll sich davon absetzen.
+  margin-top: 8px;
+
+  li {
+    margin-bottom: 4px;
+  }
 }
 
 .danger-zone {

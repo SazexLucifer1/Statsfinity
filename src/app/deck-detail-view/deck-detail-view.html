@@ -1352,10 +1352,21 @@
           <ng-container [ngTemplateOutlet]="analysisCardGrid" [ngTemplateOutletContext]="{ $implicit: comboCardEntries(combo) }"></ng-container>
           <p class="combo-entry-names">{{ combo.cardNames.join(' + ') }}</p>
           @if (combo.produces.length > 0) {
-            <p class="hint">{{ viewer.i18n.t('deckView.comboProduces', { produces: combo.produces.join(', ') }) }}</p>
+            <p class="hint combo-entry-label">{{ viewer.i18n.t('deckView.comboProducesLabel') }}</p>
+            <ul class="hint combo-produces-list">
+              @for (produced of combo.produces; track produced) {
+                <li>{{ produced }}</li>
+              }
+            </ul>
           }
-          @if (combo.description) {
-            <p class="hint combo-entry-description">{{ combo.description }}</p>
+          <!-- Nummeriert statt Aufzählungspunkte: Spellbooks Ablaufbeschreibungen verweisen
+               selbst auf Schrittnummern ("Repeat from step 4"), die vorher nirgends standen. -->
+          @if (combo.steps.length > 0) {
+            <ol class="hint combo-step-list">
+              @for (step of combo.steps; track $index) {
+                <li>{{ step }}</li>
+              }
+            </ol>
           }
           @if (combo.extraMana !== null && combo.extraMana > 0) {
             <p class="hint">{{ viewer.i18n.t('deckView.comboExtraMana', { mana: combo.extraMana }) }}</p>
@@ -1363,7 +1374,7 @@
           @if (combo.bracketLabel; as label) {
             <p class="hint">{{ viewer.i18n.t('deckView.comboRating', { label }) }}</p>
           }
-          @if (!combo.description && combo.produces.length === 0) {
+          @if (combo.steps.length === 0 && combo.produces.length === 0) {
             <p class="hint bracket-caveat">{{ viewer.i18n.t('deckView.comboNoDescription') }}</p>
           }
         </div>

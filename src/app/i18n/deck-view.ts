@@ -269,7 +269,7 @@ export const deckView = {
     'deckView.moreCardComboTileLabel': 'Drei und mehr',
     'deckView.twoCardComboDialogTitle': 'Zwei-Karten-Combos',
     'deckView.moreCardComboDialogTitle': 'Combos aus drei und mehr Karten',
-    'deckView.comboProduces': 'Erzeugt: {{produces}}',
+    'deckView.comboProducesLabel': 'Erzeugt:',
     'deckView.comboExtraMana': 'Zusätzlich nötiges Mana: {{mana}}',
     'deckView.comboRating': 'Einstufung dieser Combo: {{label}}',
     'deckView.comboNoDescription':
@@ -568,7 +568,7 @@ export const deckView = {
     'deckView.moreCardComboTileLabel': 'Three or more',
     'deckView.twoCardComboDialogTitle': 'Two-Card Combos',
     'deckView.moreCardComboDialogTitle': 'Combos of three or more cards',
-    'deckView.comboProduces': 'Produces: {{produces}}',
+    'deckView.comboProducesLabel': 'Produces:',
     'deckView.comboExtraMana': 'Additional mana needed: {{mana}}',
     'deckView.comboRating': 'Rating of this combo: {{label}}',
     'deckView.comboNoDescription':

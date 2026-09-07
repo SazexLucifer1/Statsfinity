@@ -66,7 +66,12 @@ export interface AnalysisCombo {
   id: string;
   cardNames: string[];
   produces: string[];
-  description: string;
+  /**
+   * Der Ablauf als einzelne Schritte. Spellbook liefert ihn als einen Text mit einem
+   * Zeilenumbruch je Schritt; aufgeteilt ist er als nummerierte Liste zu lesen, und die
+   * Beschreibungen verweisen selbst auf Schrittnummern ("Repeat from step 4").
+   */
+  steps: string[];
   extraMana: number | null;
   bracketLabel: string | null;
 }
@@ -687,7 +692,10 @@ export class DeckViewerService {
         id: c.cardNames.join('+'),
         cardNames: c.cardNames,
         produces: c.produces,
-        description: c.description,
+        steps: c.description
+          .split('\n')
+          .map((step) => step.trim())
+          .filter(Boolean),
         extraMana: null,
         bracketLabel: null,
       }));
@@ -697,7 +705,7 @@ export class DeckViewerService {
       id: c.combo.id,
       cardNames: c.cards.map((card) => card.name),
       produces: [],
-      description: '',
+      steps: [],
       extraMana: c.combo.manaValueNeeded,
       bracketLabel: c.combo.bracketTag ? SPELLBOOK_BRACKET_LABELS[c.combo.bracketTag] : null,
     }));
