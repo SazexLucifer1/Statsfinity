@@ -88,6 +88,14 @@ export const deck = {
     'importDialog.newEmptyDeckHint':
       'Legt ein Deck ohne Kartenliste an - danach kannst du es in der Detailansicht über "✏️ Bearbeiten" Karte für Karte selbst aufbauen.',
     'importDialog.commanderLabel': 'Commander',
+    'importDialog.partnerLabel': 'Zweiter Commander (Partner, optional)',
+    'importDialog.partnerHint':
+      'Dieser Commander erlaubt einen zweiten daneben - beide werden im neuen Deck als Commander markiert.',
+    'importDialog.partnerChecking': 'Prüfe Partner …',
+    'importDialog.partnerRemove': 'Zweiten Commander entfernen',
+    'importDialog.msg.partnerNotFound': 'Diese Karte wurde bei Scryfall nicht gefunden.',
+    'importDialog.msg.partnerInvalid':
+      "{{card}} kann nicht zusammen mit {{existing}} Commander sein - dafür müsste eine der beiden Karten Partner, Background oder Doctor's companion haben.",
     'importDialog.creating': 'Lege an …',
     'importDialog.create': 'Anlegen',
     'importDialog.msg.createFailed': 'Deck konnte nicht angelegt werden.',
@@ -210,6 +218,14 @@ export const deck = {
     'importDialog.newEmptyDeckHint':
       'Creates a deck without a card list - afterwards you can build it up card by card in the detail view via "✏️ Edit".',
     'importDialog.commanderLabel': 'Commander',
+    'importDialog.partnerLabel': 'Second commander (partner, optional)',
+    'importDialog.partnerHint':
+      'This commander allows a second one alongside it - both are marked as commanders in the new deck.',
+    'importDialog.partnerChecking': 'Checking partner …',
+    'importDialog.partnerRemove': 'Remove second commander',
+    'importDialog.msg.partnerNotFound': 'This card was not found on Scryfall.',
+    'importDialog.msg.partnerInvalid':
+      "{{card}} cannot be commander together with {{existing}} - one of the two cards would need Partner, Background, or Doctor's companion.",
     'importDialog.creating': 'Creating …',
     'importDialog.create': 'Create',
     'importDialog.msg.createFailed': 'Deck could not be created.',
