@@ -252,7 +252,7 @@ export const deckView = {
     'deckView.manaSourceSummary':
       '{{count}} von {{total}} Karten erzeugen Mana · davon {{nonLand}} ohne Land',
     'deckView.manaSourceEmpty': 'Keine Karten gefunden, die Mana erzeugen.',
-    'deckView.gameChangerTitle': 'Game Changer & Bracket-Richtwert',
+    'deckView.gameChangerTitle': 'Game Changer',
     'deckView.gameChangerSummary':
       '{{count}} von {{total}} Karten auf der offiziellen Game-Changer-Liste · {{hint}}',
     'deckView.tutorsTitle': 'Tutoren',
@@ -274,7 +274,6 @@ export const deckView = {
     'deckView.comboNoDescription':
       'Keine Beschreibung verfügbar - Commander Spellbook ist gerade nicht erreichbar, die Combo selbst kommt aus dem nächtlichen Abgleich.',
     'deckView.cardPreviewAria': '{{name}} groß anzeigen',
-    'deckView.spellbookEstimateLabel': 'Stärkstes von Commander Spellbook gefundenes Einzelelement:',
     'deckView.byType': 'Nach Typ',
     'deckView.byOwnTags': '🏷️ Nach eigenen Tags',
     'deckView.searchCardPlaceholder': 'Karte suchen …',
@@ -551,7 +550,7 @@ export const deckView = {
     'deckView.manaSourceSummary':
       '{{count}} of {{total}} cards produce mana · {{nonLand}} of them non-land',
     'deckView.manaSourceEmpty': 'No mana-producing cards found.',
-    'deckView.gameChangerTitle': 'Game Changer & Bracket Estimate',
+    'deckView.gameChangerTitle': 'Game Changer',
     'deckView.gameChangerSummary':
       '{{count}} of {{total}} cards on the official Game Changer list · {{hint}}',
     'deckView.tutorsTitle': 'Tutors',
@@ -573,7 +572,6 @@ export const deckView = {
     'deckView.comboNoDescription':
       'No description available - Commander Spellbook is currently unreachable; the combo itself comes from the nightly sync.',
     'deckView.cardPreviewAria': 'Show {{name}} large',
-    'deckView.spellbookEstimateLabel': 'Strongest single element found by Commander Spellbook:',
     'deckView.byType': 'By Type',
     'deckView.byOwnTags': '🏷️ By Custom Tags',
     'deckView.searchCardPlaceholder': 'Search card …',

@@ -675,11 +675,6 @@ export class DeckViewerService {
     (this.bracketEstimate()?.combos ?? []).filter((c) => c.definitelyTwoCard || c.arguablyTwoCard)
   );
 
-  readonly spellbookBracketLabel = computed(() => {
-    const tag = this.bracketEstimate()?.bracketTag;
-    return tag ? SPELLBOOK_BRACKET_LABELS[tag] : null;
-  });
-
   /**
    * Die Combos für die Anzeige, aus beiden Quellen auf eine Form gebracht: bevorzugt die
    * Live-Auswertung (die als einzige weiß, WAS eine Combo erzeugt und wie sie abläuft), sonst die

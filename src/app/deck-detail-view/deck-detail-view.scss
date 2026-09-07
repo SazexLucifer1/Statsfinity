@@ -219,7 +219,7 @@
 // Bildschirm - die Kartenbilder sollen dabei gleich groß bleiben und lieber umbrechen.
 .analysis-card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(66px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
   gap: 6px;
   margin: 8px 0;
 }
@@ -264,7 +264,7 @@
   // Im Fenster stehen je Combo nur zwei Karten - ohne Deckel würden sie über die ganze
   // Sheet-Breite gezogen und wären größer als die Karten in der Analyse selbst.
   .analysis-card-grid {
-    grid-template-columns: repeat(2, 78px);
+    grid-template-columns: repeat(2, 94px);
   }
 
   .hint {

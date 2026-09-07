@@ -900,12 +900,15 @@
 
               <section class="analysis-section">
                 <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.gameChangerTitle') }}</h4>
-                <p class="hint">
-                  {{ viewer.i18n.t('deckView.gameChangerSummary', { count: viewer.gameChangerCount(), total: viewer.viewingTotalCards(), hint: viewer.estimatedBracketHint() }) }}
-                </p>
+                <!-- Der erklärende Satz steht bewusst UNTER den Karten: sonst schiebt er als
+                     einziger Abschnitt sein Kartenraster zwei Zeilen nach unten, und die
+                     Kartenbilder der Analyse stünden nicht mehr alle auf einer Höhe. -->
                 @if (viewer.gameChangerCards().length > 0) {
                   <ng-container [ngTemplateOutlet]="analysisCardGrid" [ngTemplateOutletContext]="{ $implicit: viewer.gameChangerCards() }"></ng-container>
                 }
+                <p class="hint">
+                  {{ viewer.i18n.t('deckView.gameChangerSummary', { count: viewer.gameChangerCount(), total: viewer.viewingTotalCards(), hint: viewer.estimatedBracketHint() }) }}
+                </p>
               </section>
 
               <section class="analysis-section">
@@ -960,9 +963,6 @@
                         <span class="stat-label">{{ viewer.i18n.t('deckView.twoCardComboOpen') }}</span>
                       </button>
                     </div>
-                  }
-                  @if (viewer.spellbookBracketLabel(); as label) {
-                    <p class="hint">{{ viewer.i18n.t('deckView.spellbookEstimateLabel') }} <strong>{{ label }}</strong></p>
                   }
                   @if (viewer.bracketEstimateFailed()) {
                     <p class="hint bracket-caveat">{{ viewer.i18n.t('deckView.spellbookDetailsMissing') }}</p>
