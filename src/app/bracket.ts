@@ -63,7 +63,7 @@ export const CEDH_TUNING_HINT = 0.85;
  * Grenzfall auflösen, bei dem ein Deck zwar keine verbotene Karte enthält, aber erkennbar
  * durchoptimiert ist.
  */
-const TUNING_BUMP_SCHWELLE = 0.8;
+export const TUNING_BUMP_SCHWELLE = 0.8;
 
 /** Welcher Befund die Einstufung getrieben hat - Grundlage der Begründung in der Oberfläche. */
 export type BracketReasonKey =
@@ -380,6 +380,16 @@ const POWER_SPANNE: Record<BracketLevel, [number, number]> = {
   4: [7, 8.9],
   5: [9, 10],
 };
+
+/**
+ * Die Power-Spanne eines Brackets, also die beiden Werte, zwischen denen powerLevel() interpoliert.
+ *
+ * Existiert, damit die Erklärung in der Oberfläche die Rechnung ("Bracket 3 belegt 5,0 bis 6,9")
+ * vorführen kann, ohne die Zahlen ein zweites Mal abzuschreiben.
+ */
+export function powerRange(bracket: BracketLevel): [number, number] {
+  return POWER_SPANNE[bracket];
+}
 
 /** Power-Wert aus Bracket und Tuning-Grad, auf eine Nachkommastelle. */
 export function powerLevel(bracket: BracketLevel, tuning: number): number {

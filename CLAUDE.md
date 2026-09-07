@@ -147,7 +147,7 @@ Bei diesen Dateien grundsätzlich `grep`/`Glob` vor `Read`; wenn doch gelesen we
 | 1492   | `src/app/mtg.service.ts`                         |
 | 1386   | `src/app/stats-tab/stats-tab.ts`                 |
 | 1111   | `src/app/game-session.service.ts`                |
-| 1271   | `src/app/deck-detail-view/deck-detail-view.html` |
+| 1407   | `src/app/deck-detail-view/deck-detail-view.html` |
 
 `src/app/excel-import.service.ts` wird von grep als binär erkannt (eingebettete Daten) — nicht am Stück lesen.
 
