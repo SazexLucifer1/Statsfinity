@@ -1,3 +1,38 @@
+<!-- Kartenraster der Analyse-Abschnitte: kleines Vorschaubild statt Textlink, ein Klick öffnet
+     dieselbe große Vorschau wie in der Deckliste. Einmal als ng-template, weil Game Changer,
+     Tutoren, Mass Land Denial, Extra-Turns, das Kategorie-Fenster und die Combo-Karten alle
+     dasselbe Raster zeigen. Bewusst hier oben im Wurzel-View, damit alle darunter liegenden
+     @if-/@for-Blöcke darauf zugreifen können. -->
+<ng-template #analysisCardGrid let-cards>
+  <div class="analysis-card-grid">
+    @for (entry of cards; track entry.cardName) {
+      <div
+        class="deck-card-tile clickable"
+        role="button"
+        tabindex="0"
+        [attr.aria-label]="viewer.i18n.t('deckView.cardPreviewAria', { name: entry.cardName })"
+        (click)="viewer.openCardPreview(entry.cardName)"
+        (keydown.enter)="viewer.openCardPreview(entry.cardName)"
+        (keydown.space)="viewer.openCardPreview(entry.cardName)"
+      >
+        @if (viewer.cardImageUrlFor(entry.cardName); as img) {
+          <app-card-image
+            [imageUrl]="img"
+            [backImageUrl]="viewer.cardBackImageUrlFor(entry.cardName)"
+            [alt]="entry.cardName"
+            [compact]="true"
+          />
+        } @else {
+          <div class="deck-card-placeholder">{{ entry.cardName }}</div>
+        }
+        @if (entry.quantity > 1) {
+          <span class="deck-card-qty">{{ entry.quantity }}×</span>
+        }
+      </div>
+    }
+  </div>
+</ng-template>
+
 @if (viewer.viewingDeck(); as deck) {
 <div class="deck-detail-page">
   <div class="deck-detail-header" data-tutorial="deck-detail-header">
@@ -869,14 +904,7 @@
                   {{ viewer.i18n.t('deckView.gameChangerSummary', { count: viewer.gameChangerCount(), total: viewer.viewingTotalCards(), hint: viewer.estimatedBracketHint() }) }}
                 </p>
                 @if (viewer.gameChangerCards().length > 0) {
-                  <ul class="game-changer-list">
-                    @for (gc of viewer.gameChangerCards(); track gc.cardName) {
-                      <li>
-                        @if (gc.quantity > 1) {<span class="deck-card-qty-text">{{ gc.quantity }}×</span>}
-                        <button class="card-name-link" (click)="viewer.openCardPreview(gc.cardName)">{{ gc.cardName }}</button>
-                      </li>
-                    }
-                  </ul>
+                  <ng-container [ngTemplateOutlet]="analysisCardGrid" [ngTemplateOutletContext]="{ $implicit: viewer.gameChangerCards() }"></ng-container>
                 }
               </section>
 
@@ -885,77 +913,53 @@
                 @if (viewer.tutorCards().length === 0) {
                   <p class="hint">{{ viewer.i18n.t('deckView.noneFound') }}</p>
                 } @else {
-                  <ul class="game-changer-list">
-                    @for (t of viewer.tutorCards(); track t.cardName) {
-                      <li>
-                        @if (t.quantity > 1) {<span class="deck-card-qty-text">{{ t.quantity }}×</span>}
-                        <button class="card-name-link" (click)="viewer.openCardPreview(t.cardName)">{{ t.cardName }}</button>
-                      </li>
-                    }
-                  </ul>
+                  <ng-container [ngTemplateOutlet]="analysisCardGrid" [ngTemplateOutletContext]="{ $implicit: viewer.tutorCards() }"></ng-container>
                 }
               </section>
 
-              <section class="analysis-section">
-                <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.mldTitle') }}</h4>
-                <!-- Mass Land Denial, Extra-Turns und die Combo-Paare kommen inzwischen aus dem
-                     nächtlichen Abgleich und stehen damit auch dann, wenn Commander Spellbook
-                     gerade nicht erreichbar ist. Nur WAS eine Combo erzeugt, weiß allein deren
-                     Live-Auswertung - fehlt sie, wird das unten als Fußnote gesagt, statt die
-                     ganze Sektion für nicht verfügbar zu erklären. -->
-                @if (viewer.bracketEstimateBusy() && viewer.spellbookCardFlags().size === 0) {
+              <!-- Mass Land Denial, Extra-Turns und die Combo-Paare kommen inzwischen aus dem
+                   nächtlichen Abgleich und stehen damit auch dann, wenn Commander Spellbook
+                   gerade nicht erreichbar ist. Nur WAS eine Combo erzeugt, weiß allein deren
+                   Live-Auswertung - fehlt sie, wird das im Combo-Fenster als Fußnote gesagt,
+                   statt die ganze Sektion für nicht verfügbar zu erklären. -->
+              @if (viewer.bracketEstimateBusy() && viewer.spellbookCardFlags().size === 0) {
+                <section class="analysis-section">
+                  <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.mldTitle') }}</h4>
                   <p class="hint">{{ viewer.i18n.t('deckView.loadingSpellbookEval') }}</p>
-                } @else {
-                  @if (viewer.massLandDenialCards().length > 0) {
-                    <p class="hint"><strong>{{ viewer.i18n.t('deckView.massLandDenialLabel') }}</strong></p>
-                    <ul class="game-changer-list">
-                      @for (c of viewer.massLandDenialCards(); track c.cardName) {
-                        <li><button class="card-name-link" (click)="viewer.openCardPreview(c.cardName)">{{ c.cardName }}</button></li>
-                      }
-                    </ul>
+                </section>
+              } @else {
+                <section class="analysis-section">
+                  <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.massLandDenialTitle') }}</h4>
+                  @if (viewer.massLandDenialCards().length === 0) {
+                    <p class="hint">{{ viewer.i18n.t('deckView.noneFound') }}</p>
+                  } @else {
+                    <ng-container [ngTemplateOutlet]="analysisCardGrid" [ngTemplateOutletContext]="{ $implicit: viewer.massLandDenialCards() }"></ng-container>
                   }
-                  @if (viewer.extraTurnCards().length > 0) {
-                    <p class="hint"><strong>{{ viewer.i18n.t('deckView.extraTurnsLabel') }}</strong></p>
-                    <ul class="game-changer-list">
-                      @for (c of viewer.extraTurnCards(); track c.cardName) {
-                        <li><button class="card-name-link" (click)="viewer.openCardPreview(c.cardName)">{{ c.cardName }}</button></li>
-                      }
-                    </ul>
+                </section>
+
+                <section class="analysis-section">
+                  <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.extraTurnsTitle') }}</h4>
+                  @if (viewer.extraTurnCards().length === 0) {
+                    <p class="hint">{{ viewer.i18n.t('deckView.noneFound') }}</p>
+                  } @else {
+                    <ng-container [ngTemplateOutlet]="analysisCardGrid" [ngTemplateOutletContext]="{ $implicit: viewer.extraTurnCards() }"></ng-container>
                   }
-                  @if (viewer.twoCardCombos().length > 0) {
-                    <p class="hint"><strong>{{ viewer.i18n.t('deckView.twoCardComboLabel') }}</strong></p>
-                    <ul class="game-changer-list">
-                      @for (combo of viewer.twoCardCombos(); track combo.cardNames.join('+')) {
-                        <li>
-                          @for (name of combo.cardNames; track name; let last = $last) {
-                            <button class="card-name-link" (click)="viewer.openCardPreview(name)">{{ name }}</button>
-                            @if (!last) { <span> + </span> }
-                          }
-                          → {{ combo.produces.join(', ') }}
-                        </li>
-                      }
-                    </ul>
-                  } @else if (viewer.localTwoCardCombos().length > 0) {
-                    <!-- Ohne Live-Auswertung: die Paare aus dem Nachtlauf, ohne die Angabe, was sie erzeugen. -->
-                    <p class="hint"><strong>{{ viewer.i18n.t('deckView.twoCardComboLabel') }}</strong></p>
-                    <ul class="game-changer-list">
-                      @for (combo of viewer.localTwoCardCombos(); track combo.combo.id) {
-                        <li>
-                          @for (card of combo.cards; track card.key; let last = $last) {
-                            <button class="card-name-link" (click)="viewer.openCardPreview(card.name)">{{ card.name }}</button>
-                            @if (!last) { <span> + </span> }
-                          }
-                        </li>
-                      }
-                    </ul>
-                  }
-                  @if (
-                    viewer.massLandDenialCards().length === 0 &&
-                    viewer.extraTurnCards().length === 0 &&
-                    viewer.twoCardCombos().length === 0 &&
-                    viewer.localTwoCardCombos().length === 0
-                  ) {
-                    <p class="hint">{{ viewer.i18n.t('deckView.noneOfThisFound') }}</p>
+                </section>
+
+                <section class="analysis-section">
+                  <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.twoCardComboTitle') }}</h4>
+                  <!-- Nur die Anzahl als Kachel - die Combos selbst samt Erklärung stehen im
+                       eigenen Fenster, sonst schiebt eine lange Combo-Liste die ganze Analyse
+                       auseinander. -->
+                  @if (viewer.analysisCombos().length === 0) {
+                    <p class="hint">{{ viewer.i18n.t('deckView.noneFound') }}</p>
+                  } @else {
+                    <div class="stat-tiles">
+                      <button class="stat-tile stat-tile-button" (click)="viewer.openComboPopup()">
+                        <span class="stat-value">{{ viewer.analysisCombos().length }}</span>
+                        <span class="stat-label">{{ viewer.i18n.t('deckView.twoCardComboOpen') }}</span>
+                      </button>
+                    </div>
                   }
                   @if (viewer.spellbookBracketLabel(); as label) {
                     <p class="hint">{{ viewer.i18n.t('deckView.spellbookEstimateLabel') }} <strong>{{ label }}</strong></p>
@@ -966,8 +970,8 @@
                       <p class="hint bracket-caveat">{{ viewer.i18n.t('deckView.technicalMessage', { detail }) }}</p>
                     }
                   }
-                }
-              </section>
+                </section>
+              }
             }
           </div>
         }
@@ -1314,15 +1318,41 @@
   <div class="options-menu-overlay" (click)="viewer.closeEffectCategoryPopup()">
     <div class="options-menu-sheet" (click)="$event.stopPropagation()">
       <h3>{{ popup.label }}</h3>
-      <ul class="game-changer-list">
-        @for (c of popup.cards; track c.cardName) {
-          <li>
-            @if (c.quantity > 1) {<span class="deck-card-qty-text">{{ c.quantity }}×</span>}
-            <button class="card-name-link" (click)="viewer.openCardPreview(c.cardName)">{{ c.cardName }}</button>
-          </li>
-        }
-      </ul>
+      <ng-container [ngTemplateOutlet]="analysisCardGrid" [ngTemplateOutletContext]="{ $implicit: popup.cards }"></ng-container>
       <button class="glass-button" (click)="viewer.closeEffectCategoryPopup()">
+        {{ viewer.i18n.t('deckView.done') }}
+      </button>
+    </div>
+  </div>
+}
+
+@if (viewer.comboPopupOpen()) {
+  <!-- Bewusst außerhalb von .deck-detail-page - gleicher Grund wie beim Artwork-Dialog oben. -->
+  <div class="options-menu-overlay" (click)="viewer.closeComboPopup()">
+    <div class="options-menu-sheet" (click)="$event.stopPropagation()">
+      <h3>{{ viewer.i18n.t('deckView.twoCardComboDialogTitle') }}</h3>
+      @for (combo of viewer.analysisCombos(); track combo.id) {
+        <div class="combo-entry">
+          <ng-container [ngTemplateOutlet]="analysisCardGrid" [ngTemplateOutletContext]="{ $implicit: comboCardEntries(combo) }"></ng-container>
+          <p class="combo-entry-names">{{ combo.cardNames.join(' + ') }}</p>
+          @if (combo.produces.length > 0) {
+            <p class="hint">{{ viewer.i18n.t('deckView.comboProduces', { produces: combo.produces.join(', ') }) }}</p>
+          }
+          @if (combo.description) {
+            <p class="hint combo-entry-description">{{ combo.description }}</p>
+          }
+          @if (combo.extraMana !== null && combo.extraMana > 0) {
+            <p class="hint">{{ viewer.i18n.t('deckView.comboExtraMana', { mana: combo.extraMana }) }}</p>
+          }
+          @if (combo.bracketLabel; as label) {
+            <p class="hint">{{ viewer.i18n.t('deckView.comboRating', { label }) }}</p>
+          }
+          @if (!combo.description && combo.produces.length === 0) {
+            <p class="hint bracket-caveat">{{ viewer.i18n.t('deckView.comboNoDescription') }}</p>
+          }
+        </div>
+      }
+      <button class="glass-button" (click)="viewer.closeComboPopup()">
         {{ viewer.i18n.t('deckView.done') }}
       </button>
     </div>

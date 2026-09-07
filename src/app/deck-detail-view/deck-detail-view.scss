@@ -213,6 +213,17 @@
   cursor: pointer;
 }
 
+// Kartenraster der Analyse-Abschnitte (Game Changer, Tutoren, Mass Land Denial, Extra-Turns,
+// Kategorie- und Combo-Fenster). Feste Mindestbreite statt fester Spaltenzahl: die Abschnitte
+// liegen selbst schon in einem Raster (siehe .deck-analysis), ihre Breite schwankt also je nach
+// Bildschirm - die Kartenbilder sollen dabei gleich groß bleiben und lieber umbrechen.
+.analysis-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(66px, 1fr));
+  gap: 6px;
+  margin: 8px 0;
+}
+
 .card-name-preview-overlay {
   position: fixed;
   inset: 0;
@@ -238,6 +249,38 @@
   background: rgba(255, 255, 255, 0.08);
   font-size: 1.1rem;
   text-align: center;
+}
+
+// Ein Eintrag im Combo-Fenster: die beteiligten Karten als Bilder, darunter Namen und Erklärung.
+.combo-entry {
+  margin: 0 0 var(--sp-5);
+  padding-bottom: var(--sp-4);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+
+  &:last-of-type {
+    border-bottom: none;
+  }
+
+  // Im Fenster stehen je Combo nur zwei Karten - ohne Deckel würden sie über die ganze
+  // Sheet-Breite gezogen und wären größer als die Karten in der Analyse selbst.
+  .analysis-card-grid {
+    grid-template-columns: repeat(2, 78px);
+  }
+
+  .hint {
+    margin: 4px 0 0;
+  }
+}
+
+.combo-entry-names {
+  margin: 8px 0 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+// Spellbooks Combo-Beschreibung kommt mit echten Zeilenumbrüchen (ein Schritt je Zeile).
+.combo-entry-description {
+  white-space: pre-line;
 }
 
 .bracket-caveat {
@@ -727,7 +770,6 @@
     margin-top: 0;
   }
 }
-
 
 // NEU
 // Gemeinsames Kartenbild-Raster für Add-Karten-Suche UND EDHREC-Vorschläge - liegt bewusst
