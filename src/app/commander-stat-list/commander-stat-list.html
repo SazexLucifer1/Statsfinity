@@ -28,6 +28,9 @@
         <div class="commander-info">
           <span class="commander-name">{{ c.commander }}</span>
           <span class="hint">{{ c.wins }} / {{ c.games }} {{ i18n.t('stats.wins') }} · {{ c.winRate | number: '1.0-0' }}%</span>
+          @if (c.deckOwnerName; as owner) {
+            <span class="borrowed-badge">🤝 {{ i18n.t('stats.from', { name: owner }) }}</span>
+          }
         </div>
         <app-meter [value]="c.winRate" />
       </li>

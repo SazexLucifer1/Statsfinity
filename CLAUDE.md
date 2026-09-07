@@ -145,10 +145,11 @@ Bei diesen Dateien grundsätzlich `grep`/`Glob` vor `Read`; wenn doch gelesen we
 | ------ | ------------------------------------------------ |
 | 3104   | `src/app/deck-viewer.service.ts`                 |
 | 1770   | `src/app/tournament.service.ts`                  |
-| 1866   | `src/app/deck.service.ts`                        |
+| 2016   | `src/app/deck.service.ts`                        |
 | 1492   | `src/app/mtg.service.ts`                         |
 | 1386   | `src/app/stats-tab/stats-tab.ts`                 |
 | 1111   | `src/app/game-session.service.ts`                |
+| 1021   | `src/app/profile-tab/profile-tab.ts`             |
 | 1538   | `src/app/deck-detail-view/deck-detail-view.html` |
 
 `src/app/excel-import.service.ts` wird von grep als binär erkannt (eingebettete Daten) — nicht am Stück lesen.

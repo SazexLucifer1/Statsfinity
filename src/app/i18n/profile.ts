@@ -85,6 +85,15 @@ export const profile = {
     'profile.commanderWithoutDeck': 'Commander ohne Deck',
     'profile.commanderWithoutDeckHint':
       'Spiele, bei denen noch kein eigenes Deck zum passenden Commander existiert.',
+    'profile.commanderListWithoutDeck': 'Ohne Deck',
+    'profile.commanderListBorrowed': 'Geliehen',
+    'profile.commanderListCube': 'Cube',
+    'profile.commanderBorrowed': 'Geliehene Decks',
+    'profile.commanderBorrowedHint':
+      'Spiele mit dem Deck einer anderen Person. Ein Deck gibt es dazu also – es gehört nur jemand anderem und steht deshalb nicht in deiner eigenen Deck-Liste.',
+    'profile.commanderCube': 'Cube-Commander',
+    'profile.commanderCubeHint':
+      'Commander aus Cube- und Draft-Runden. Dazu wird es nie ein Deck geben – solche Spiele werden bewusst nie mit einem Deck verknüpft.',
     'profile.backgroundsTitle': 'Meine Hintergrundbilder',
     'profile.backgroundsHint':
       'Eigene Hintergründe für den Life-Tracker – nur du kannst sie auswählen, außer du gibst sie gezielt für andere Accounts frei.',
@@ -219,6 +228,15 @@ export const profile = {
     'profile.commanderWithoutDeck': 'Commander without deck',
     'profile.commanderWithoutDeckHint':
       "Games for which you don't have a deck for the matching commander yet.",
+    'profile.commanderListWithoutDeck': 'Without deck',
+    'profile.commanderListBorrowed': 'Borrowed',
+    'profile.commanderListCube': 'Cube',
+    'profile.commanderBorrowed': 'Borrowed decks',
+    'profile.commanderBorrowedHint':
+      "Games played with someone else's deck. A deck does exist for these – it just belongs to someone else and therefore isn't part of your own deck list.",
+    'profile.commanderCube': 'Cube commanders',
+    'profile.commanderCubeHint':
+      'Commanders from cube and draft games. There will never be a deck for these – such games are deliberately never linked to a deck.',
     'profile.backgroundsTitle': 'My Backgrounds',
     'profile.backgroundsHint':
       'Custom backgrounds for the life tracker – only you can select them, unless you specifically share them with other accounts.',
