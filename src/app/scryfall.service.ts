@@ -221,6 +221,25 @@ export class ScryfallService {
   }
 
   /**
+   * Autovervollständigung für den ZWEITEN Commander eines Partner-Decks - wie autocomplete(),
+   * schließt aber zusätzlich Backgrounds mit ein: die sind selbst nicht is:commander-legal (keine
+   * "kann dein Commander sein"-Karte) und würden hier sonst fehlen, wandern bei "Choose a
+   * Background" aber genauso mit in die Kommandozone.
+   */
+  async autocompleteSecondCommander(query: string): Promise<string[]> {
+    if (query.trim().length < 2) return [];
+    try {
+      const english = await this.searchCommanderNamesByName(query, true);
+      if (english.length >= 5) return english;
+
+      const german = await this.searchGermanPrintedNames(query, true);
+      return [...new Set([...english, ...german])].slice(0, 12);
+    } catch {
+      return [];
+    }
+  }
+
+  /**
    * Autovervollständigung ohne Commander-Einschränkung - für die öffentliche Kartensuche (jede
    * Karte, nicht nur Commander-legale), nutzt Scryfalls eigenen dafür vorgesehenen Endpoint statt
    * einer eigenen name:"..."-Suche.
@@ -234,10 +253,11 @@ export class ScryfallService {
   }
 
   /** Sucht englische Kartennamen, die als Commander erlaubt sind (Regel 903.3). */
-  private async searchCommanderNamesByName(query: string): Promise<string[]> {
+  private async searchCommanderNamesByName(query: string, includeBackgrounds = false): Promise<string[]> {
     const safeQuery = query.trim().replace(/"/g, '');
     if (!safeQuery) return [];
-    const q = encodeURIComponent(`is:commander name:"${safeQuery}"`);
+    const legality = includeBackgrounds ? '(is:commander or type:background)' : 'is:commander';
+    const q = encodeURIComponent(`${legality} name:"${safeQuery}"`);
     const res = await this.fetchWithRetry(`${API}/cards/search?q=${q}&unique=cards&order=name`);
     if (!res?.ok) return [];
     const data = await res.json();
@@ -311,8 +331,9 @@ export class ScryfallService {
 
   // NEU
   /** Sucht deutsche gedruckte Namen (nur erlaubte Commander) und liefert die englischen Kartennamen zurück. */
-  private async searchGermanPrintedNames(query: string): Promise<string[]> {
-    const q = encodeURIComponent(`is:commander lang:de ${query}`);
+  private async searchGermanPrintedNames(query: string, includeBackgrounds = false): Promise<string[]> {
+    const legality = includeBackgrounds ? '(is:commander or type:background)' : 'is:commander';
+    const q = encodeURIComponent(`${legality} lang:de ${query}`);
     const res = await this.fetchWithRetry(`${API}/cards/search?q=${q}&unique=cards&order=name`);
     if (!res?.ok) return [];
     const data = await res.json();
@@ -558,6 +579,31 @@ export class ScryfallService {
     if ((pa.chooseBackground && pb.isBackground) || (pb.chooseBackground && pa.isBackground)) return true;
     if ((pa.doctorsCompanion && pb.isTimeLordDoctor) || (pb.doctorsCompanion && pa.isTimeLordDoctor)) return true;
     return false;
+  }
+
+  /**
+   * Ob eine Karte überhaupt einen ZWEITEN Commander neben sich erlaubt - beide Hälften einer
+   * Paarung zählen, also auch die passive: ein Background selbst trägt kein Partner-Schlüsselwort,
+   * gehört aber genauso zu einer "Choose a Background"-Paarung wie ein Time Lord Doctor zu einer
+   * "Doctor's companion"-Paarung.
+   */
+  allowsSecondCommander(card: ScryfallCard): boolean {
+    const p = this.partnerProfile(card);
+    return (
+      p.plainPartner ||
+      p.partnerWithName !== null ||
+      p.partnerDesignator !== null ||
+      p.friendsForever ||
+      p.chooseBackground ||
+      p.isBackground ||
+      p.doctorsCompanion ||
+      p.isTimeLordDoctor
+    );
+  }
+
+  /** Prüft, ob zwei Karten zusammen ein regelkonformes Commander-Paar bilden (siehe partnersCompatible()). */
+  canBeCommanderPair(a: ScryfallCard, b: ScryfallCard): boolean {
+    return this.partnersCompatible(a, this.partnerProfile(a), b, this.partnerProfile(b));
   }
 
   /**

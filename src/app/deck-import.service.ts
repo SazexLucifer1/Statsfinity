@@ -1,7 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { DeckService, Deck, DeckOwner } from './deck.service';
 import { PreconService, PreconSummary } from './precon.service';
-import { ScryfallService } from './scryfall.service';
+import { ScryfallService, ScryfallCard } from './scryfall.service';
 import { EdhrecService, EdhrecTag } from './edhrec.service';
 import { I18nService } from './i18n.service';
 import { DeckFormat, DECK_FORMATS } from './models';
@@ -157,6 +157,22 @@ export class DeckImportService {
   readonly newDeckBusy = signal(false);
   readonly newDeckMessage = signal('');
 
+  // --- Zweiter Commander (Partner) - das Feld erscheint nur, wenn der erste Commander laut seinen
+  // Kartendaten überhaupt einen zweiten neben sich erlaubt (Partner, Partner with X,
+  // Partner-Designator, Friends forever, Choose a Background, Doctor's companion). Ohne diesen
+  // Weg landete ein Partner-Deck immer mit nur einem Commander in der Datenbank. ---
+
+  /** Kartendaten des gewählten ersten Commanders - Grundlage für die Partner-Prüfung. */
+  private newDeckCommanderCard: ScryfallCard | null = null;
+  private partnerSearchTimer: ReturnType<typeof setTimeout> | null = null;
+
+  readonly newDeckPartnerAllowed = signal(false);
+  readonly newDeckPartnerQuery = signal('');
+  readonly newDeckPartnerSuggestions = signal<string[]>([]);
+  readonly newDeckPartnerSelected = signal<string | null>(null);
+  readonly newDeckPartnerBusy = signal(false);
+  readonly newDeckPartnerError = signal<string | null>(null);
+
   openNewEmptyDeckDialog(owner: DeckOwner, onCreated: (deck: Deck) => void): void {
     this.owner = owner;
     this.onEmptyDeckCreated = onCreated;
@@ -166,6 +182,9 @@ export class DeckImportService {
     this.newDeckCommanderSelected.set(null);
     this.newDeckFormat.set('Commander');
     this.newDeckMessage.set('');
+    this.newDeckCommanderCard = null;
+    this.clearNewDeckPartner();
+    this.newDeckPartnerAllowed.set(false);
     this.lastTagsCommander = null;
     this.selectedCommanderTag.set(null);
     this.availableCommanderTags.set([]);
@@ -179,17 +198,84 @@ export class DeckImportService {
   onNewDeckCommanderInput(value: string): void {
     this.newDeckCommanderQuery.set(value);
     this.newDeckCommanderSelected.set(null);
+    this.newDeckCommanderCard = null;
+    this.newDeckPartnerAllowed.set(false);
+    this.clearNewDeckPartner();
     if (this.emptyDeckCommanderSearchTimer) clearTimeout(this.emptyDeckCommanderSearchTimer);
     this.emptyDeckCommanderSearchTimer = setTimeout(async () => {
       this.newDeckCommanderSuggestions.set(await this.scryfall.autocomplete(value));
     }, 250);
   }
 
-  selectNewDeckCommander(name: string): void {
+  async selectNewDeckCommander(name: string): Promise<void> {
     this.newDeckCommanderSelected.set(name);
     this.newDeckCommanderQuery.set(name);
     this.newDeckCommanderSuggestions.set([]);
+    this.newDeckCommanderCard = null;
+    this.newDeckPartnerAllowed.set(false);
+    this.clearNewDeckPartner();
     this.loadTagsForCommander(name);
+
+    const card = await this.scryfall.findCard(name);
+    // Zwischenzeitlich einen anderen Commander gewählt? Dann gehört dieses (langsamere) Ergebnis
+    // nicht mehr zur aktuellen Auswahl und wird verworfen.
+    if (this.newDeckCommanderSelected() !== name) return;
+    this.newDeckCommanderCard = card;
+    this.newDeckPartnerAllowed.set(!!card && this.scryfall.allowsSecondCommander(card));
+  }
+
+  onNewDeckPartnerInput(value: string): void {
+    this.newDeckPartnerQuery.set(value);
+    this.newDeckPartnerSelected.set(null);
+    this.newDeckPartnerError.set(null);
+    if (this.partnerSearchTimer) clearTimeout(this.partnerSearchTimer);
+    this.partnerSearchTimer = setTimeout(async () => {
+      this.newDeckPartnerSuggestions.set(await this.scryfall.autocompleteSecondCommander(value));
+    }, 250);
+  }
+
+  /**
+   * Übernimmt den zweiten Commander - aber nur, wenn er mit dem ersten zusammen ein regelkonformes
+   * Paar bildet. Sonst bleibt die Auswahl leer und der Grund steht als Fehlermeldung im Dialog
+   * (dieselbe Prüfung wie beim nachträglichen Markieren im Deck-Editor, siehe
+   * DeckViewerService.toggleCommanderMark()).
+   */
+  async selectNewDeckPartner(name: string): Promise<void> {
+    this.newDeckPartnerQuery.set(name);
+    this.newDeckPartnerSuggestions.set([]);
+    this.newDeckPartnerSelected.set(null);
+    this.newDeckPartnerError.set(null);
+
+    const first = this.newDeckCommanderCard;
+    if (!first) return;
+
+    this.newDeckPartnerBusy.set(true);
+    const card = await this.scryfall.findCard(name);
+    this.newDeckPartnerBusy.set(false);
+    if (this.newDeckPartnerQuery() !== name) return;
+
+    if (!card) {
+      this.newDeckPartnerError.set(this.i18n.t('importDialog.msg.partnerNotFound'));
+      return;
+    }
+    if (!this.scryfall.canBeCommanderPair(first, card)) {
+      this.newDeckPartnerError.set(
+        this.i18n.t('importDialog.msg.partnerInvalid', { existing: first.name, card: card.name })
+      );
+      return;
+    }
+
+    this.newDeckPartnerSelected.set(card.name);
+    this.newDeckPartnerQuery.set(card.name);
+  }
+
+  clearNewDeckPartner(): void {
+    if (this.partnerSearchTimer) clearTimeout(this.partnerSearchTimer);
+    this.newDeckPartnerQuery.set('');
+    this.newDeckPartnerSuggestions.set([]);
+    this.newDeckPartnerSelected.set(null);
+    this.newDeckPartnerBusy.set(false);
+    this.newDeckPartnerError.set(null);
   }
 
   async createEmptyDeck(): Promise<void> {
@@ -202,15 +288,12 @@ export class DeckImportService {
 
     const tag = this.selectedCommanderTag();
     const format = this.newDeckFormat();
-    const deckId = await this.deckService.saveDeck(
-      this.owner,
-      name,
-      format,
-      `Commander:\n1 ${commander}`,
-      null,
-      false,
-      tag
-    );
+    // Beide Commander stehen unter derselben "Commander:"-Überschrift - parseDecklistText()
+    // markiert dadurch beide Zeilen als Commander (is_commander), genau wie bei einem Import einer
+    // Partner-Decklist.
+    const partner = this.newDeckPartnerAllowed() ? this.newDeckPartnerSelected() : null;
+    const commanderSection = partner ? `Commander:\n1 ${commander}\n1 ${partner}` : `Commander:\n1 ${commander}`;
+    const deckId = await this.deckService.saveDeck(this.owner, name, format, commanderSection, null, false, tag);
 
     this.newDeckBusy.set(false);
 

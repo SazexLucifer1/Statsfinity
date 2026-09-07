@@ -137,6 +137,39 @@
       }
     </div>
 
+    @if (importService.newDeckPartnerAllowed()) {
+      <div class="import-field">
+        <label class="hint" for="empty-deck-partner-input">{{ importService.i18n.t('importDialog.partnerLabel') }}</label>
+        <input
+          id="empty-deck-partner-input"
+          class="glass-input"
+          type="text"
+          [placeholder]="importService.i18n.t('profile.searchCardPlaceholder')"
+          [ngModel]="importService.newDeckPartnerQuery()"
+          (ngModelChange)="importService.onNewDeckPartnerInput($event)"
+        />
+        @if (importService.newDeckPartnerSuggestions().length > 0) {
+          <ul class="commander-suggestions">
+            @for (s of importService.newDeckPartnerSuggestions(); track s) {
+              <li (click)="importService.selectNewDeckPartner(s)">{{ s }}</li>
+            }
+          </ul>
+        }
+        @if (importService.newDeckPartnerBusy()) {
+          <p class="hint">{{ importService.i18n.t('importDialog.partnerChecking') }}</p>
+        }
+        @if (importService.newDeckPartnerError()) {
+          <p class="error">{{ importService.newDeckPartnerError() }}</p>
+        }
+        @if (importService.newDeckPartnerSelected()) {
+          <button class="glass-button small" (click)="importService.clearNewDeckPartner()">
+            {{ importService.i18n.t('importDialog.partnerRemove') }}
+          </button>
+        }
+        <p class="hint">{{ importService.i18n.t('importDialog.partnerHint') }}</p>
+      </div>
+    }
+
     @if (importService.newDeckCommanderSelected()) {
       <div class="import-field">
         <label class="hint" for="empty-deck-tag-select">{{ importService.i18n.t('importDialog.edhrecTagLabel') }}</label>
