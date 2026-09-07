@@ -34,6 +34,29 @@ export interface SpellbookTwoCardCombo {
 }
 
 /**
+ * Eine Zeile aus der Combo-Finder-Suche: eine Combo, der bei der abgefragten Deckliste genau eine
+ * Karte fehlt. Namen sind normalisierte Vorderseiten-Namen, also derselbe Schlüssel wie überall.
+ */
+export interface ComboSuggestionRow {
+  comboId: string;
+  /** Die eine Karte, die dem Deck für diese Combo noch fehlt. */
+  missing: string;
+  /** Die Karten der Combo, die das Deck schon hat. */
+  present: string[];
+  cardCount: number;
+  /** Was die Combo am Ende erzeugt, in Spellbooks Benennung ("Infinite mana", ...). */
+  produces: string[];
+  /** Der Ablauf, ein Schritt je Zeile. */
+  description: string;
+  manaValueNeeded: number | null;
+  popularity: number | null;
+  /** Wie viele Combos dieselbe fehlende Karte insgesamt freischaltet. */
+  comboCount: number;
+  /** Wie viele fehlende Karten die Suche insgesamt gefunden hat (vor dem Farbfilter). */
+  totalCards: number;
+}
+
+/**
  * Lesezugriff auf den eigenen Kartendatenbestand, den der nächtliche Abgleich füllt
  * (scripts/sync-scryfall-bulk.js, Tabellen in sql/scryfall-cache-2026-09-06.sql).
  *
@@ -353,60 +376,51 @@ export class CardDataService {
   }
 
   /**
-   * Alle Zwei-Karten-Combos, in denen MINDESTENS EINE der übergebenen Karten vorkommt - egal, an
-   * welcher der beiden Stellen sie in der Quelle steht.
+   * Combo-Finder: alle Combos, denen bei dieser Deckliste genau EINE Karte fehlt.
    *
-   * Bewusst getrennt von twoCardCombosFor(): dort reicht die Abfrage über card_a_normalized, weil
-   * eine vollständige Combo ohnehin beide Karten im Deck hat und damit auch die erste. Der
-   * Combo-Finder sucht dagegen genau die Combos, denen eine Karte FEHLT - und die fehlende steht
-   * in der Hälfte der Fälle in Spalte A. Ohne die zweite Abfrage bliebe rund die Hälfte aller
-   * Vorschläge unsichtbar.
+   * Die eigentliche Arbeit macht die Datenbankfunktion spellbook_combos_missing_one (siehe
+   * sql/spellbook-combos-2026-09-07.sql). Aus der App heraus wäre die Frage gar nicht stellbar:
+   * "genau eine Karte fehlt" verlangt eine Gruppierung über die Karten je Combo, und ohne sie
+   * müsste der Browser alle Combos herunterladen, die irgendeine Deckkarte enthalten - bei
+   * 108.500 Combos und einer verbreiteten Karte wie Sol Ring zehntausende Zeilen für am Ende
+   * vierzig Vorschläge.
    *
-   * Deshalb auch nur auf Anforderung geladen (siehe DeckViewerService.openComboFinder()): das ist
-   * die doppelte Menge an Zeilen gegenüber der Bracket-Abfrage, und wer ein Deck nur anschaut,
-   * braucht sie nicht.
+   * available === false heißt "die Funktion oder die Tabellen gibt es noch nicht" (Migration noch
+   * nicht ausgeführt, Nachtlauf noch nicht gelaufen). Bewusst unterschieden von "keine Treffer":
+   * die Oberfläche sagt in dem Fall, woran es liegt, statt "nichts gefunden" zu behaupten.
    */
-  async combosTouching(cardNames: string[]): Promise<SpellbookTwoCardCombo[]> {
-    const keys = [...new Set(cardNames.map((n) => this.lookupKey(n)).filter(Boolean))];
-    if (keys.length === 0) return [];
+  async combosMissingOneCard(
+    deckNames: string[],
+    commanderNames: string[],
+  ): Promise<{ rows: ComboSuggestionRow[]; available: boolean }> {
+    const keys = [...new Set(deckNames.map((n) => this.lookupKey(n)).filter(Boolean))];
+    if (keys.length === 0) return { rows: [], available: true };
 
-    // Nach id zusammengeführt: eine Combo, bei der beide Karten im Deck liegen, kommt sonst
-    // zweimal zurück - einmal aus jeder der beiden Abfragen.
-    const nachId = new Map<string, SpellbookTwoCardCombo>();
+    const { data, error } = await supabase.rpc('spellbook_combos_missing_one', {
+      deck_names: keys,
+      commander_names: [...new Set(commanderNames.map((n) => this.lookupKey(n)).filter(Boolean))],
+    });
 
-    for (const spalte of ['card_a_normalized', 'card_b_normalized'] as const) {
-      // Gleiche Blockgröße wie in twoCardCombosFor() und aus demselben Grund: eine einzelne
-      // verbreitete Karte (Sol Ring & Co.) steckt in vielen Combos, und ab 1000 Zeilen schneidet
-      // PostgREST stillschweigend ab.
-      for (const block of chunk(keys, 40)) {
-        const { data, error } = await supabase
-          .from('spellbook_two_card_combos')
-          .select(
-            'id, card_a_normalized, card_b_normalized, a_must_be_commander, b_must_be_commander, mana_value_needed, bracket_tag, popularity',
-          )
-          .in(spalte, block);
-
-        if (error) {
-          console.warn('Spellbook-Combos konnten nicht geladen werden:', error.message);
-          return [];
-        }
-
-        for (const row of data ?? []) {
-          nachId.set(row.id as string, {
-            id: row.id as string,
-            cardA: row.card_a_normalized as string,
-            cardB: row.card_b_normalized as string,
-            aMustBeCommander: row.a_must_be_commander as boolean,
-            bMustBeCommander: row.b_must_be_commander as boolean,
-            manaValueNeeded: (row.mana_value_needed as number | null) ?? null,
-            bracketTag: (row.bracket_tag as SpellbookBracketTag | null) ?? null,
-            popularity: (row.popularity as number | null) ?? null,
-          });
-        }
-      }
+    if (error) {
+      console.warn('Combo-Finder: Suche fehlgeschlagen:', error.message);
+      return { rows: [], available: false };
     }
 
-    return [...nachId.values()];
+    return {
+      rows: (data ?? []).map((row: Record<string, unknown>) => ({
+        comboId: row['combo_id'] as string,
+        missing: row['missing_name'] as string,
+        present: (row['present_names'] as string[] | null) ?? [],
+        cardCount: row['card_count'] as number,
+        produces: (row['produces'] as string[] | null) ?? [],
+        description: (row['description'] as string | null) ?? '',
+        manaValueNeeded: (row['mana_value_needed'] as number | null) ?? null,
+        popularity: (row['popularity'] as number | null) ?? null,
+        comboCount: row['combo_count'] as number,
+        totalCards: row['total_cards'] as number,
+      })),
+      available: true,
+    };
   }
 
   /**

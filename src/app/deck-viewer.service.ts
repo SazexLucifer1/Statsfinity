@@ -11,7 +11,7 @@ import {
   powerRange,
   presentCombos,
 } from './bracket';
-import { fitsColorIdentity, missingComboPartners } from './combo-finder';
+import { comboSteps, fitsColorIdentity, groupSuggestions } from './combo-finder';
 import { PdfSourceCard } from './deck-pdf.service';
 import {
   CommanderSpellbookService,
@@ -78,22 +78,32 @@ export interface AnalysisCombo {
 }
 
 /**
- * Eine Karte, die das Deck noch NICHT hat und die dort neue Zwei-Karten-Combos ergäbe - ein
- * Eintrag des Combo-Finders, fertig für die Anzeige.
+ * Eine Karte, die das Deck noch NICHT hat und die dort neue Combos ergäbe - ein Eintrag des
+ * Combo-Finders, fertig für die Anzeige.
  */
 export interface ComboFinderSuggestion {
   /** Normalisierter Vorderseiten-Name - Schlüssel gegen die Combo-Tabelle. */
   key: string;
   /** Anzeigename in Scryfall-Schreibweise, zugleich Schlüssel für Bild und Vorschau. */
   cardName: string;
-  /** Die Karten aus dem Deck, mit denen diese eine Karte je eine Combo bilden würde. */
-  partners: ComboFinderPartner[];
+  /** Wie viele Combos diese Karte insgesamt freischaltet - kann größer sein als combos.length. */
+  comboCount: number;
+  /** Die Combos selbst, beliebteste zuerst. */
+  combos: ComboFinderCombo[];
 }
 
-export interface ComboFinderPartner {
-  cardName: string;
-  /** Spellbooks Note für genau diese Combo, schon übersetzt - null, wenn die Quelle keine hat. */
-  bracketLabel: string | null;
+/** Eine einzelne Combo, der genau diese eine Karte fehlt. */
+export interface ComboFinderCombo {
+  id: string;
+  /**
+   * Die Karten der Combo, die schon im Deck liegen - als Anzeigenamen, damit sie im Karten-Raster
+   * mit Bild erscheinen können.
+   */
+  presentCardNames: string[];
+  /** Was die Combo am Ende erzeugt ("Infinite mana", ...). Leer, wenn die Quelle nichts nennt. */
+  produces: string[];
+  /** Der Ablauf als nummerierbare Schritte - Grundlage des "Ablauf anzeigen"-Fensters. */
+  steps: string[];
   /** Zusätzlich nötiges Mana, um die Combo abzuschließen. */
   extraMana: number | null;
 }
@@ -772,9 +782,9 @@ export class DeckViewerService {
   /**
    * Höchstens so viele Vorschläge werden angezeigt.
    *
-   * Nicht als Sparmaßnahme, sondern weil eine ungekürzte Liste nutzlos wäre: Ein durchschnittliches
-   * Commander-Deck berührt so viele der rund 4.000 Zwei-Karten-Combos, dass leicht dreistellig
-   * viele Karten "irgendeine" Combo ergäben. missingComboPartners() sortiert das Beste nach vorn
+   * Nicht als Sparmaßnahme, sondern weil eine ungekürzte Liste nutzlos wäre: Ein
+   * durchschnittliches Commander-Deck berührt so viele der rund 108.500 Combos, dass leicht
+   * dreistellig viele Karten "irgendeine" Combo ergäben. Die Suche sortiert das Beste nach vorn
    * (meiste Combos, dann Beliebtheit); alles dahinter ist Rauschen. Die Gesamtzahl steht trotzdem
    * unter der Liste, damit die Kürzung sichtbar ist.
    */
@@ -785,6 +795,12 @@ export class DeckViewerService {
   readonly comboFinderSuggestions = signal<ComboFinderSuggestion[]>([]);
   /** Wie viele passende Vorschläge es insgesamt gab - kann größer sein als die angezeigte Liste. */
   readonly comboFinderTotal = signal(0);
+  /**
+   * false = die Combo-Daten stehen noch gar nicht bereit (Migration nicht ausgeführt oder
+   * Nachtlauf noch nicht gelaufen). Bewusst getrennt von "nichts gefunden": die Oberfläche sagt
+   * dann, woran es liegt, statt fälschlich zu behaupten, es gäbe keine Vorschläge.
+   */
+  readonly comboFinderAvailable = signal(true);
 
   /**
    * Scryfall-Daten der vorgeschlagenen Karten, Schlüssel wie viewingCardDetails (Name in
@@ -793,6 +809,17 @@ export class DeckViewerService {
    * genau darauf verlassen sich Manakurve, Pip-Verteilung und Bracket-Rechnung.
    */
   private readonly comboFinderCardDetails = signal<Map<string, ScryfallCard>>(new Map());
+
+  /** Die Combo, deren Ablauf gerade als Fenster offen ist - null heißt zu. */
+  readonly comboFinderDetail = signal<ComboFinderCombo | null>(null);
+
+  openComboFinderDetail(combo: ComboFinderCombo): void {
+    this.comboFinderDetail.set(combo);
+  }
+
+  closeComboFinderDetail(): void {
+    this.comboFinderDetail.set(null);
+  }
 
   /** Einmal geladen, reicht für dieses Deck - zurückgesetzt in loadCardDetails(). */
   private comboFinderLoaded = false;
@@ -824,9 +851,9 @@ export class DeckViewerService {
   /**
    * Öffnet den Combo-Finder und lädt beim ersten Mal seine Daten nach.
    *
-   * Bewusst erst auf Klick statt beim Öffnen des Decks: die Abfrage geht über BEIDE Spalten der
-   * Combo-Tabelle (rund die doppelte Zeilenmenge der Bracket-Abfrage) und zieht danach noch die
-   * Kartendaten aller Vorschläge nach. Wer ein Deck nur anschaut, soll das nicht bezahlen.
+   * Bewusst erst auf Klick statt beim Öffnen des Decks: die Suche geht über 350.000 Kartenzeilen
+   * und zieht danach noch die Kartendaten aller Vorschläge nach. Wer ein Deck nur anschaut, soll
+   * das nicht bezahlen.
    */
   async openComboFinder(): Promise<void> {
     this.comboFinderOpen.set(true);
@@ -846,8 +873,11 @@ export class DeckViewerService {
       return;
     }
 
-    const combos = await this.cardData.combosTouching(cards.map((c) => c.name));
-    const vorschlaege = missingComboPartners(cards, combos);
+    const { rows, available } = await this.cardData.combosMissingOneCard(
+      cards.map((c) => c.name),
+      cards.filter((c) => c.isCommander).map((c) => c.name),
+    );
+    const vorschlaege = groupSuggestions(rows);
     const details = await this.cardData.cardsByNormalizedNames(vorschlaege.map((v) => v.key));
 
     // Zwischenzeitlich ein anderes Deck geöffnet? Dann gehören diese Vorschläge nicht mehr hierher.
@@ -864,6 +894,7 @@ export class DeckViewerService {
       return !!card && fitsColorIdentity(card.colorIdentity, identity);
     });
 
+    this.comboFinderAvailable.set(available);
     this.comboFinderTotal.set(passend.length);
 
     const gezeigt = passend.slice(0, DeckViewerService.COMBO_FINDER_MAX);
@@ -875,21 +906,22 @@ export class DeckViewerService {
         }),
       ),
     );
+
+    // Die Suche kennt nur normalisierte Namen; angezeigt werden sollen die Namen, die auch in der
+    // Deckliste stehen.
+    const anzeigename = new Map(cards.map((c) => [c.key, c.name]));
     this.comboFinderSuggestions.set(
       gezeigt.map((v) => ({
         key: v.key,
         cardName: (details.get(v.key) as ScryfallCard).name,
-        partners: [...v.matches]
-          // Innerhalb eines Vorschlags die bekannteste Combo zuerst - bei einer Karte, die fünf
-          // Combos freischaltet, will man die geläufige sehen und nicht die Randnotiz.
-          .sort((x, y) => (y.combo.popularity ?? 0) - (x.combo.popularity ?? 0))
-          .map((m) => ({
-            cardName: m.partner.name,
-            bracketLabel: m.combo.bracketTag
-              ? SPELLBOOK_BRACKET_LABELS[m.combo.bracketTag]
-              : null,
-            extraMana: m.combo.manaValueNeeded,
-          })),
+        comboCount: v.comboCount,
+        combos: v.combos.map((c) => ({
+          id: c.comboId,
+          presentCardNames: c.present.map((key) => anzeigename.get(key) ?? key),
+          produces: c.produces,
+          steps: comboSteps(c.description),
+          extraMana: c.manaValueNeeded,
+        })),
       })),
     );
     this.comboFinderLoaded = true;
@@ -898,6 +930,7 @@ export class DeckViewerService {
 
   closeComboFinder(): void {
     this.comboFinderOpen.set(false);
+    this.comboFinderDetail.set(null);
   }
 
   // --- Commander-Bracket (siehe src/app/bracket.ts) ---
@@ -2846,8 +2879,10 @@ export class DeckViewerService {
     // vorgeschlagenen Karte immer noch der Vorschlag, sie einzufügen.
     this.comboFinderLoaded = false;
     this.comboFinderOpen.set(false);
+    this.comboFinderDetail.set(null);
     this.comboFinderSuggestions.set([]);
     this.comboFinderTotal.set(0);
+    this.comboFinderAvailable.set(true);
     this.comboFinderCardDetails.set(new Map());
     const names = [...new Set(cards.map((c) => c.cardName))];
     // Parallel: Markierungen (eine kleine Abfrage, danach je Sitzung zwischengespeichert) und

@@ -684,3 +684,25 @@ h3 {
   display: block;
   opacity: 0.75;
 }
+
+// Die eine Karte, die dem Deck für eine Combo noch fehlt (Combo-Finder). Rot statt eines Symbols,
+// weil das Raster nur Bilder zeigt - ein Zeichen daneben ginge zwischen den Kartenrändern unter.
+.deck-card-tile.missing-card {
+  border-radius: var(--r-md);
+  outline: 2px solid #ff5f56;
+  outline-offset: 2px;
+}
+
+// Überschrift über der fehlenden Karte - dichter an ihr Bild als der Standardabstand, damit
+// Beschriftung und Karte als ein Block lesbar sind.
+.combo-finder-missing-label {
+  margin-bottom: 0;
+}
+
+// Eine der Combos unter einem Vorschlag. Eingerückt mit Linie: ein Vorschlag kann mehrere Combos
+// tragen, ohne die Einrückung liefen deren Kartenreihen optisch ineinander.
+.combo-finder-combo {
+  margin-top: var(--sp-3);
+  padding-left: var(--sp-3);
+  border-left: 2px solid rgba(255, 255, 255, 0.12);
+}

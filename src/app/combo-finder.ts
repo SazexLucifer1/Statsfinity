@@ -1,97 +1,80 @@
-import type { SpellbookTwoCardCombo } from './card-data.service';
-import type { BracketCard } from './bracket';
+import type { ComboSuggestionRow } from './card-data.service';
 
 /**
  * Der Combo-Finder: WELCHE KARTE FEHLT NOCH?
  *
  * Gegenstück zu presentCombos() in bracket.ts. Dort geht es um die Combos, die im Deck schon
  * vollständig drinstecken; hier um die, denen genau EINE Karte fehlt - also um konkrete
- * Kaufvorschläge ("nimm Karte X dazu, dann hast du mit Y eine Combo").
+ * Kaufvorschläge ("nimm Karte X dazu, dann hast du mit Y und Z eine Combo").
  *
- * Datenquelle ist dieselbe gespiegelte Zwei-Karten-Combo-Tabelle aus dem nächtlichen
- * Commander-Spellbook-Abgleich (sql/spellbook-cache-2026-09-06.sql). Es wird also nichts live
- * abgefragt und nichts geraten.
+ * Die Kartenzahl der Combo spielt dabei keine Rolle: "eine liegt im Deck, die zweite fehlt" ist
+ * derselbe Vorschlag wie "drei liegen im Deck, die vierte fehlt".
+ *
+ * Welche Combos das sind, beantwortet die Datenbankfunktion spellbook_combos_missing_one (siehe
+ * sql/spellbook-combos-2026-09-07.sql) - eine Gruppierung über 350.000 Kartenzeilen gehört nicht
+ * in den Browser. Hier bleibt, was danach kommt: nach der fehlenden Karte bündeln, nach Nutzen
+ * sortieren und auf die Farben des Decks eingrenzen.
  *
  * Reine Rechenfunktionen ohne Angular- und Netzwerkbezug, damit sich jede Regel in
  * combo-finder.spec.ts einzeln festnageln lässt - gleiche Aufteilung wie bei bracket.ts.
  */
 
-/** Eine Combo, der genau eine Karte fehlt, samt der Karte, die das Deck dafür schon hat. */
-export interface ComboMatch {
-  combo: SpellbookTwoCardCombo;
-  /** Die Karte aus dem Deck, mit der die Combo zustande käme. */
-  partner: BracketCard;
-}
-
-/** Eine vorgeschlagene Karte: ihr Schlüssel und alles, was sie im Deck freischalten würde. */
+/** Eine vorgeschlagene Karte und alles, was sie im Deck freischalten würde. */
 export interface ComboSuggestion {
-  /** Normalisierter Vorderseiten-Name der fehlenden Karte - Schlüssel wie BracketCard.key. */
+  /** Normalisierter Vorderseiten-Name der fehlenden Karte. */
   key: string;
-  /** Alle Combos, die genau diese eine Karte vervollständigen würde. Nie leer. */
-  matches: ComboMatch[];
+  /**
+   * Wie viele Combos diese Karte insgesamt freischaltet. Kann größer sein als combos.length: die
+   * Suche gibt je Karte nur die beliebtesten Combos zurück, weil eine einzelne Karte in
+   * dreistellig vielen stecken kann.
+   */
+  comboCount: number;
+  /** Die zurückgelieferten Combos, beliebteste zuerst. Nie leer. */
+  combos: ComboSuggestionRow[];
 }
 
 /**
- * Welche Karten würden im Deck neue Zwei-Karten-Combos ergeben?
+ * Bündelt die Suchtreffer nach der fehlenden Karte und sortiert nach Nutzen.
  *
- * Eine Combo zählt nur, wenn GENAU EINE ihrer beiden Karten im Deck liegt: liegen beide drin, ist
- * sie längst vorhanden (und steht in der Combo-Liste der Analyse), liegt keine drin, wäre der
- * Vorschlag zwei Karten weit weg und damit kein Vorschlag mehr, sondern eine zweite Deckidee.
- *
- * Zwei Fälle, in denen die mustBeCommander-Bedingung der Quelle einen Vorschlag ausschließt
- * (dieselben 42 Combos, die auch presentCombos() gesondert behandelt):
- *
- * 1. Die FEHLENDE Karte müsste der Commander sein. Sie einfach ins Deck zu legen brächte nichts -
- *    und den Commander zu tauschen ist kein Kartenvorschlag, sondern ein anderes Deck.
- * 2. Die VORHANDENE Karte müsste der Commander sein, ist es aber nicht. Dann liefe die Combo auch
- *    mit der Ergänzung nicht.
- *
- * Sortiert nach Nutzen: erst die Karte, die die meisten Combos auf einmal freischaltet, bei
- * Gleichstand die bei Commander Spellbook beliebtere (popularity), zuletzt alphabetisch, damit die
- * Reihenfolge bei gleichen Werten stabil bleibt.
+ * Sortiert wird hier ein zweites Mal, obwohl die Datenbank das schon tut: Die Reihenfolge einer
+ * SQL-Antwort ist nichts, worauf sich eine Oberfläche verlassen sollte, und die Regel gehört
+ * ohnehin an eine Stelle, an der sie prüfbar ist. Erst die Karte, die die meisten Combos auf
+ * einmal freischaltet, bei Gleichstand die mit der beliebtesten Combo, zuletzt alphabetisch,
+ * damit die Reihenfolge bei gleichen Werten stabil bleibt.
  */
-export function missingComboPartners(
-  cards: BracketCard[],
-  combos: SpellbookTwoCardCombo[],
-): ComboSuggestion[] {
-  const byKey = new Map(cards.map((c) => [c.key, c]));
-  const nachSchluessel = new Map<string, ComboMatch[]>();
+export function groupSuggestions(rows: ComboSuggestionRow[]): ComboSuggestion[] {
+  const nachSchluessel = new Map<string, ComboSuggestion>();
 
-  for (const combo of combos) {
-    // Eine Combo aus zweimal derselben Karte ist über die Deckliste nicht abbildbar - dass die
-    // Karte fehlt UND vorhanden ist, kann nicht beides stimmen.
-    if (combo.cardA === combo.cardB) continue;
-
-    const a = byKey.get(combo.cardA);
-    const b = byKey.get(combo.cardB);
-    // Beide da (schon vorhanden) oder keine da (zu weit weg) - beides kein Vorschlag.
-    if (!!a === !!b) continue;
-
-    const partner = (a ?? b) as BracketCard;
-    const fehlt = a ? combo.cardB : combo.cardA;
-    const partnerMussCommanderSein = a ? combo.aMustBeCommander : combo.bMustBeCommander;
-    const fehlendeMussCommanderSein = a ? combo.bMustBeCommander : combo.aMustBeCommander;
-
-    if (fehlendeMussCommanderSein) continue;
-    if (partnerMussCommanderSein && !partner.isCommander) continue;
-
-    const liste = nachSchluessel.get(fehlt) ?? [];
-    liste.push({ combo, partner });
-    nachSchluessel.set(fehlt, liste);
+  for (const row of rows) {
+    const vorhanden = nachSchluessel.get(row.missing);
+    if (vorhanden) {
+      vorhanden.combos.push(row);
+      // Die Zahl steht in jeder Zeile derselben Karte gleich - die größte zu nehmen kostet nichts
+      // und ist gegen eine unvollständige Antwort robust.
+      vorhanden.comboCount = Math.max(vorhanden.comboCount, row.comboCount);
+    } else {
+      nachSchluessel.set(row.missing, {
+        key: row.missing,
+        comboCount: row.comboCount,
+        combos: [row],
+      });
+    }
   }
 
-  return [...nachSchluessel]
-    .map(([key, matches]) => ({ key, matches }))
-    .sort(
-      (x, y) =>
-        y.matches.length - x.matches.length ||
-        hoechstePopularitaet(y) - hoechstePopularitaet(x) ||
-        x.key.localeCompare(y.key),
-    );
+  for (const vorschlag of nachSchluessel.values()) {
+    vorschlag.combos.sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0));
+  }
+
+  return [...nachSchluessel.values()].sort(
+    (x, y) =>
+      y.comboCount - x.comboCount ||
+      hoechstePopularitaet(y) - hoechstePopularitaet(x) ||
+      x.key.localeCompare(y.key),
+  );
 }
 
 function hoechstePopularitaet(vorschlag: ComboSuggestion): number {
-  return vorschlag.matches.reduce((max, m) => Math.max(max, m.combo.popularity ?? 0), 0);
+  return vorschlag.combos.reduce((max, c) => Math.max(max, c.popularity ?? 0), 0);
 }
 
 /**
@@ -110,4 +93,16 @@ export function fitsColorIdentity(
   if (deckIdentity === null) return true;
   const erlaubt = new Set(deckIdentity);
   return (cardIdentity ?? []).every((farbe) => erlaubt.has(farbe));
+}
+
+/**
+ * Der Ablauf als einzelne Schritte. Commander Spellbook liefert ihn als einen Text mit einem
+ * Zeilenumbruch je Schritt; aufgeteilt ist er als nummerierte Liste zu lesen, und die
+ * Beschreibungen verweisen selbst auf Schrittnummern ("Repeat from step 4").
+ */
+export function comboSteps(description: string): string[] {
+  return description
+    .split('\n')
+    .map((step) => step.trim())
+    .filter(Boolean);
 }
