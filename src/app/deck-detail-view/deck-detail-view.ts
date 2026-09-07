@@ -2,6 +2,7 @@ import { Component, effect, inject } from '@angular/core';
 import { CurrencyPipe, DatePipe, DecimalPipe, NgTemplateOutlet, PercentPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AnalysisCombo, DeckViewerService, DeckChangeGroup, GameChangerEntry } from '../deck-viewer.service';
+import { BracketReason } from '../bracket';
 import { DeckService, DeckCard, DeckOwner } from '../deck.service';
 import { DeckImportService } from '../deck-import.service';
 import { DeckPdfService } from '../deck-pdf.service';
@@ -17,7 +18,7 @@ import { BracketBadge } from '../ui/bracket-badge/bracket-badge';
   selector: 'app-deck-detail-view',
   imports: [CurrencyPipe, DatePipe, DecimalPipe, NgTemplateOutlet, PercentPipe, FormsModule, CardImage, BarChart, OverflowMenu, ColorFilter, CmcFilter, BracketBadge],
   templateUrl: './deck-detail-view.html',
-  styleUrl: './deck-detail-view.scss',
+  styleUrls: ['./deck-detail-view.scss', './deck-detail-view.bracket.scss'],
 })
 export class DeckDetailView {
   readonly viewer = inject(DeckViewerService);
@@ -34,6 +35,18 @@ export class DeckDetailView {
    */
   comboCardEntries(combo: AnalysisCombo): GameChangerEntry[] {
     return combo.cardNames.map((cardName) => ({ cardName, quantity: 1 }));
+  }
+
+  /**
+   * Die Karten eines Bracket-Befunds als Gruppen für den Bild-Streifen in der Begründung.
+   *
+   * Combo-Befunde nennen ihre Karten als Paar in einem einzigen Eintrag ("A + B", siehe
+   * comboNamen() in bracket.ts) - würde man alle Namen flach auflösen, stünden bei mehreren Combos
+   * lauter Einzelbilder nebeneinander und niemand sähe mehr, welche zwei zusammen die Combo
+   * bilden. Jede Gruppe ist deshalb genau ein Befundeintrag: eine Karte oder ein Combo-Paar.
+   */
+  bracketReasonCardGroups(reason: BracketReason): string[][] {
+    return reason.cards.map((entry) => entry.split(' + '));
   }
 
   /**

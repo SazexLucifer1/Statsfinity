@@ -1,0 +1,132 @@
+@use '../../styles/breakpoints' as bp;
+
+// Alles zum Commander-Bracket: die Zeile unter der Format-Angabe, das Auswahlfeld, die beiden
+// Kästen der Begründung und die Rechenweg-Fenster.
+//
+// Eigene Datei, weil deck-detail-view.scss mit gut 11 kB schon dicht am harten Style-Budget von
+// 12 kB pro Komponenten-Stylesheet lag (siehe angular.json) - der Bracket-Teil ist der einzige
+// klar abgrenzbare Block darin und passt als Thema ohnehin besser zusammen als verteilt zwischen
+// Kartenraster und Diagrammfarben.
+
+.bracket-caveat {
+  font-size: 0.78rem;
+  opacity: 0.65;
+}
+
+// Bracket-Zeile, Auswahlfeld und der Hinweis daneben. Umbruchfähig, weil auf 390px Breite
+// Abzeichen, Power-Wert und ⓘ nebeneinander sonst nicht sicher passen.
+.bracket-row,
+.bracket-select-row,
+.bracket-select-field {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+
+  .hint {
+    margin: 0;
+  }
+}
+
+// Eigene Mindestbreite, damit der Hinweis neben dem Auswahlfeld nicht als zweizeiliger Schnipsel
+// danebenklebt, sondern auf schmalen Geräten ganz unter das Feld rutscht.
+.bracket-never-auto {
+  flex: 1 1 260px;
+}
+
+// Begründung: zwei Kästen, ab Tablet nebeneinander. Die Einzelurteile sind vier kurze Zeilen und
+// stünden einspaltig weit unter dem Kartenraster der linken Spalte.
+.bracket-why {
+  display: grid;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-5);
+
+  @include bp.up(md) {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+}
+
+.bracket-panel {
+  min-width: 0;
+  padding: var(--sp-5);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--glass-border);
+  background: var(--surface-tile);
+
+  h4 {
+    margin: 0 0 var(--sp-3);
+  }
+
+  .hint {
+    margin: var(--sp-3) 0 0;
+  }
+}
+
+// Quellenangabe unter beiden Kästen - einspaltig ist 1 / -1 gefahrlos.
+.bracket-why-sources {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.bracket-reason + .bracket-reason {
+  margin-top: var(--sp-4);
+}
+
+.bracket-reason-head {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+// Ein Combo-Paar bleibt zusammen: enger Abstand innerhalb der Gruppe, deutlich weiter zwischen den
+// Gruppen - sonst ist bei zwei Combos nicht zu sehen, welche zwei Karten zusammengehören.
+.bracket-card-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-6);
+  margin-top: var(--sp-2);
+}
+
+.bracket-card-group {
+  display: flex;
+  gap: var(--sp-1);
+}
+
+.bracket-card-tile {
+  width: 56px;
+}
+
+// Kartennamen als Text - im Rechenweg-Fenster, wo Bilder nur Platz kosten würden.
+.bracket-reason-cards {
+  display: block;
+  font-size: 0.78rem;
+  opacity: 0.7;
+}
+
+// Die vier Urteilszeilen liegen auf .game-changer-list auf, hier kommt nur die Trennlinie dazu.
+.bracket-verdict-list li + li {
+  border-top: 1px solid var(--divider);
+}
+
+.bracket-verdict-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  opacity: 0.8;
+}
+
+.bracket-verdict-value {
+  white-space: nowrap;
+}
+
+// Ohne Rahmen und Fläche, damit vier davon untereinander nicht wie eine Knopfleiste wirken - die
+// 44px Trefferfläche des globalen Icon-Knopfes bleibt erhalten.
+.bracket-verdict-info {
+  border-color: transparent;
+  background: transparent;
+}
+
+.bracket-cedh-hint {
+  color: var(--gold);
+  opacity: 1;
+}

@@ -151,8 +151,6 @@ export const deckView = {
     'deckView.bracketConfidenceMedium': 'Einstufung ist eine Schätzung',
     'deckView.bracketConfidenceLow': 'Einstufung unsicher – die beiden Quellen widersprechen sich',
     'deckView.bracketWhyToggle': 'Warum diese Stufe?',
-    'deckView.bracketFloorNote':
-      'Das ist eine Untergrenze: Nach unten geht es nicht, weil die aufgeführten Karten das ausschließen – höher zu spielen kann der Tisch dagegen jederzeit vereinbaren.',
     'deckView.bracketNeverAutoNote':
       'Bracket 1 (Exhibition) und 5 (cEDH) vergibt die Automatik nie. Beide unterscheiden sich nicht durch Karten, sondern durch Absicht – die stellst du selbst ein.',
     'deckView.bracketCedhHint':
@@ -169,24 +167,32 @@ export const deckView = {
     'deckView.bracketReason.nothing': 'Nichts gefunden, was eine höhere Stufe erzwingt',
     'deckView.bracketReasonMinimum': 'mindestens Bracket {{level}}',
     'deckView.bracketVerdictHeading': 'Die Einzelurteile',
-    'deckView.bracketVerdictRules': 'Offizielle Kriterien: Bracket {{level}}',
-    'deckView.bracketVerdictSpellbook': 'Zweitmeinung Commander Spellbook: Bracket {{level}}',
-    'deckView.bracketVerdictSpellbookMissing': 'Zweitmeinung Commander Spellbook: nicht erreichbar',
-    'deckView.bracketVerdictTuning': 'Tuning-Grad: {{percent}}',
+    'deckView.bracketRowRules': 'Offiziell',
+    'deckView.bracketRowSpellbook': 'Zweitmeinung',
+    'deckView.bracketRowTuning': 'Tuning-Grad',
+    'deckView.bracketRowPower': 'Power',
+    'deckView.bracketLevelValue': 'Bracket {{level}}',
+    'deckView.bracketPowerValue': '{{power}} / 10',
+    'deckView.bracketValueUnavailable': 'nicht erreichbar',
+    'deckView.bracketExplainAria': '{{topic}}: genauer erklärt',
     'deckView.bracketVerdictPrecon': 'Unveränderter Precon – die Feinbewertung hebt nicht an',
     'deckView.bracketPreconNote':
       'Precons sind seit dem Bracket-Update vom Februar 2026 nicht mehr automatisch Bracket 2. Eine einzige Game-Changer-Karte hebt jedes Deck auf mindestens Bracket 3 – auch einen unveränderten Precon.',
     'deckView.bracketTuningExplain':
       'Der Tuning-Grad misst, wie durchgängig auf Tempo gebaut das Deck ist. Er legt das Bracket nicht fest, sondern nur die Position darin – und hebt es erst ab {{bump}} % um eine Stufe an.',
-    'deckView.bracketMathOpen': 'ⓘ Die ganze Rechnung',
-    'deckView.bracketMathTitle': 'So kommt Bracket {{level}} zustande',
-    'deckView.bracketMathStepRules': '1) Offizielle Kriterien → Bracket {{level}}',
-    'deckView.bracketMathStepSpellbook': '2) Zweitmeinung Commander Spellbook → Bracket {{level}}',
+    'deckView.bracketMathRulesTitle': 'So kommt die offizielle Einstufung zustande',
+    'deckView.bracketMathRulesIntro':
+      'Die offiziellen Kriterien prüfen feste Merkmale: Game Changer, Mass Land Denial, Extra-Turn-Schleifen und Zwei-Karten-Combos. Jeder Befund erzwingt für sich eine Mindeststufe – es gilt die höchste davon. Ohne jeden Befund bleibt es bei Bracket 2.',
+    'deckView.bracketMathSpellbookTitle': 'So kommt die Zweitmeinung zustande',
+    'deckView.bracketMathSpellbookIntro':
+      'Commander Spellbook bewertet dieselbe Deckliste unabhängig und live, vor allem anhand der Combos, die es darin findet. Statsfinity übernimmt diese Note unverändert als zweites Urteil.',
+    'deckView.bracketMathStepRules': 'Offizielle Kriterien → Bracket {{level}}',
+    'deckView.bracketMathStepSpellbook': 'Zweitmeinung Commander Spellbook → Bracket {{level}}',
     'deckView.bracketMathStepSpellbookMissing':
-      '2) Zweitmeinung Commander Spellbook → nicht erreichbar, es zählt allein Schritt 1',
+      'Zweitmeinung Commander Spellbook → nicht erreichbar, es zählt allein die offizielle Einstufung',
     'deckView.bracketMathHigherWins': 'Es gilt die höhere der beiden Stufen: Bracket {{level}}.',
     'deckView.bracketMathStepBump':
-      '3) Der Tuning-Grad liegt bei {{percent}} und damit über {{bump}} % → eine Stufe höher: Bracket {{level}}.',
+      'Der Tuning-Grad liegt bei {{percent}} und damit über {{bump}} % → eine Stufe höher: Bracket {{level}}.',
     'deckView.bracketMathTuningTitle': 'So kommt der Tuning-Grad zustande',
     'deckView.bracketMathTuningIntro':
       'Vier Messgrößen. Jede wird auf 0 bis 1 Punkte umgerechnet, der Tuning-Grad ist ihr Durchschnitt.',
@@ -200,14 +206,10 @@ export const deckView = {
     'deckView.bracketMathPowerRange':
       'Bracket {{level}} belegt auf der 1–10-Skala die Spanne {{from}} bis {{to}}.',
     'deckView.bracketMathPowerFormula': '{{from}} + {{tuning}} × {{span}} = {{power}}',
-    'deckView.bracketTuningShowValues': 'Werte anzeigen',
-    'deckView.bracketTuningHideValues': 'Werte ausblenden',
     'deckView.bracketTuning.tutors': 'Tutoren je 100 Karten',
     'deckView.bracketTuning.averageCmc': 'Ø Manawert',
     'deckView.bracketTuning.untappedLands': 'Ungetappte Länder',
     'deckView.bracketTuning.gameChangers': 'Game Changer',
-    'deckView.bracketTuningScale': 'Skala {{from}} → {{to}}',
-    'deckView.bracketPowerHeading': 'Power {{power}} von 10',
     'deckView.bracketPowerExplain':
       'Die vertraute 1–10-Skala, paarweise auf die Brackets gerastet: 1–2 Exhibition, 3–4 Core, 5–6 Upgraded, 7–8 Optimized, 9–10 cEDH. Das Bracket bestimmt die Spanne, der Tuning-Grad die Position darin.',
     'deckView.bracketSources':
@@ -451,8 +453,6 @@ export const deckView = {
     'deckView.bracketConfidenceMedium': 'Rating is an estimate',
     'deckView.bracketConfidenceLow': 'Rating uncertain – the two sources disagree',
     'deckView.bracketWhyToggle': 'Why this bracket?',
-    'deckView.bracketFloorNote':
-      'This is a floor: it cannot go lower, because the cards listed rule that out – playing up is something any table can agree on at any time.',
     'deckView.bracketNeverAutoNote':
       'The automatic rating never assigns Bracket 1 (Exhibition) or 5 (cEDH). Neither is defined by cards but by intent – you set those yourself.',
     'deckView.bracketCedhHint':
@@ -469,25 +469,33 @@ export const deckView = {
     'deckView.bracketReason.nothing': 'Nothing found that forces a higher bracket',
     'deckView.bracketReasonMinimum': 'at least Bracket {{level}}',
     'deckView.bracketVerdictHeading': 'The individual verdicts',
-    'deckView.bracketVerdictRules': 'Official criteria: Bracket {{level}}',
-    'deckView.bracketVerdictSpellbook': 'Second opinion Commander Spellbook: Bracket {{level}}',
-    'deckView.bracketVerdictSpellbookMissing': 'Second opinion Commander Spellbook: unavailable',
-    'deckView.bracketVerdictTuning': 'Tuning level: {{percent}}',
+    'deckView.bracketRowRules': 'Official',
+    'deckView.bracketRowSpellbook': 'Second opinion',
+    'deckView.bracketRowTuning': 'Tuning level',
+    'deckView.bracketRowPower': 'Power',
+    'deckView.bracketLevelValue': 'Bracket {{level}}',
+    'deckView.bracketPowerValue': '{{power}} / 10',
+    'deckView.bracketValueUnavailable': 'unavailable',
+    'deckView.bracketExplainAria': '{{topic}}: explained in detail',
     'deckView.bracketVerdictPrecon': 'Unchanged precon – the fine rating does not raise it',
     'deckView.bracketPreconNote':
       'Since the February 2026 bracket update, precons are no longer automatically Bracket 2. A single Game Changer raises any deck to at least Bracket 3 – an unchanged precon included.',
     'deckView.bracketTuningExplain':
       'The tuning level measures how consistently the deck is built for speed. It does not set the bracket, only the position within it – and only raises it by one step from {{bump}} % upwards.',
-    'deckView.bracketMathOpen': 'ⓘ The full calculation',
-    'deckView.bracketMathTitle': 'How Bracket {{level}} comes about',
-    'deckView.bracketMathStepRules': '1) Official criteria → Bracket {{level}}',
+    'deckView.bracketMathRulesTitle': 'How the official rating comes about',
+    'deckView.bracketMathRulesIntro':
+      'The official criteria check fixed traits: Game Changers, mass land denial, extra-turn loops and two-card combos. Each finding forces a minimum bracket on its own – the highest of them applies. With no finding at all it stays at Bracket 2.',
+    'deckView.bracketMathSpellbookTitle': 'How the second opinion comes about',
+    'deckView.bracketMathSpellbookIntro':
+      'Commander Spellbook rates the same decklist independently and live, mainly from the combos it finds in it. Statsfinity takes that rating as the second verdict, unchanged.',
+    'deckView.bracketMathStepRules': 'Official criteria → Bracket {{level}}',
     'deckView.bracketMathStepSpellbook':
-      '2) Second opinion, Commander Spellbook → Bracket {{level}}',
+      'Second opinion, Commander Spellbook → Bracket {{level}}',
     'deckView.bracketMathStepSpellbookMissing':
-      '2) Second opinion, Commander Spellbook → unavailable, step 1 alone counts',
+      'Second opinion, Commander Spellbook → unavailable, the official rating alone counts',
     'deckView.bracketMathHigherWins': 'The higher of the two applies: Bracket {{level}}.',
     'deckView.bracketMathStepBump':
-      '3) The tuning level is {{percent}}, above {{bump}} % → one step up: Bracket {{level}}.',
+      'The tuning level is {{percent}}, above {{bump}} % → one step up: Bracket {{level}}.',
     'deckView.bracketMathTuningTitle': 'How the tuning level comes about',
     'deckView.bracketMathTuningIntro':
       'Four measures. Each is converted to 0 to 1 points; the tuning level is their average.',
@@ -501,14 +509,10 @@ export const deckView = {
     'deckView.bracketMathPowerRange':
       'Bracket {{level}} covers {{from}} to {{to}} on the 1–10 scale.',
     'deckView.bracketMathPowerFormula': '{{from}} + {{tuning}} × {{span}} = {{power}}',
-    'deckView.bracketTuningShowValues': 'Show values',
-    'deckView.bracketTuningHideValues': 'Hide values',
     'deckView.bracketTuning.tutors': 'Tutors per 100 cards',
     'deckView.bracketTuning.averageCmc': 'Avg. mana value',
     'deckView.bracketTuning.untappedLands': 'Untapped lands',
     'deckView.bracketTuning.gameChangers': 'Game Changers',
-    'deckView.bracketTuningScale': 'scale {{from}} → {{to}}',
-    'deckView.bracketPowerHeading': 'Power {{power}} out of 10',
     'deckView.bracketPowerExplain':
       'The familiar 1–10 scale, paired onto the brackets: 1–2 Exhibition, 3–4 Core, 5–6 Upgraded, 7–8 Optimized, 9–10 cEDH. The bracket sets the range, the tuning level the position within it.',
     'deckView.bracketSources':

@@ -44,7 +44,9 @@ Die Shell `src/app/app.ts` / `app.html` schaltet per `@if` zwischen rund 22 Komp
 | Dialoge            | `dialog/`, `card-preview-dialog/`, `deck-import-dialogs/`, `deck-pdf-dialog/`, `feedback-dialog/`, `placement-dialog/`, `manual-deck-link-dialog/`, `tutorial-overlay/`                                                                                                               |
 | Sonstige Bausteine | `card-image/`, `partner-card-image/`, `deck-list/`, `commander-stat-list/`, `commander-recommendations/`, `favorite-commander-editor/`, `player-avatar/`, `precon-browser/`, `public-card-search/`, `public-deck-browser/`, `tournament-history/`, `legal-footer/`, `login-required/`, `global-stats/` |
 
-Jede Komponente ist ein Trio `name/name.ts` + `name.html` + `name.scss`.
+Jede Komponente ist ein Trio `name/name.ts` + `name.html` + `name.scss`. Einzige Ausnahme:
+`deck-detail-view` hat ein zweites Stylesheet `deck-detail-view.bracket.scss` (alles zum Bracket),
+weil die Hauptdatei sonst über das harte Style-Budget von 12 kB liefe.
 
 ### Wiederverwendbare UI-Bausteine — hier zuerst nachsehen
 
@@ -141,13 +143,13 @@ Bei diesen Dateien grundsätzlich `grep`/`Glob` vor `Read`; wenn doch gelesen we
 
 | Zeilen | Datei                                            |
 | ------ | ------------------------------------------------ |
-| 2846   | `src/app/deck-viewer.service.ts`                 |
+| 3104   | `src/app/deck-viewer.service.ts`                 |
 | 1770   | `src/app/tournament.service.ts`                  |
 | 1866   | `src/app/deck.service.ts`                        |
 | 1492   | `src/app/mtg.service.ts`                         |
 | 1386   | `src/app/stats-tab/stats-tab.ts`                 |
 | 1111   | `src/app/game-session.service.ts`                |
-| 1407   | `src/app/deck-detail-view/deck-detail-view.html` |
+| 1538   | `src/app/deck-detail-view/deck-detail-view.html` |
 
 `src/app/excel-import.service.ts` wird von grep als binär erkannt (eingebettete Daten) — nicht am Stück lesen.
 

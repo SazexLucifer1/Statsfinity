@@ -121,6 +121,12 @@ export interface DeckChangeGroup {
   removedCount: number;
 }
 
+/**
+ * Welches der vier Einzelurteile im Bracket-Kasten gerade seinen Rechenweg zeigt. Jedes Urteil hat
+ * sein eigenes ⓘ direkt neben der Zahl - vorher stand die ganze Kette in einem einzigen Popup.
+ */
+export type BracketMathTopic = 'rules' | 'spellbook' | 'tuning' | 'power';
+
 @Injectable({ providedIn: 'root' })
 export class DeckViewerService {
   private readonly deckService = inject(DeckService);
@@ -875,33 +881,22 @@ export class DeckViewerService {
   }
 
   /**
-   * Zweite Ebene innerhalb der Begründung: die vier Messgrößen hinter dem Tuning-Grad. Bewusst
-   * eingeklappt - der Aufklapper ist auf dem iPhone ohnehin lang, und die Erklärsätze darüber
-   * beantworten die Frage schon für alle, die es nicht nachrechnen wollen.
-   */
-  readonly showTuningDetails = signal(false);
-
-  toggleTuningDetails(): void {
-    this.showTuningDetails.update((v) => !v);
-  }
-
-  /**
-   * Die vollständige Rechnung als Popup - von "welche Regel hat gegriffen" über den Tuning-Grad bis
-   * zum Power-Wert.
+   * Welches Einzelurteil gerade als Rechenweg-Popup offen ist - null heißt: keins.
    *
-   * Der Aufklapper nennt alle Zahlen, erklärt aber keine davon: dass "Skala 70 → 95" heißt "70 gibt
-   * 0 Punkte, 95 gibt 1 Punkt", dass die vier Werte gemittelt werden, dass beim Manawert die Skala
-   * absichtlich rückwärts läuft - nichts davon steht dort. Wer die Ansicht zum ersten Mal öffnet,
-   * kann die Einstufung deshalb nicht nachvollziehen. Das Popup rechnet sie einmal vor.
+   * Die Zahlen der Einstufung erklären sich nicht von selbst: dass "Skala 70 → 95" heißt "70 gibt
+   * 0 Punkte, 95 gibt 1 Punkt", dass die vier Messgrößen gemittelt werden, dass beim Manawert die
+   * Skala absichtlich rückwärts läuft - nichts davon steht im Kasten. Jedes Urteil bekommt deshalb
+   * ein ⓘ, das genau seine Rechnung vorrechnet, statt wie früher alle vier in einem einzigen,
+   * seitenlangen Popup zu bündeln.
    */
-  readonly showBracketMath = signal(false);
+  readonly bracketMathTopic = signal<BracketMathTopic | null>(null);
 
-  openBracketMath(): void {
-    this.showBracketMath.set(true);
+  openBracketMath(topic: BracketMathTopic): void {
+    this.bracketMathTopic.set(topic);
   }
 
   closeBracketMath(): void {
-    this.showBracketMath.set(false);
+    this.bracketMathTopic.set(null);
   }
 
   /** Schwelle, ab der die Feinbewertung anhebt - in Prozent, für die Erklärtexte. */
@@ -2604,8 +2599,7 @@ export class DeckViewerService {
     // Wie die anderen Info-Klappen daneben: eingeklappt starten. Blieb die Begründung offen,
     // stünde beim nächsten Deck sofort eine seitenlange Erklärung über der Kartenliste.
     this.showBracketWhy.set(false);
-    this.showTuningDetails.set(false);
-    this.showBracketMath.set(false);
+    this.bracketMathTopic.set(null);
     this.resetCardFilters();
     this.effectFilterBusy.set(false);
     this.editMode.set(false);
