@@ -117,6 +117,30 @@ export class DeckViewerService {
   readonly viewingDeck = signal<Deck | null>(null);
 
   /**
+   * Die Deck-Detailansicht ist kein Popup mehr, sondern eine eigene Seite im Inhaltsbereich
+   * (siehe app.html). Damit sie sich auch mit der Zurück-Geste/-Taste des Browsers schließen
+   * lässt - die App hat bewusst keinen Router und damit keine echten URLs - legt open() einen
+   * zusätzlichen History-Eintrag an, den close() wieder entfernt.
+   */
+  private historyEntryOpen = false;
+  /** Setzt close() vor dem selbst ausgelösten history.back(), damit der eigene Pop nicht doppelt schließt. */
+  private ignoreNextPop = false;
+  /** Scrollposition der dahinterliegenden Seite (Deckliste, Statistik, ...), um sie beim Zurückgehen wiederherzustellen. */
+  private scrollBeforeOpen = 0;
+
+  constructor() {
+    window.addEventListener('popstate', () => {
+      if (this.ignoreNextPop) {
+        this.ignoreNextPop = false;
+        return;
+      }
+      if (!this.historyEntryOpen) return;
+      this.historyEntryOpen = false;
+      if (this.viewingDeck()) this.resetViewingState();
+    });
+  }
+
+  /**
    * Ob das gerade angesehene Deck bearbeitet werden darf - entweder weil es dem eingeloggten User
    * selbst gehört, oder weil es einem virtuellen Spieler ohne Account gehört UND der eingeloggte
    * User der Admin ("owner") von GENAU DER GRUPPE ist, in der dieser Spieler steckt (nicht
@@ -2468,6 +2492,17 @@ export class DeckViewerService {
   }
 
   async open(deck: Deck): Promise<void> {
+    // Nur beim erstmaligen Öffnen einen History-Eintrag anlegen: open() wird auch zum Neuladen
+    // desselben Decks aufgerufen (z.B. nach dem Neu-Einfügen der Liste), sonst stapelten sich
+    // mehrere Einträge und man müsste mehrfach zurück.
+    if (!this.historyEntryOpen) {
+      this.historyEntryOpen = true;
+      history.pushState({ ...history.state, deckDetail: true }, '');
+      // Die Detailansicht ersetzt jetzt den Tab-Inhalt im selben Dokument - ohne das hier bliebe
+      // die Scrollposition der Deckliste stehen und das Deck öffnete sich mitten im Inhalt.
+      this.scrollBeforeOpen = window.scrollY;
+      window.scrollTo({ top: 0 });
+    }
     this.viewingDeck.set(deck);
     this.deckNameDraft.set(deck.name);
     this.deckTagDraft.set(deck.edhrecTag);
@@ -2816,7 +2851,28 @@ export class DeckViewerService {
     this.bracketEstimateBusy.set(false);
   }
 
-  close(): void {
+  /**
+   * @param scroll 'restore' (Standard) springt zurück an die Stelle, an der das Deck geöffnet
+   * wurde - richtig für den Zurück-Knopf. 'top' für den Wechsel in einen anderen Tab, der bei
+   * seinem eigenen Anfang beginnen soll.
+   */
+  close(scroll: 'restore' | 'top' = 'restore'): void {
+    // Die Tab-Leiste ruft close() bei JEDEM Tippen auf, auch ohne offene Detailansicht - ohne
+    // diesen Ausstieg würde dabei jedes Mal die gespeicherte Scrollposition wiederhergestellt.
+    if (!this.viewingDeck() && !this.historyEntryOpen) return;
+    if (this.historyEntryOpen) {
+      this.historyEntryOpen = false;
+      this.ignoreNextPop = true;
+      history.back();
+    }
+    this.resetViewingState(scroll === 'top' ? 0 : this.scrollBeforeOpen);
+  }
+
+  /** Der eigentliche Aufräum-Teil von close() - ohne History, damit ihn auch der popstate-Handler nutzen kann. */
+  private resetViewingState(scrollTarget = this.scrollBeforeOpen): void {
+    // Erst nach dem Neuaufbau der darunterliegenden Ansicht scrollen, sonst ist die Seite dafür
+    // noch zu kurz.
+    setTimeout(() => window.scrollTo({ top: scrollTarget }));
     this.viewingDeck.set(null);
     this.deckNameDraft.set('');
     this.deckTagDraft.set(null);

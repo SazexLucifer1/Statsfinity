@@ -31,7 +31,12 @@
   </header>
 
 <main class="content">
-  @if (tournament.panelExpanded()) {
+  @if (deckViewer.viewingDeck()) {
+  <!-- Die Deck-Detailansicht ist eine eigene Seite im Inhaltsbereich statt eines Vollbild-Popups:
+       so scrollt nur das Fenster selbst (statt Seite + Overlay gleichzeitig) und der App-Hintergrund
+       bleibt wie in den Tabs sichtbar. -->
+  <app-deck-detail-view />
+  } @else if (tournament.panelExpanded()) {
   <app-tournament-panel />
   } @else {
   @switch (navigation.activeTab()) { @case ('match') {
@@ -49,7 +54,6 @@
 </main>
 
 <app-ingame-tracker />
-<app-deck-detail-view />
 <app-goldfish-tracker />
 <app-deck-import-dialogs />
 <app-deck-pdf-dialog />
@@ -64,8 +68,8 @@
   <button
     class="tab-item"
     [attr.data-tutorial]="'nav-' + tab.id"
-    [class.active]="navigation.activeTab() === tab.id && !tournament.panelExpanded()"
-    (click)="tournament.closePanel(); navigation.goToTab(tab.id)"
+    [class.active]="navigation.activeTab() === tab.id && !tournament.panelExpanded() && !deckViewer.viewingDeck()"
+    (click)="deckViewer.close('top'); tournament.closePanel(); navigation.goToTab(tab.id)"
   >
     <span class="tab-icon">{{ tab.icon }}</span>
     <span class="tab-label">{{ i18n.t(tab.labelKey) }}</span>
@@ -83,7 +87,7 @@
   <button
     class="tab-item ingame-tab"
     [class.active]="tournament.panelExpanded()"
-    (click)="tournament.togglePanel()"
+    (click)="deckViewer.close('top'); tournament.togglePanel()"
   >
     <span class="tab-icon">🏆</span>
     <span class="tab-label">{{ i18n.t('nav.tournament') }}</span>
