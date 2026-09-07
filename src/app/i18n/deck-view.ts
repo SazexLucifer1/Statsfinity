@@ -177,7 +177,29 @@ export const deckView = {
     'deckView.bracketPreconNote':
       'Precons sind seit dem Bracket-Update vom Februar 2026 nicht mehr automatisch Bracket 2. Eine einzige Game-Changer-Karte hebt jedes Deck auf mindestens Bracket 3 – auch einen unveränderten Precon.',
     'deckView.bracketTuningExplain':
-      'Der Tuning-Grad misst, wie durchgängig auf Tempo gebaut das Deck ist. Er legt das Bracket nicht fest, sondern nur die Position darin – und hebt es erst ab 85 % um eine Stufe an.',
+      'Der Tuning-Grad misst, wie durchgängig auf Tempo gebaut das Deck ist. Er legt das Bracket nicht fest, sondern nur die Position darin – und hebt es erst ab {{bump}} % um eine Stufe an.',
+    'deckView.bracketMathOpen': 'ⓘ Die ganze Rechnung',
+    'deckView.bracketMathTitle': 'So kommt Bracket {{level}} zustande',
+    'deckView.bracketMathStepRules': '1) Offizielle Kriterien → Bracket {{level}}',
+    'deckView.bracketMathStepSpellbook': '2) Zweitmeinung Commander Spellbook → Bracket {{level}}',
+    'deckView.bracketMathStepSpellbookMissing':
+      '2) Zweitmeinung Commander Spellbook → nicht erreichbar, es zählt allein Schritt 1',
+    'deckView.bracketMathHigherWins': 'Es gilt die höhere der beiden Stufen: Bracket {{level}}.',
+    'deckView.bracketMathStepBump':
+      '3) Der Tuning-Grad liegt bei {{percent}} und damit über {{bump}} % → eine Stufe höher: Bracket {{level}}.',
+    'deckView.bracketMathTuningTitle': 'So kommt der Tuning-Grad zustande',
+    'deckView.bracketMathTuningIntro':
+      'Vier Messgrößen. Jede wird auf 0 bis 1 Punkte umgerechnet, der Tuning-Grad ist ihr Durchschnitt.',
+    'deckView.bracketMathPartMeasured': 'Gemessen: {{value}}',
+    'deckView.bracketMathPartScale': '0 Punkte ab {{from}}, 1 Punkt ab {{to}}',
+    'deckView.bracketMathPartScore': 'ergibt {{score}} Punkte',
+    'deckView.bracketMathPartReversed':
+      'Hier ist der niedrigere Wert der stärkere – deshalb läuft die Skala rückwärts.',
+    'deckView.bracketMathSum': '({{summands}}) ÷ {{divisor}} = {{value}} – also {{percent}}',
+    'deckView.bracketMathPowerTitle': 'So kommt der Power-Wert zustande',
+    'deckView.bracketMathPowerRange':
+      'Bracket {{level}} belegt auf der 1–10-Skala die Spanne {{from}} bis {{to}}.',
+    'deckView.bracketMathPowerFormula': '{{from}} + {{tuning}} × {{span}} = {{power}}',
     'deckView.bracketTuningShowValues': 'Werte anzeigen',
     'deckView.bracketTuningHideValues': 'Werte ausblenden',
     'deckView.bracketTuning.tutors': 'Tutoren je 100 Karten',
@@ -447,7 +469,30 @@ export const deckView = {
     'deckView.bracketPreconNote':
       'Since the February 2026 bracket update, precons are no longer automatically Bracket 2. A single Game Changer raises any deck to at least Bracket 3 – an unchanged precon included.',
     'deckView.bracketTuningExplain':
-      'The tuning level measures how consistently the deck is built for speed. It does not set the bracket, only the position within it – and only raises it by one step from 85 % upwards.',
+      'The tuning level measures how consistently the deck is built for speed. It does not set the bracket, only the position within it – and only raises it by one step from {{bump}} % upwards.',
+    'deckView.bracketMathOpen': 'ⓘ The full calculation',
+    'deckView.bracketMathTitle': 'How Bracket {{level}} comes about',
+    'deckView.bracketMathStepRules': '1) Official criteria → Bracket {{level}}',
+    'deckView.bracketMathStepSpellbook':
+      '2) Second opinion, Commander Spellbook → Bracket {{level}}',
+    'deckView.bracketMathStepSpellbookMissing':
+      '2) Second opinion, Commander Spellbook → unavailable, step 1 alone counts',
+    'deckView.bracketMathHigherWins': 'The higher of the two applies: Bracket {{level}}.',
+    'deckView.bracketMathStepBump':
+      '3) The tuning level is {{percent}}, above {{bump}} % → one step up: Bracket {{level}}.',
+    'deckView.bracketMathTuningTitle': 'How the tuning level comes about',
+    'deckView.bracketMathTuningIntro':
+      'Four measures. Each is converted to 0 to 1 points; the tuning level is their average.',
+    'deckView.bracketMathPartMeasured': 'Measured: {{value}}',
+    'deckView.bracketMathPartScale': '0 points at {{from}}, 1 point at {{to}}',
+    'deckView.bracketMathPartScore': 'gives {{score}} points',
+    'deckView.bracketMathPartReversed':
+      'Here the lower value is the stronger one – which is why the scale runs backwards.',
+    'deckView.bracketMathSum': '({{summands}}) ÷ {{divisor}} = {{value}} – that is {{percent}}',
+    'deckView.bracketMathPowerTitle': 'How the power value comes about',
+    'deckView.bracketMathPowerRange':
+      'Bracket {{level}} covers {{from}} to {{to}} on the 1–10 scale.',
+    'deckView.bracketMathPowerFormula': '{{from}} + {{tuning}} × {{span}} = {{power}}',
     'deckView.bracketTuningShowValues': 'Show values',
     'deckView.bracketTuningHideValues': 'Hide values',
     'deckView.bracketTuning.tutors': 'Tutors per 100 cards',

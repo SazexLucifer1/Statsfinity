@@ -6,7 +6,9 @@ import {
   AUTO_BRACKET_MAX,
   BracketAnalysis,
   BracketCard,
+  TUNING_BUMP_SCHWELLE,
   analyzeBracket,
+  powerRange,
   presentCombos,
 } from './bracket';
 import { PdfSourceCard } from './deck-pdf.service';
@@ -784,6 +786,54 @@ export class DeckViewerService {
   toggleTuningDetails(): void {
     this.showTuningDetails.update((v) => !v);
   }
+
+  /**
+   * Die vollständige Rechnung als Popup - von "welche Regel hat gegriffen" über den Tuning-Grad bis
+   * zum Power-Wert.
+   *
+   * Der Aufklapper nennt alle Zahlen, erklärt aber keine davon: dass "Skala 70 → 95" heißt "70 gibt
+   * 0 Punkte, 95 gibt 1 Punkt", dass die vier Werte gemittelt werden, dass beim Manawert die Skala
+   * absichtlich rückwärts läuft - nichts davon steht dort. Wer die Ansicht zum ersten Mal öffnet,
+   * kann die Einstufung deshalb nicht nachvollziehen. Das Popup rechnet sie einmal vor.
+   */
+  readonly showBracketMath = signal(false);
+
+  openBracketMath(): void {
+    this.showBracketMath.set(true);
+  }
+
+  closeBracketMath(): void {
+    this.showBracketMath.set(false);
+  }
+
+  /** Schwelle, ab der die Feinbewertung anhebt - in Prozent, für die Erklärtexte. */
+  readonly tuningBumpPercent = Math.round(TUNING_BUMP_SCHWELLE * 100);
+
+  /**
+   * Was das Popup an fertigen Zahlen braucht und die Vorlage nicht selbst ausrechnen soll: die
+   * Punkte als ausgeschriebene Summe, deren Teiler, und die Power-Spanne des Brackets samt Breite.
+   * Alles Übrige steht schon in bracketAnalysis().
+   */
+  readonly bracketMath = computed(() => {
+    const analysis = this.bracketAnalysis();
+    if (!analysis) return null;
+    const teile = analysis.verdicts.tuningParts;
+    const [powerVon, powerBis] = powerRange(analysis.bracket);
+    return {
+      /** z.B. "0.00 + 0.31 + 0.00 + 0.17" - die Summanden der Mittelung, in der Reihenfolge der Liste. */
+      summands: teile.map((t) => t.score.toFixed(2)).join(' + '),
+      divisor: teile.length,
+      powerVon,
+      powerBis,
+      powerSpanne: Math.round((powerBis - powerVon) * 10) / 10,
+      /** true, wenn die Feinbewertung das Bracket tatsächlich um eine Stufe angehoben hat. */
+      bumped: analysis.reasons.some((r) => r.key === 'tuning'),
+      /** Die Befunde aus Schritt 1 - ohne die Anhebung, die im Popup als eigener Schritt 3 steht. */
+      rulesReasons: analysis.reasons.filter((r) => r.key !== 'tuning'),
+      /** Stufe nach den beiden Urteilen, aber VOR einer möglichen Anhebung durch die Feinbewertung. */
+      baseBracket: Math.max(analysis.verdicts.rules, analysis.verdicts.spellbook ?? 0),
+    };
+  });
 
   /**
    * Beschriftung des "Automatisch"-Eintrags im Auswahlfeld. Zeigt die berechnete Stufe gleich mit
@@ -2432,6 +2482,7 @@ export class DeckViewerService {
     // stünde beim nächsten Deck sofort eine seitenlange Erklärung über der Kartenliste.
     this.showBracketWhy.set(false);
     this.showTuningDetails.set(false);
+    this.showBracketMath.set(false);
     this.resetCardFilters();
     this.effectFilterBusy.set(false);
     this.editMode.set(false);

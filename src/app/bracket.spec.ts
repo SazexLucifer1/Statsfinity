@@ -3,8 +3,10 @@ import {
   BracketCard,
   BracketInput,
   CEDH_TUNING_HINT,
+  TUNING_BUMP_SCHWELLE,
   analyzeBracket,
   powerLevel,
+  powerRange,
   presentCombos,
   rulesVerdict,
   spellbookVerdict,
@@ -314,6 +316,54 @@ describe('bracket - Power-Level', () => {
   it('nutzt die Spanne innerhalb eines Brackets aus', () => {
     expect(powerLevel(2, 1)).toBe(4.9);
     expect(powerLevel(4, 1)).toBe(8.9);
+  });
+
+  /**
+   * Die Oberflaeche fuehrt die Power-Rechnung im Erklaer-Popup vor ("Bracket 3 belegt 5,0 bis 6,9,
+   * also 5,0 + 0,12 x 1,9"). Sie darf die Spanne dafuer nicht abschreiben - powerRange() ist die
+   * eine Quelle, aus der auch powerLevel() rechnet. Dieser Test haelt beide zusammen.
+   */
+  it('meldet je Bracket genau die Spanne, aus der powerLevel() rechnet', () => {
+    for (const bracket of [1, 2, 3, 4, 5] as const) {
+      const [von, bis] = powerRange(bracket);
+      expect(powerLevel(bracket, 0)).toBe(von);
+      expect(powerLevel(bracket, 1)).toBe(bis);
+    }
+  });
+});
+
+describe('bracket - Anhebe-Schwelle', () => {
+  /**
+   * Der Erklaertext nennt die Schwelle als Prozentwert. Er stand eine Zeit lang auf 85 %, waehrend
+   * der Code bei 80 % anhob - die 85 % sind CEDH_TUNING_HINT, eine andere Schwelle. Damit Text und
+   * Verhalten nicht wieder auseinanderlaufen, klemmen diese beiden Faelle die Schwelle von unten
+   * und von oben ein.
+   *
+   * Drei der vier Messgroessen stehen auf Anschlag (und damit dank der Kappung auf exakt 1), die
+   * vierte ist die Zahl der Game Changer - ueber sie laesst sich der Mittelwert genau setzen.
+   */
+  const dreiAufAnschlag = (gameChanger: number) =>
+    basis({
+      tutorCount: 20,
+      averageCmc: 1.5,
+      untappedLandPercent: 100,
+      cards: Array.from({ length: gameChanger }, (_, i) => karte(`GC${i}`, { gameChanger: true })),
+    });
+
+  it('hebt unterhalb der Schwelle nicht an', () => {
+    // Ohne Game Changer: (1 + 1 + 1 + 0) / 4 = 0,75.
+    const ergebnis = analyzeBracket(dreiAufAnschlag(0));
+    expect(ergebnis.verdicts.tuning).toBeLessThan(TUNING_BUMP_SCHWELLE);
+    expect(ergebnis.bracket).toBe(ergebnis.verdicts.rules);
+    expect(ergebnis.reasons.some((r) => r.key === 'tuning')).toBe(false);
+  });
+
+  it('hebt oberhalb der Schwelle um genau eine Stufe an', () => {
+    // Zwei Game Changer: (1 + 1 + 1 + 2/6) / 4 = 0,833.
+    const ergebnis = analyzeBracket(dreiAufAnschlag(2));
+    expect(ergebnis.verdicts.tuning).toBeGreaterThanOrEqual(TUNING_BUMP_SCHWELLE);
+    expect(ergebnis.bracket).toBe(ergebnis.verdicts.rules + 1);
+    expect(ergebnis.reasons.some((r) => r.key === 'tuning')).toBe(true);
   });
 });
 
