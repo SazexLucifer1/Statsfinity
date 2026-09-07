@@ -47,34 +47,25 @@
   }
 
   // Gleiche Auszeichnung wie im Statistik-Tab und im Match-Verlauf (stats-tab.scss), damit ein
-  // geliehenes Deck überall gleich aussieht - hier zusätzlich anklickbar, deshalb ein Knopf ohne
-  // eigene Fläche statt eines reinen Textbadges.
-  .borrowed-deck {
-    display: inline-flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 4px;
-    align-self: flex-start;
-    max-width: 100%;
-    margin-top: 2px;
-    padding: 0;
-    border: none;
-    background: none;
-    font: inherit;
+  // geliehenes Deck überall gleich aussieht.
+  .borrowed-badge {
     font-size: 0.78rem;
     font-weight: 600;
     color: var(--gold);
-    text-align: left;
-    cursor: pointer;
-
-    &:active {
-      opacity: 0.7;
-    }
 
     .borrowed-owner {
       font-weight: 400;
       opacity: 0.8;
     }
+  }
+
+  // Wie .deck-actions in der Deck-Liste: der Knopf steht in einer eigenen Zeile unter den Werten
+  // und nimmt nicht die volle Breite ein.
+  .borrowed-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
   }
 
   .commander-name {
