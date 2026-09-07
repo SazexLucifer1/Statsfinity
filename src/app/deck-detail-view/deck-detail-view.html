@@ -134,112 +134,165 @@
           </button>
         </div>
 
-        @if (viewer.canEditViewingDeck()) {
-          <label class="bracket-select-row">
-            <span class="hint">{{ viewer.i18n.t('deckView.bracketSetLabel') }}</span>
-            <select
-              class="glass-input small"
-              [disabled]="viewer.bracketSaving()"
-              [ngModel]="deck.bracket"
-              (ngModelChange)="viewer.setBracket($event)"
-            >
-              <option [ngValue]="null">{{ viewer.bracketAutoOptionLabel() }}</option>
-              @for (level of viewer.bracketOptions; track level) {
-                <option [ngValue]="level">
-                  {{ viewer.i18n.t('deckView.bracketOption', { level: level, name: viewer.i18n.t('deck.bracket.name' + level) }) }}
-                </option>
-              }
-            </select>
-          </label>
-        }
+        <!-- Der Hinweis, dass die Automatik Bracket 1 und 5 nie vergibt, steht neben dem
+             Auswahlfeld statt in der Begründung: er beantwortet keine Frage zur Rechnung, sondern
+             sagt, warum man hier von Hand eingreifen muss. -->
+        <div class="bracket-select-row">
+          @if (viewer.canEditViewingDeck()) {
+            <label class="bracket-select-field">
+              <span class="hint">{{ viewer.i18n.t('deckView.bracketSetLabel') }}</span>
+              <select
+                class="glass-input small"
+                [disabled]="viewer.bracketSaving()"
+                [ngModel]="deck.bracket"
+                (ngModelChange)="viewer.setBracket($event)"
+              >
+                <option [ngValue]="null">{{ viewer.bracketAutoOptionLabel() }}</option>
+                @for (level of viewer.bracketOptions; track level) {
+                  <option [ngValue]="level">
+                    {{ viewer.i18n.t('deckView.bracketOption', { level: level, name: viewer.i18n.t('deck.bracket.name' + level) }) }}
+                  </option>
+                }
+              </select>
+            </label>
+          }
+          <p class="hint bracket-caveat bracket-never-auto">{{ viewer.i18n.t('deckView.bracketNeverAutoNote') }}</p>
+        </div>
 
         @if (viewer.showBracketWhy()) {
+          <!-- Zwei Kästen: links WAS die Stufe treibt (mit den verantwortlichen Karten als Bild),
+               rechts die vier Einzelurteile als Zahlenzeilen. Ab Tablet nebeneinander - auf dem
+               iPhone untereinander, dort passt nichts anderes. -->
           <div class="bracket-why">
             @if (viewer.bracketAnalysis(); as analysis) {
-              <p class="hint">{{ viewer.i18n.t('deckView.bracketFloorNote') }}</p>
-
-              <p class="hint"><strong>{{ viewer.i18n.t('deckView.bracketReasonHeading') }}</strong></p>
-              <ul class="game-changer-list">
+              <section class="bracket-panel">
+                <h4>{{ viewer.i18n.t('deckView.bracketReasonHeading') }}</h4>
                 @for (reason of analysis.reasons; track reason.key) {
-                  <li>
-                    {{ viewer.i18n.t('deckView.bracketReason.' + reason.key) }}
-                    @if (reason.key !== 'nothing') {
-                      <span class="hint"> · {{ viewer.i18n.t('deckView.bracketReasonMinimum', { level: reason.minimum }) }}</span>
-                    }
+                  <div class="bracket-reason">
+                    <p class="bracket-reason-head">
+                      {{ viewer.i18n.t('deckView.bracketReason.' + reason.key) }}
+                      @if (reason.key !== 'nothing') {
+                        <span class="hint"> · {{ viewer.i18n.t('deckView.bracketReasonMinimum', { level: reason.minimum }) }}</span>
+                      }
+                    </p>
                     @if (reason.cards.length > 0) {
-                      <span class="bracket-reason-cards">{{ reason.cards.join(', ') }}</span>
+                      <!-- Combo-Befunde nennen ihre Karten als Paar ("A + B"); die Gruppen halten
+                           die beiden Bilder deshalb zusammen, statt alle Karten in ein Raster zu
+                           schütten, in dem nicht mehr zu sehen wäre, was mit was zusammenspielt. -->
+                      <div class="bracket-card-strip">
+                        @for (group of bracketReasonCardGroups(reason); track $index) {
+                          <div class="bracket-card-group">
+                            @for (name of group; track name) {
+                              <div
+                                class="deck-card-tile clickable bracket-card-tile"
+                                role="button"
+                                tabindex="0"
+                                [attr.aria-label]="viewer.i18n.t('deckView.cardPreviewAria', { name: name })"
+                                (click)="viewer.openCardPreview(name)"
+                                (keydown.enter)="viewer.openCardPreview(name)"
+                                (keydown.space)="viewer.openCardPreview(name)"
+                              >
+                                @if (viewer.cardImageUrlFor(name); as img) {
+                                  <app-card-image
+                                    [imageUrl]="img"
+                                    [backImageUrl]="viewer.cardBackImageUrlFor(name)"
+                                    [alt]="name"
+                                    [compact]="true"
+                                  />
+                                } @else {
+                                  <div class="deck-card-placeholder">{{ name }}</div>
+                                }
+                              </div>
+                            }
+                          </div>
+                        }
+                      </div>
                     }
+                  </div>
+                }
+              </section>
+
+              <section class="bracket-panel">
+                <h4>{{ viewer.i18n.t('deckView.bracketVerdictHeading') }}</h4>
+                <!-- Jede Zeile trägt ihr eigenes ⓘ: die Rechnung steht dort, wo die Zahl steht. -->
+                <ul class="game-changer-list bracket-verdict-list">
+                  <li>
+                    <span class="bracket-verdict-label">{{ viewer.i18n.t('deckView.bracketRowRules') }}</span>
+                    <strong class="bracket-verdict-value">{{ viewer.i18n.t('deckView.bracketLevelValue', { level: analysis.verdicts.rules }) }}</strong>
+                    <button
+                      class="icon-button bracket-verdict-info"
+                      (click)="viewer.openBracketMath('rules')"
+                      [attr.aria-label]="viewer.i18n.t('deckView.bracketExplainAria', { topic: viewer.i18n.t('deckView.bracketRowRules') })"
+                    >
+                      ⓘ
+                    </button>
                   </li>
-                }
-              </ul>
-
-              <p class="hint"><strong>{{ viewer.i18n.t('deckView.bracketVerdictHeading') }}</strong></p>
-              <ul class="game-changer-list">
-                <li>{{ viewer.i18n.t('deckView.bracketVerdictRules', { level: analysis.verdicts.rules }) }}</li>
-                @if (analysis.verdicts.spellbook !== null) {
-                  <li>{{ viewer.i18n.t('deckView.bracketVerdictSpellbook', { level: analysis.verdicts.spellbook }) }}</li>
-                } @else {
-                  <li>{{ viewer.i18n.t('deckView.bracketVerdictSpellbookMissing') }}</li>
-                }
-                <li>{{ viewer.i18n.t('deckView.bracketVerdictTuning', { percent: (analysis.verdicts.tuning | percent: '1.0-0') ?? '' }) }}</li>
-                @if (analysis.verdicts.precon) {
-                  <li>{{ viewer.i18n.t('deckView.bracketVerdictPrecon') }}</li>
-                }
-              </ul>
-
-              <!-- Ein Precon über Bracket 2 sieht nach einem Fehler aus, ist aber keiner: das
-                   Bracket-Update vom Februar 2026 hat Precons von Bracket 2 entkoppelt und im
-                   selben Zug Farewell und Biorhythm auf die Game-Changer-Liste gesetzt. Der Satz
-                   steht genau dort, wo die Verwunderung entsteht. -->
-              @if (analysis.verdicts.precon && analysis.bracket > 2) {
-                <p class="hint">{{ viewer.i18n.t('deckView.bracketPreconNote') }}</p>
-              }
-
-              <!-- "36 %" allein sagt niemandem etwas. Der Satz erklärt, wozu der Wert dient; die
-                   vier Messgrößen dahinter zeigen, woraus er entsteht - bewusst hinter einem
-                   zweiten Tipp, weil dieser Aufklapper auf dem iPhone ohnehin lang ist. -->
-              <p class="hint">{{ viewer.i18n.t('deckView.bracketTuningExplain', { bump: viewer.tuningBumpPercent }) }}</p>
-              <div class="chip-row">
-                <button class="glass-chip small" (click)="viewer.toggleTuningDetails()">
-                  {{ viewer.i18n.t(viewer.showTuningDetails() ? 'deckView.bracketTuningHideValues' : 'deckView.bracketTuningShowValues') }}
-                </button>
-                <!-- Die Werte-Liste daneben zeigt nur die Zahlen; wer wissen will, wie aus ihnen
-                     eine Stufe wird, bekommt hier die ganze Kette einmal vorgerechnet. -->
-                <button class="glass-chip small" (click)="viewer.openBracketMath()">
-                  {{ viewer.i18n.t('deckView.bracketMathOpen') }}
-                </button>
-              </div>
-              @if (viewer.showTuningDetails()) {
-                <ul class="game-changer-list">
-                  @for (part of analysis.verdicts.tuningParts; track part.key) {
-                    <li>
-                      {{ viewer.i18n.t('deckView.bracketTuning.' + part.key) }}:
-                      <strong>{{ part.value | number: '1.0-1' }}</strong>
-                      <span class="bracket-caveat">{{ viewer.i18n.t('deckView.bracketTuningScale', { from: (part.from | number: '1.0-1') ?? '', to: (part.to | number: '1.0-1') ?? '' }) }}</span>
-                    </li>
-                  }
+                  <li>
+                    <span class="bracket-verdict-label">{{ viewer.i18n.t('deckView.bracketRowSpellbook') }}</span>
+                    <strong class="bracket-verdict-value">
+                      @if (analysis.verdicts.spellbook !== null) {
+                        {{ viewer.i18n.t('deckView.bracketLevelValue', { level: analysis.verdicts.spellbook }) }}
+                      } @else {
+                        {{ viewer.i18n.t('deckView.bracketValueUnavailable') }}
+                      }
+                    </strong>
+                    <button
+                      class="icon-button bracket-verdict-info"
+                      (click)="viewer.openBracketMath('spellbook')"
+                      [attr.aria-label]="viewer.i18n.t('deckView.bracketExplainAria', { topic: viewer.i18n.t('deckView.bracketRowSpellbook') })"
+                    >
+                      ⓘ
+                    </button>
+                  </li>
+                  <li>
+                    <span class="bracket-verdict-label">{{ viewer.i18n.t('deckView.bracketRowTuning') }}</span>
+                    <strong class="bracket-verdict-value">{{ analysis.verdicts.tuning | percent: '1.0-0' }}</strong>
+                    <button
+                      class="icon-button bracket-verdict-info"
+                      (click)="viewer.openBracketMath('tuning')"
+                      [attr.aria-label]="viewer.i18n.t('deckView.bracketExplainAria', { topic: viewer.i18n.t('deckView.bracketRowTuning') })"
+                    >
+                      ⓘ
+                    </button>
+                  </li>
+                  <li>
+                    <span class="bracket-verdict-label">{{ viewer.i18n.t('deckView.bracketRowPower') }}</span>
+                    <strong class="bracket-verdict-value">{{ viewer.i18n.t('deckView.bracketPowerValue', { power: (analysis.power | number: '1.1-1') ?? '' }) }}</strong>
+                    <button
+                      class="icon-button bracket-verdict-info"
+                      (click)="viewer.openBracketMath('power')"
+                      [attr.aria-label]="viewer.i18n.t('deckView.bracketExplainAria', { topic: viewer.i18n.t('deckView.bracketRowPower') })"
+                    >
+                      ⓘ
+                    </button>
+                  </li>
                 </ul>
-              }
 
-              <p class="hint">
-                <strong>{{ viewer.i18n.t('deckView.bracketPowerHeading', { power: (analysis.power | number: '1.1-1') ?? '' }) }}</strong>
-              </p>
-              <p class="hint">{{ viewer.i18n.t('deckView.bracketPowerExplain') }}</p>
-
-              <p class="hint">
-                @switch (analysis.confidence) {
-                  @case ('high') { {{ viewer.i18n.t('deckView.bracketConfidenceHigh') }} }
-                  @case ('low') { {{ viewer.i18n.t('deckView.bracketConfidenceLow') }} }
-                  @default { {{ viewer.i18n.t('deckView.bracketConfidenceMedium') }} }
+                @if (analysis.verdicts.precon) {
+                  <p class="hint">{{ viewer.i18n.t('deckView.bracketVerdictPrecon') }}</p>
                 }
-              </p>
+                <!-- Ein Precon über Bracket 2 sieht nach einem Fehler aus, ist aber keiner: das
+                     Bracket-Update vom Februar 2026 hat Precons von Bracket 2 entkoppelt und im
+                     selben Zug Farewell und Biorhythm auf die Game-Changer-Liste gesetzt. Der Satz
+                     steht genau dort, wo die Verwunderung entsteht. -->
+                @if (analysis.verdicts.precon && analysis.bracket > 2) {
+                  <p class="hint">{{ viewer.i18n.t('deckView.bracketPreconNote') }}</p>
+                }
 
-              @if (analysis.suggestsCedh) {
-                <p class="hint bracket-cedh-hint">{{ viewer.i18n.t('deckView.bracketCedhHint') }}</p>
-              }
+                <p class="hint">
+                  @switch (analysis.confidence) {
+                    @case ('high') { {{ viewer.i18n.t('deckView.bracketConfidenceHigh') }} }
+                    @case ('low') { {{ viewer.i18n.t('deckView.bracketConfidenceLow') }} }
+                    @default { {{ viewer.i18n.t('deckView.bracketConfidenceMedium') }} }
+                  }
+                </p>
+
+                @if (analysis.suggestsCedh) {
+                  <p class="hint bracket-cedh-hint">{{ viewer.i18n.t('deckView.bracketCedhHint') }}</p>
+                }
+              </section>
             }
-            <p class="hint">{{ viewer.i18n.t('deckView.bracketNeverAutoNote') }}</p>
-            <p class="hint bracket-caveat">{{ viewer.i18n.t('deckView.bracketSources') }}</p>
+            <p class="hint bracket-caveat bracket-why-sources">{{ viewer.i18n.t('deckView.bracketSources') }}</p>
           </div>
         }
       }
@@ -1387,68 +1440,82 @@
   </div>
 }
 
-@if (viewer.showBracketMath()) {
-  <!-- Bewusst außerhalb von .deck-detail-page - gleicher Grund wie beim Artwork-Dialog oben. -->
+@if (viewer.bracketMathTopic(); as topic) {
+  <!-- Bewusst außerhalb von .deck-detail-page - gleicher Grund wie beim Artwork-Dialog oben.
+       Ein Fenster für alle vier Rechenwege: welcher zu sehen ist, entscheidet die Zeile, aus der
+       das ⓘ angetippt wurde. -->
   <div class="options-menu-overlay" (click)="viewer.closeBracketMath()">
     <div class="options-menu-sheet" (click)="$event.stopPropagation()">
       @if (viewer.bracketAnalysis(); as analysis) {
         @if (viewer.bracketMath(); as math) {
-          <h3>{{ viewer.i18n.t('deckView.bracketMathTitle', { level: analysis.bracket }) }}</h3>
-
-          <p class="hint"><strong>{{ viewer.i18n.t('deckView.bracketMathStepRules', { level: analysis.verdicts.rules }) }}</strong></p>
-          <ul class="game-changer-list">
-            @for (reason of math.rulesReasons; track reason.key) {
-              <li>
-                {{ viewer.i18n.t('deckView.bracketReason.' + reason.key) }}
-                @if (reason.cards.length > 0) {
-                  <span class="bracket-reason-cards">{{ reason.cards.join(', ') }}</span>
+          @switch (topic) {
+            @case ('rules') {
+              <h3>{{ viewer.i18n.t('deckView.bracketMathRulesTitle') }}</h3>
+              <p class="hint">{{ viewer.i18n.t('deckView.bracketMathRulesIntro') }}</p>
+              <p class="hint"><strong>{{ viewer.i18n.t('deckView.bracketMathStepRules', { level: analysis.verdicts.rules }) }}</strong></p>
+              <ul class="game-changer-list">
+                @for (reason of math.rulesReasons; track reason.key) {
+                  <li>
+                    {{ viewer.i18n.t('deckView.bracketReason.' + reason.key) }}
+                    <span class="hint"> · {{ viewer.i18n.t('deckView.bracketReasonMinimum', { level: reason.minimum }) }}</span>
+                    @if (reason.cards.length > 0) {
+                      <span class="bracket-reason-cards">{{ reason.cards.join(', ') }}</span>
+                    }
+                  </li>
                 }
-              </li>
+              </ul>
+              @if (analysis.verdicts.precon) {
+                <p class="hint">{{ viewer.i18n.t('deckView.bracketVerdictPrecon') }}</p>
+              }
             }
-          </ul>
-
-          @if (analysis.verdicts.spellbook !== null) {
-            <p class="hint"><strong>{{ viewer.i18n.t('deckView.bracketMathStepSpellbook', { level: analysis.verdicts.spellbook }) }}</strong></p>
-            <p class="hint">{{ viewer.i18n.t('deckView.bracketMathHigherWins', { level: math.baseBracket }) }}</p>
-          } @else {
-            <p class="hint"><strong>{{ viewer.i18n.t('deckView.bracketMathStepSpellbookMissing') }}</strong></p>
-          }
-
-          @if (math.bumped) {
-            <p class="hint">{{ viewer.i18n.t('deckView.bracketMathStepBump', { percent: (analysis.verdicts.tuning | percent: '1.0-0') ?? '', bump: viewer.tuningBumpPercent, level: analysis.bracket }) }}</p>
-          }
-          @if (analysis.verdicts.precon) {
-            <p class="hint">{{ viewer.i18n.t('deckView.bracketVerdictPrecon') }}</p>
-          }
-          <p class="hint">{{ viewer.i18n.t('deckView.bracketNeverAutoNote') }}</p>
-
-          <h3>{{ viewer.i18n.t('deckView.bracketMathTuningTitle') }}</h3>
-          <p class="hint">{{ viewer.i18n.t('deckView.bracketMathTuningIntro') }}</p>
-          <ul class="game-changer-list">
-            @for (part of analysis.verdicts.tuningParts; track part.key) {
-              <li>
-                <strong>{{ viewer.i18n.t('deckView.bracketTuning.' + part.key) }}</strong>
-                <span class="bracket-caveat">
-                  {{ viewer.i18n.t('deckView.bracketMathPartMeasured', { value: (part.value | number: '1.0-2') ?? '' }) }} ·
-                  {{ viewer.i18n.t('deckView.bracketMathPartScale', { from: (part.from | number: '1.0-1') ?? '', to: (part.to | number: '1.0-1') ?? '' }) }} ·
-                  {{ viewer.i18n.t('deckView.bracketMathPartScore', { score: (part.score | number: '1.2-2') ?? '' }) }}
-                </span>
-                @if (part.from > part.to) {
-                  <span class="bracket-caveat">{{ viewer.i18n.t('deckView.bracketMathPartReversed') }}</span>
+            @case ('spellbook') {
+              <h3>{{ viewer.i18n.t('deckView.bracketMathSpellbookTitle') }}</h3>
+              <p class="hint">{{ viewer.i18n.t('deckView.bracketMathSpellbookIntro') }}</p>
+              @if (analysis.verdicts.spellbook !== null) {
+                <p class="hint"><strong>{{ viewer.i18n.t('deckView.bracketMathStepSpellbook', { level: analysis.verdicts.spellbook }) }}</strong></p>
+                <p class="hint">{{ viewer.i18n.t('deckView.bracketMathHigherWins', { level: math.baseBracket }) }}</p>
+              } @else {
+                <p class="hint"><strong>{{ viewer.i18n.t('deckView.bracketMathStepSpellbookMissing') }}</strong></p>
+              }
+            }
+            @case ('tuning') {
+              <h3>{{ viewer.i18n.t('deckView.bracketMathTuningTitle') }}</h3>
+              <p class="hint">{{ viewer.i18n.t('deckView.bracketMathTuningIntro') }}</p>
+              <ul class="game-changer-list">
+                @for (part of analysis.verdicts.tuningParts; track part.key) {
+                  <li>
+                    <strong>{{ viewer.i18n.t('deckView.bracketTuning.' + part.key) }}</strong>
+                    <span class="bracket-caveat">
+                      {{ viewer.i18n.t('deckView.bracketMathPartMeasured', { value: (part.value | number: '1.0-2') ?? '' }) }} ·
+                      {{ viewer.i18n.t('deckView.bracketMathPartScale', { from: (part.from | number: '1.0-1') ?? '', to: (part.to | number: '1.0-1') ?? '' }) }} ·
+                      {{ viewer.i18n.t('deckView.bracketMathPartScore', { score: (part.score | number: '1.2-2') ?? '' }) }}
+                    </span>
+                    @if (part.from > part.to) {
+                      <span class="bracket-caveat">{{ viewer.i18n.t('deckView.bracketMathPartReversed') }}</span>
+                    }
+                  </li>
                 }
-              </li>
+              </ul>
+              <p class="hint">
+                <strong>{{ viewer.i18n.t('deckView.bracketMathSum', { summands: math.summands, divisor: math.divisor, value: (analysis.verdicts.tuning | number: '1.2-2') ?? '', percent: (analysis.verdicts.tuning | percent: '1.0-0') ?? '' }) }}</strong>
+              </p>
+              <p class="hint">{{ viewer.i18n.t('deckView.bracketTuningExplain', { bump: viewer.tuningBumpPercent }) }}</p>
+              @if (math.bumped) {
+                <p class="hint">{{ viewer.i18n.t('deckView.bracketMathStepBump', { percent: (analysis.verdicts.tuning | percent: '1.0-0') ?? '', bump: viewer.tuningBumpPercent, level: analysis.bracket }) }}</p>
+              }
+              @if (analysis.verdicts.precon) {
+                <p class="hint">{{ viewer.i18n.t('deckView.bracketVerdictPrecon') }}</p>
+              }
             }
-          </ul>
-          <p class="hint">
-            <strong>{{ viewer.i18n.t('deckView.bracketMathSum', { summands: math.summands, divisor: math.divisor, value: (analysis.verdicts.tuning | number: '1.2-2') ?? '', percent: (analysis.verdicts.tuning | percent: '1.0-0') ?? '' }) }}</strong>
-          </p>
-          <p class="hint">{{ viewer.i18n.t('deckView.bracketTuningExplain', { bump: viewer.tuningBumpPercent }) }}</p>
-
-          <h3>{{ viewer.i18n.t('deckView.bracketMathPowerTitle') }}</h3>
-          <p class="hint">{{ viewer.i18n.t('deckView.bracketMathPowerRange', { level: analysis.bracket, from: (math.powerVon | number: '1.1-1') ?? '', to: (math.powerBis | number: '1.1-1') ?? '' }) }}</p>
-          <p class="hint">
-            <strong>{{ viewer.i18n.t('deckView.bracketMathPowerFormula', { from: (math.powerVon | number: '1.1-1') ?? '', tuning: (analysis.verdicts.tuning | number: '1.2-2') ?? '', span: (math.powerSpanne | number: '1.1-1') ?? '', power: (analysis.power | number: '1.1-1') ?? '' }) }}</strong>
-          </p>
+            @case ('power') {
+              <h3>{{ viewer.i18n.t('deckView.bracketMathPowerTitle') }}</h3>
+              <p class="hint">{{ viewer.i18n.t('deckView.bracketPowerExplain') }}</p>
+              <p class="hint">{{ viewer.i18n.t('deckView.bracketMathPowerRange', { level: analysis.bracket, from: (math.powerVon | number: '1.1-1') ?? '', to: (math.powerBis | number: '1.1-1') ?? '' }) }}</p>
+              <p class="hint">
+                <strong>{{ viewer.i18n.t('deckView.bracketMathPowerFormula', { from: (math.powerVon | number: '1.1-1') ?? '', tuning: (analysis.verdicts.tuning | number: '1.2-2') ?? '', span: (math.powerSpanne | number: '1.1-1') ?? '', power: (analysis.power | number: '1.1-1') ?? '' }) }}</strong>
+              </p>
+            }
+          }
         }
       }
       <button class="glass-button" (click)="viewer.closeBracketMath()">
