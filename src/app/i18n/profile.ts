@@ -79,12 +79,21 @@ export const profile = {
     'profile.linking': 'Verlinke …',
     'profile.unlinkSectionTitle': 'Deck-Verknüpfung lösen',
     'profile.unlinkHint':
-      'Falls ein Deck fälschlich verlinkt wurde: hier die Verknüpfung aller seiner Spiele wieder aufheben – sie wandern zurück zu "Commander ohne Deck".',
+      'Falls ein Deck fälschlich verlinkt wurde: hier die Verknüpfung aller seiner Spiele wieder aufheben – sie wandern zurück zu "Commander ohne Deck". Mit 🤝 markierte Einträge sind geliehene Decks; solange du selbst kein Deck mit diesem Commander hast, wird die Leihe danach wieder erkannt.',
     'profile.unlinking': 'Löse …',
     'profile.unlink': 'Verknüpfung lösen',
     'profile.commanderWithoutDeck': 'Commander ohne Deck',
     'profile.commanderWithoutDeckHint':
       'Spiele, bei denen noch kein eigenes Deck zum passenden Commander existiert.',
+    'profile.commanderListWithoutDeck': 'Ohne Deck',
+    'profile.commanderListBorrowed': 'Geliehen',
+    'profile.commanderListCube': 'Cube',
+    'profile.commanderBorrowed': 'Geliehene Decks',
+    'profile.commanderBorrowedHint':
+      'Spiele mit dem Deck einer anderen Person. Ein Deck gibt es dazu also – es gehört nur jemand anderem und steht deshalb nicht in deiner eigenen Deck-Liste.',
+    'profile.commanderCube': 'Cube-Commander',
+    'profile.commanderCubeHint':
+      'Commander aus Cube- und Draft-Runden. Dazu wird es nie ein Deck geben – solche Spiele werden bewusst nie mit einem Deck verknüpft.',
     'profile.backgroundsTitle': 'Meine Hintergrundbilder',
     'profile.backgroundsHint':
       'Eigene Hintergründe für den Life-Tracker – nur du kannst sie auswählen, außer du gibst sie gezielt für andere Accounts frei.',
@@ -213,12 +222,21 @@ export const profile = {
     'profile.linking': 'Linking …',
     'profile.unlinkSectionTitle': 'Undo deck link',
     'profile.unlinkHint':
-      'If a deck was linked incorrectly: undo the link for all its games here – they move back to "Commander without deck".',
+      'If a deck was linked incorrectly: undo the link for all its games here – they move back to "Commander without deck". Entries marked 🤝 are borrowed decks; as long as you don\'t own a deck with that commander yourself, the loan will be detected again afterwards.',
     'profile.unlinking': 'Unlinking …',
     'profile.unlink': 'Undo link',
     'profile.commanderWithoutDeck': 'Commander without deck',
     'profile.commanderWithoutDeckHint':
       "Games for which you don't have a deck for the matching commander yet.",
+    'profile.commanderListWithoutDeck': 'Without deck',
+    'profile.commanderListBorrowed': 'Borrowed',
+    'profile.commanderListCube': 'Cube',
+    'profile.commanderBorrowed': 'Borrowed decks',
+    'profile.commanderBorrowedHint':
+      "Games played with someone else's deck. A deck does exist for these – it just belongs to someone else and therefore isn't part of your own deck list.",
+    'profile.commanderCube': 'Cube commanders',
+    'profile.commanderCubeHint':
+      'Commanders from cube and draft games. There will never be a deck for these – such games are deliberately never linked to a deck.',
     'profile.backgroundsTitle': 'My Backgrounds',
     'profile.backgroundsHint':
       'Custom backgrounds for the life tracker – only you can select them, unless you specifically share them with other accounts.',

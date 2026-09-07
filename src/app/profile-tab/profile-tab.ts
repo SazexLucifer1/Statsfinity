@@ -6,7 +6,16 @@ import { ProfileService } from '../profile.service';
 import { MtgService } from '../mtg.service';
 import { GroupService } from '../group.service';
 import { DeckList } from '../deck-list/deck-list';
-import { DeckService, CommanderGameStats, CrossGroupPersonalStats, CardAndColorStats, DeckOwner } from '../deck.service';
+import { DeckViewerService } from '../deck-viewer.service';
+import {
+  DeckService,
+  BorrowedDeckInfo,
+  UnassignedCommanderStats,
+  UnassignedCommanderCategory,
+  CrossGroupPersonalStats,
+  CardAndColorStats,
+  DeckOwner,
+} from '../deck.service';
 import { ManualDeckLinkService } from '../manual-deck-link.service';
 import { CardPreviewService } from '../card-preview.service';
 import { AuthService } from '../auth.service';
@@ -48,6 +57,7 @@ export class ProfileTab {
   readonly mtg = inject(MtgService);
   readonly groupService = inject(GroupService);
   private readonly deckService = inject(DeckService);
+  private readonly deckViewer = inject(DeckViewerService);
   readonly manualDeckLink = inject(ManualDeckLinkService);
   readonly cardPreview = inject(CardPreviewService);
   private readonly auth = inject(AuthService);
@@ -166,11 +176,81 @@ export class ProfileTab {
     }));
   }
 
-  readonly unassignedCommanderStats = signal<CommanderGameStats[]>([]);
+  readonly unassignedCommanderStats = signal<UnassignedCommanderStats[]>([]);
   /** Gleiches wie unassignedCommanderStats, aber für ein FREMDES Profil - rein zum Ansehen, ohne Reparieren/Verlinken (das kann nur der Account-Besitzer selbst). */
-  readonly viewingUnassignedCommanderStats = signal<CommanderGameStats[]>([]);
+  readonly viewingUnassignedCommanderStats = signal<UnassignedCommanderStats[]>([]);
   /** Gleiches wie viewingUnassignedCommanderStats, aber für ein gerade angesehenes NPC-Profil. */
-  readonly viewingNpcUnassignedCommanderStats = signal<CommanderGameStats[]>([]);
+  readonly viewingNpcUnassignedCommanderStats = signal<UnassignedCommanderStats[]>([]);
+
+  // --- Umschalter der drei "kein eigenes Deck"-Listen im eigenen Profil ---
+
+  /**
+   * Reihenfolge der Listen im Umschalter. 'none' zuerst: nur dort gibt es überhaupt etwas zu tun
+   * (Deck anlegen oder verlinken), die beiden anderen sind reine Nachschlage-Listen.
+   */
+  private static readonly COMMANDER_LIST_MODES: UnassignedCommanderCategory[] = ['none', 'borrowed', 'cube'];
+
+  private readonly commanderListModeChoice = signal<UnassignedCommanderCategory>('none');
+
+  /** Nur Listen anbieten, in denen auch etwas steht - sonst zeigte der Umschalter auf leere Listen. */
+  readonly commanderListModes = computed<UnassignedCommanderCategory[]>(() => {
+    const stats = this.unassignedCommanderStats();
+    return ProfileTab.COMMANDER_LIST_MODES.filter((mode) => stats.some((c) => c.category === mode));
+  });
+
+  /** Die gewählte Liste, zurückfallend auf die erste vorhandene - die Auswahl kann durch ein Verlinken leer werden. */
+  readonly commanderListMode = computed<UnassignedCommanderCategory>(() => {
+    const modes = this.commanderListModes();
+    const chosen = this.commanderListModeChoice();
+    return modes.includes(chosen) ? chosen : (modes[0] ?? 'none');
+  });
+
+  readonly shownUnassignedCommanderStats = computed<UnassignedCommanderStats[]>(() =>
+    this.unassignedCommanderStats().filter((c) => c.category === this.commanderListMode()),
+  );
+
+  /** Nur die echten "es fehlt ein Deck"-Einträge - fremde und NPC-Profile bekommen keinen Umschalter. */
+  readonly viewingCommanderStatsWithoutDeck = computed<UnassignedCommanderStats[]>(() =>
+    this.viewingUnassignedCommanderStats().filter((c) => c.category === 'none'),
+  );
+
+  readonly viewingNpcCommanderStatsWithoutDeck = computed<UnassignedCommanderStats[]>(() =>
+    this.viewingNpcUnassignedCommanderStats().filter((c) => c.category === 'none'),
+  );
+
+  setCommanderListMode(mode: UnassignedCommanderCategory): void {
+    this.commanderListModeChoice.set(mode);
+    this.ownCommanderListRef()?.reset();
+  }
+
+  commanderListCount(mode: UnassignedCommanderCategory): number {
+    return this.unassignedCommanderStats().filter((c) => c.category === mode).length;
+  }
+
+  /** Kurze Beschriftung für den Umschalter - die ausführliche steht als Überschrift darüber. */
+  commanderListShortKey(mode: UnassignedCommanderCategory): string {
+    return mode === 'borrowed'
+      ? 'profile.commanderListBorrowed'
+      : mode === 'cube'
+        ? 'profile.commanderListCube'
+        : 'profile.commanderListWithoutDeck';
+  }
+
+  commanderListTitleKey(mode: UnassignedCommanderCategory): string {
+    return mode === 'borrowed'
+      ? 'profile.commanderBorrowed'
+      : mode === 'cube'
+        ? 'profile.commanderCube'
+        : 'profile.commanderWithoutDeck';
+  }
+
+  commanderListHintKey(mode: UnassignedCommanderCategory): string {
+    return mode === 'borrowed'
+      ? 'profile.commanderBorrowedHint'
+      : mode === 'cube'
+        ? 'profile.commanderCubeHint'
+        : 'profile.commanderWithoutDeckHint';
+  }
   readonly npcFavoriteCommanderBusy = signal(false);
 
   /** Gesamt-Statistik über ALLE Gruppen des eigenen Accounts hinweg (siehe DeckService.getCrossGroupPersonalStats) -
@@ -333,6 +413,16 @@ export class ProfileTab {
     }))
   );
 
+  /**
+   * Klick auf das geliehene Deck in der Commander-Liste: öffnet die Deck-Ansicht wie aus der
+   * Deck-Liste heraus. Das Deck gehört jemand anderem - die Detailansicht schaltet die
+   * Bearbeiten-Knöpfe selbst ab (DeckViewerService.canEditViewingDeck).
+   */
+  async openBorrowedDeck(borrowed: BorrowedDeckInfo): Promise<void> {
+    const deck = await this.deckService.getDeckById(borrowed.id);
+    if (deck) await this.deckViewer.open(deck);
+  }
+
   /** Klick auf einen Treppchen-Platz der Karten-Rangliste zeigt die Karte groß - dasselbe wie ein
    * Klick auf das Vorschaubild in der Liste darunter. */
   openPodiumCard(entry: PodiumEntry): void {
@@ -345,7 +435,7 @@ export class ProfileTab {
     const userId = this.profileService.profile()?.id;
     if (!userId) return;
     this.unassignedCommanderStats.set(
-      await this.deckService.getUnassignedCommanderStats({ kind: 'user', userId })
+      await this.deckService.getUnassignedCommanderStats({ kind: 'user', userId }, { linkBorrowed: true })
     );
     await this.deckListRef()?.refreshDecks();
   }
@@ -357,7 +447,10 @@ export class ProfileTab {
         this.unassignedCommanderStats.set([]);
         return;
       }
-      this.deckService.getUnassignedCommanderStats({ kind: 'user', userId }).then((stats) => {
+      // linkBorrowed nur hier: das ist das EIGENE Profil. Ein per Namen erkanntes geliehenes Deck
+      // wird dabei auch in der Datenbank verknüpft, damit die Partie wirklich am Deck hängt und
+      // von hier aus geöffnet werden kann.
+      this.deckService.getUnassignedCommanderStats({ kind: 'user', userId }, { linkBorrowed: true }).then((stats) => {
         this.unassignedCommanderStats.set(stats);
         this.ownCommanderListRef()?.reset();
       });

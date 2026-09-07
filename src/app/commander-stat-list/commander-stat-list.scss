@@ -46,6 +46,28 @@
     min-width: 0;
   }
 
+  // Gleiche Auszeichnung wie im Statistik-Tab und im Match-Verlauf (stats-tab.scss), damit ein
+  // geliehenes Deck überall gleich aussieht.
+  .borrowed-badge {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--gold);
+
+    .borrowed-owner {
+      font-weight: 400;
+      opacity: 0.8;
+    }
+  }
+
+  // Wie .deck-actions in der Deck-Liste: der Knopf steht in einer eigenen Zeile unter den Werten
+  // und nimmt nicht die volle Breite ein.
+  .borrowed-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+  }
+
   .commander-name {
     font-weight: 600;
     // Bewusst NICHT die globale .card-name-text: die schneidet mit white-space: nowrap ab. Hier

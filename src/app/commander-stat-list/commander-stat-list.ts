@@ -1,10 +1,10 @@
-import { Component, computed, inject, input, signal } from '@angular/core';
+import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CardImage } from '../card-image/card-image';
 import { CardPreviewService } from '../card-preview.service';
 import { I18nService } from '../i18n.service';
-import { CommanderGameStats } from '../deck.service';
+import { BorrowedDeckInfo, CommanderGameStats } from '../deck.service';
 import { Meter } from '../ui/meter/meter';
 import { Pager } from '../ui/pager/pager';
 
@@ -35,6 +35,12 @@ export class CommanderStatList {
   readonly emptyLabelKey = input('profile.noCommanderFound');
   readonly commanderImage = input<(name: string) => string | null>(() => null);
   readonly commanderBackImage = input<(name: string) => string | null>(() => null);
+
+  /**
+   * Klick auf das geliehene Deck eines Eintrags. Nur Einträge mit borrowedDeck zeigen den Knopf
+   * überhaupt an, deshalb braucht es keinen zusätzlichen Schalter am Aufrufer.
+   */
+  readonly borrowedDeckClick = output<BorrowedDeckInfo>();
 
   readonly searchQuery = signal('');
   readonly sortMode = signal<CommanderStatSortMode>('alpha');

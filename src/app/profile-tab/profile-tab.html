@@ -72,7 +72,7 @@
     </section>
   }
 
-  @if (!othersStatsHidden() && viewingUnassignedCommanderStats().length > 0) {
+  @if (!othersStatsHidden() && viewingCommanderStatsWithoutDeck().length > 0) {
     <section class="glass-card span-full">
       <h2>{{ i18n.t('profile.commanderStats') }}</h2>
       <p class="hint">
@@ -81,7 +81,7 @@
 
       <app-commander-stat-list
         #viewingCommanderListRef
-        [stats]="viewingUnassignedCommanderStats()"
+        [stats]="viewingCommanderStatsWithoutDeck()"
         [commanderImage]="commanderImage"
         [commanderBackImage]="commanderBackImage"
       />
@@ -166,7 +166,7 @@
   </section>
 }
 
-@if (!othersStatsHidden() && viewingNpcUnassignedCommanderStats().length > 0) {
+@if (!othersStatsHidden() && viewingNpcCommanderStatsWithoutDeck().length > 0) {
   <section class="glass-card span-full">
     <h2>{{ i18n.t('profile.commanderStats') }}</h2>
     <p class="hint">
@@ -175,7 +175,7 @@
 
     <app-commander-stat-list
       #viewingNpcCommanderListRef
-      [stats]="viewingNpcUnassignedCommanderStats()"
+      [stats]="viewingNpcCommanderStatsWithoutDeck()"
       [commanderImage]="commanderImage"
       [commanderBackImage]="commanderBackImage"
     />
@@ -480,18 +480,34 @@
     }
   </section>
 
-  @if (unassignedCommanderStats().length > 0) {
+  @if (commanderListModes().length > 0) {
     <section class="glass-card">
-      <h2>{{ i18n.t('profile.commanderWithoutDeck') }}</h2>
+      <h2>{{ i18n.t(commanderListTitleKey(commanderListMode())) }}</h2>
+      <!-- Ein Umschalter statt drei Kästen untereinander: die drei Listen beantworten dieselbe
+           Frage ("wozu habe ich kein eigenes Deck?"), nur mit unterschiedlicher Konsequenz.
+           .segmented, weil genau eine Liste gilt (siehe styles.scss). Die kurzen Beschriftungen
+           halten die drei Segmente auf dem Handy in einer Zeile - die volle Bezeichnung steht
+           ohnehin direkt darüber in der Überschrift. Bei nur einer gefüllten Liste entfällt der
+           Umschalter. -->
+      @if (commanderListModes().length > 1) {
+        <div class="segmented block">
+          @for (mode of commanderListModes(); track mode) {
+            <button [class.active]="commanderListMode() === mode" (click)="setCommanderListMode(mode)">
+              {{ i18n.t(commanderListShortKey(mode)) }} ({{ commanderListCount(mode) }})
+            </button>
+          }
+        </div>
+      }
       <p class="hint">
-        {{ i18n.t('profile.commanderWithoutDeckHint') }}
+        {{ i18n.t(commanderListHintKey(commanderListMode())) }}
       </p>
 
       <app-commander-stat-list
         #ownCommanderListRef
-        [stats]="unassignedCommanderStats()"
+        [stats]="shownUnassignedCommanderStats()"
         [commanderImage]="commanderImage"
         [commanderBackImage]="commanderBackImage"
+        (borrowedDeckClick)="openBorrowedDeck($event)"
       />
     </section>
   }

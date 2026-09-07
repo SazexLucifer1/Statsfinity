@@ -28,6 +28,23 @@
         <div class="commander-info">
           <span class="commander-name">{{ c.commander }}</span>
           <span class="hint">{{ c.wins }} / {{ c.games }} {{ i18n.t('stats.wins') }} · {{ c.winRate | number: '1.0-0' }}%</span>
+          <!-- Bei einem geliehenen Deck gibt es sehr wohl ein Deck - von hier aus direkt zu
+               öffnen, statt es in der Deck-Liste des Besitzers suchen zu müssen. Deckname und
+               Besitzer sind Text, das Öffnen macht derselbe "Ansehen"-Knopf wie in der Deck-Liste
+               (deck-list.html). -->
+          @if (c.borrowedDeck; as borrowed) {
+            <span class="borrowed-badge">
+              🤝 {{ borrowed.name }}
+              @if (borrowed.ownerName) {
+                <span class="borrowed-owner">· {{ i18n.t('stats.from', { name: borrowed.ownerName }) }}</span>
+              }
+            </span>
+            <div class="borrowed-actions">
+              <button class="glass-button small primary" (click)="borrowedDeckClick.emit(borrowed)">
+                {{ i18n.t('deck.view') }}
+              </button>
+            </div>
+          }
         </div>
         <app-meter [value]="c.winRate" />
       </li>

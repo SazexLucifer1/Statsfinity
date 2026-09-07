@@ -1,6 +1,10 @@
-import { Injectable, inject, signal } from '@angular/core';
-import { DeckService, Deck, DeckOwner, CommanderGameStats } from './deck.service';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { BorrowedDeckInfo, DeckService, Deck, DeckOwner, UnassignedCommanderStats } from './deck.service';
 import { I18nService } from './i18n.service';
+
+function linkableCommanders(stats: UnassignedCommanderStats[]): UnassignedCommanderStats[] {
+  return stats.filter((c) => c.category !== 'cube');
+}
 
 /**
  * Manuelles Verlinken/Entlinken von "Commander ohne Deck"-Einträgen (alte Spiele, bei denen nur ein
@@ -17,13 +21,31 @@ export class ManualDeckLinkService {
   private owner: DeckOwner | null = null;
   private onChanged: (() => void) | null = null;
 
-  readonly unassignedCommanderStats = signal<CommanderGameStats[]>([]);
+  /**
+   * Nur die tatsächlich verlinkbaren Commander (Kategorie 'none'/'borrowed'). Commander aus
+   * Cube-/Draft-Runden sind bewusst NICHT dabei: zu ihnen wird es nie ein Deck geben, und ein
+   * Verlinken wäre dort immer falsch (dieselbe Regel wie in eligibleMatchIdsExcludingCubeDraft).
+   */
+  readonly unassignedCommanderStats = signal<UnassignedCommanderStats[]>([]);
   readonly decksForLinking = signal<Deck[]>([]);
 
   readonly linkCommanderChoice = signal('');
   readonly linkDeckChoice = signal('');
   readonly linkBusy = signal(false);
   readonly linkMessage = signal('');
+
+  /**
+   * Geliehene Decks, an denen eigene Partien haengen. Sie stehen nur beim Lösen zur Auswahl, nicht
+   * beim Verlinken: Verknüpfen kann man nur mit einem eigenen Deck, lösen muss man aber auch eine
+   * automatisch erkannte Leihe können, die daneben lag.
+   */
+  readonly borrowedDecksForUnlinking = computed<BorrowedDeckInfo[]>(() => {
+    const byId = new Map<string, BorrowedDeckInfo>();
+    for (const c of this.unassignedCommanderStats()) {
+      if (c.borrowedDeck && !byId.has(c.borrowedDeck.id)) byId.set(c.borrowedDeck.id, c.borrowedDeck);
+    }
+    return [...byId.values()];
+  });
 
   readonly unlinkDeckChoice = signal('');
   readonly unlinkBusy = signal(false);
@@ -44,7 +66,7 @@ export class ManualDeckLinkService {
       this.deckService.getUnassignedCommanderStats(owner),
       this.deckService.loadDecksForOwner(owner),
     ]);
-    this.unassignedCommanderStats.set(stats);
+    this.unassignedCommanderStats.set(linkableCommanders(stats));
     this.decksForLinking.set(decks);
     this.showDialog.set(true);
   }
@@ -55,7 +77,7 @@ export class ManualDeckLinkService {
 
   private async refreshUnassigned(): Promise<void> {
     if (!this.owner) return;
-    this.unassignedCommanderStats.set(await this.deckService.getUnassignedCommanderStats(this.owner));
+    this.unassignedCommanderStats.set(linkableCommanders(await this.deckService.getUnassignedCommanderStats(this.owner)));
   }
 
   async confirmLink(): Promise<void> {
