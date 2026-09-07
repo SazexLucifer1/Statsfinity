@@ -351,4 +351,95 @@ export class CardDataService {
 
     return combos;
   }
+
+  /**
+   * Alle Zwei-Karten-Combos, in denen MINDESTENS EINE der übergebenen Karten vorkommt - egal, an
+   * welcher der beiden Stellen sie in der Quelle steht.
+   *
+   * Bewusst getrennt von twoCardCombosFor(): dort reicht die Abfrage über card_a_normalized, weil
+   * eine vollständige Combo ohnehin beide Karten im Deck hat und damit auch die erste. Der
+   * Combo-Finder sucht dagegen genau die Combos, denen eine Karte FEHLT - und die fehlende steht
+   * in der Hälfte der Fälle in Spalte A. Ohne die zweite Abfrage bliebe rund die Hälfte aller
+   * Vorschläge unsichtbar.
+   *
+   * Deshalb auch nur auf Anforderung geladen (siehe DeckViewerService.openComboFinder()): das ist
+   * die doppelte Menge an Zeilen gegenüber der Bracket-Abfrage, und wer ein Deck nur anschaut,
+   * braucht sie nicht.
+   */
+  async combosTouching(cardNames: string[]): Promise<SpellbookTwoCardCombo[]> {
+    const keys = [...new Set(cardNames.map((n) => this.lookupKey(n)).filter(Boolean))];
+    if (keys.length === 0) return [];
+
+    // Nach id zusammengeführt: eine Combo, bei der beide Karten im Deck liegen, kommt sonst
+    // zweimal zurück - einmal aus jeder der beiden Abfragen.
+    const nachId = new Map<string, SpellbookTwoCardCombo>();
+
+    for (const spalte of ['card_a_normalized', 'card_b_normalized'] as const) {
+      // Gleiche Blockgröße wie in twoCardCombosFor() und aus demselben Grund: eine einzelne
+      // verbreitete Karte (Sol Ring & Co.) steckt in vielen Combos, und ab 1000 Zeilen schneidet
+      // PostgREST stillschweigend ab.
+      for (const block of chunk(keys, 40)) {
+        const { data, error } = await supabase
+          .from('spellbook_two_card_combos')
+          .select(
+            'id, card_a_normalized, card_b_normalized, a_must_be_commander, b_must_be_commander, mana_value_needed, bracket_tag, popularity',
+          )
+          .in(spalte, block);
+
+        if (error) {
+          console.warn('Spellbook-Combos konnten nicht geladen werden:', error.message);
+          return [];
+        }
+
+        for (const row of data ?? []) {
+          nachId.set(row.id as string, {
+            id: row.id as string,
+            cardA: row.card_a_normalized as string,
+            cardB: row.card_b_normalized as string,
+            aMustBeCommander: row.a_must_be_commander as boolean,
+            bMustBeCommander: row.b_must_be_commander as boolean,
+            manaValueNeeded: (row.mana_value_needed as number | null) ?? null,
+            bracketTag: (row.bracket_tag as SpellbookBracketTag | null) ?? null,
+            popularity: (row.popularity as number | null) ?? null,
+          });
+        }
+      }
+    }
+
+    return [...nachId.values()];
+  }
+
+  /**
+   * Volle Kartendaten zu normalisierten Vorderseiten-Namen, wie sie in den Spellbook-Tabellen
+   * stehen - Schlüssel der Ergebnis-Map ist genau dieser normalisierte Name.
+   *
+   * Nötig, weil die Combo-Tabelle nur Namen kennt: Für Karten, die NICHT im Deck liegen (die
+   * Vorschläge des Combo-Finders), fehlen sonst Farbidentität und Bild. Bewusst ohne den
+   * Scryfall-Rückfall aus findCardsBulk(): hier geht es um Hunderte Namen auf einmal, und eine
+   * Handvoll frisch erschienener Karten, die der Nachtlauf noch nicht kennt, ist als fehlender
+   * Vorschlag verkraftbar - Hunderte Einzelabfragen ins Netz wären es nicht.
+   */
+  async cardsByNormalizedNames(keys: string[]): Promise<Map<string, ScryfallCard>> {
+    const result = new Map<string, ScryfallCard>();
+    const eindeutig = [...new Set(keys.filter(Boolean))];
+    if (eindeutig.length === 0) return result;
+
+    for (const block of chunk(eindeutig, 200)) {
+      const { data, error } = await supabase
+        .from('scryfall_cards')
+        .select(CardDataService.KARTEN_SPALTEN)
+        .in('front_name_normalized', block);
+
+      if (error) {
+        console.warn('Kartendaten zu den Combo-Vorschlägen fehlen:', error.message);
+        return result;
+      }
+
+      for (const row of (data ?? []) as unknown as Record<string, unknown>[]) {
+        result.set(row['front_name_normalized'] as string, this.toCard(row));
+      }
+    }
+
+    return result;
+  }
 }

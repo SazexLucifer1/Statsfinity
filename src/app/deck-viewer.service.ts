@@ -11,6 +11,7 @@ import {
   powerRange,
   presentCombos,
 } from './bracket';
+import { fitsColorIdentity, missingComboPartners } from './combo-finder';
 import { PdfSourceCard } from './deck-pdf.service';
 import {
   CommanderSpellbookService,
@@ -74,6 +75,27 @@ export interface AnalysisCombo {
   steps: string[];
   extraMana: number | null;
   bracketLabel: string | null;
+}
+
+/**
+ * Eine Karte, die das Deck noch NICHT hat und die dort neue Zwei-Karten-Combos ergäbe - ein
+ * Eintrag des Combo-Finders, fertig für die Anzeige.
+ */
+export interface ComboFinderSuggestion {
+  /** Normalisierter Vorderseiten-Name - Schlüssel gegen die Combo-Tabelle. */
+  key: string;
+  /** Anzeigename in Scryfall-Schreibweise, zugleich Schlüssel für Bild und Vorschau. */
+  cardName: string;
+  /** Die Karten aus dem Deck, mit denen diese eine Karte je eine Combo bilden würde. */
+  partners: ComboFinderPartner[];
+}
+
+export interface ComboFinderPartner {
+  cardName: string;
+  /** Spellbooks Note für genau diese Combo, schon übersetzt - null, wenn die Quelle keine hat. */
+  bracketLabel: string | null;
+  /** Zusätzlich nötiges Mana, um die Combo abzuschließen. */
+  extraMana: number | null;
 }
 
 export interface TypeBreakdownEntry {
@@ -743,6 +765,139 @@ export class DeckViewerService {
 
   closeComboPopup(): void {
     this.comboPopupKind.set(null);
+  }
+
+  // --- Combo-Finder: welche Karte würde neue Combos freischalten? (siehe src/app/combo-finder.ts) ---
+
+  /**
+   * Höchstens so viele Vorschläge werden angezeigt.
+   *
+   * Nicht als Sparmaßnahme, sondern weil eine ungekürzte Liste nutzlos wäre: Ein durchschnittliches
+   * Commander-Deck berührt so viele der rund 4.000 Zwei-Karten-Combos, dass leicht dreistellig
+   * viele Karten "irgendeine" Combo ergäben. missingComboPartners() sortiert das Beste nach vorn
+   * (meiste Combos, dann Beliebtheit); alles dahinter ist Rauschen. Die Gesamtzahl steht trotzdem
+   * unter der Liste, damit die Kürzung sichtbar ist.
+   */
+  private static readonly COMBO_FINDER_MAX = 40;
+
+  readonly comboFinderOpen = signal(false);
+  readonly comboFinderBusy = signal(false);
+  readonly comboFinderSuggestions = signal<ComboFinderSuggestion[]>([]);
+  /** Wie viele passende Vorschläge es insgesamt gab - kann größer sein als die angezeigte Liste. */
+  readonly comboFinderTotal = signal(0);
+
+  /**
+   * Scryfall-Daten der vorgeschlagenen Karten, Schlüssel wie viewingCardDetails (Name in
+   * Kleinschreibung). Bewusst eine eigene Signalgröße statt eines Zusatzeintrags in
+   * viewingCardDetails: dort stehen ausschließlich Karten, die wirklich im Deck liegen, und
+   * genau darauf verlassen sich Manakurve, Pip-Verteilung und Bracket-Rechnung.
+   */
+  private readonly comboFinderCardDetails = signal<Map<string, ScryfallCard>>(new Map());
+
+  /** Einmal geladen, reicht für dieses Deck - zurückgesetzt in loadCardDetails(). */
+  private comboFinderLoaded = false;
+
+  /**
+   * Die Farben, in denen ein Vorschlag liegen darf.
+   *
+   * Erste Wahl ist die Farbidentität des Commanders - das ist im Commander die Regel, an der eine
+   * Karte im Deck erlaubt ist oder nicht. Ohne gesetzten Commander (andere Formate, unvollständig
+   * gepflegtes Deck) bleibt als Näherung die Vereinigung der Farbidentitäten aller Deckkarten:
+   * schwächer, aber immer noch die Antwort auf "welche Farben spielt dieses Deck eigentlich".
+   * null heißt "noch nicht bekannt" und schaltet die Filterung ganz ab (siehe fitsColorIdentity).
+   */
+  private readonly comboFinderColorIdentity = computed<string[] | null>(() => {
+    const vomCommander = this.deckColorIdentitySubset();
+    if (vomCommander) return vomCommander;
+
+    const details = this.viewingCardDetails();
+    if (details.size === 0) return null;
+
+    const union = new Set<string>();
+    for (const card of this.analysisDeckCards()) {
+      for (const farbe of details.get(card.cardName.toLowerCase())?.colorIdentity ?? [])
+        union.add(farbe);
+    }
+    return [...union];
+  });
+
+  /**
+   * Öffnet den Combo-Finder und lädt beim ersten Mal seine Daten nach.
+   *
+   * Bewusst erst auf Klick statt beim Öffnen des Decks: die Abfrage geht über BEIDE Spalten der
+   * Combo-Tabelle (rund die doppelte Zeilenmenge der Bracket-Abfrage) und zieht danach noch die
+   * Kartendaten aller Vorschläge nach. Wer ein Deck nur anschaut, soll das nicht bezahlen.
+   */
+  async openComboFinder(): Promise<void> {
+    this.comboFinderOpen.set(true);
+    if (this.comboFinderLoaded || this.comboFinderBusy()) return;
+
+    const deck = this.viewingDeck();
+    if (!deck) return;
+
+    this.comboFinderBusy.set(true);
+    // Ohne die Kartendetails fehlen Schlüssel und Farbidentität - der Klick kann kommen, bevor
+    // loadCardDetails() im Hintergrund fertig ist.
+    await this.ensureCardDetailsLoaded();
+
+    const cards = this.bracketCards();
+    if (cards.length === 0) {
+      this.comboFinderBusy.set(false);
+      return;
+    }
+
+    const combos = await this.cardData.combosTouching(cards.map((c) => c.name));
+    const vorschlaege = missingComboPartners(cards, combos);
+    const details = await this.cardData.cardsByNormalizedNames(vorschlaege.map((v) => v.key));
+
+    // Zwischenzeitlich ein anderes Deck geöffnet? Dann gehören diese Vorschläge nicht mehr hierher.
+    if (this.viewingDeck()?.id !== deck.id) {
+      this.comboFinderBusy.set(false);
+      return;
+    }
+
+    const identity = this.comboFinderColorIdentity();
+    // Karten ohne Eintrag im Kartenbestand fallen raus: ohne ihre Farbidentität lässt sich nicht
+    // sagen, ob sie überhaupt ins Deck dürfen, und ohne Bild wäre der Vorschlag ein nackter Name.
+    const passend = vorschlaege.filter((v) => {
+      const card = details.get(v.key);
+      return !!card && fitsColorIdentity(card.colorIdentity, identity);
+    });
+
+    this.comboFinderTotal.set(passend.length);
+
+    const gezeigt = passend.slice(0, DeckViewerService.COMBO_FINDER_MAX);
+    this.comboFinderCardDetails.set(
+      new Map(
+        gezeigt.map((v) => {
+          const card = details.get(v.key) as ScryfallCard;
+          return [card.name.toLowerCase(), card];
+        }),
+      ),
+    );
+    this.comboFinderSuggestions.set(
+      gezeigt.map((v) => ({
+        key: v.key,
+        cardName: (details.get(v.key) as ScryfallCard).name,
+        partners: [...v.matches]
+          // Innerhalb eines Vorschlags die bekannteste Combo zuerst - bei einer Karte, die fünf
+          // Combos freischaltet, will man die geläufige sehen und nicht die Randnotiz.
+          .sort((x, y) => (y.combo.popularity ?? 0) - (x.combo.popularity ?? 0))
+          .map((m) => ({
+            cardName: m.partner.name,
+            bracketLabel: m.combo.bracketTag
+              ? SPELLBOOK_BRACKET_LABELS[m.combo.bracketTag]
+              : null,
+            extraMana: m.combo.manaValueNeeded,
+          })),
+      })),
+    );
+    this.comboFinderLoaded = true;
+    this.comboFinderBusy.set(false);
+  }
+
+  closeComboFinder(): void {
+    this.comboFinderOpen.set(false);
   }
 
   // --- Commander-Bracket (siehe src/app/bracket.ts) ---
@@ -2520,11 +2675,21 @@ export class DeckViewerService {
    * sonst den Namen als Platzhalter.
    */
   cardImageUrlFor(name: string): string | null {
-    return this.viewingCardDetails().get(name.toLowerCase())?.imageUrl ?? null;
+    return this.cardDetailFor(name)?.imageUrl ?? null;
   }
 
   cardBackImageUrlFor(name: string): string | null {
-    return this.viewingCardDetails().get(name.toLowerCase())?.backImageUrl ?? null;
+    return this.cardDetailFor(name)?.backImageUrl ?? null;
+  }
+
+  /**
+   * Erst im Deck nachsehen, dann bei den Combo-Finder-Vorschlägen: deren Karten liegen
+   * naturgemäß NICHT im Deck (das ist ja der Punkt), sollen aber dasselbe Vorschaubild und
+   * dieselbe Großansicht bekommen wie jede andere Karte der Analyse.
+   */
+  private cardDetailFor(name: string): ScryfallCard | undefined {
+    const key = name.toLowerCase();
+    return this.viewingCardDetails().get(key) ?? this.comboFinderCardDetails().get(key);
   }
 
   previewCardImageUrl(): string | null {
@@ -2676,6 +2841,14 @@ export class DeckViewerService {
   /** Lädt Manakosten/Farbidentität/Game-Changer-Flag/Oracle-Text nach - unabhängig vom Kartenbild-Laden, da für die Deck-Analyse (Kurve/Pips/Tutoren) benötigt. */
   private async loadCardDetails(cards: DeckCard[]): Promise<void> {
     this.analysisBusy.set(true);
+    // Hier statt in open(), damit die Vorschläge auch nach einer Deck-Bearbeitung neu gerechnet
+    // werden (reloadDeckCards() ruft ebenfalls hier herein) - sonst stünde nach dem Einfügen der
+    // vorgeschlagenen Karte immer noch der Vorschlag, sie einzufügen.
+    this.comboFinderLoaded = false;
+    this.comboFinderOpen.set(false);
+    this.comboFinderSuggestions.set([]);
+    this.comboFinderTotal.set(0);
+    this.comboFinderCardDetails.set(new Map());
     const names = [...new Set(cards.map((c) => c.cardName))];
     // Parallel: Markierungen (eine kleine Abfrage, danach je Sitzung zwischengespeichert) und
     // Combos sind die Grundlage der Bracket-Einstufung und sollen die Kartendetails nicht

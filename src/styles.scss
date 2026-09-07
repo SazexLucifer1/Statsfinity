@@ -676,3 +676,11 @@ h3 {
   color: rgba(255, 255, 255, 0.55);
   background: rgba(255, 255, 255, 0.08);
 }
+
+// Zusatz hinter einem Combo-Partner im Combo-Finder ("Einstufung dieser Combo: …", "Zusätzlich
+// nötiges Mana: …"). Eigene Zeile statt Fortsetzung derselben: auf dem iPhone bricht die Zeile
+// sonst mitten im Kartennamen um, und Name und Zusatz sind nicht mehr auseinanderzuhalten.
+.combo-finder-note {
+  display: block;
+  opacity: 0.75;
+}

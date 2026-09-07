@@ -1037,6 +1037,22 @@
                     }
                   }
                 </section>
+
+                <!-- Gegenstück zur Combo-Sektion darüber: dort steht, was drin ist, hier, was
+                     fehlt. Bewusst hinter einem Knopf statt als Zahl in einer Kachel - die Liste
+                     wird erst auf Klick geladen (zwei Abfragen, siehe openComboFinder()), eine
+                     Kachel müsste ihre Zahl schon vorher kennen. -->
+                <section class="analysis-section">
+                  <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.comboFinderTitle') }}</h4>
+                  <p class="hint">{{ viewer.i18n.t('deckView.comboFinderIntro') }}</p>
+                  <button
+                    class="glass-button"
+                    [disabled]="viewer.comboFinderBusy()"
+                    (click)="viewer.openComboFinder()"
+                  >
+                    {{ viewer.i18n.t(viewer.comboFinderBusy() ? 'deckView.comboFinderLoading' : 'deckView.comboFinderOpen') }}
+                  </button>
+                </section>
               }
             }
           </div>
@@ -1434,6 +1450,52 @@
       }
       </div>
       <button class="glass-button" (click)="viewer.closeComboPopup()">
+        {{ viewer.i18n.t('deckView.done') }}
+      </button>
+    </div>
+  </div>
+}
+
+@if (viewer.comboFinderOpen()) {
+  <!-- Bewusst außerhalb von .deck-detail-page - gleicher Grund wie beim Artwork-Dialog oben.
+       Teilt sich Raster und Kartendeckel mit dem Combo-Fenster (.combo-list/.combo-entry in
+       styles.scss): ein Eintrag ist hier die fehlende Karte statt eines fertigen Paares. -->
+  <div class="options-menu-overlay" (click)="viewer.closeComboFinder()">
+    <div class="options-menu-sheet wide" (click)="$event.stopPropagation()">
+      <h3>{{ viewer.i18n.t('deckView.comboFinderDialogTitle') }}</h3>
+      @if (viewer.comboFinderBusy()) {
+        <p class="hint">{{ viewer.i18n.t('deckView.comboFinderLoading') }}</p>
+      } @else if (viewer.comboFinderSuggestions().length === 0) {
+        <p class="hint">{{ viewer.i18n.t('deckView.comboFinderNone') }}</p>
+      } @else {
+        <div class="combo-list">
+          @for (suggestion of viewer.comboFinderSuggestions(); track suggestion.key) {
+            <div class="combo-entry">
+              <ng-container [ngTemplateOutlet]="analysisCardGrid" [ngTemplateOutletContext]="{ $implicit: suggestionCardEntries(suggestion) }"></ng-container>
+              <p class="combo-entry-names">{{ suggestion.cardName }}</p>
+              <p class="hint combo-entry-label">{{ viewer.i18n.t('deckView.comboFinderWith') }}</p>
+              <ul class="hint combo-produces-list">
+                @for (partner of suggestion.partners; track $index) {
+                  <li>
+                    {{ partner.cardName }}
+                    @if (partner.bracketLabel; as label) {
+                      <span class="combo-finder-note">{{ viewer.i18n.t('deckView.comboRating', { label }) }}</span>
+                    }
+                    @if (partner.extraMana !== null && partner.extraMana > 0) {
+                      <span class="combo-finder-note">{{ viewer.i18n.t('deckView.comboExtraMana', { mana: partner.extraMana }) }}</span>
+                    }
+                  </li>
+                }
+              </ul>
+            </div>
+          }
+        </div>
+        @if (viewer.comboFinderTotal() > viewer.comboFinderSuggestions().length) {
+          <p class="hint">{{ viewer.i18n.t('deckView.comboFinderShowing', { shown: viewer.comboFinderSuggestions().length, total: viewer.comboFinderTotal() }) }}</p>
+        }
+        <p class="hint">{{ viewer.i18n.t('deckView.comboFinderSource') }}</p>
+      }
+      <button class="glass-button" (click)="viewer.closeComboFinder()">
         {{ viewer.i18n.t('deckView.done') }}
       </button>
     </div>

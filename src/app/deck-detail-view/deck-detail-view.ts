@@ -1,7 +1,13 @@
 import { Component, effect, inject } from '@angular/core';
 import { CurrencyPipe, DatePipe, DecimalPipe, NgTemplateOutlet, PercentPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { AnalysisCombo, DeckViewerService, DeckChangeGroup, GameChangerEntry } from '../deck-viewer.service';
+import {
+  AnalysisCombo,
+  ComboFinderSuggestion,
+  DeckViewerService,
+  DeckChangeGroup,
+  GameChangerEntry,
+} from '../deck-viewer.service';
 import { BracketReason } from '../bracket';
 import { DeckService, DeckCard, DeckOwner } from '../deck.service';
 import { DeckImportService } from '../deck-import.service';
@@ -35,6 +41,15 @@ export class DeckDetailView {
    */
   comboCardEntries(combo: AnalysisCombo): GameChangerEntry[] {
     return combo.cardNames.map((cardName) => ({ cardName, quantity: 1 }));
+  }
+
+  /**
+   * Die vorgeschlagene Karte im selben Raster wie die Combo-Karten - eine einzelne Karte, weil
+   * genau sie im Deck fehlt; die Partner darunter stehen als Namen, sie liegen ja schon im Deck
+   * und sind dort abgebildet.
+   */
+  suggestionCardEntries(suggestion: ComboFinderSuggestion): GameChangerEntry[] {
+    return [{ cardName: suggestion.cardName, quantity: 1 }];
   }
 
   /**

@@ -276,6 +276,19 @@ export const deckView = {
     'deckView.comboRating': 'Einstufung dieser Combo: {{label}}',
     'deckView.comboNoDescription':
       'Keine Beschreibung verfügbar - Commander Spellbook ist gerade nicht erreichbar, die Combo selbst kommt aus dem nächtlichen Abgleich.',
+    'deckView.comboFinderTitle': 'Combo-Finder',
+    'deckView.comboFinderIntro':
+      'Welche einzelne Karte würde im Deck neue Zwei-Karten-Combos ergeben? Vorgeschlagen wird nur, was in die Farbidentität des Decks passt – farblose Karten passen immer.',
+    'deckView.comboFinderOpen': 'Vorschläge anzeigen',
+    'deckView.comboFinderLoading': 'Vorschläge werden gesucht …',
+    'deckView.comboFinderDialogTitle': 'Combo-Finder: fehlende Kartenpartner',
+    'deckView.comboFinderNone':
+      'Keine passende Karte gefunden. Entweder stecken die bekannten Combos schon vollständig im Deck, oder es gibt in diesen Farben keine, der genau eine Karte fehlt.',
+    'deckView.comboFinderWith': 'Ergänzt Combos mit:',
+    'deckView.comboFinderShowing':
+      'Zeigt die {{shown}} nützlichsten von {{total}} passenden Karten – zuerst die, die auf einen Schlag die meisten Combos freischalten.',
+    'deckView.comboFinderSource':
+      'Grundlage sind die Zwei-Karten-Combos von Commander Spellbook aus dem nächtlichen Abgleich.',
     'deckView.cardPreviewAria': '{{name}} groß anzeigen',
     'deckView.byType': 'Nach Typ',
     'deckView.byOwnTags': '🏷️ Nach eigenen Tags',
@@ -577,6 +590,19 @@ export const deckView = {
     'deckView.comboRating': 'Rating of this combo: {{label}}',
     'deckView.comboNoDescription':
       'No description available - Commander Spellbook is currently unreachable; the combo itself comes from the nightly sync.',
+    'deckView.comboFinderTitle': 'Combo finder',
+    'deckView.comboFinderIntro':
+      'Which single card would create new two-card combos in this deck? Only cards that fit the deck’s color identity are suggested – colorless cards always fit.',
+    'deckView.comboFinderOpen': 'Show suggestions',
+    'deckView.comboFinderLoading': 'Looking for suggestions …',
+    'deckView.comboFinderDialogTitle': 'Combo finder: missing combo partners',
+    'deckView.comboFinderNone':
+      'No matching card found. Either the known combos are already complete in this deck, or there is none in these colors that is just one card away.',
+    'deckView.comboFinderWith': 'Completes combos with:',
+    'deckView.comboFinderShowing':
+      'Showing the {{shown}} most useful of {{total}} matching cards – the ones unlocking the most combos at once come first.',
+    'deckView.comboFinderSource':
+      'Based on the two-card combos from Commander Spellbook, taken from the nightly sync.',
     'deckView.cardPreviewAria': 'Show {{name}} large',
     'deckView.byType': 'By Type',
     'deckView.byOwnTags': '🏷️ By Custom Tags',
