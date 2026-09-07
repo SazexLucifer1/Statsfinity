@@ -251,38 +251,6 @@
   text-align: center;
 }
 
-// Ein Eintrag im Combo-Fenster: die beteiligten Karten als Bilder, darunter Namen und Erklärung.
-.combo-entry {
-  margin: 0 0 var(--sp-5);
-  padding-bottom: var(--sp-4);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-
-  &:last-of-type {
-    border-bottom: none;
-  }
-
-  // Im Fenster stehen je Combo nur zwei Karten - ohne Deckel würden sie über die ganze
-  // Sheet-Breite gezogen und wären größer als die Karten in der Analyse selbst.
-  .analysis-card-grid {
-    grid-template-columns: repeat(2, 94px);
-  }
-
-  .hint {
-    margin: 4px 0 0;
-  }
-}
-
-.combo-entry-names {
-  margin: 8px 0 0;
-  font-size: 0.9rem;
-  font-weight: 700;
-}
-
-// Spellbooks Combo-Beschreibung kommt mit echten Zeilenumbrüchen (ein Schritt je Zeile).
-.combo-entry-description {
-  white-space: pre-line;
-}
-
 .bracket-caveat {
   font-size: 0.78rem;
   opacity: 0.65;

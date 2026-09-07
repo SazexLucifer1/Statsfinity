@@ -562,6 +562,63 @@ h3 {
   }
 }
 
+// Breitere Sheet-Variante für Fenster mit Bildinhalten - die 300px oben sind auf dem Telefon
+// richtig, auf dem Desktop für Kartenbilder samt mehrzeiliger Erklärung aber viel zu eng.
+@include bp.up(md) {
+  .options-menu-sheet.wide {
+    max-width: 900px;
+  }
+}
+
+// --- Combo-Fenster der Deck-Analyse ---
+//
+// Steht hier statt in deck-detail-view.scss: die Sheet-Klasse darüber ist ohnehin global, und die
+// Komponentendatei liegt dicht an ihrem 12-kB-Stilbudget.
+.combo-list {
+  display: grid;
+  gap: var(--sp-4);
+}
+
+@include bp.up(md) {
+  .combo-list {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--sp-6);
+  }
+}
+
+// Ein Eintrag: die beteiligten Karten als Bilder, darunter Namen, Ergebnis und Ablauf.
+.combo-entry {
+  padding-bottom: var(--sp-4);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+
+  .hint {
+    margin: 4px 0 0;
+  }
+
+  &:last-of-type {
+    border-bottom: none;
+  }
+
+  // Deckel auf die Bildbreite - sonst zöge das Raster die zwei, drei Karten einer Combo über die
+  // ganze Sheet-Breite und sie wären größer als die Karten in der Analyse selbst. Bewusst über
+  // .options-menu-sheet geschrieben: das gibt mehr Spezifität als die gleichnamige Regel in
+  // deck-detail-view.scss, die sonst je nach Reihenfolge der Stylesheets gewinnen würde.
+  .options-menu-sheet & .analysis-card-grid {
+    grid-template-columns: repeat(auto-fill, 94px);
+  }
+}
+
+.combo-entry-names {
+  margin: 8px 0 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+// Spellbooks Combo-Beschreibung kommt mit echten Zeilenumbrüchen (ein Schritt je Zeile).
+.combo-entry-description {
+  white-space: pre-line;
+}
+
 .danger-zone {
   border-color: rgba(255, 100, 100, 0.35);
 

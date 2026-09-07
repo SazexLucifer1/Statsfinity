@@ -950,17 +950,30 @@
                 </section>
 
                 <section class="analysis-section">
-                  <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.twoCardComboTitle') }}</h4>
-                  <!-- Nur die Anzahl als Kachel - die Combos selbst samt Erklärung stehen im
+                  <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.combosTitle') }}</h4>
+                  <!-- Nur die Anzahl als Kacheln - die Combos selbst samt Erklärung stehen im
                        eigenen Fenster, sonst schiebt eine lange Combo-Liste die ganze Analyse
-                       auseinander. -->
+                       auseinander. Zwei Kacheln, weil Combos aus genau zwei Karten (das
+                       offizielle Kriterium) und alle größeren getrennt gezählt werden. -->
                   @if (viewer.analysisCombos().length === 0) {
                     <p class="hint">{{ viewer.i18n.t('deckView.noneFound') }}</p>
                   } @else {
                     <div class="stat-tiles">
-                      <button class="stat-tile stat-tile-button" (click)="viewer.openComboPopup()">
-                        <span class="stat-value">{{ viewer.analysisCombos().length }}</span>
-                        <span class="stat-label">{{ viewer.i18n.t('deckView.twoCardComboOpen') }}</span>
+                      <button
+                        class="stat-tile stat-tile-button"
+                        [disabled]="viewer.twoCardComboList().length === 0"
+                        (click)="viewer.openComboPopup('two')"
+                      >
+                        <span class="stat-value">{{ viewer.twoCardComboList().length }}</span>
+                        <span class="stat-label">{{ viewer.i18n.t('deckView.twoCardComboTileLabel') }}</span>
+                      </button>
+                      <button
+                        class="stat-tile stat-tile-button"
+                        [disabled]="viewer.moreCardComboList().length === 0"
+                        (click)="viewer.openComboPopup('more')"
+                      >
+                        <span class="stat-value">{{ viewer.moreCardComboList().length }}</span>
+                        <span class="stat-label">{{ viewer.i18n.t('deckView.moreCardComboTileLabel') }}</span>
                       </button>
                     </div>
                   }
@@ -1326,12 +1339,15 @@
   </div>
 }
 
-@if (viewer.comboPopupOpen()) {
+@if (viewer.comboPopupKind(); as kind) {
   <!-- Bewusst außerhalb von .deck-detail-page - gleicher Grund wie beim Artwork-Dialog oben. -->
   <div class="options-menu-overlay" (click)="viewer.closeComboPopup()">
-    <div class="options-menu-sheet" (click)="$event.stopPropagation()">
-      <h3>{{ viewer.i18n.t('deckView.twoCardComboDialogTitle') }}</h3>
-      @for (combo of viewer.analysisCombos(); track combo.id) {
+    <!-- "wide": Kartenbilder und mehrzeilige Ablaufbeschreibungen sind in den 300px eines
+         normalen Sheets auf dem Desktop viel zu eng (siehe styles.scss). -->
+    <div class="options-menu-sheet wide" (click)="$event.stopPropagation()">
+      <h3>{{ viewer.i18n.t(kind === 'more' ? 'deckView.moreCardComboDialogTitle' : 'deckView.twoCardComboDialogTitle') }}</h3>
+      <div class="combo-list">
+      @for (combo of viewer.comboPopupCombos(); track combo.id) {
         <div class="combo-entry">
           <ng-container [ngTemplateOutlet]="analysisCardGrid" [ngTemplateOutletContext]="{ $implicit: comboCardEntries(combo) }"></ng-container>
           <p class="combo-entry-names">{{ combo.cardNames.join(' + ') }}</p>
@@ -1352,6 +1368,7 @@
           }
         </div>
       }
+      </div>
       <button class="glass-button" (click)="viewer.closeComboPopup()">
         {{ viewer.i18n.t('deckView.done') }}
       </button>

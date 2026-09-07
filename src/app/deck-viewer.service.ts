@@ -15,7 +15,6 @@ import { PdfSourceCard } from './deck-pdf.service';
 import {
   CommanderSpellbookService,
   BracketEstimate,
-  BracketCombo,
   SPELLBOOK_BRACKET_LABELS,
 } from './commander-spellbook.service';
 import { EdhrecService, EdhrecCardlist, EdhrecTag } from './edhrec.service';
@@ -666,23 +665,23 @@ export class DeckViewerService {
   /**
    * Zwei-Karten-Combos aus der gespiegelten Tabelle, gefiltert auf die Karten dieses Decks.
    * Grundlage der Bracket-Einstufung (siehe bracketAnalysis) - bewusst getrennt von
-   * twoCardCombos(), das für die Detailliste weiterhin die Live-Auswertung nutzt, weil dort auch
-   * steht, WAS eine Combo erzeugt.
+   * analysisCombos(), das für die Anzeige die Live-Auswertung bevorzugt, weil dort auch steht,
+   * WAS eine Combo erzeugt.
    */
   readonly spellbookCombos = signal<SpellbookTwoCardCombo[]>([]);
 
-  readonly twoCardCombos = computed<BracketCombo[]>(() =>
-    (this.bracketEstimate()?.combos ?? []).filter((c) => c.definitelyTwoCard || c.arguablyTwoCard)
-  );
-
   /**
-   * Die Combos für die Anzeige, aus beiden Quellen auf eine Form gebracht: bevorzugt die
-   * Live-Auswertung (die als einzige weiß, WAS eine Combo erzeugt und wie sie abläuft), sonst die
-   * Paare aus dem Nachtlauf. So braucht die Ansicht nur noch eine Liste statt zweier fast
-   * gleicher Zweige, und der Zähler neben "Combos" stimmt in beiden Fällen.
+   * ALLE im Deck gefundenen Combos für die Anzeige, aus beiden Quellen auf eine Form gebracht:
+   * bevorzugt die Live-Auswertung (die als einzige weiß, WAS eine Combo erzeugt und wie sie
+   * abläuft), sonst die Paare aus dem Nachtlauf.
+   *
+   * Bewusst ohne Spellbooks Zwei-Karten-Kennzeichen vorgefiltert: das zählt eine Combo auch dann
+   * als "arguably two-card", wenn eine der drei Karten der Commander ist - unter der Überschrift
+   * "Zwei-Karten-Combos" standen dadurch Combos mit drei Karten. Die Aufteilung macht jetzt
+   * schlicht die Anzahl der beteiligten Karten (siehe twoCardComboList/moreCardComboList).
    */
   readonly analysisCombos = computed<AnalysisCombo[]>(() => {
-    const live = this.twoCardCombos();
+    const live = this.bracketEstimate()?.combos ?? [];
     if (live.length > 0) {
       return live.map((c) => ({
         id: c.cardNames.join('+'),
@@ -704,15 +703,32 @@ export class DeckViewerService {
     }));
   });
 
-  /** Ob das Combo-Fenster offen ist - die Combos stehen nicht mehr ausgeklappt in der Analyse. */
-  readonly comboPopupOpen = signal(false);
+  /** Combos aus genau zwei Karten - die, die das offizielle Kriterium meint. */
+  readonly twoCardComboList = computed(() =>
+    this.analysisCombos().filter((c) => c.cardNames.length <= 2)
+  );
 
-  openComboPopup(): void {
-    this.comboPopupOpen.set(true);
+  /** Alle übrigen Combos: drei oder mehr beteiligte Karten. */
+  readonly moreCardComboList = computed(() =>
+    this.analysisCombos().filter((c) => c.cardNames.length > 2)
+  );
+
+  /**
+   * Welche der beiden Combo-Listen das Fenster gerade zeigt - null heißt zu. Die Combos stehen
+   * nicht mehr ausgeklappt in der Analyse, dort steht nur noch ihre Anzahl.
+   */
+  readonly comboPopupKind = signal<'two' | 'more' | null>(null);
+
+  readonly comboPopupCombos = computed(() =>
+    this.comboPopupKind() === 'more' ? this.moreCardComboList() : this.twoCardComboList()
+  );
+
+  openComboPopup(kind: 'two' | 'more'): void {
+    this.comboPopupKind.set(kind);
   }
 
   closeComboPopup(): void {
-    this.comboPopupOpen.set(false);
+    this.comboPopupKind.set(null);
   }
 
   // --- Commander-Bracket (siehe src/app/bracket.ts) ---
