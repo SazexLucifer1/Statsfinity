@@ -14,6 +14,19 @@
     [ngModel]="searchQuery()"
     (ngModelChange)="setSearchQuery($event)"
   />
+  <!-- Formatfilter: die Liste zeigt standardmaessig nur Commander-Decks, alles andere holt man
+       sich hier gezielt dazu (oder ueber „Alle Formate“ auf einmal). -->
+  <select
+    class="glass-input"
+    [attr.aria-label]="i18n.t('deck.formatFilterAria')"
+    [ngModel]="formatFilter()"
+    (ngModelChange)="setFormatFilter($event)"
+  >
+    <option [ngValue]="'all'">{{ i18n.t('deck.formatFilterAll') }}</option>
+    @for (f of formats; track f) {
+      <option [ngValue]="f">{{ f }}</option>
+    }
+  </select>
   <div class="chip-row sort-toggle">
     <div class="segmented">
       <button [class.active]="sortMode() === 'alpha' || hideStats()" (click)="setSortMode('alpha')">{{ i18n.t('deck.sortAlpha') }}</button>

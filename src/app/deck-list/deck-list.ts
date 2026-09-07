@@ -13,6 +13,7 @@ import { OverflowMenu } from '../ui/overflow-menu/overflow-menu';
 import { Pager } from '../ui/pager/pager';
 import { BracketBadge } from '../ui/bracket-badge/bracket-badge';
 import { storedDeckBracket } from '../bracket';
+import { DECK_FORMATS, DeckFormat } from '../models';
 
 export type DeckSortMode = 'alpha' | 'winRate' | 'games';
 
@@ -73,6 +74,13 @@ export class DeckList {
 
   readonly searchQuery = signal('');
   readonly sortMode = signal<DeckSortMode>('alpha');
+  readonly formats = DECK_FORMATS;
+  /**
+   * Formatfilter der Liste. 'all' zeigt alle Decks (auch die ohne hinterlegtes Format),
+   * sonst nur Decks genau dieses Formats. Vorbelegt mit 'Commander', weil das in dieser Gruppe
+   * das gespielte Standardformat ist - wer etwas anderes sucht, stellt einmal um.
+   */
+  readonly formatFilter = signal<DeckFormat | 'all'>('Commander');
   readonly page = signal(0);
   /** Als "Outdated" markierte Decks sind standardmäßig ausgeblendet. */
   readonly showOutdated = signal(false);
@@ -220,6 +228,10 @@ export class DeckList {
     if (query) {
       list = list.filter((d) => d.name.toLowerCase().includes(query));
     }
+    const format = this.formatFilter();
+    if (format !== 'all') {
+      list = list.filter((d) => d.format === format);
+    }
 
     // Bei ausgeblendeten Stats zählt nur noch alphabetisch - sonst würde die reine Sortier-Reihenfolge
     // schon verraten, welches Deck besser abschneidet, auch ohne die Zahlen selbst anzuzeigen.
@@ -246,6 +258,11 @@ export class DeckList {
 
   setSearchQuery(value: string): void {
     this.searchQuery.set(value);
+    this.page.set(0);
+  }
+
+  setFormatFilter(format: DeckFormat | 'all'): void {
+    this.formatFilter.set(format);
     this.page.set(0);
   }
 

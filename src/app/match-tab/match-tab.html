@@ -578,6 +578,11 @@
         }
       } @else {
         <h3>{{ i18n.t('match.deckFor', { name: deckPickerTarget() ?? '' }) }}</h3>
+        <!-- Sagt, warum hier nur ein Teil der Decks steht: in einer Pioneer-Runde sind ausschliesslich
+             Pioneer-Decks waehlbar (siehe filteredDeckPickerOptions). -->
+        @if (deckPickerFormat(); as format) {
+          <p class="hint">{{ i18n.t('match.deckPickerFormatHint', { format }) }}</p>
+        }
         @if (deckPickerBusy()) {
           <p class="hint">{{ i18n.t('match.loadingDecks') }}</p>
         } @else if (deckPickerOptions().length === 0) {
@@ -603,7 +608,7 @@
             />
           </div>
           @if (filteredDeckPickerOptions().length === 0) {
-            <p class="hint">{{ i18n.t('match.deckPickerNoMatch') }}</p>
+            <p class="hint">{{ deckPickerEmptyHint() }}</p>
           }
           <ul class="player-list deck-picker-list">
             @for (option of filteredDeckPickerOptions(); track option.deckId) {
