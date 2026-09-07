@@ -2851,28 +2851,24 @@ export class DeckViewerService {
     this.bracketEstimateBusy.set(false);
   }
 
-  /**
-   * @param scroll 'restore' (Standard) springt zurück an die Stelle, an der das Deck geöffnet
-   * wurde - richtig für den Zurück-Knopf. 'top' für den Wechsel in einen anderen Tab, der bei
-   * seinem eigenen Anfang beginnen soll.
-   */
-  close(scroll: 'restore' | 'top' = 'restore'): void {
-    // Die Tab-Leiste ruft close() bei JEDEM Tippen auf, auch ohne offene Detailansicht - ohne
-    // diesen Ausstieg würde dabei jedes Mal die gespeicherte Scrollposition wiederhergestellt.
+  close(): void {
+    // Ohne offene Ansicht nichts tun - sonst würde ein Aufruf ins Leere die gespeicherte
+    // Scrollposition wiederherstellen und die Seite darunter grundlos verschieben.
     if (!this.viewingDeck() && !this.historyEntryOpen) return;
     if (this.historyEntryOpen) {
       this.historyEntryOpen = false;
       this.ignoreNextPop = true;
       history.back();
     }
-    this.resetViewingState(scroll === 'top' ? 0 : this.scrollBeforeOpen);
+    this.resetViewingState();
   }
 
   /** Der eigentliche Aufräum-Teil von close() - ohne History, damit ihn auch der popstate-Handler nutzen kann. */
-  private resetViewingState(scrollTarget = this.scrollBeforeOpen): void {
+  private resetViewingState(): void {
     // Erst nach dem Neuaufbau der darunterliegenden Ansicht scrollen, sonst ist die Seite dafür
     // noch zu kurz.
-    setTimeout(() => window.scrollTo({ top: scrollTarget }));
+    const scrollBack = this.scrollBeforeOpen;
+    setTimeout(() => window.scrollTo({ top: scrollBack }));
     this.viewingDeck.set(null);
     this.deckNameDraft.set('');
     this.deckTagDraft.set(null);

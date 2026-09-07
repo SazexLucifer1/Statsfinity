@@ -96,6 +96,13 @@
     inset 0 1px 0 var(--glass-highlight);
 }
 
+// Im Bearbeiten-Modus zeigt der Knopf einen Zustand an und darf deshalb nicht wie ein
+// gesperrter Knopf ausgegraut sein - er ist nur nicht anklickbar (Begründung in der Vorlage).
+.deck-edit-toggle.primary:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
 .deck-game-stats {
   position: relative;
   margin: 4px 0 14px;

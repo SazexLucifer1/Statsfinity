@@ -63,13 +63,17 @@
 <app-placement-dialog />
 <app-dialog />
 
+<!-- In der Deck-Detailansicht ausgeblendet: sie ist eine eigene Seite, verlassen wird sie über
+     "Zurück" bzw. die Zurück-Geste - die Leiste würde dort nur Platz kosten und über den Inhalt
+     ragen. Der Tutorial-Schritt zur Leiste steckt im Intro-Rundgang, der ohne offenes Deck läuft. -->
+@if (!deckViewer.viewingDeck()) {
 <nav class="tab-bar" data-tutorial="tab-bar">
   @for (tab of tabs; track tab.id) {
   <button
     class="tab-item"
     [attr.data-tutorial]="'nav-' + tab.id"
-    [class.active]="navigation.activeTab() === tab.id && !tournament.panelExpanded() && !deckViewer.viewingDeck()"
-    (click)="deckViewer.close('top'); tournament.closePanel(); navigation.goToTab(tab.id)"
+    [class.active]="navigation.activeTab() === tab.id && !tournament.panelExpanded()"
+    (click)="tournament.closePanel(); navigation.goToTab(tab.id)"
   >
     <span class="tab-icon">{{ tab.icon }}</span>
     <span class="tab-label">{{ i18n.t(tab.labelKey) }}</span>
@@ -87,14 +91,15 @@
   <button
     class="tab-item ingame-tab"
     [class.active]="tournament.panelExpanded()"
-    (click)="deckViewer.close('top'); tournament.togglePanel()"
+    (click)="tournament.togglePanel()"
   >
     <span class="tab-icon">🏆</span>
     <span class="tab-label">{{ i18n.t('nav.tournament') }}</span>
   </button>
   }
 </nav>
-<app-legal-footer />
+}
+<app-legal-footer [class.without-tab-bar]="deckViewer.viewingDeck()" />
 }
 
 @if (loginOverlay.active()) {

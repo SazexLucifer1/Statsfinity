@@ -262,7 +262,16 @@
           </button>
         </div>
         @if (viewer.canEditViewingDeck()) {
-          <button class="glass-button small primary" [disabled]="viewer.editMode()" (click)="viewer.toggleEditMode()">
+          <!-- Hervorgehoben wird der Knopf, WÄHREND der Bearbeiten-Modus läuft - vorher war es
+               genau umgekehrt (.primary im Ruhezustand, ausgegraut beim Bearbeiten) und damit
+               verkehrt herum zu lesen. Nicht anklickbar bleibt er im Modus trotzdem: verlassen
+               wird der bewusst nur über Speichern/Abbrechen darunter (siehe toggleEditMode()). -->
+          <button
+            class="glass-button small deck-edit-toggle"
+            [class.primary]="viewer.editMode()"
+            [disabled]="viewer.editMode()"
+            (click)="viewer.toggleEditMode()"
+          >
             {{ viewer.i18n.t('deckView.edit') }}
           </button>
         }
