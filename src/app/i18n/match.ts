@@ -28,6 +28,9 @@ export const match = {
     'match.deckPickerSearchPlaceholder': 'Nach Name oder Commander suchen …',
     'match.deckPickerYearPlaceholder': 'Jahr',
     'match.deckPickerNoMatch': 'Keine Decks für diesen Filter gefunden.',
+    'match.deckPickerFormatHint': 'Nur Decks im Format {{format}}.',
+    'match.deckPickerNoFormatMatch':
+      'Kein Deck im Format {{format}}. Das Format lässt sich im Deck unter „Ansehen“ → „Bearbeiten“ setzen.',
     'match.choose': 'Wählen',
     'match.from': 'von {{name}}',
     'match.cancel': 'Abbrechen',
@@ -144,6 +147,9 @@ export const match = {
     'match.deckPickerSearchPlaceholder': 'Search by name or commander …',
     'match.deckPickerYearPlaceholder': 'Year',
     'match.deckPickerNoMatch': 'No decks match this filter.',
+    'match.deckPickerFormatHint': 'Only decks in format {{format}}.',
+    'match.deckPickerNoFormatMatch':
+      'No deck in format {{format}}. You can set the format on the deck under “View” → “Edit”.',
     'match.choose': 'Choose',
     'match.from': 'from {{name}}',
     'match.cancel': 'Cancel',

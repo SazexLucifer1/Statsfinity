@@ -12,7 +12,7 @@ import { DeckService, DeckOwner } from '../deck.service';
 import { I18nService } from '../i18n.service';
 import { TournamentService } from '../tournament.service';
 import { DialogService } from '../dialog.service';
-import { GAME_MODES, TEAM_OPTIONS, Match, LIVE_TRACKING_START_DATE, DECK_FORMATS } from '../models';
+import { GAME_MODES, TEAM_OPTIONS, Match, LIVE_TRACKING_START_DATE, DECK_FORMATS, DeckFormat } from '../models';
 import { ARCHENEMY_OTHERS, DRAW, teamMemberLabel, gameModeLabel } from '../match-utils';
 import { CardImage } from '../card-image/card-image';
 import { BracketBadge } from '../ui/bracket-badge/bracket-badge';
@@ -237,15 +237,48 @@ export class MatchTab {
     this.deckPickerYearFilter.set(year);
   }
 
-  /** Sichtbare Deck-Optionen im Auswahl-Dialog: alphabetisch sortiert, gefiltert nach Suchtext (Deck- oder Commander-Name) und optionalem Jahr. */
+  /**
+   * Spielformat, auf das die Deck-Auswahl eingeschränkt ist: im Formular „Neues Match" das oben
+   * gewählte Format, beim nachträglichen Bearbeiten im Verlauf das Format des bearbeiteten Matches.
+   * null (nur bei Kategorie 'Spezialevent', siehe GameSessionService.setMode) heißt „keine
+   * Einschränkung" - dann stehen wie bisher alle Decks zur Wahl.
+   */
+  readonly deckPickerFormat = computed<DeckFormat | null>(() => {
+    if (this.deckPickerHistoryMode()) {
+      const matchId = this.editingResultMatchId();
+      return this.mtg.history().find((m) => m.id === matchId)?.format ?? null;
+    }
+    return this.session.format();
+  });
+
+  /**
+   * Sichtbare Deck-Optionen im Auswahl-Dialog: alphabetisch sortiert, gefiltert nach Suchtext
+   * (Deck- oder Commander-Name), optionalem Jahr und - fest, nicht abwählbar - dem Spielformat des
+   * Matches. In einer Pioneer-Runde soll gar nicht erst ein Commander-Deck auswählbar sein; Decks
+   * ohne hinterlegtes Format zählen dabei als „passt nicht" und müssen im Deck einmal gesetzt werden.
+   */
   readonly filteredDeckPickerOptions = computed(() => {
     const query = this.deckPickerSearchQuery().trim().toLowerCase();
     const year = this.deckPickerYearFilter();
+    const format = this.deckPickerFormat();
 
     return this.deckPickerOptions()
+      .filter((o) => format === null || o.format === format)
       .filter((o) => !query || o.deckName.toLowerCase().includes(query) || (o.commanderName?.toLowerCase().includes(query) ?? false))
       .filter((o) => year === null || this.deckPickerYear(o) === year)
       .sort((a, b) => a.deckName.localeCompare(b.deckName));
+  });
+
+  /**
+   * Hinweistext, wenn die Liste leer bleibt - unterscheidet „kein Deck in diesem Format" (dann ist
+   * der Formatfilter der Grund, und der Text sagt welches Format fehlt) von „Suchtext/Jahr passt nicht".
+   */
+  readonly deckPickerEmptyHint = computed(() => {
+    const format = this.deckPickerFormat();
+    if (format !== null && !this.deckPickerOptions().some((o) => o.format === format)) {
+      return this.i18n.t('match.deckPickerNoFormatMatch', { format });
+    }
+    return this.i18n.t('match.deckPickerNoMatch');
   });
   /** Kartenname (lowercase) -> Scryfall-Daten oder null (nicht gefunden) - Fallback fürs Vorschaubild, wenn das Deck kein individuell gewähltes Artwork hinterlegt hat. */
   readonly deckPickerCards = signal<Record<string, ScryfallCard | null>>({});
