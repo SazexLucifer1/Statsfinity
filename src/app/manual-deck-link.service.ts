@@ -1,5 +1,5 @@
-import { Injectable, inject, signal } from '@angular/core';
-import { DeckService, Deck, DeckOwner, UnassignedCommanderStats } from './deck.service';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { BorrowedDeckInfo, DeckService, Deck, DeckOwner, UnassignedCommanderStats } from './deck.service';
 import { I18nService } from './i18n.service';
 
 function linkableCommanders(stats: UnassignedCommanderStats[]): UnassignedCommanderStats[] {
@@ -33,6 +33,19 @@ export class ManualDeckLinkService {
   readonly linkDeckChoice = signal('');
   readonly linkBusy = signal(false);
   readonly linkMessage = signal('');
+
+  /**
+   * Geliehene Decks, an denen eigene Partien haengen. Sie stehen nur beim Lösen zur Auswahl, nicht
+   * beim Verlinken: Verknüpfen kann man nur mit einem eigenen Deck, lösen muss man aber auch eine
+   * automatisch erkannte Leihe können, die daneben lag.
+   */
+  readonly borrowedDecksForUnlinking = computed<BorrowedDeckInfo[]>(() => {
+    const byId = new Map<string, BorrowedDeckInfo>();
+    for (const c of this.unassignedCommanderStats()) {
+      if (c.borrowedDeck && !byId.has(c.borrowedDeck.id)) byId.set(c.borrowedDeck.id, c.borrowedDeck);
+    }
+    return [...byId.values()];
+  });
 
   readonly unlinkDeckChoice = signal('');
   readonly unlinkBusy = signal(false);

@@ -79,7 +79,7 @@ export const profile = {
     'profile.linking': 'Verlinke …',
     'profile.unlinkSectionTitle': 'Deck-Verknüpfung lösen',
     'profile.unlinkHint':
-      'Falls ein Deck fälschlich verlinkt wurde: hier die Verknüpfung aller seiner Spiele wieder aufheben – sie wandern zurück zu "Commander ohne Deck".',
+      'Falls ein Deck fälschlich verlinkt wurde: hier die Verknüpfung aller seiner Spiele wieder aufheben – sie wandern zurück zu "Commander ohne Deck". Mit 🤝 markierte Einträge sind geliehene Decks; solange du selbst kein Deck mit diesem Commander hast, wird die Leihe danach wieder erkannt.',
     'profile.unlinking': 'Löse …',
     'profile.unlink': 'Verknüpfung lösen',
     'profile.commanderWithoutDeck': 'Commander ohne Deck',
@@ -222,7 +222,7 @@ export const profile = {
     'profile.linking': 'Linking …',
     'profile.unlinkSectionTitle': 'Undo deck link',
     'profile.unlinkHint':
-      'If a deck was linked incorrectly: undo the link for all its games here – they move back to "Commander without deck".',
+      'If a deck was linked incorrectly: undo the link for all its games here – they move back to "Commander without deck". Entries marked 🤝 are borrowed decks; as long as you don\'t own a deck with that commander yourself, the loan will be detected again afterwards.',
     'profile.unlinking': 'Unlinking …',
     'profile.unlink': 'Undo link',
     'profile.commanderWithoutDeck': 'Commander without deck',

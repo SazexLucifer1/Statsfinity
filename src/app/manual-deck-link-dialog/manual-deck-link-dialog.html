@@ -55,6 +55,9 @@
         @for (d of linkService.decksForLinking(); track d.id) {
           <option [value]="d.id">{{ d.name }}</option>
         }
+        @for (d of linkService.borrowedDecksForUnlinking(); track d.id) {
+          <option [value]="d.id">🤝 {{ d.name }}{{ d.ownerName ? ' (' + d.ownerName + ')' : '' }}</option>
+        }
       </select>
       @if (linkService.unlinkMessage()) {
         <p class="hint">{{ linkService.unlinkMessage() }}</p>

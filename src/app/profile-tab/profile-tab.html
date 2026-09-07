@@ -507,6 +507,7 @@
         [stats]="shownUnassignedCommanderStats()"
         [commanderImage]="commanderImage"
         [commanderBackImage]="commanderBackImage"
+        (borrowedDeckClick)="openBorrowedDeck($event)"
       />
     </section>
   }

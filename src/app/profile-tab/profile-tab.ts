@@ -6,8 +6,10 @@ import { ProfileService } from '../profile.service';
 import { MtgService } from '../mtg.service';
 import { GroupService } from '../group.service';
 import { DeckList } from '../deck-list/deck-list';
+import { DeckViewerService } from '../deck-viewer.service';
 import {
   DeckService,
+  BorrowedDeckInfo,
   UnassignedCommanderStats,
   UnassignedCommanderCategory,
   CrossGroupPersonalStats,
@@ -55,6 +57,7 @@ export class ProfileTab {
   readonly mtg = inject(MtgService);
   readonly groupService = inject(GroupService);
   private readonly deckService = inject(DeckService);
+  private readonly deckViewer = inject(DeckViewerService);
   readonly manualDeckLink = inject(ManualDeckLinkService);
   readonly cardPreview = inject(CardPreviewService);
   private readonly auth = inject(AuthService);
@@ -410,6 +413,16 @@ export class ProfileTab {
     }))
   );
 
+  /**
+   * Klick auf das geliehene Deck in der Commander-Liste: öffnet die Deck-Ansicht wie aus der
+   * Deck-Liste heraus. Das Deck gehört jemand anderem - die Detailansicht schaltet die
+   * Bearbeiten-Knöpfe selbst ab (DeckViewerService.canEditViewingDeck).
+   */
+  async openBorrowedDeck(borrowed: BorrowedDeckInfo): Promise<void> {
+    const deck = await this.deckService.getDeckById(borrowed.id);
+    if (deck) await this.deckViewer.open(deck);
+  }
+
   /** Klick auf einen Treppchen-Platz der Karten-Rangliste zeigt die Karte groß - dasselbe wie ein
    * Klick auf das Vorschaubild in der Liste darunter. */
   openPodiumCard(entry: PodiumEntry): void {
@@ -422,7 +435,7 @@ export class ProfileTab {
     const userId = this.profileService.profile()?.id;
     if (!userId) return;
     this.unassignedCommanderStats.set(
-      await this.deckService.getUnassignedCommanderStats({ kind: 'user', userId })
+      await this.deckService.getUnassignedCommanderStats({ kind: 'user', userId }, { linkBorrowed: true })
     );
     await this.deckListRef()?.refreshDecks();
   }
@@ -434,7 +447,10 @@ export class ProfileTab {
         this.unassignedCommanderStats.set([]);
         return;
       }
-      this.deckService.getUnassignedCommanderStats({ kind: 'user', userId }).then((stats) => {
+      // linkBorrowed nur hier: das ist das EIGENE Profil. Ein per Namen erkanntes geliehenes Deck
+      // wird dabei auch in der Datenbank verknüpft, damit die Partie wirklich am Deck hängt und
+      // von hier aus geöffnet werden kann.
+      this.deckService.getUnassignedCommanderStats({ kind: 'user', userId }, { linkBorrowed: true }).then((stats) => {
         this.unassignedCommanderStats.set(stats);
         this.ownCommanderListRef()?.reset();
       });
