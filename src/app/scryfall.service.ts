@@ -232,7 +232,7 @@ export class ScryfallService {
       const english = await this.searchCommanderNamesByName(query, true);
       if (english.length >= 5) return english;
 
-      const german = await this.searchGermanPrintedNames(query, true);
+      const german = await this.searchGermanPrintedNames(query, 'commanderOrBackground');
       return [...new Set([...english, ...german])].slice(0, 12);
     } catch {
       return [];
@@ -243,13 +243,19 @@ export class ScryfallService {
    * Autovervollständigung ohne Commander-Einschränkung - für die öffentliche Kartensuche (jede
    * Karte, nicht nur Commander-legale), nutzt Scryfalls eigenen dafür vorgesehenen Endpoint statt
    * einer eigenen name:"..."-Suche.
+   * Dieser Endpoint kennt allerdings NUR englische Namen ("Blitzschlag" liefert dort nichts),
+   * deshalb wird bei wenigen Treffern zusätzlich über die gedruckten deutschen Namen gesucht -
+   * genau wie in autocomplete() für Commander. Geliefert wird in beiden Fällen der englische Name,
+   * mit dem der Rest der App weiterarbeitet.
    */
   async autocompleteAnyCard(query: string): Promise<string[]> {
     if (query.trim().length < 2) return [];
     const res = await this.fetchWithRetry(`${API}/cards/autocomplete?q=${encodeURIComponent(query.trim())}`);
-    if (!res?.ok) return [];
-    const data = await res.json();
-    return (data.data as string[]) ?? [];
+    const english = res?.ok ? (((await res.json()).data as string[]) ?? []) : [];
+    if (english.length >= 5) return english;
+
+    const german = await this.searchGermanPrintedNames(query, 'any');
+    return [...new Set([...english, ...german])].slice(0, 12);
   }
 
   /** Sucht englische Kartennamen, die als Commander erlaubt sind (Regel 903.3). */
@@ -330,14 +336,26 @@ export class ScryfallService {
   }
 
   // NEU
-  /** Sucht deutsche gedruckte Namen (nur erlaubte Commander) und liefert die englischen Kartennamen zurück. */
-  private async searchGermanPrintedNames(query: string, includeBackgrounds = false): Promise<string[]> {
-    const legality = includeBackgrounds ? '(is:commander or type:background)' : 'is:commander';
-    const q = encodeURIComponent(`${legality} lang:de ${query}`);
+  /**
+   * Sucht deutsche gedruckte Namen und liefert die englischen Kartennamen zurück. `scope` steuert,
+   * welche Karten überhaupt in Frage kommen: nur Commander, Commander+Backgrounds (zweiter
+   * Commander eines Partner-Decks) oder - für die öffentliche Kartensuche - jede Karte.
+   * Der Name wird als name:"..."-Klausel gestellt: unter lang:de vergleicht Scryfall damit den
+   * gedruckten deutschen Namen (verifiziert: lang:de name:"Sonnenring" findet Sol Ring).
+   */
+  private async searchGermanPrintedNames(
+    query: string,
+    scope: 'commander' | 'commanderOrBackground' | 'any' = 'commander'
+  ): Promise<string[]> {
+    const safeQuery = query.trim().replace(/"/g, '');
+    if (!safeQuery) return [];
+    const legality =
+      scope === 'any' ? '' : scope === 'commanderOrBackground' ? '(is:commander or type:background) ' : 'is:commander ';
+    const q = encodeURIComponent(`${legality}lang:de name:"${safeQuery}"`);
     const res = await this.fetchWithRetry(`${API}/cards/search?q=${q}&unique=cards&order=name`);
     if (!res?.ok) return [];
     const data = await res.json();
-    return ((data.data as { name: string }[]) ?? []).map((c) => c.name);
+    return ((data.data as { name: string }[]) ?? []).map((c) => c.name).slice(0, 12);
   }
   /**
    * Lädt Kartendaten (u.a. Bilder) für viele Kartennamen auf einmal, statt pro Karte eine
@@ -462,7 +480,14 @@ export class ScryfallService {
     }
 
     const parts = filters.commanderOnly === false ? [] : ['legal:commander'];
-    if (trimmed) parts.push(`name:"${trimmed.replace(/"/g, '')}"`);
+    // Der Name wird bewusst gegen den englischen UND den gedruckten deutschen Namen geprüft
+    // (ein Request statt zwei): Scryfall vergleicht name:"..." unter lang:de mit printed_name,
+    // liefert im Kartenobjekt aber weiterhin den englischen name - der Rest der App bleibt
+    // dadurch unverändert englisch. Ohne die zweite Hälfte findet "Sonnenring" nichts.
+    if (trimmed) {
+      const safeName = trimmed.replace(/"/g, '');
+      parts.push(`(name:"${safeName}" or (lang:de name:"${safeName}"))`);
+    }
     if (filters.type) parts.push(`type:"${filters.type}"`);
     if (creatureType) parts.push(`type:"${creatureType.replace(/"/g, '')}"`);
     if (filters.cmc != null) parts.push(filters.cmc >= 7 ? 'cmc>=7' : `cmc:${filters.cmc}`);
