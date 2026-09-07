@@ -31,7 +31,12 @@
   </header>
 
 <main class="content">
-  @if (tournament.panelExpanded()) {
+  @if (deckViewer.viewingDeck()) {
+  <!-- Die Deck-Detailansicht ist eine eigene Seite im Inhaltsbereich statt eines Vollbild-Popups:
+       so scrollt nur das Fenster selbst (statt Seite + Overlay gleichzeitig) und der App-Hintergrund
+       bleibt wie in den Tabs sichtbar. -->
+  <app-deck-detail-view />
+  } @else if (tournament.panelExpanded()) {
   <app-tournament-panel />
   } @else {
   @switch (navigation.activeTab()) { @case ('match') {
@@ -49,7 +54,6 @@
 </main>
 
 <app-ingame-tracker />
-<app-deck-detail-view />
 <app-goldfish-tracker />
 <app-deck-import-dialogs />
 <app-deck-pdf-dialog />
@@ -59,6 +63,10 @@
 <app-placement-dialog />
 <app-dialog />
 
+<!-- In der Deck-Detailansicht ausgeblendet: sie ist eine eigene Seite, verlassen wird sie über
+     "Zurück" bzw. die Zurück-Geste - die Leiste würde dort nur Platz kosten und über den Inhalt
+     ragen. Der Tutorial-Schritt zur Leiste steckt im Intro-Rundgang, der ohne offenes Deck läuft. -->
+@if (!deckViewer.viewingDeck()) {
 <nav class="tab-bar" data-tutorial="tab-bar">
   @for (tab of tabs; track tab.id) {
   <button
@@ -90,7 +98,8 @@
   </button>
   }
 </nav>
-<app-legal-footer />
+}
+<app-legal-footer [class.without-tab-bar]="deckViewer.viewingDeck()" />
 }
 
 @if (loginOverlay.active()) {

@@ -1,22 +1,19 @@
 @use '../../styles/breakpoints' as bp;
 
-.deck-detail-fullscreen {
-  position: fixed;
-  inset: 0;
-  z-index: 700;
-  // Ein einziger scrollender Block statt fixer Kopf + separat scrollender Rumpf (flex:1) - bei
-  // wenig Höhe (z.B. Querformat auf dem Handy) wurde der Kopfbereich mit Name/Tag/Statistik/
-  // Buttons oft höher als der ganze verfügbare Platz, wodurch für den Rumpf praktisch nichts mehr
-  // übrig blieb und sich kaum noch scrollen ließ. Der Kopf bleibt trotzdem "sticky" oben kleben.
-  overflow-y: auto;
-  background: rgba(12, 8, 23, 0.98);
-  backdrop-filter: blur(30px) saturate(160%);
-  -webkit-backdrop-filter: blur(30px) saturate(160%);
+.deck-detail-page {
+  // Früher ein Vollbild-Overlay (position: fixed + eigenes overflow-y). Das ergab zwei
+  // gleichzeitig scrollbare Ebenen - auf dem iPhone landete das Wischen dadurch immer wieder auf
+  // der falschen. Jetzt ist die Ansicht eine ganz normale Seite im Inhaltsbereich: es scrollt nur
+  // das Fenster, und der App-Hintergrund bleibt wie in allen Tabs sichtbar.
+  display: block;
 }
 
 .deck-detail-header {
   position: sticky;
-  top: 0;
+  // Klebt beim Scrollen mit etwas Abstand zum oberen Rand - wie die schwebende Tab-Bar unten,
+  // damit der Hintergrund auch daneben sichtbar bleibt. Das Inset, weil der Rand unter
+  // Statusleiste/Notch liegt.
+  top: calc(env(safe-area-inset-top, 0px) + 8px);
   z-index: 2;
   // Nur Zurück-Button + Name kleben oben fest - Name-/Tag-Bearbeitung, Statistik und die
   // Ansicht-Buttons sind bewusst NICHT hier drin, sonst frisst der Kopf dauerhaft einen Großteil
@@ -25,21 +22,19 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  // Eigener, undurchsichtiger Hintergrund nötig, da der Rumpf jetzt UNTER dem "klebenden" Kopf
-  // hindurchscrollt statt ihn nie zu berühren.
-  background: rgba(12, 8, 23, 0.98);
-  // max-width + auto-margin statt fixer Breite: wirkt sich auf schmalen (Hochformat-)Screens gar
-  // nicht aus (dort ist der Viewport ohnehin schmaler), begrenzt den Inhalt im Querformat/Desktop
-  // aber auf eine großzügige Breite statt ihn endlos zu strecken.
-  width: min(96vw, var(--content-max-width));
-  margin: 0 auto;
-  // env(safe-area-inset-*) statt fixer Werte: die Detailansicht ist position:fixed;inset:0 und
-  // liegt damit auch unter Statusleiste/Notch. Im Querformat wandert die Notch/Kamera-Aussparung
-  // an den linken oder rechten Rand statt oben zu sitzen - ohne die Insets links/rechts würde der
-  // Inhalt dort ein Stück verdeckt/überlappt wirken.
-  padding: calc(env(safe-area-inset-top, 0px) + 12px) calc(env(safe-area-inset-right, 0px) + 12px)
-    12px calc(env(safe-area-inset-left, 0px) + 12px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  margin-bottom: var(--sp-3);
+  padding: 10px 12px;
+  border-radius: var(--r-lg);
+  // Dieselbe Glas-Optik wie die Tab-Bar und die Karten der übrigen Ansichten, statt der früheren
+  // deckenden Fläche: der Hintergrund bleibt sichtbar, der Text unter dem Kopf trotzdem lesbar,
+  // während er darunter durchscrollt.
+  background: var(--glass-bg);
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 var(--glass-highlight);
 }
 
 .deck-detail-back {
@@ -80,10 +75,32 @@
 }
 
 .deck-detail-body {
-  width: min(96vw, var(--content-max-width));
-  margin: 0 auto;
-  padding: 16px calc(env(safe-area-inset-right, 0px) + 12px) calc(20px + env(safe-area-inset-bottom))
-    calc(env(safe-area-inset-left, 0px) + 12px);
+  // Der gesamte Deck-Inhalt liegt auf EINER Glasfläche statt direkt auf dem Hintergrundbild.
+  // Anders als die übrigen Tabs hat diese Ansicht keine einzelnen .glass-card-Abschnitte - Text
+  // wie "Manakurve" oder "Effekt-Kategorien" stand deshalb ohne eigene Fläche direkt auf dem
+  // Motiv und war schwer zu lesen. Das Bild bleibt durch die Fläche hindurch sichtbar, tritt
+  // aber deutlich zurück.
+  //
+  // Breite, Zentrierung und die seitlichen Safe-Area-Abstände kommen von .content in app.scss -
+  // hier kommen nur die Innenabstände der Fläche dazu.
+  padding: var(--sp-6) var(--sp-5) var(--sp-7);
+  border-radius: var(--r-2xl);
+  // Dunkel getönt statt des hellen --glass-bg der kleinen Bausteine: die Fläche ist hier
+  // seitenfüllend, und in diesem Maßstab wäre die helle Variante zu unruhig für den vielen Text.
+  background: rgba(20, 16, 38, 0.55);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    0 8px 30px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 var(--glass-highlight);
+}
+
+// Im Bearbeiten-Modus zeigt der Knopf einen Zustand an und darf deshalb nicht wie ein
+// gesperrter Knopf ausgegraut sein - er ist nur nicht anklickbar (Begründung in der Vorlage).
+.deck-edit-toggle.primary:disabled {
+  opacity: 1;
+  cursor: default;
 }
 
 .deck-game-stats {

@@ -522,8 +522,8 @@ h3 {
 .options-menu-overlay {
   position: fixed;
   inset: 0;
-  // 750 statt z.B. 650, damit dieser Dialog auch über der Deck-Detailansicht (700) liegt - wird
-  // seit "Kartenliste neu einfügen" auch AUS der bereits offenen Detailansicht heraus geöffnet.
+  // Hoch genug, um über allem zu liegen, was diesen Dialog öffnet - u.a. der Deck-Detailansicht,
+  // aus der er seit "Kartenliste neu einfügen" ebenfalls aufgerufen wird.
   z-index: 750;
   display: flex;
   align-items: center;

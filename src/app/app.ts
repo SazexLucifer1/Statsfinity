@@ -25,6 +25,7 @@ import { ResetPassword } from './reset-password/reset-password';
 import { GameSessionService } from './game-session.service';
 import { AuthService } from './auth.service';
 import { NavigationService, AppTab } from './navigation.service';
+import { DeckViewerService } from './deck-viewer.service';
 import { I18nService } from './i18n.service';
 import { FeedbackService } from './feedback.service';
 import { TournamentService } from './tournament.service';
@@ -70,6 +71,7 @@ export class App {
   readonly feedback = inject(FeedbackService);
   readonly tournament = inject(TournamentService);
   readonly loginOverlay = inject(LoginOverlayService);
+  readonly deckViewer = inject(DeckViewerService);
 
   /** Nur injiziert, damit der Dienst überhaupt existiert: er hängt sich an den Tab-Wechsel und holt
    * die Ansicht zurück, falls nach dem Zurückkommen nichts mehr gerendert wird (weißer Bildschirm). */

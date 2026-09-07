@@ -1,5 +1,5 @@
 @if (viewer.viewingDeck(); as deck) {
-<div class="deck-detail-fullscreen">
+<div class="deck-detail-page">
   <div class="deck-detail-header" data-tutorial="deck-detail-header">
     <button class="glass-button small deck-detail-back" (click)="viewer.close()">{{ viewer.i18n.t('deckView.back') }}</button>
     <span class="deck-detail-header-name">{{ deck.name }}</span>
@@ -262,7 +262,16 @@
           </button>
         </div>
         @if (viewer.canEditViewingDeck()) {
-          <button class="glass-button small primary" [disabled]="viewer.editMode()" (click)="viewer.toggleEditMode()">
+          <!-- Hervorgehoben wird der Knopf, WÄHREND der Bearbeiten-Modus läuft - vorher war es
+               genau umgekehrt (.primary im Ruhezustand, ausgegraut beim Bearbeiten) und damit
+               verkehrt herum zu lesen. Nicht anklickbar bleibt er im Modus trotzdem: verlassen
+               wird der bewusst nur über Speichern/Abbrechen darunter (siehe toggleEditMode()). -->
+          <button
+            class="glass-button small deck-edit-toggle"
+            [class.primary]="viewer.editMode()"
+            [disabled]="viewer.editMode()"
+            (click)="viewer.toggleEditMode()"
+          >
             {{ viewer.i18n.t('deckView.edit') }}
           </button>
         }
@@ -1194,11 +1203,9 @@
 
 @if (viewer.artworkPickerCard(); as pickCard) {
   <!--
-    Bewusst AUSSERHALB von .deck-detail-fullscreen: das hat backdrop-filter, was jeden
-    position:fixed-Nachfahren auf den eigenen (scrollenden!) Container statt den echten Viewport
-    bezieht - der Dialog wäre dann nur durch Hochscrollen erreichbar statt zentriert sichtbar
-    (gleicher Grund, warum diese Komponente selbst root-level in app.html sitzt statt in einer
-    Karte mit backdrop-filter).
+    Bewusst AUSSERHALB von .deck-detail-page und erst recht ausserhalb des "klebenden" Kopfes:
+    jeder Vorfahr mit backdrop-filter bezieht position:fixed-Nachfahren auf sich selbst statt auf
+    den echten Viewport - der Dialog wäre dann verschoben statt zentriert sichtbar.
   -->
   <div class="options-menu-overlay" (click)="viewer.closeArtworkPicker()">
     <div class="options-menu-sheet artwork-picker-sheet" (click)="$event.stopPropagation()">
@@ -1244,7 +1251,7 @@
 }
 
 @if (viewer.tagEditorCard(); as tagCard) {
-  <!-- Bewusst außerhalb von .deck-detail-fullscreen - gleicher Grund wie beim Artwork-Dialog oben. -->
+  <!-- Bewusst außerhalb von .deck-detail-page - gleicher Grund wie beim Artwork-Dialog oben. -->
   <div class="options-menu-overlay" (click)="viewer.closeTagEditor()">
     <div class="options-menu-sheet tag-editor-sheet" (click)="$event.stopPropagation()">
       <h3>{{ viewer.i18n.t('deckView.ownTagsTitle') }}</h3>
@@ -1303,7 +1310,7 @@
 }
 
 @if (viewer.effectCategoryPopup(); as popup) {
-  <!-- Bewusst außerhalb von .deck-detail-fullscreen - gleicher Grund wie beim Artwork-Dialog oben. -->
+  <!-- Bewusst außerhalb von .deck-detail-page - gleicher Grund wie beim Artwork-Dialog oben. -->
   <div class="options-menu-overlay" (click)="viewer.closeEffectCategoryPopup()">
     <div class="options-menu-sheet" (click)="$event.stopPropagation()">
       <h3>{{ popup.label }}</h3>
@@ -1323,7 +1330,7 @@
 }
 
 @if (viewer.showBracketMath()) {
-  <!-- Bewusst außerhalb von .deck-detail-fullscreen - gleicher Grund wie beim Artwork-Dialog oben. -->
+  <!-- Bewusst außerhalb von .deck-detail-page - gleicher Grund wie beim Artwork-Dialog oben. -->
   <div class="options-menu-overlay" (click)="viewer.closeBracketMath()">
     <div class="options-menu-sheet" (click)="$event.stopPropagation()">
       @if (viewer.bracketAnalysis(); as analysis) {

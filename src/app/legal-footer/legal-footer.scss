@@ -12,6 +12,12 @@
   font-size: 0.75rem;
   line-height: 1.4;
 
+  // In der Deck-Detailansicht ist die Tab-Bar ausgeblendet (siehe app.html) - der Puffer oben
+  // wäre dort nur eine große Leerfläche am Seitenende.
+  :host(.without-tab-bar) & {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--sp-6));
+  }
+
   // Eigene Fläche, weil der Footer als einziger Textblock der App KEINE .glass-card über sich hat
   // und damit direkt auf dem Hintergrundbild steht - je nach Bildstelle war er dort praktisch
   // unlesbar. Bewusst schwächer als .glass-card, der Footer soll nicht wie Inhalt wirken.
