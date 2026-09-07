@@ -75,9 +75,25 @@
 }
 
 .deck-detail-body {
-  // Breite, Zentrierung und die seitlichen Safe-Area-Abstände kommen jetzt von .content in
-  // app.scss - hier bleibt nur der eigene vertikale Abstand.
-  padding-bottom: var(--sp-4);
+  // Der gesamte Deck-Inhalt liegt auf EINER Glasfläche statt direkt auf dem Hintergrundbild.
+  // Anders als die übrigen Tabs hat diese Ansicht keine einzelnen .glass-card-Abschnitte - Text
+  // wie "Manakurve" oder "Effekt-Kategorien" stand deshalb ohne eigene Fläche direkt auf dem
+  // Motiv und war schwer zu lesen. Das Bild bleibt durch die Fläche hindurch sichtbar, tritt
+  // aber deutlich zurück.
+  //
+  // Breite, Zentrierung und die seitlichen Safe-Area-Abstände kommen von .content in app.scss -
+  // hier kommen nur die Innenabstände der Fläche dazu.
+  padding: var(--sp-6) var(--sp-5) var(--sp-7);
+  border-radius: var(--r-2xl);
+  // Dunkel getönt statt des hellen --glass-bg der kleinen Bausteine: die Fläche ist hier
+  // seitenfüllend, und in diesem Maßstab wäre die helle Variante zu unruhig für den vielen Text.
+  background: rgba(20, 16, 38, 0.55);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    0 8px 30px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 var(--glass-highlight);
 }
 
 .deck-game-stats {
