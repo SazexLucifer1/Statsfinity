@@ -406,6 +406,19 @@ export class CardDataService {
       return { rows: [], available: false };
     }
 
+    // Null Treffer heißt zweierlei, und der Unterschied ist für den Nutzer alles: Entweder gibt es
+    // zu diesem Deck wirklich nichts vorzuschlagen - oder die Combo-Tabelle ist noch leer, weil
+    // der Nachtlauf sie noch nie gefüllt hat. Ohne diese eine zusätzliche Abfrage behauptet die
+    // Oberfläche im zweiten Fall "nichts gefunden", und niemand kommt darauf, dass schlicht die
+    // Daten fehlen. Sie läuft nur im Null-Fall, kostet also im Normalbetrieb nichts.
+    if ((data ?? []).length === 0) {
+      const { data: probe, error: probeError } = await supabase
+        .from('spellbook_combos')
+        .select('id')
+        .limit(1);
+      if (probeError || (probe ?? []).length === 0) return { rows: [], available: false };
+    }
+
     return {
       rows: (data ?? []).map((row: Record<string, unknown>) => ({
         comboId: row['combo_id'] as string,
