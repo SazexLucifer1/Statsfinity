@@ -1,0 +1,128 @@
+name: Deck corpus import
+
+# Baut den eigenen Bestand an legalen Commander-Decks auf ("Deck-Korpus") und rechnet ihn in die
+# Empfehlungszahlen um - die Grundlage dafür, die Kartenvorschläge im Bearbeiten-Modus irgendwann
+# selbst zu rechnen statt sie bei EDHREC abzuholen.
+# Hintergrund und Tabellen: sql/deck-corpus-2026-09-08.sql
+# Ablauf: scripts/import-deck-corpus.js und scripts/aggregate-deck-corpus.js
+#
+# BEWUSST OHNE ZEITPLAN. Das hier ist kein Nachtlauf, sondern ein Vorgang, den man von Hand
+# anstößt und dessen Protokoll man danach liest. Die drei bestehenden nächtlichen Abgleiche
+# (Backup, Scryfall, Spellbook) bleiben unter sich.
+#
+# Ein Import über hunderttausend Decks passt in keinen einzelnen Lauf (GitHub deckelt einen Job
+# bei 6 Stunden). Deshalb hört jeder Lauf nach `max_minutes` von selbst auf, merkt sich in
+# deck_corpus_state, wie weit er gekommen ist, und der nächste macht dort weiter - man drückt also
+# schlicht mehrfach auf "Run workflow".
+#
+# Braucht dasselbe Repo-Secret SUPABASE_SERVICE_ROLE_KEY wie der Scryfall- und der
+# Spellbook-Abgleich (Supabase-Dashboard -> Project Settings -> API -> "service_role", NICHT der
+# öffentliche Anon-Key aus supabase.client.ts). Ist es bereits gesetzt, ist hier nichts weiter zu
+# tun. Ohne das Secret schlägt der Lauf mit einer klaren Fehlermeldung fehl, statt still nichts zu
+# tun.
+
+on:
+  workflow_dispatch:
+    inputs:
+      aufgabe:
+        description: 'Was soll laufen?'
+        type: choice
+        default: import
+        options:
+          - import
+          - aggregate
+      source:
+        description: 'Quelle für den Import (bei aufgabe=aggregate ohne Bedeutung)'
+        type: choice
+        default: precon
+        options:
+          - precon
+          - statsfinity
+          - archidekt
+      target:
+        description: 'Bei so vielen Decks im Korpus aufhören'
+        default: '50000'
+      max_minutes:
+        description: 'Nach so vielen Minuten sauber beenden (unter dem 6-Stunden-Limit bleiben)'
+        default: '300'
+      limit:
+        description: 'Nur so viele Decks prüfen (0 = kein Limit; zum Ausprobieren)'
+        default: '0'
+      dry_run:
+        description: 'Nur ansehen, nichts schreiben'
+        type: boolean
+        default: false
+      permission_granted:
+        description: 'Erlaubnis von Archidekt liegt vor (siehe ARCHIDEKT-ANFRAGE.md)'
+        type: boolean
+        default: false
+      min_decks:
+        description: 'Aggregation: ab wie vielen Decks ein Commander eigene Kartenzahlen bekommt'
+        default: '1'
+
+jobs:
+  import:
+    if: inputs.aufgabe == 'import'
+    runs-on: ubuntu-latest
+    # Der Job muss länger dürfen als das Skript selbst laufen will, sonst schneidet GitHub ihn ab,
+    # bevor der letzte Block geschrieben ist - und dann ist die Arbeit der letzten Minuten weg.
+    timeout-minutes: 350
+    steps:
+      - name: Check that SUPABASE_SERVICE_ROLE_KEY is set
+        run: |
+          if [ -z "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" ]; then
+            echo "::error::Secret SUPABASE_SERVICE_ROLE_KEY ist nicht gesetzt - siehe Kommentar oben in dieser Datei. Import wird übersprungen."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Import decks
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          node scripts/import-deck-corpus.js \
+            --source=${{ inputs.source }} \
+            --target=${{ inputs.target }} \
+            --max-minutes=${{ inputs.max_minutes }} \
+            --limit=${{ inputs.limit }} \
+            ${{ inputs.dry_run == true && '--dry-run' || '' }} \
+            ${{ inputs.permission_granted == true && '--erlaubnis-liegt-vor' || '' }}
+
+  aggregate:
+    if: inputs.aufgabe == 'aggregate'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Check that SUPABASE_SERVICE_ROLE_KEY is set
+        run: |
+          if [ -z "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" ]; then
+            echo "::error::Secret SUPABASE_SERVICE_ROLE_KEY ist nicht gesetzt - siehe Kommentar oben in dieser Datei. Auswertung wird übersprungen."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Aggregate corpus
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          node scripts/aggregate-deck-corpus.js \
+            --min-decks=${{ inputs.min_decks }} \
+            ${{ inputs.dry_run == true && '--dry-run' || '' }}
