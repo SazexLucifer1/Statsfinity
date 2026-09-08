@@ -3,14 +3,50 @@
      Tutoren, Mass Land Denial, Extra-Turns, das Kategorie-Fenster und die Combo-Karten alle
      dasselbe Raster zeigen. Bewusst hier oben im Wurzel-View, damit alle darunter liegenden
      @if-/@for-Blöcke darauf zugreifen können. -->
-<!-- "highlight" umrandet die Karten rot - der Combo-Finder markiert damit die eine Karte, die
-     dem Deck fehlt, gegen die Karten, die schon drin sind. -->
-<ng-template #analysisCardGrid let-cards let-highlight="highlight">
-  <div class="analysis-card-grid">
+<!-- Der Ablauf einer Combo. Nummeriert statt Aufzählungspunkte: Spellbooks Beschreibungen
+     verweisen selbst auf Schrittnummern ("Repeat from step 4"), die vorher nirgends standen.
+     Die Manasymbole stehen mitten im Satz ("by paying {1}") und werden deshalb inline gesetzt. -->
+<ng-template #comboStepList let-steps>
+  <ol class="hint combo-step-list">
+    @for (step of steps; track $index) {
+      <li>
+        @for (part of step; track $index) {
+          @if (part.kind === 'symbol') {
+            <app-mana-symbol [symbol]="part.value" />
+          } @else {
+            <span>{{ part.value }}</span>
+          }
+        }
+      </li>
+    }
+  </ol>
+</ng-template>
+
+<!-- Zusätzlich nötiges Mana als echte Symbole statt als nackte Zahl - dieselbe Mana-Schrift wie
+     im Farbfilter und in den Diagrammen. Der Text zwischen den Symbolen ("at most", "plus
+     commander tax") gehört zur Angabe und bleibt deshalb stehen. -->
+<ng-template #manaCostLine let-parts>
+  <p class="hint mana-cost-line">
+    <span>{{ viewer.i18n.t('deckView.comboFinderExtraMana') }}</span>
+    @for (part of parts; track $index) {
+      @if (part.kind === 'symbol') {
+        <app-mana-symbol [symbol]="part.value" />
+      } @else {
+        <span>{{ part.value }}</span>
+      }
+    }
+  </p>
+</ng-template>
+
+<!-- Zwei Zusätze für den Combo-Finder: "highlightName" umrandet genau eine Karte rot (die, die
+     dem Deck fehlt), "rowLayout" stellt die Karten in EINE Reihe statt ins umbrechende Raster,
+     damit eine Combo als Einheit lesbar bleibt. Ohne beides verhält sich das Raster wie überall. -->
+<ng-template #analysisCardGrid let-cards let-highlightName="highlightName" let-rowLayout="rowLayout">
+  <div class="analysis-card-grid" [class.combo-finder-row]="rowLayout">
     @for (entry of cards; track entry.cardName) {
       <div
         class="deck-card-tile clickable"
-        [class.missing-card]="highlight"
+        [class.missing-card]="entry.cardName === highlightName"
         role="button"
         tabindex="0"
         [attr.aria-label]="viewer.i18n.t('deckView.cardPreviewAria', { name: entry.cardName })"
@@ -1431,14 +1467,8 @@
               }
             </ul>
           }
-          <!-- Nummeriert statt Aufzählungspunkte: Spellbooks Ablaufbeschreibungen verweisen
-               selbst auf Schrittnummern ("Repeat from step 4"), die vorher nirgends standen. -->
           @if (combo.steps.length > 0) {
-            <ol class="hint combo-step-list">
-              @for (step of combo.steps; track $index) {
-                <li>{{ step }}</li>
-              }
-            </ol>
+            <ng-container [ngTemplateOutlet]="comboStepList" [ngTemplateOutletContext]="{ $implicit: combo.steps }"></ng-container>
           }
           @if (combo.extraMana !== null && combo.extraMana > 0) {
             <p class="hint">{{ viewer.i18n.t('deckView.comboExtraMana', { mana: combo.extraMana }) }}</p>
@@ -1476,17 +1506,16 @@
         <div class="combo-list">
           @for (suggestion of viewer.comboFinderSuggestions(); track suggestion.key) {
             <div class="combo-entry">
-              <!-- Die fehlende Karte steht als rot umrandetes Bild oben: sie ist der Vorschlag,
-                   alles darunter ist die Begründung. -->
-              <p class="hint combo-finder-missing-label">{{ viewer.i18n.t('deckView.comboFinderMissingLabel') }}</p>
-              <ng-container [ngTemplateOutlet]="analysisCardGrid" [ngTemplateOutletContext]="{ $implicit: suggestionCardEntries(suggestion), highlight: true }"></ng-container>
               <p class="combo-entry-names">{{ suggestion.cardName }}</p>
               <p class="hint">{{ viewer.i18n.t('deckView.comboFinderComboCount', { count: suggestion.comboCount }) }}</p>
 
               @for (combo of suggestion.combos; track combo.id) {
                 <div class="combo-finder-combo">
-                  <p class="hint combo-entry-label">{{ viewer.i18n.t('deckView.comboFinderPresentLabel') }}</p>
-                  <ng-container [ngTemplateOutlet]="analysisCardGrid" [ngTemplateOutletContext]="{ $implicit: presentCardEntries(combo) }"></ng-container>
+                  <!-- Eine Combo = eine Kartenreihe: erst was im Deck liegt, ganz rechts die
+                       fehlende Karte, rot umrandet. Braucht keine Beschriftung - die Umrandung
+                       sagt es, und zwei Textzeilen je Combo fraessen auf dem iPhone den Platz,
+                       den die Karten selbst brauchen. -->
+                  <ng-container [ngTemplateOutlet]="analysisCardGrid" [ngTemplateOutletContext]="{ $implicit: comboCardRow(suggestion, combo), highlightName: suggestion.cardName, rowLayout: true }"></ng-container>
                   @if (combo.produces.length > 0) {
                     <p class="hint combo-entry-label">{{ viewer.i18n.t('deckView.comboProducesLabel') }}</p>
                     <ul class="hint combo-produces-list">
@@ -1495,8 +1524,8 @@
                       }
                     </ul>
                   }
-                  @if (combo.extraMana !== null && combo.extraMana > 0) {
-                    <p class="hint">{{ viewer.i18n.t('deckView.comboExtraMana', { mana: combo.extraMana }) }}</p>
+                  @if (combo.extraMana.length > 0) {
+                    <ng-container [ngTemplateOutlet]="manaCostLine" [ngTemplateOutletContext]="{ $implicit: combo.extraMana }"></ng-container>
                   }
                   @if (combo.steps.length > 0) {
                     <button class="glass-button small" (click)="viewer.openComboFinderDetail(combo)">
@@ -1537,15 +1566,9 @@
           }
         </ul>
       }
-      <!-- Nummeriert statt Aufzählungspunkte: Spellbooks Ablaufbeschreibungen verweisen selbst auf
-           Schrittnummern ("Repeat from step 4"), die vorher nirgends standen. -->
-      <ol class="hint combo-step-list">
-        @for (step of combo.steps; track $index) {
-          <li>{{ step }}</li>
-        }
-      </ol>
-      @if (combo.extraMana !== null && combo.extraMana > 0) {
-        <p class="hint">{{ viewer.i18n.t('deckView.comboExtraMana', { mana: combo.extraMana }) }}</p>
+      <ng-container [ngTemplateOutlet]="comboStepList" [ngTemplateOutletContext]="{ $implicit: combo.steps }"></ng-container>
+      @if (combo.extraMana.length > 0) {
+        <ng-container [ngTemplateOutlet]="manaCostLine" [ngTemplateOutletContext]="{ $implicit: combo.extraMana }"></ng-container>
       }
       <button class="glass-button" (click)="viewer.closeComboFinderDetail()">
         {{ viewer.i18n.t('deckView.done') }}

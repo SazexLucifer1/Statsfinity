@@ -11,7 +11,13 @@ import {
   powerRange,
   presentCombos,
 } from './bracket';
-import { comboSteps, fitsColorIdentity, groupSuggestions } from './combo-finder';
+import {
+  ManaPart,
+  comboSteps,
+  fitsColorIdentity,
+  groupSuggestions,
+  parseManaCost,
+} from './combo-finder';
 import { PdfSourceCard } from './deck-pdf.service';
 import {
   CommanderSpellbookService,
@@ -68,11 +74,12 @@ export interface AnalysisCombo {
   cardNames: string[];
   produces: string[];
   /**
-   * Der Ablauf als einzelne Schritte. Spellbook liefert ihn als einen Text mit einem
-   * Zeilenumbruch je Schritt; aufgeteilt ist er als nummerierte Liste zu lesen, und die
-   * Beschreibungen verweisen selbst auf Schrittnummern ("Repeat from step 4").
+   * Der Ablauf als einzelne Schritte, jeder schon in Manasymbole und Text zerlegt (siehe
+   * comboSteps). Spellbook liefert ihn als einen Text mit einem Zeilenumbruch je Schritt;
+   * aufgeteilt ist er als nummerierte Liste zu lesen, und die Beschreibungen verweisen selbst auf
+   * Schrittnummern ("Repeat from step 4").
    */
-  steps: string[];
+  steps: ManaPart[][];
   extraMana: number | null;
   bracketLabel: string | null;
 }
@@ -102,10 +109,16 @@ export interface ComboFinderCombo {
   presentCardNames: string[];
   /** Was die Combo am Ende erzeugt ("Infinite mana", ...). Leer, wenn die Quelle nichts nennt. */
   produces: string[];
-  /** Der Ablauf als nummerierbare Schritte - Grundlage des "Ablauf anzeigen"-Fensters. */
-  steps: string[];
-  /** Zusätzlich nötiges Mana, um die Combo abzuschließen. */
-  extraMana: number | null;
+  /**
+   * Der Ablauf als nummerierbare Schritte, jeder in Manasymbole und Text zerlegt - Grundlage des
+   * "Ablauf anzeigen"-Fensters.
+   */
+  steps: ManaPart[][];
+  /**
+   * Zusätzlich nötiges Mana, zerlegt in Symbole und erklärenden Text - leer, wenn keins nötig
+   * ist. Als Symbole angezeigt, nicht als Zahl: so steht dort dasselbe wie auf der Karte.
+   */
+  extraMana: ManaPart[];
 }
 
 export interface TypeBreakdownEntry {
@@ -730,10 +743,7 @@ export class DeckViewerService {
         id: c.cardNames.join('+'),
         cardNames: c.cardNames,
         produces: c.produces,
-        steps: c.description
-          .split('\n')
-          .map((step) => step.trim())
-          .filter(Boolean),
+        steps: comboSteps(c.description),
         extraMana: null,
         bracketLabel: null,
       }));
@@ -920,7 +930,13 @@ export class DeckViewerService {
           presentCardNames: c.present.map((key) => anzeigename.get(key) ?? key),
           produces: c.produces,
           steps: comboSteps(c.description),
-          extraMana: c.manaValueNeeded,
+          // Bewusst OHNE Rückfall auf die blosse Zahl aus manaValueNeeded: Diese als generisches
+          // Symbol zu zeigen macht aus "Manawert 3" ein {3}, und das heisst in der Schreibweise
+          // der Karten "drei GENERISCHES Mana" - bei einer Combo, die in Wahrheit {1}{B}{B}
+          // verlangt, ist das schlicht falsch. Nachgemessen an 382 Combos: Wo ein Manabedarf
+          // besteht, liefert die Quelle immer auch die Kartenschreibweise; der Rückfall hätte also
+          // nie etwas gerettet und nur diesen einen Fehler erzeugen können.
+          extraMana: parseManaCost(c.manaNeeded ?? ''),
         })),
       })),
     );

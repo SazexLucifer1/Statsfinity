@@ -6,7 +6,8 @@
 --
 -- NACH dem Ausführen einmal den Abgleich anstoßen: GitHub -> Actions -> "spellbook-sync" ->
 -- "Run workflow". Vorher bleiben die Tabellen leer und der Combo-Finder sagt das auch so.
--- Der Lauf dauert rund 20 Minuten (1.085 Seiten à 100 Combos).
+-- Der Lauf dauert rund 45 Minuten (1.085 Seiten à 100 Combos, bewusst auf eine Seite pro Sekunde
+-- gedrosselt - Commander Spellbook sperrt ungebremste Laeufe mit HTTP 429 aus).
 --
 -- =====================================================================================
 -- Warum eine ZWEITE Combo-Tabelle neben spellbook_two_card_combos?
@@ -30,8 +31,14 @@
 -- Nachgemessen an Spellbooks API (Stand 07.09.2026):
 --   cards=2      3.985      cards<=3    51.295
 --   cards=3     47.310      cards<=4    98.274
---   cards=4     46.979      cards<=5   108.487   <- was hier landet
+--   cards=4     46.979      cards<=5   108.487
 --   cards=5     10.213
+--
+-- Davon bleiben rund 8 % draussen: Combos, die zusaetzlich eine VORLAGE brauchen ("Permanent
+-- Castable for {C}", "Man-Land that Enters Untapped") statt einer benannten Karte. Sie sind ueber
+-- eine Deckliste nicht pruefbar - der Combo-Finder wuerde "dir fehlt nur diese eine Karte"
+-- behaupten, obwohl daneben noch eine Karte mit einer bestimmten Eigenschaft noetig ist. Es landen
+-- also grob 100.000 Combos hier.
 -- Beschreibung im Median 388 Bytes, "produces" 120 Bytes -> grob 135 MB inklusive Index.
 --
 -- Diese Tabellen enthalten AUSSCHLIESSLICH öffentliche Kartendaten von Commander Spellbook,
@@ -47,6 +54,7 @@ create table if not exists public.spellbook_combos (
   card_count smallint not null,
   produces text[] not null default '{}',
   description text not null default '',
+  mana_needed text,
   mana_value_needed smallint,
   bracket_tag text,
   popularity integer,
@@ -59,6 +67,12 @@ comment on column public.spellbook_combos.produces is
   'Was die Combo am Ende erzeugt, in Spellbooks eigener Benennung ("Infinite mana", "Infinite lifegain", ...). Das ist die Kurzantwort auf "was bringt mir das?" und steht deshalb im Combo-Finder direkt unter der Combo.';
 comment on column public.spellbook_combos.description is
   'Der Ablauf als Fliesstext mit einem Zeilenumbruch je Schritt - genau so, wie ihn die Live-Auswertung liefert; die App teilt ihn an den Umbruechen in eine nummerierte Liste.';
+-- Fuer alle, die diese Datei vor dem 08.09.2026 schon einmal ausgefuehrt haben: "create table if
+-- not exists" oben laesst eine bestehende Tabelle unangetastet, die Spalte fehlte dort also noch.
+alter table public.spellbook_combos add column if not exists mana_needed text;
+
+comment on column public.spellbook_combos.mana_needed is
+  'Zusaetzlich noetiges Mana in Kartenschreibweise ("{1}{R}{R}"), damit die App echte Manasymbole zeigen kann statt einer nackten Zahl. Enthaelt bei rund jeder zehnten Combo einen erklaerenden Zusatz ("{2}{G} at most"). null = kein Zusatzmana noetig.';
 comment on column public.spellbook_combos.card_count is
   'Anzahl beteiligter Karten (2 bis 5). Redundant zu spellbook_combo_cards, aber so laesst sich ohne Join sortieren und anzeigen.';
 
@@ -103,7 +117,13 @@ create index if not exists spellbook_combo_cards_name_idx
 --    security invoker + stable: die Funktion liest nur die beiden Tabellen oben, die ohnehin fuer
 --    jeden lesbar sind. Sie verschafft also keinen Zugriff, den der Aufrufer nicht sowieso haette.
 -- =====================================================================================
-create or replace function public.spellbook_combos_missing_one(
+-- Erst loeschen, dann neu anlegen: "create or replace" verweigert Postgres, sobald sich die
+-- Rueckgabespalten aendern ("cannot change return type of existing function"). Genau das ist beim
+-- Nachruesten von mana_needed passiert. Mit dem drop davor bleibt die Datei wiederholbar - auch
+-- fuer alle, die eine aeltere Fassung schon eingespielt haben.
+drop function if exists public.spellbook_combos_missing_one(text[], text[], integer, integer);
+
+create function public.spellbook_combos_missing_one(
   deck_names text[],
   commander_names text[] default '{}'::text[],
   max_cards integer default 150,
@@ -116,6 +136,7 @@ returns table (
   card_count smallint,
   produces text[],
   description text,
+  mana_needed text,
   mana_value_needed smallint,
   popularity integer,
   combo_count integer,
@@ -158,6 +179,7 @@ as $$
       c.card_count,
       c.produces,
       c.description,
+      c.mana_needed,
       c.mana_value_needed,
       c.popularity
     from bewertet b
@@ -203,6 +225,7 @@ as $$
     g.card_count,
     g.produces,
     g.description,
+    g.mana_needed,
     g.mana_value_needed,
     g.popularity,
     g.combo_anzahl,

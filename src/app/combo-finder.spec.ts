@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { comboSteps, fitsColorIdentity, groupSuggestions } from './combo-finder';
+import {
+  comboSteps,
+  fitsColorIdentity,
+  groupSuggestions,
+  parseManaCost,
+  splitManaSymbols,
+} from './combo-finder';
 import type { ComboSuggestionRow } from './card-data.service';
 
 /**
@@ -16,6 +22,7 @@ const zeile = (missing: string, extra: Partial<ComboSuggestionRow> = {}): ComboS
   cardCount: 2,
   produces: ['Infinite mana'],
   description: 'Schritt eins\nSchritt zwei',
+  manaNeeded: null,
   manaValueNeeded: 0,
   popularity: 100,
   comboCount: 1,
@@ -87,16 +94,102 @@ describe('fitsColorIdentity', () => {
   });
 });
 
+const alsText = (teile: { kind: string; value: string }[]) => teile.map((t) => t.value).join('');
+
 describe('comboSteps', () => {
   it('teilt den Ablauf an den Zeilenumbrüchen auf', () => {
-    expect(comboSteps('Erstens\nZweitens\nDrittens')).toEqual(['Erstens', 'Zweitens', 'Drittens']);
+    expect(comboSteps('Erstens\nZweitens\nDrittens').map(alsText)).toEqual([
+      'Erstens',
+      'Zweitens',
+      'Drittens',
+    ]);
   });
 
   it('wirft Leerzeilen und Leerraum weg', () => {
-    expect(comboSteps('  Erstens  \n\n\n Zweitens \n')).toEqual(['Erstens', 'Zweitens']);
+    expect(comboSteps('  Erstens  \n\n\n Zweitens \n').map(alsText)).toEqual([
+      'Erstens',
+      'Zweitens',
+    ]);
   });
 
   it('liefert eine leere Liste, wenn die Quelle keine Beschreibung hat', () => {
     expect(comboSteps('')).toEqual([]);
+  });
+
+  it('holt die Manasymbole aus dem Fließtext heraus', () => {
+    expect(comboSteps('Activate it by paying {1}, then repeat.')[0]).toEqual([
+      { kind: 'text', value: 'Activate it by paying ' },
+      { kind: 'symbol', value: '1' },
+      { kind: 'text', value: ', then repeat.' },
+    ]);
+  });
+});
+
+describe('splitManaSymbols', () => {
+  it('behält Leerzeichen rund um die Symbole', () => {
+    expect(splitManaSymbols('a {U} b')).toEqual([
+      { kind: 'text', value: 'a ' },
+      { kind: 'symbol', value: 'U' },
+      { kind: 'text', value: ' b' },
+    ]);
+  });
+
+  it('erkennt Energie, Schnee, Tappen, X und Hybride als Symbol', () => {
+    for (const t of ['E', 'S', 'T', 'X', 'C', 'U/R', '2/B', 'B/P', '15']) {
+      expect(splitManaSymbols(`{${t}}`)).toEqual([{ kind: 'symbol', value: t }]);
+    }
+  });
+
+  it('lässt Unbekanntes als Text in seinen Klammern stehen', () => {
+    expect(splitManaSymbols('zahle {Blubb} dafür')).toEqual([
+      { kind: 'text', value: 'zahle {Blubb} dafür' },
+    ]);
+  });
+
+  it('zieht Text um ein unbekanntes Token herum zu einem Stück zusammen', () => {
+    expect(splitManaSymbols('a {Q} b {U} c')).toEqual([
+      { kind: 'text', value: 'a {Q} b ' },
+      { kind: 'symbol', value: 'U' },
+      { kind: 'text', value: ' c' },
+    ]);
+  });
+});
+
+describe('parseManaCost', () => {
+  it('zerlegt eine reine Kartenschreibweise in Symbole', () => {
+    expect(parseManaCost('{1}{R}{R}')).toEqual([
+      { kind: 'symbol', value: '1' },
+      { kind: 'symbol', value: 'R' },
+      { kind: 'symbol', value: 'R' },
+    ]);
+  });
+
+  it('behält Hybridsymbole als Ganzes', () => {
+    expect(parseManaCost('{U}{U/R}')).toEqual([
+      { kind: 'symbol', value: 'U' },
+      { kind: 'symbol', value: 'U/R' },
+    ]);
+  });
+
+  it('behält den erklärenden Text hinter den Kosten', () => {
+    expect(parseManaCost('{2}{G} at most')).toEqual([
+      { kind: 'symbol', value: '2' },
+      { kind: 'symbol', value: 'G' },
+      { kind: 'text', value: 'at most' },
+    ]);
+  });
+
+  it('behält auch Text zwischen zwei Symbolen', () => {
+    expect(parseManaCost('{5} minus {X}, wobei X zählt')).toEqual([
+      { kind: 'symbol', value: '5' },
+      { kind: 'text', value: 'minus' },
+      { kind: 'symbol', value: 'X' },
+      { kind: 'text', value: ', wobei X zählt' },
+    ]);
+  });
+
+  it('kommt mit einer Angabe ganz ohne Klammern klar', () => {
+    expect(parseManaCost('nichts weiter')).toEqual([{ kind: 'text', value: 'nichts weiter' }]);
+    expect(parseManaCost('')).toEqual([]);
   });
 });
