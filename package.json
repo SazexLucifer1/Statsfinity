@@ -34,7 +34,7 @@
   },
   "devDependencies": {
     "@angular/build": "^21.2.18",
-    "@angular/cli": "^21.2.18",
+    "@angular/cli": "^22.1.7",
     "@angular/compiler-cli": "^21.2.0",
     "@types/jszip": "^3.4.0",
     "@types/qrcode": "^1.5.6",
