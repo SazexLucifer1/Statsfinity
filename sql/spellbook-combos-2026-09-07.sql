@@ -6,7 +6,8 @@
 --
 -- NACH dem Ausführen einmal den Abgleich anstoßen: GitHub -> Actions -> "spellbook-sync" ->
 -- "Run workflow". Vorher bleiben die Tabellen leer und der Combo-Finder sagt das auch so.
--- Der Lauf dauert rund 20 Minuten (1.085 Seiten à 100 Combos).
+-- Der Lauf dauert rund 45 Minuten (1.085 Seiten à 100 Combos, bewusst auf eine Seite pro Sekunde
+-- gedrosselt - Commander Spellbook sperrt ungebremste Laeufe mit HTTP 429 aus).
 --
 -- =====================================================================================
 -- Warum eine ZWEITE Combo-Tabelle neben spellbook_two_card_combos?

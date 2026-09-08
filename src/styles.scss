@@ -574,14 +574,18 @@ h3 {
 //
 // Steht hier statt in deck-detail-view.scss: die Sheet-Klasse darüber ist ohnehin global, und die
 // Komponentendatei liegt dicht an ihrem 12-kB-Stilbudget.
+// minmax(0, 1fr) statt schlicht 1fr bzw. gar keiner Spaltenangabe: Grid-Spalten wachsen sonst mit
+// ihrem breitesten Inhalt, und die nicht umbrechende Kartenreihe des Combo-Finders schob damit das
+// ganze Fenster auseinander, statt in sich zu scrollen.
 .combo-list {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--sp-4);
 }
 
 @include bp.up(md) {
   .combo-list {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--sp-6);
   }
 }
@@ -603,7 +607,11 @@ h3 {
   // ganze Sheet-Breite und sie wären größer als die Karten in der Analyse selbst. Bewusst über
   // .options-menu-sheet geschrieben: das gibt mehr Spezifität als die gleichnamige Regel in
   // deck-detail-view.scss, die sonst je nach Reihenfolge der Stylesheets gewinnen würde.
-  .options-menu-sheet & .analysis-card-grid {
+  //
+  // Die Combo-Finder-Reihe ist ausgenommen: sie ist gar kein Raster, sondern eine Flex-Reihe, und
+  // genau diese Spezifität hat ihr das display:flex überschrieben - die Fünfer-Combo brach dann
+  // doch wieder um und die rote Karte landete links unten statt rechts.
+  .options-menu-sheet & .analysis-card-grid:not(.combo-finder-row) {
     grid-template-columns: repeat(auto-fill, 94px);
   }
 }
@@ -686,17 +694,40 @@ h3 {
 }
 
 // Die eine Karte, die dem Deck für eine Combo noch fehlt (Combo-Finder). Rot statt eines Symbols,
-// weil das Raster nur Bilder zeigt - ein Zeichen daneben ginge zwischen den Kartenrändern unter.
+// weil das Raster nur Bilder zeigt - ein Zeichen daneben ginge zwischen den Kartenrändern unter,
+// und eine Textzeile "diese fehlt" kostet mehr Platz als sie erklärt.
 .deck-card-tile.missing-card {
   border-radius: var(--r-md);
   outline: 2px solid #ff5f56;
   outline-offset: 2px;
 }
 
-// Überschrift über der fehlenden Karte - dichter an ihr Bild als der Standardabstand, damit
-// Beschriftung und Karte als ein Block lesbar sind.
-.combo-finder-missing-label {
-  margin-bottom: 0;
+// Eine Combo als EINE Reihe statt im umbrechenden Raster: erst was im Deck liegt, ganz rechts die
+// fehlende Karte. Nur so bleibt "rechts fehlt dir die hier" auch bei vier oder fünf beteiligten
+// Karten wahr - ein Raster würde umbrechen und die rote Karte irgendwo links unten absetzen.
+//
+// Die Kacheln schrumpfen mit, statt die Reihe wegzuwischen: Bei einer Fünfer-Combo lag die rote
+// Karte sonst rechts außerhalb des Sichtfelds - ausgerechnet die, um die es geht. Zwei bis drei
+// Karten (der Regelfall) bleiben bei voller Breite, fünf teilen sich den Platz und werden zu
+// Miniaturen; antippen zeigt jede ohnehin groß.
+// Der .options-menu-sheet-Vorfahre steht hier nicht zur Zierde: Angular haengt an die Regel in
+// deck-detail-view.scss ein [_ngcontent]-Attribut, das sie auf dieselbe Spezifitaet hebt wie eine
+// blosse Doppelklasse - und Komponenten-Styles landen spaeter im Dokument, gewinnen also. Ohne die
+// dritte Stufe blieb display:grid stehen und die Reihe brach doch wieder um.
+.options-menu-sheet .analysis-card-grid.combo-finder-row {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  overflow-x: auto;
+  // Ohne das schneidet der Überlauf die rote Umrandung der letzten Karte ab.
+  padding: 3px;
+  margin: 5px 0;
+
+  > * {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 84px;
+  }
 }
 
 // Eine der Combos unter einem Vorschlag. Eingerückt mit Linie: ein Vorschlag kann mehrere Combos

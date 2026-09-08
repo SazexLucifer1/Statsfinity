@@ -45,20 +45,17 @@ export class DeckDetailView {
   }
 
   /**
-   * Die vorgeschlagene Karte im selben Raster wie die Combo-Karten - eine einzelne Karte, weil
-   * genau sie im Deck fehlt. Wird im Combo-Finder rot umrandet gezeigt (Kontext "highlight").
+   * Eine ganze Combo als eine Kartenreihe: erst die Karten, die schon im Deck liegen, ganz rechts
+   * die fehlende. Genau diese letzte umrandet das Raster rot (Kontext "highlightName").
+   *
+   * Anzahl immer 1: eine Combo nennt jede Karte genau einmal, die Deck-Anzahl spielt hier keine
+   * Rolle.
    */
-  suggestionCardEntries(suggestion: ComboFinderSuggestion): GameChangerEntry[] {
-    return [{ cardName: suggestion.cardName, quantity: 1 }];
-  }
-
-  /**
-   * Die Karten einer Combo, die schon im Deck liegen - ohne Hervorhebung, als Gegenstück zur rot
-   * umrandeten fehlenden Karte darüber. Anzahl immer 1: eine Combo nennt jede Karte genau einmal,
-   * die Deck-Anzahl spielt hier keine Rolle.
-   */
-  presentCardEntries(combo: ComboFinderCombo): GameChangerEntry[] {
-    return combo.presentCardNames.map((cardName) => ({ cardName, quantity: 1 }));
+  comboCardRow(suggestion: ComboFinderSuggestion, combo: ComboFinderCombo): GameChangerEntry[] {
+    return [...combo.presentCardNames, suggestion.cardName].map((cardName) => ({
+      cardName,
+      quantity: 1,
+    }));
   }
 
   /**

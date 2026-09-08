@@ -76,7 +76,28 @@ const normalizedFrontName = (name) => normalizeCardName(frontName(name));
  * einordnen. Geduldig, weil ein Lauf über 120 Seiten geht und ein einzelner Aussetzer nicht die
  * ganze Nacht kosten soll.
  */
-const VERSUCHE = 6;
+const VERSUCHE = 8;
+
+/**
+ * Mindestpause zwischen zwei Seitenabrufen.
+ *
+ * Nachgemessen, nachdem ein Lauf nach 136 Anfragen an Spellbooks Rate-Limit gescheitert war
+ * (HTTP 429 ab Seite 54 von 1.085, sechs Wiederholungen über drei Minuten halfen nicht): Deren
+ * Kontingent liegt bei etwa 130 Anfragen je Zeitfenster, und ungebremst schafft der Lauf gut zwei
+ * Seiten pro Sekunde - er reißt es also nach knapp einer Minute zuverlässig.
+ *
+ * Eine Sekunde Pause hält uns mit rund 60 Anfragen pro Minute klar darunter. Der Preis sind rund
+ * 20 Minuten mehr Laufzeit für die 1.085 Combo-Seiten. Das ist für einen Nachtlauf kein Preis -
+ * ein abgebrochener Lauf, der 95 % der Daten nicht holt, dagegen schon.
+ */
+const PAUSE_JE_SEITE = 1000;
+
+/**
+ * Mindestwartezeit nach einem 429. Der normale Backoff (3, 6, 12 s ...) ist gegen ein
+ * Kontingent-pro-Minute wirkungslos - er versucht es immer wieder innerhalb desselben Fensters.
+ * Eine Minute wartet das Fenster sicher aus.
+ */
+const PAUSE_NACH_LIMIT = 60000;
 
 async function fetchJson(url) {
   let letzterGrund = 'unbekannt';
@@ -90,6 +111,7 @@ async function fetchJson(url) {
         throw new Error(`HTTP ${res.status}`);
       }
       letzterGrund = `HTTP ${res.status}`;
+      if (res.status === 429) wartezeit = Math.max(wartezeit, PAUSE_NACH_LIMIT);
       const retryAfter = Number(res.headers.get('retry-after'));
       if (Number.isFinite(retryAfter) && retryAfter > 0)
         wartezeit = Math.max(wartezeit, retryAfter * 1000);
@@ -140,6 +162,7 @@ async function ladeAlleSeiten(startUrl, aufZeile) {
     seiten++;
     if (seiten % 20 === 0) console.log(`  ${seiten} Seiten, ${gesehen} Einträge gesichtet ...`);
     url = data.next ?? null;
+    if (url) await sleep(PAUSE_JE_SEITE);
   }
 
   return { zeilen, seiten, gesehen };
@@ -365,6 +388,7 @@ async function syncCombos(laufBegonnen) {
       console.log(`  ${seiten} Seiten, ${gesehen} Combos gesichtet, ${combos} geschrieben ...`);
     }
     url = data.next ?? null;
+    if (url) await sleep(PAUSE_JE_SEITE);
   }
 
   await leerePuffer();

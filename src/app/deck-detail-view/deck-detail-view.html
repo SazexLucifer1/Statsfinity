@@ -3,14 +3,15 @@
      Tutoren, Mass Land Denial, Extra-Turns, das Kategorie-Fenster und die Combo-Karten alle
      dasselbe Raster zeigen. Bewusst hier oben im Wurzel-View, damit alle darunter liegenden
      @if-/@for-Blöcke darauf zugreifen können. -->
-<!-- "highlight" umrandet die Karten rot - der Combo-Finder markiert damit die eine Karte, die
-     dem Deck fehlt, gegen die Karten, die schon drin sind. -->
-<ng-template #analysisCardGrid let-cards let-highlight="highlight">
-  <div class="analysis-card-grid">
+<!-- Zwei Zusätze für den Combo-Finder: "highlightName" umrandet genau eine Karte rot (die, die
+     dem Deck fehlt), "rowLayout" stellt die Karten in EINE Reihe statt ins umbrechende Raster,
+     damit eine Combo als Einheit lesbar bleibt. Ohne beides verhält sich das Raster wie überall. -->
+<ng-template #analysisCardGrid let-cards let-highlightName="highlightName" let-rowLayout="rowLayout">
+  <div class="analysis-card-grid" [class.combo-finder-row]="rowLayout">
     @for (entry of cards; track entry.cardName) {
       <div
         class="deck-card-tile clickable"
-        [class.missing-card]="highlight"
+        [class.missing-card]="entry.cardName === highlightName"
         role="button"
         tabindex="0"
         [attr.aria-label]="viewer.i18n.t('deckView.cardPreviewAria', { name: entry.cardName })"
@@ -1476,17 +1477,16 @@
         <div class="combo-list">
           @for (suggestion of viewer.comboFinderSuggestions(); track suggestion.key) {
             <div class="combo-entry">
-              <!-- Die fehlende Karte steht als rot umrandetes Bild oben: sie ist der Vorschlag,
-                   alles darunter ist die Begründung. -->
-              <p class="hint combo-finder-missing-label">{{ viewer.i18n.t('deckView.comboFinderMissingLabel') }}</p>
-              <ng-container [ngTemplateOutlet]="analysisCardGrid" [ngTemplateOutletContext]="{ $implicit: suggestionCardEntries(suggestion), highlight: true }"></ng-container>
               <p class="combo-entry-names">{{ suggestion.cardName }}</p>
               <p class="hint">{{ viewer.i18n.t('deckView.comboFinderComboCount', { count: suggestion.comboCount }) }}</p>
 
               @for (combo of suggestion.combos; track combo.id) {
                 <div class="combo-finder-combo">
-                  <p class="hint combo-entry-label">{{ viewer.i18n.t('deckView.comboFinderPresentLabel') }}</p>
-                  <ng-container [ngTemplateOutlet]="analysisCardGrid" [ngTemplateOutletContext]="{ $implicit: presentCardEntries(combo) }"></ng-container>
+                  <!-- Eine Combo = eine Kartenreihe: erst was im Deck liegt, ganz rechts die
+                       fehlende Karte, rot umrandet. Braucht keine Beschriftung - die Umrandung
+                       sagt es, und zwei Textzeilen je Combo fraessen auf dem iPhone den Platz,
+                       den die Karten selbst brauchen. -->
+                  <ng-container [ngTemplateOutlet]="analysisCardGrid" [ngTemplateOutletContext]="{ $implicit: comboCardRow(suggestion, combo), highlightName: suggestion.cardName, rowLayout: true }"></ng-container>
                   @if (combo.produces.length > 0) {
                     <p class="hint combo-entry-label">{{ viewer.i18n.t('deckView.comboProducesLabel') }}</p>
                     <ul class="hint combo-produces-list">
