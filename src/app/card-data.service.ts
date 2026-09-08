@@ -48,6 +48,8 @@ export interface ComboSuggestionRow {
   produces: string[];
   /** Der Ablauf, ein Schritt je Zeile. */
   description: string;
+  /** Zusätzlich nötiges Mana in Kartenschreibweise ("{1}{R}{R}"), null = keins nötig. */
+  manaNeeded: string | null;
   manaValueNeeded: number | null;
   popularity: number | null;
   /** Wie viele Combos dieselbe fehlende Karte insgesamt freischaltet. */
@@ -427,6 +429,7 @@ export class CardDataService {
         cardCount: row['card_count'] as number,
         produces: (row['produces'] as string[] | null) ?? [],
         description: (row['description'] as string | null) ?? '',
+        manaNeeded: (row['mana_needed'] as string | null) ?? null,
         manaValueNeeded: (row['mana_value_needed'] as number | null) ?? null,
         popularity: (row['popularity'] as number | null) ?? null,
         comboCount: row['combo_count'] as number,

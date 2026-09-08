@@ -351,6 +351,7 @@ async function syncCombos(laufBegonnen) {
         card_count: karten.size,
         produces: (variant.produces ?? []).map((p) => p?.feature?.name).filter(Boolean),
         description: variant.description ?? '',
+        mana_needed: variant.manaNeeded || null,
         mana_value_needed: variant.manaValueNeeded ?? null,
         bracket_tag: variant.bracketTag ?? null,
         popularity: variant.popularity ?? null,

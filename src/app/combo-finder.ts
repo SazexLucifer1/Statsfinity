@@ -106,3 +106,39 @@ export function comboSteps(description: string): string[] {
     .map((step) => step.trim())
     .filter(Boolean);
 }
+
+/** Ein Stück einer Manakosten-Angabe: entweder ein Symbol oder erklärender Text drumherum. */
+export interface ManaPart {
+  kind: 'symbol' | 'text';
+  /** Beim Symbol der Inhalt der geschweiften Klammern ('U', '3', 'U/R'), sonst der Text. */
+  value: string;
+}
+
+/**
+ * Zerlegt Commander Spellbooks Manaangabe in Symbole und Text.
+ *
+ * Die Quelle liefert das zusätzlich nötige Mana als Kartenschreibweise ("{1}{R}{R}") - als
+ * nackter Text gelesen ist das unschön, mit den Symbolen der Mana-Schrift ist es genau das, was
+ * auch auf der Karte steht (siehe src/app/ui/mana-symbol/).
+ *
+ * Der Text zwischen den Klammern wird bewusst behalten statt weggeworfen: rund jede zehnte Angabe
+ * hat einen Zusatz, der die Kosten erst richtig beschreibt ("{2}{G} at most", "{4}{W}{W} plus
+ * enough mana to pay for command tax"). Ihn zu schlucken machte aus einer Bedingung eine
+ * Behauptung.
+ */
+export function parseManaCost(cost: string): ManaPart[] {
+  const teile: ManaPart[] = [];
+  let rest = cost;
+
+  while (rest.length > 0) {
+    const treffer = rest.match(/\{([^}]*)\}/);
+    if (!treffer) break;
+    const davor = rest.slice(0, treffer.index);
+    if (davor.trim()) teile.push({ kind: 'text', value: davor.trim() });
+    teile.push({ kind: 'symbol', value: treffer[1] });
+    rest = rest.slice((treffer.index ?? 0) + treffer[0].length);
+  }
+
+  if (rest.trim()) teile.push({ kind: 'text', value: rest.trim() });
+  return teile;
+}

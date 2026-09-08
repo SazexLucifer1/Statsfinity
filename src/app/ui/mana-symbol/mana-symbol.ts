@@ -2,7 +2,7 @@ import { Component, computed, input } from '@angular/core';
 
 /**
  * Ein einzelnes Manasymbol aus der Mana-Schriftart: eine Farbe (W/U/B/R/G), ein generischer
- * Manabetrag ('0' bis '20') oder farblos ('C').
+ * Manabetrag ('0' bis '20'), ein Hybrid ('U/R', '2/B'), 'X' oder farblos ('C').
  *
  * Ersetzt die farbigen Punkte, die vorher an vier Stellen einzeln nachgebaut waren (Farbfilter im
  * Commander-Vorschlag und im öffentlichen Deck-Browser, Farbkombinationen im Profil, Balken-
@@ -24,7 +24,10 @@ import { Component, computed, input } from '@angular/core';
   styleUrl: './mana-symbol.scss',
 })
 export class ManaSymbol {
-  /** Farbbuchstabe (W/U/B/R/G), Zahl als Text ('0'-'20') oder alles andere für farblos. */
+  /**
+   * Farbbuchstabe (W/U/B/R/G), Zahl als Text ('0'-'20'), 'X', ein Hybrid mit Schrägstrich
+   * ('U/R', '2/B') oder alles andere für farblos.
+   */
   readonly symbol = input.required<string>();
 
   /**
@@ -47,5 +50,10 @@ function manaToken(symbol: string): string {
   const raw = symbol.trim().toUpperCase();
   if (raw.length === 1 && 'WUBRG'.includes(raw)) return raw.toLowerCase();
   if (/^\d{1,2}$/.test(raw)) return raw;
+  if (raw === 'X') return 'x';
+  // Hybrid schreibt die Schrift ohne Schrägstrich: {U/R} ist ms-ur, {2/B} ist ms-2b. Ohne diesen
+  // Fall landeten die Zwitter beim farblosen Rückfall - und ein graues Symbol behauptet dort
+  // schlicht etwas Falsches über die Kosten.
+  if (/^[WUBRG0-9]+\/[WUBRGP]$/.test(raw)) return raw.replace('/', '').toLowerCase();
   return 'c';
 }

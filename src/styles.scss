@@ -737,3 +737,12 @@ h3 {
   padding-left: var(--sp-3);
   border-left: 2px solid rgba(255, 255, 255, 0.12);
 }
+
+// Manaangabe des Combo-Finders: Symbole und Text in einer Zeile auf gleicher Hoehe. Ohne das
+// flex-Layout sitzen die Symbole auf der Grundlinie und "springen" gegen den Text.
+.mana-cost-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { comboSteps, fitsColorIdentity, groupSuggestions } from './combo-finder';
+import { comboSteps, fitsColorIdentity, groupSuggestions, parseManaCost } from './combo-finder';
 import type { ComboSuggestionRow } from './card-data.service';
 
 /**
@@ -16,6 +16,7 @@ const zeile = (missing: string, extra: Partial<ComboSuggestionRow> = {}): ComboS
   cardCount: 2,
   produces: ['Infinite mana'],
   description: 'Schritt eins\nSchritt zwei',
+  manaNeeded: null,
   manaValueNeeded: 0,
   popularity: 100,
   comboCount: 1,
@@ -98,5 +99,44 @@ describe('comboSteps', () => {
 
   it('liefert eine leere Liste, wenn die Quelle keine Beschreibung hat', () => {
     expect(comboSteps('')).toEqual([]);
+  });
+});
+
+describe('parseManaCost', () => {
+  it('zerlegt eine reine Kartenschreibweise in Symbole', () => {
+    expect(parseManaCost('{1}{R}{R}')).toEqual([
+      { kind: 'symbol', value: '1' },
+      { kind: 'symbol', value: 'R' },
+      { kind: 'symbol', value: 'R' },
+    ]);
+  });
+
+  it('behält Hybridsymbole als Ganzes', () => {
+    expect(parseManaCost('{U}{U/R}')).toEqual([
+      { kind: 'symbol', value: 'U' },
+      { kind: 'symbol', value: 'U/R' },
+    ]);
+  });
+
+  it('behält den erklärenden Text hinter den Kosten', () => {
+    expect(parseManaCost('{2}{G} at most')).toEqual([
+      { kind: 'symbol', value: '2' },
+      { kind: 'symbol', value: 'G' },
+      { kind: 'text', value: 'at most' },
+    ]);
+  });
+
+  it('behält auch Text zwischen zwei Symbolen', () => {
+    expect(parseManaCost('{5} minus {X}, wobei X zählt')).toEqual([
+      { kind: 'symbol', value: '5' },
+      { kind: 'text', value: 'minus' },
+      { kind: 'symbol', value: 'X' },
+      { kind: 'text', value: ', wobei X zählt' },
+    ]);
+  });
+
+  it('kommt mit einer Angabe ganz ohne Klammern klar', () => {
+    expect(parseManaCost('nichts weiter')).toEqual([{ kind: 'text', value: 'nichts weiter' }]);
+    expect(parseManaCost('')).toEqual([]);
   });
 });

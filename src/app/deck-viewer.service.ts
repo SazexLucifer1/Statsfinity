@@ -11,7 +11,13 @@ import {
   powerRange,
   presentCombos,
 } from './bracket';
-import { comboSteps, fitsColorIdentity, groupSuggestions } from './combo-finder';
+import {
+  ManaPart,
+  comboSteps,
+  fitsColorIdentity,
+  groupSuggestions,
+  parseManaCost,
+} from './combo-finder';
 import { PdfSourceCard } from './deck-pdf.service';
 import {
   CommanderSpellbookService,
@@ -104,8 +110,11 @@ export interface ComboFinderCombo {
   produces: string[];
   /** Der Ablauf als nummerierbare Schritte - Grundlage des "Ablauf anzeigen"-Fensters. */
   steps: string[];
-  /** Zusätzlich nötiges Mana, um die Combo abzuschließen. */
-  extraMana: number | null;
+  /**
+   * Zusätzlich nötiges Mana, zerlegt in Symbole und erklärenden Text - leer, wenn keins nötig
+   * ist. Als Symbole angezeigt, nicht als Zahl: so steht dort dasselbe wie auf der Karte.
+   */
+  extraMana: ManaPart[];
 }
 
 export interface TypeBreakdownEntry {
@@ -920,7 +929,11 @@ export class DeckViewerService {
           presentCardNames: c.present.map((key) => anzeigename.get(key) ?? key),
           produces: c.produces,
           steps: comboSteps(c.description),
-          extraMana: c.manaValueNeeded,
+          // Die Kartenschreibweise ist die bessere Quelle; die blosse Zahl aus manaValueNeeded
+          // ist der Rückfall, wenn die Quelle sie ausnahmsweise nicht mitliefert.
+          extraMana: parseManaCost(
+            c.manaNeeded ?? (c.manaValueNeeded ? `{${c.manaValueNeeded}}` : ''),
+          ),
         })),
       })),
     );

@@ -288,6 +288,7 @@ export const deckView = {
       'Die Combo-Daten stehen noch nicht bereit. Der nächtliche Abgleich muss einmal gelaufen sein, bevor der Combo-Finder etwas findet.',
     'deckView.comboFinderComboCount': 'Neue Combos: {{count}}',
     'deckView.comboFinderMoreCombos': 'Und {{count}} weitere Combos mit dieser Karte.',
+    'deckView.comboFinderExtraMana': 'Zusätzlich nötig:',
     'deckView.comboFinderShowSteps': 'Ablauf anzeigen',
     'deckView.comboFinderStepsTitle': 'So läuft die Combo ab',
     'deckView.comboFinderShowing':
@@ -607,6 +608,7 @@ export const deckView = {
       'The combo data is not available yet. The nightly sync has to run once before the combo finder can find anything.',
     'deckView.comboFinderComboCount': 'New combos: {{count}}',
     'deckView.comboFinderMoreCombos': 'And {{count}} more combos with this card.',
+    'deckView.comboFinderExtraMana': 'Additionally needed:',
     'deckView.comboFinderShowSteps': 'Show steps',
     'deckView.comboFinderStepsTitle': 'How the combo works',
     'deckView.comboFinderShowing':
