@@ -930,11 +930,13 @@ export class DeckViewerService {
           presentCardNames: c.present.map((key) => anzeigename.get(key) ?? key),
           produces: c.produces,
           steps: comboSteps(c.description),
-          // Die Kartenschreibweise ist die bessere Quelle; die blosse Zahl aus manaValueNeeded
-          // ist der Rückfall, wenn die Quelle sie ausnahmsweise nicht mitliefert.
-          extraMana: parseManaCost(
-            c.manaNeeded ?? (c.manaValueNeeded ? `{${c.manaValueNeeded}}` : ''),
-          ),
+          // Bewusst OHNE Rückfall auf die blosse Zahl aus manaValueNeeded: Diese als generisches
+          // Symbol zu zeigen macht aus "Manawert 3" ein {3}, und das heisst in der Schreibweise
+          // der Karten "drei GENERISCHES Mana" - bei einer Combo, die in Wahrheit {1}{B}{B}
+          // verlangt, ist das schlicht falsch. Nachgemessen an 382 Combos: Wo ein Manabedarf
+          // besteht, liefert die Quelle immer auch die Kartenschreibweise; der Rückfall hätte also
+          // nie etwas gerettet und nur diesen einen Fehler erzeugen können.
+          extraMana: parseManaCost(c.manaNeeded ?? ''),
         })),
       })),
     );
