@@ -593,13 +593,10 @@
             <p class="hint">{{ viewer.i18n.t('deckView.onlyColorless') }}</p>
           }
 
-          <input
-            class="glass-input"
-            type="text"
-            [placeholder]="viewer.i18n.t('deckView.cardNamePlaceholder')"
-            [ngModel]="viewer.addCardQuery()"
-            (ngModelChange)="viewer.onAddCardSearchInput($event)"
-          />
+          <!-- Filter, Sortierung und erst danach das Namensfeld: Auf dem Telefon stand das Suchfeld
+               vorher ganz oben und darunter rund 250 px Filterfelder - beim Tippen lagen die ersten
+               Treffer damit unter dem Bildschirmrand bzw. hinter der Tastatur. Als letztes Element
+               des Kastens grenzt das Namensfeld direkt an die Ergebnisliste. -->
           <div class="chip-row card-filter-row" data-tutorial="deck-add-card-filters">
             <select
               class="glass-input small"
@@ -661,6 +658,13 @@
               {{ viewer.i18n.t('deckView.sortByCmc') }}
             </button>
           </div>
+          <input
+            class="glass-input card-name-search"
+            type="text"
+            [placeholder]="viewer.i18n.t('deckView.cardNamePlaceholder')"
+            [ngModel]="viewer.addCardQuery()"
+            (ngModelChange)="viewer.onAddCardSearchInput($event)"
+          />
           }
 
           @if (viewer.addCardMode() === 'edhrec') {
