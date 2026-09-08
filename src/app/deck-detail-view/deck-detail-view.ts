@@ -1,7 +1,14 @@
 import { Component, effect, inject } from '@angular/core';
 import { CurrencyPipe, DatePipe, DecimalPipe, NgTemplateOutlet, PercentPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { AnalysisCombo, DeckViewerService, DeckChangeGroup, GameChangerEntry } from '../deck-viewer.service';
+import {
+  AnalysisCombo,
+  ComboFinderCombo,
+  ComboFinderSuggestion,
+  DeckViewerService,
+  DeckChangeGroup,
+  GameChangerEntry,
+} from '../deck-viewer.service';
 import { BracketReason } from '../bracket';
 import { DeckService, DeckCard, DeckOwner } from '../deck.service';
 import { DeckImportService } from '../deck-import.service';
@@ -35,6 +42,23 @@ export class DeckDetailView {
    */
   comboCardEntries(combo: AnalysisCombo): GameChangerEntry[] {
     return combo.cardNames.map((cardName) => ({ cardName, quantity: 1 }));
+  }
+
+  /**
+   * Die vorgeschlagene Karte im selben Raster wie die Combo-Karten - eine einzelne Karte, weil
+   * genau sie im Deck fehlt. Wird im Combo-Finder rot umrandet gezeigt (Kontext "highlight").
+   */
+  suggestionCardEntries(suggestion: ComboFinderSuggestion): GameChangerEntry[] {
+    return [{ cardName: suggestion.cardName, quantity: 1 }];
+  }
+
+  /**
+   * Die Karten einer Combo, die schon im Deck liegen - ohne Hervorhebung, als Gegenstück zur rot
+   * umrandeten fehlenden Karte darüber. Anzahl immer 1: eine Combo nennt jede Karte genau einmal,
+   * die Deck-Anzahl spielt hier keine Rolle.
+   */
+  presentCardEntries(combo: ComboFinderCombo): GameChangerEntry[] {
+    return combo.presentCardNames.map((cardName) => ({ cardName, quantity: 1 }));
   }
 
   /**

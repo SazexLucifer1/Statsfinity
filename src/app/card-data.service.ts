@@ -34,6 +34,29 @@ export interface SpellbookTwoCardCombo {
 }
 
 /**
+ * Eine Zeile aus der Combo-Finder-Suche: eine Combo, der bei der abgefragten Deckliste genau eine
+ * Karte fehlt. Namen sind normalisierte Vorderseiten-Namen, also derselbe Schlüssel wie überall.
+ */
+export interface ComboSuggestionRow {
+  comboId: string;
+  /** Die eine Karte, die dem Deck für diese Combo noch fehlt. */
+  missing: string;
+  /** Die Karten der Combo, die das Deck schon hat. */
+  present: string[];
+  cardCount: number;
+  /** Was die Combo am Ende erzeugt, in Spellbooks Benennung ("Infinite mana", ...). */
+  produces: string[];
+  /** Der Ablauf, ein Schritt je Zeile. */
+  description: string;
+  manaValueNeeded: number | null;
+  popularity: number | null;
+  /** Wie viele Combos dieselbe fehlende Karte insgesamt freischaltet. */
+  comboCount: number;
+  /** Wie viele fehlende Karten die Suche insgesamt gefunden hat (vor dem Farbfilter). */
+  totalCards: number;
+}
+
+/**
  * Lesezugriff auf den eigenen Kartendatenbestand, den der nächtliche Abgleich füllt
  * (scripts/sync-scryfall-bulk.js, Tabellen in sql/scryfall-cache-2026-09-06.sql).
  *
@@ -350,5 +373,87 @@ export class CardDataService {
     }
 
     return combos;
+  }
+
+  /**
+   * Combo-Finder: alle Combos, denen bei dieser Deckliste genau EINE Karte fehlt.
+   *
+   * Die eigentliche Arbeit macht die Datenbankfunktion spellbook_combos_missing_one (siehe
+   * sql/spellbook-combos-2026-09-07.sql). Aus der App heraus wäre die Frage gar nicht stellbar:
+   * "genau eine Karte fehlt" verlangt eine Gruppierung über die Karten je Combo, und ohne sie
+   * müsste der Browser alle Combos herunterladen, die irgendeine Deckkarte enthalten - bei
+   * 108.500 Combos und einer verbreiteten Karte wie Sol Ring zehntausende Zeilen für am Ende
+   * vierzig Vorschläge.
+   *
+   * available === false heißt "die Funktion oder die Tabellen gibt es noch nicht" (Migration noch
+   * nicht ausgeführt, Nachtlauf noch nicht gelaufen). Bewusst unterschieden von "keine Treffer":
+   * die Oberfläche sagt in dem Fall, woran es liegt, statt "nichts gefunden" zu behaupten.
+   */
+  async combosMissingOneCard(
+    deckNames: string[],
+    commanderNames: string[],
+  ): Promise<{ rows: ComboSuggestionRow[]; available: boolean }> {
+    const keys = [...new Set(deckNames.map((n) => this.lookupKey(n)).filter(Boolean))];
+    if (keys.length === 0) return { rows: [], available: true };
+
+    const { data, error } = await supabase.rpc('spellbook_combos_missing_one', {
+      deck_names: keys,
+      commander_names: [...new Set(commanderNames.map((n) => this.lookupKey(n)).filter(Boolean))],
+    });
+
+    if (error) {
+      console.warn('Combo-Finder: Suche fehlgeschlagen:', error.message);
+      return { rows: [], available: false };
+    }
+
+    return {
+      rows: (data ?? []).map((row: Record<string, unknown>) => ({
+        comboId: row['combo_id'] as string,
+        missing: row['missing_name'] as string,
+        present: (row['present_names'] as string[] | null) ?? [],
+        cardCount: row['card_count'] as number,
+        produces: (row['produces'] as string[] | null) ?? [],
+        description: (row['description'] as string | null) ?? '',
+        manaValueNeeded: (row['mana_value_needed'] as number | null) ?? null,
+        popularity: (row['popularity'] as number | null) ?? null,
+        comboCount: row['combo_count'] as number,
+        totalCards: row['total_cards'] as number,
+      })),
+      available: true,
+    };
+  }
+
+  /**
+   * Volle Kartendaten zu normalisierten Vorderseiten-Namen, wie sie in den Spellbook-Tabellen
+   * stehen - Schlüssel der Ergebnis-Map ist genau dieser normalisierte Name.
+   *
+   * Nötig, weil die Combo-Tabelle nur Namen kennt: Für Karten, die NICHT im Deck liegen (die
+   * Vorschläge des Combo-Finders), fehlen sonst Farbidentität und Bild. Bewusst ohne den
+   * Scryfall-Rückfall aus findCardsBulk(): hier geht es um Hunderte Namen auf einmal, und eine
+   * Handvoll frisch erschienener Karten, die der Nachtlauf noch nicht kennt, ist als fehlender
+   * Vorschlag verkraftbar - Hunderte Einzelabfragen ins Netz wären es nicht.
+   */
+  async cardsByNormalizedNames(keys: string[]): Promise<Map<string, ScryfallCard>> {
+    const result = new Map<string, ScryfallCard>();
+    const eindeutig = [...new Set(keys.filter(Boolean))];
+    if (eindeutig.length === 0) return result;
+
+    for (const block of chunk(eindeutig, 200)) {
+      const { data, error } = await supabase
+        .from('scryfall_cards')
+        .select(CardDataService.KARTEN_SPALTEN)
+        .in('front_name_normalized', block);
+
+      if (error) {
+        console.warn('Kartendaten zu den Combo-Vorschlägen fehlen:', error.message);
+        return result;
+      }
+
+      for (const row of (data ?? []) as unknown as Record<string, unknown>[]) {
+        result.set(row['front_name_normalized'] as string, this.toCard(row));
+      }
+    }
+
+    return result;
   }
 }

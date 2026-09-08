@@ -8,6 +8,11 @@
 // die App das bei JEDEM Deck-Öffnen live über /api/estimate-bracket. Dieses Skript holt es einmal
 // pro Nacht von EINEM Server; danach ist die Bracket-Einstufung ohne Netzwerkaufruf rechenbar.
 //
+// Seit dem Combo-Finder holt derselbe Durchgang zusätzlich ALLE Combos bis fünf Karten samt
+// Ergebnis und Ablauf (Tabellen und Begründung: sql/spellbook-combos-2026-09-07.sql). Die
+// Zwei-Karten-Combos fallen dabei als Teilmenge mit ab - es wird bewusst nur EINMAL
+// heruntergeladen, nicht zweimal mit verschiedenen Suchen.
+//
 // Braucht den Supabase SERVICE-ROLE-Key (nicht den öffentlichen Anon-Key aus supabase.client.ts) -
 // die Tabellen sind bewusst für jeden lesbar, aber für niemanden schreibbar (nur eine
 // select-Policy, siehe Migration). Der Service-Role-Key umgeht RLS. NIE committen - als
@@ -215,49 +220,184 @@ async function syncKartenFlags(laufBegonnen) {
 }
 
 // =====================================================================================
-// Teil 2: Zwei-Karten-Combos
+// Teil 2: Alle Combos bis fünf Karten - und die Zwei-Karten-Combos als Teilmenge daraus
 // =====================================================================================
 
+/**
+ * Bis zu wie vielen Karten eine Combo gespiegelt wird.
+ *
+ * Nachgemessen an Spellbooks API: cards<=3 sind 51.295 Combos, cards<=4 sind 98.274, cards<=5
+ * sind 108.487 - also praktisch der ganze Bestand (108.535 Varianten insgesamt). Der Combo-Finder
+ * braucht alle Größen, weil "zwei Karten liegen im Deck, die dritte fehlt" derselbe Vorschlag ist
+ * wie "eine liegt, die zweite fehlt".
+ */
+const MAX_KARTEN_JE_COMBO = 5;
+
+/** Ab so vielen gepufferten Zeilen wird geschrieben - siehe schreibeBlock(). */
+const PUFFER = 500;
+
+/**
+ * Schreibt einen Block und wirft bei Fehlschlag - anders als der Rest des Skripts wird hier
+ * seitenweise geschrieben statt am Ende alles auf einmal: 108.500 Combos mit Ablaufbeschreibung
+ * plus 350.000 Kartenzeilen erst vollständig im Speicher zu sammeln wäre eine unnötige
+ * Viertelgigabyte.
+ */
+async function schreibeBlock(tabelle, konflikt, zeilen) {
+  if (zeilen.length === 0) return;
+  const { error } = await supabase.from(tabelle).upsert(zeilen, { onConflict: konflikt });
+  if (error) throw new Error(`Upsert in ${tabelle} fehlgeschlagen: ${error.message}`);
+}
+
+/** Entfernt, was in der Quelle nicht mehr vorkommt - dieselbe Logik wie in schreibeTabelle(). */
+async function raeumeAuf(tabelle, laufBegonnen) {
+  const { error, count } = await supabase
+    .from(tabelle)
+    .delete({ count: 'exact' })
+    .lt('synced_at', laufBegonnen);
+  if (error) throw new Error(`Aufräumen in ${tabelle} fehlgeschlagen: ${error.message}`);
+  if (count) console.log(`  ${count} veraltete Zeilen aus ${tabelle} entfernt.`);
+}
+
 async function syncCombos(laufBegonnen) {
-  console.log('--- Teil 2: Zwei-Karten-Combos ---');
+  console.log(`--- Teil 2: Combos bis ${MAX_KARTEN_JE_COMBO} Karten ---`);
 
-  // "cards=2" ist Spellbooks eigene Suchsyntax und filtert schon serverseitig auf das, was das
-  // Bracket-Kriterium meint - 3.985 statt 108.535 Varianten.
-  const url = `${API}/variants/?q=${encodeURIComponent('cards=2')}&limit=100`;
+  // "cards<=5" ist Spellbooks eigene Suchsyntax und filtert schon serverseitig.
+  let url = `${API}/variants/?q=${encodeURIComponent(`cards<=${MAX_KARTEN_JE_COMBO}`)}&limit=100`;
 
-  const { zeilen, seiten, gesehen } = await ladeAlleSeiten(url, (variant) => {
-    const uses = variant.uses ?? [];
-    // Die Suche liefert vereinzelt auch Varianten mit nur einer Karte plus "requires"-Vorlagen
-    // (gemessen: 3 von 3.985). Die sind hier nicht abbildbar und werden übersprungen.
-    if (uses.length !== 2) return null;
-    const [a, b] = uses;
-    if (!a?.card?.name || !b?.card?.name) return null;
+  let seiten = 0;
+  let gesehen = 0;
+  let combos = 0;
+  let kartenzeilen = 0;
+  let zweier = 0;
 
-    return {
-      id: variant.id,
-      card_a_normalized: normalizedFrontName(a.card.name),
-      card_b_normalized: normalizedFrontName(b.card.name),
-      a_must_be_commander: a.mustBeCommander ?? false,
-      b_must_be_commander: b.mustBeCommander ?? false,
-      mana_value_needed: variant.manaValueNeeded ?? null,
-      bracket_tag: variant.bracketTag ?? null,
-      popularity: variant.popularity ?? null,
-      synced_at: laufBegonnen,
-    };
-  });
+  let comboPuffer = [];
+  let kartenPuffer = [];
+  let zweierPuffer = [];
 
-  if (zeilen.length === 0) {
+  // Die Combos MÜSSEN vor ihren Kartenzeilen stehen: spellbook_combo_cards zeigt per Fremdschlüssel
+  // auf spellbook_combos, ein Kartenblock ohne seine Combo würde abgewiesen.
+  const leerePuffer = async () => {
+    await schreibeBlock('spellbook_combos', 'id', comboPuffer);
+    await schreibeBlock('spellbook_combo_cards', 'combo_id,name_normalized', kartenPuffer);
+    await schreibeBlock('spellbook_two_card_combos', 'id', zweierPuffer);
+    comboPuffer = [];
+    kartenPuffer = [];
+    zweierPuffer = [];
+  };
+
+  while (url) {
+    const data = await fetchJson(url);
+    const treffer = data.results ?? [];
+
+    if (seiten === 0 && treffer.length > 0) {
+      // Einmalige Kontrolle im Lauf-Protokoll, dass Spellbooks Feldnamen noch die sind, die wir
+      // erwarten - eine stille Umbenennung dort würde sonst erst in der App auffallen, als
+      // plötzlich leere Combo-Listen.
+      console.log('  Felder des ersten Eintrags:', Object.keys(treffer[0]).sort().join(', '));
+    }
+
+    for (const variant of treffer) {
+      gesehen++;
+      const uses = variant.uses ?? [];
+      if (uses.length < 2) continue;
+
+      // Karten je Combo eindeutig machen: die Quelle führt eine doppelt genutzte Karte über
+      // "quantity", nicht als zweiten Eintrag - ein doppelter Name wäre also eine Eigenheit der
+      // Daten und würde am Primärschlüssel (combo_id, name_normalized) scheitern.
+      const karten = new Map();
+      for (const u of uses) {
+        const name = u?.card?.name;
+        if (!name) continue;
+        const key = normalizedFrontName(name);
+        const bisher = karten.get(key);
+        karten.set(key, {
+          combo_id: variant.id,
+          name_normalized: key,
+          must_be_commander: (bisher?.must_be_commander ?? false) || (u.mustBeCommander ?? false),
+          synced_at: laufBegonnen,
+        });
+      }
+      if (karten.size !== uses.length) {
+        // Namen konnten nicht aufgelöst werden oder doppelten sich - dann stimmt card_count nicht
+        // mehr zur Kartenliste, und die Suchfunktion in der Datenbank zählt falsch.
+        continue;
+      }
+
+      comboPuffer.push({
+        id: variant.id,
+        card_count: karten.size,
+        produces: (variant.produces ?? []).map((p) => p?.feature?.name).filter(Boolean),
+        description: variant.description ?? '',
+        mana_value_needed: variant.manaValueNeeded ?? null,
+        bracket_tag: variant.bracketTag ?? null,
+        popularity: variant.popularity ?? null,
+        synced_at: laufBegonnen,
+      });
+      for (const zeile of karten.values()) kartenPuffer.push(zeile);
+      combos++;
+      kartenzeilen += karten.size;
+
+      // Die Zwei-Karten-Combos fallen hier als Teilmenge mit ab - die Bracket-Einstufung liest
+      // weiterhin ihre eigene schmale Tabelle (siehe sql/spellbook-combos-2026-09-07.sql).
+      if (uses.length === 2) {
+        const [a, b] = uses;
+        if (a?.card?.name && b?.card?.name) {
+          zweierPuffer.push({
+            id: variant.id,
+            card_a_normalized: normalizedFrontName(a.card.name),
+            card_b_normalized: normalizedFrontName(b.card.name),
+            a_must_be_commander: a.mustBeCommander ?? false,
+            b_must_be_commander: b.mustBeCommander ?? false,
+            mana_value_needed: variant.manaValueNeeded ?? null,
+            bracket_tag: variant.bracketTag ?? null,
+            popularity: variant.popularity ?? null,
+            synced_at: laufBegonnen,
+          });
+          zweier++;
+        }
+      }
+    }
+
+    if (comboPuffer.length >= PUFFER) await leerePuffer();
+
+    seiten++;
+    if (seiten % 50 === 0) {
+      console.log(`  ${seiten} Seiten, ${gesehen} Combos gesichtet, ${combos} geschrieben ...`);
+    }
+    url = data.next ?? null;
+  }
+
+  await leerePuffer();
+
+  // Ein leeres Ergebnis ist nie richtig - lieber laut abbrechen, als die Tabellen stillschweigend
+  // leerzuräumen und Combo-Finder wie Bracket-Kriterium aus der App verschwinden zu lassen.
+  if (combos === 0) {
     throw new Error(
-      'Keine einzige Zwei-Karten-Combo gefunden - Suchsyntax "cards=2" bei Commander Spellbook ' +
-        'geprüft? Abbruch, um die Tabelle nicht zu leeren.',
+      `Keine einzige Combo gefunden - Suchsyntax "cards<=${MAX_KARTEN_JE_COMBO}" bei Commander ` +
+        'Spellbook geprüft? Abbruch, um die Tabellen nicht zu leeren.',
+    );
+  }
+  if (zweier === 0) {
+    throw new Error(
+      'Combos gefunden, aber keine einzige mit genau zwei Karten - das kann nicht stimmen und ' +
+        'würde die Bracket-Einstufung leerräumen. Abbruch.',
     );
   }
 
-  await schreibeTabelle('spellbook_two_card_combos', 'id', zeilen, laufBegonnen);
-  await writeSyncState('two_card_combos', zeilen.length);
+  // Erst die Kartenzeilen, dann die Combos: eine gelöschte Combo nimmt ihre Karten per
+  // "on delete cascade" ohnehin mit, andersherum blieben Kartenzeilen zu noch existierenden
+  // Combos stehen, die dort inzwischen nicht mehr mitspielen.
+  await raeumeAuf('spellbook_combo_cards', laufBegonnen);
+  await raeumeAuf('spellbook_combos', laufBegonnen);
+  await raeumeAuf('spellbook_two_card_combos', laufBegonnen);
+
+  await writeSyncState('combos', combos);
+  await writeSyncState('combo_cards', kartenzeilen);
+  await writeSyncState('two_card_combos', zweier);
 
   console.log(
-    `Teil 2 fertig: ${zeilen.length} Zwei-Karten-Combos aus ${gesehen} Varianten (${seiten} Seiten).`,
+    `Teil 2 fertig: ${combos} Combos (${kartenzeilen} Kartenzeilen) aus ${gesehen} Varianten ` +
+      `(${seiten} Seiten), darunter ${zweier} mit genau zwei Karten.`,
   );
 }
 
