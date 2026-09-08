@@ -404,6 +404,15 @@
 }
 
 // NEU
+// Namensfeld der Kartensuche: steht als letztes Element des Kastens direkt über der Trefferliste
+// und braucht deshalb die volle Breite, damit es zwischen den Filterfeldern darüber weiterhin als
+// das Hauptfeld erkennbar ist (ein <input> ist sonst nur so breit wie seine Standardspaltenzahl).
+.card-name-search {
+  display: block;
+  width: 100%;
+}
+
+// NEU
 .card-filter-row {
   margin-top: 8px;
 
