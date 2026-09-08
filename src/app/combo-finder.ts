@@ -99,12 +99,16 @@ export function fitsColorIdentity(
  * Der Ablauf als einzelne Schritte. Commander Spellbook liefert ihn als einen Text mit einem
  * Zeilenumbruch je Schritt; aufgeteilt ist er als nummerierte Liste zu lesen, und die
  * Beschreibungen verweisen selbst auf Schrittnummern ("Repeat from step 4").
+ *
+ * Jeder Schritt kommt schon zerlegt zurück, weil auch mitten im Fließtext Manasymbole stehen
+ * ("Activate Patron of the Moon by paying {1}") - als rohe geschweifte Klammern gelesen ist das
+ * die Rohform der Quelle, nicht das, was auf einer Karte steht.
  */
-export function comboSteps(description: string): string[] {
+export function comboSteps(description: string): ManaPart[][] {
   return description
     .split('\n')
-    .map((step) => step.trim())
-    .filter(Boolean);
+    .filter((step) => step.trim())
+    .map((step) => splitManaSymbols(step.trim()));
 }
 
 /** Ein Stück einer Manakosten-Angabe: entweder ein Symbol oder erklärender Text drumherum. */
@@ -112,6 +116,50 @@ export interface ManaPart {
   kind: 'symbol' | 'text';
   /** Beim Symbol der Inhalt der geschweiften Klammern ('U', '3', 'U/R'), sonst der Text. */
   value: string;
+}
+
+/**
+ * Welche Inhalte geschweifter Klammern die Mana-Schrift als Symbol darstellen kann: Farben,
+ * generische Beträge, farblos, X, Energie, Schnee, Tappen und die Hybride (auch die phyrexianischen
+ * wie {B/P}).
+ *
+ * Bewusst eine Positivliste statt "alles in Klammern ist ein Symbol": Der Baustein fällt bei
+ * Unbekanntem auf das farblose Symbol zurück, und ein graues Manasymbol für etwas, das gar keins
+ * ist, behauptet schlicht etwas Falsches. Was hier nicht steht, bleibt als Text in seinen Klammern
+ * stehen - lesbar und nie irreführend.
+ */
+const MANA_TOKEN = /^(?:[WUBRGCXEST]|\d{1,2}|[WUBRG0-9]+\/[WUBRGP])$/i;
+
+/**
+ * Zerlegt einen Text in Manasymbole und alles dazwischen, ohne etwas zu verändern.
+ *
+ * Grundlage sowohl für die Manaangabe einer Combo als auch für ihren Ablauf. Anders als
+ * parseManaCost() bleibt hier jedes Leerzeichen stehen: im Fließtext ist der Abstand Teil des
+ * Satzes ("by paying {1}, putting ..." darf nicht zu "by paying{1}, putting" werden).
+ */
+export function splitManaSymbols(text: string): ManaPart[] {
+  const teile: ManaPart[] = [];
+  const merkeText = (wert: string) => {
+    if (!wert) return;
+    // Aufeinanderfolgende Textstücke zusammenziehen, damit ein unbekanntes Token wie {T} nicht
+    // den Satz um sich herum in drei Fetzen zerlegt.
+    const letztes = teile[teile.length - 1];
+    if (letztes?.kind === 'text') letztes.value += wert;
+    else teile.push({ kind: 'text', value: wert });
+  };
+
+  let rest = text;
+  while (rest.length > 0) {
+    const treffer = rest.match(/\{([^}]*)\}/);
+    if (!treffer) break;
+    merkeText(rest.slice(0, treffer.index));
+    if (MANA_TOKEN.test(treffer[1])) teile.push({ kind: 'symbol', value: treffer[1] });
+    else merkeText(treffer[0]);
+    rest = rest.slice((treffer.index ?? 0) + treffer[0].length);
+  }
+  merkeText(rest);
+
+  return teile;
 }
 
 /**
@@ -127,18 +175,9 @@ export interface ManaPart {
  * Behauptung.
  */
 export function parseManaCost(cost: string): ManaPart[] {
-  const teile: ManaPart[] = [];
-  let rest = cost;
-
-  while (rest.length > 0) {
-    const treffer = rest.match(/\{([^}]*)\}/);
-    if (!treffer) break;
-    const davor = rest.slice(0, treffer.index);
-    if (davor.trim()) teile.push({ kind: 'text', value: davor.trim() });
-    teile.push({ kind: 'symbol', value: treffer[1] });
-    rest = rest.slice((treffer.index ?? 0) + treffer[0].length);
-  }
-
-  if (rest.trim()) teile.push({ kind: 'text', value: rest.trim() });
-  return teile;
+  // Getrimmt, weil die Kostenzeile die Teile mit eigenem Abstand nebeneinandersetzt - ein
+  // führendes Leerzeichen aus "{2}{G} at most" stünde dort doppelt.
+  return splitManaSymbols(cost)
+    .map((teil) => (teil.kind === 'text' ? { ...teil, value: teil.value.trim() } : teil))
+    .filter((teil) => teil.kind === 'symbol' || teil.value.length > 0);
 }

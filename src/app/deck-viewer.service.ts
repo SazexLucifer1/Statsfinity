@@ -74,11 +74,12 @@ export interface AnalysisCombo {
   cardNames: string[];
   produces: string[];
   /**
-   * Der Ablauf als einzelne Schritte. Spellbook liefert ihn als einen Text mit einem
-   * Zeilenumbruch je Schritt; aufgeteilt ist er als nummerierte Liste zu lesen, und die
-   * Beschreibungen verweisen selbst auf Schrittnummern ("Repeat from step 4").
+   * Der Ablauf als einzelne Schritte, jeder schon in Manasymbole und Text zerlegt (siehe
+   * comboSteps). Spellbook liefert ihn als einen Text mit einem Zeilenumbruch je Schritt;
+   * aufgeteilt ist er als nummerierte Liste zu lesen, und die Beschreibungen verweisen selbst auf
+   * Schrittnummern ("Repeat from step 4").
    */
-  steps: string[];
+  steps: ManaPart[][];
   extraMana: number | null;
   bracketLabel: string | null;
 }
@@ -108,8 +109,11 @@ export interface ComboFinderCombo {
   presentCardNames: string[];
   /** Was die Combo am Ende erzeugt ("Infinite mana", ...). Leer, wenn die Quelle nichts nennt. */
   produces: string[];
-  /** Der Ablauf als nummerierbare Schritte - Grundlage des "Ablauf anzeigen"-Fensters. */
-  steps: string[];
+  /**
+   * Der Ablauf als nummerierbare Schritte, jeder in Manasymbole und Text zerlegt - Grundlage des
+   * "Ablauf anzeigen"-Fensters.
+   */
+  steps: ManaPart[][];
   /**
    * Zusätzlich nötiges Mana, zerlegt in Symbole und erklärenden Text - leer, wenn keins nötig
    * ist. Als Symbole angezeigt, nicht als Zahl: so steht dort dasselbe wie auf der Karte.
@@ -739,10 +743,7 @@ export class DeckViewerService {
         id: c.cardNames.join('+'),
         cardNames: c.cardNames,
         produces: c.produces,
-        steps: c.description
-          .split('\n')
-          .map((step) => step.trim())
-          .filter(Boolean),
+        steps: comboSteps(c.description),
         extraMana: null,
         bracketLabel: null,
       }));

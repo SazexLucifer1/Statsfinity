@@ -2,7 +2,8 @@ import { Component, computed, input } from '@angular/core';
 
 /**
  * Ein einzelnes Manasymbol aus der Mana-Schriftart: eine Farbe (W/U/B/R/G), ein generischer
- * Manabetrag ('0' bis '20'), ein Hybrid ('U/R', '2/B'), 'X' oder farblos ('C').
+ * Manabetrag ('0' bis '20'), ein Hybrid ('U/R', '2/B'), 'X', 'E' (Energie), 'S' (Schnee),
+ * 'T' (Tappen) oder farblos ('C').
  *
  * Ersetzt die farbigen Punkte, die vorher an vier Stellen einzeln nachgebaut waren (Farbfilter im
  * Commander-Vorschlag und im öffentlichen Deck-Browser, Farbkombinationen im Profil, Balken-
@@ -51,6 +52,11 @@ function manaToken(symbol: string): string {
   if (raw.length === 1 && 'WUBRG'.includes(raw)) return raw.toLowerCase();
   if (/^\d{1,2}$/.test(raw)) return raw;
   if (raw === 'X') return 'x';
+  // {E} Energie und {S} Schnee tauchen in Combo-Ablaeufen auf, {T} ist das Tap-Symbol - und heisst
+  // in der Schrift ms-tap, nicht ms-t.
+  if (raw === 'E') return 'e';
+  if (raw === 'S') return 's';
+  if (raw === 'T') return 'tap';
   // Hybrid schreibt die Schrift ohne Schrägstrich: {U/R} ist ms-ur, {2/B} ist ms-2b. Ohne diesen
   // Fall landeten die Zwitter beim farblosen Rückfall - und ein graues Symbol behauptet dort
   // schlicht etwas Falsches über die Kosten.

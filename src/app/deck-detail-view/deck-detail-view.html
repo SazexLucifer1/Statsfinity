@@ -3,6 +3,25 @@
      Tutoren, Mass Land Denial, Extra-Turns, das Kategorie-Fenster und die Combo-Karten alle
      dasselbe Raster zeigen. Bewusst hier oben im Wurzel-View, damit alle darunter liegenden
      @if-/@for-Blöcke darauf zugreifen können. -->
+<!-- Der Ablauf einer Combo. Nummeriert statt Aufzählungspunkte: Spellbooks Beschreibungen
+     verweisen selbst auf Schrittnummern ("Repeat from step 4"), die vorher nirgends standen.
+     Die Manasymbole stehen mitten im Satz ("by paying {1}") und werden deshalb inline gesetzt. -->
+<ng-template #comboStepList let-steps>
+  <ol class="hint combo-step-list">
+    @for (step of steps; track $index) {
+      <li>
+        @for (part of step; track $index) {
+          @if (part.kind === 'symbol') {
+            <app-mana-symbol [symbol]="part.value" />
+          } @else {
+            <span>{{ part.value }}</span>
+          }
+        }
+      </li>
+    }
+  </ol>
+</ng-template>
+
 <!-- Zusätzlich nötiges Mana als echte Symbole statt als nackte Zahl - dieselbe Mana-Schrift wie
      im Farbfilter und in den Diagrammen. Der Text zwischen den Symbolen ("at most", "plus
      commander tax") gehört zur Angabe und bleibt deshalb stehen. -->
@@ -1448,14 +1467,8 @@
               }
             </ul>
           }
-          <!-- Nummeriert statt Aufzählungspunkte: Spellbooks Ablaufbeschreibungen verweisen
-               selbst auf Schrittnummern ("Repeat from step 4"), die vorher nirgends standen. -->
           @if (combo.steps.length > 0) {
-            <ol class="hint combo-step-list">
-              @for (step of combo.steps; track $index) {
-                <li>{{ step }}</li>
-              }
-            </ol>
+            <ng-container [ngTemplateOutlet]="comboStepList" [ngTemplateOutletContext]="{ $implicit: combo.steps }"></ng-container>
           }
           @if (combo.extraMana !== null && combo.extraMana > 0) {
             <p class="hint">{{ viewer.i18n.t('deckView.comboExtraMana', { mana: combo.extraMana }) }}</p>
@@ -1553,13 +1566,7 @@
           }
         </ul>
       }
-      <!-- Nummeriert statt Aufzählungspunkte: Spellbooks Ablaufbeschreibungen verweisen selbst auf
-           Schrittnummern ("Repeat from step 4"), die vorher nirgends standen. -->
-      <ol class="hint combo-step-list">
-        @for (step of combo.steps; track $index) {
-          <li>{{ step }}</li>
-        }
-      </ol>
+      <ng-container [ngTemplateOutlet]="comboStepList" [ngTemplateOutletContext]="{ $implicit: combo.steps }"></ng-container>
       @if (combo.extraMana.length > 0) {
         <ng-container [ngTemplateOutlet]="manaCostLine" [ngTemplateOutletContext]="{ $implicit: combo.extraMana }"></ng-container>
       }

@@ -746,3 +746,10 @@ h3 {
   align-items: center;
   gap: 4px;
 }
+
+// Manasymbole mitten im Ablauftext. Ohne den Ausgleich sitzt das inline-flex-Symbol auf der
+// Grundlinie und drueckt die Zeile auseinander; -0.1em setzt es dorthin, wo das Auge es im Satz
+// erwartet - so wie ein Symbol im Regeltext einer Karte.
+.combo-step-list app-mana-symbol {
+  vertical-align: -0.1em;
+}
