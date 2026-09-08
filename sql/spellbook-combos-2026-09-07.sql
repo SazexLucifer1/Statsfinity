@@ -31,8 +31,14 @@
 -- Nachgemessen an Spellbooks API (Stand 07.09.2026):
 --   cards=2      3.985      cards<=3    51.295
 --   cards=3     47.310      cards<=4    98.274
---   cards=4     46.979      cards<=5   108.487   <- was hier landet
+--   cards=4     46.979      cards<=5   108.487
 --   cards=5     10.213
+--
+-- Davon bleiben rund 8 % draussen: Combos, die zusaetzlich eine VORLAGE brauchen ("Permanent
+-- Castable for {C}", "Man-Land that Enters Untapped") statt einer benannten Karte. Sie sind ueber
+-- eine Deckliste nicht pruefbar - der Combo-Finder wuerde "dir fehlt nur diese eine Karte"
+-- behaupten, obwohl daneben noch eine Karte mit einer bestimmten Eigenschaft noetig ist. Es landen
+-- also grob 100.000 Combos hier.
 -- Beschreibung im Median 388 Bytes, "produces" 120 Bytes -> grob 135 MB inklusive Index.
 --
 -- Diese Tabellen enthalten AUSSCHLIESSLICH öffentliche Kartendaten von Commander Spellbook,

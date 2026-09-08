@@ -281,8 +281,28 @@ async function raeumeAuf(tabelle, laufBegonnen) {
   if (count) console.log(`  ${count} veraltete Zeilen aus ${tabelle} entfernt.`);
 }
 
+/**
+ * Gibt es die Spalte spellbook_combos.mana_needed schon?
+ *
+ * Sie kam später dazu (siehe sql/spellbook-combos-2026-09-07.sql), und die Migrationen dieses
+ * Projekts laufen von Hand. Ohne diese Prüfung stürbe der ganze Nachtlauf an einer noch nicht
+ * eingespielten Migration - und mit ihm die Bracket-Grunddaten, die davon gar nicht abhängen.
+ * Lieber die Manaangabe eine Nacht später als alles gar nicht.
+ */
+async function hatManaSpalte() {
+  const { error } = await supabase.from('spellbook_combos').select('mana_needed').limit(1);
+  if (!error) return true;
+  console.warn(
+    'Spalte spellbook_combos.mana_needed fehlt - die Manaangaben bleiben diesmal leer. ' +
+      'sql/spellbook-combos-2026-09-07.sql im Supabase-SQL-Editor ausführen, dann sind sie beim ' +
+      `nächsten Lauf dabei. (${error.message})`,
+  );
+  return false;
+}
+
 async function syncCombos(laufBegonnen) {
   console.log(`--- Teil 2: Combos bis ${MAX_KARTEN_JE_COMBO} Karten ---`);
+  const manaSpalte = await hatManaSpalte();
 
   // "cards<=5" ist Spellbooks eigene Suchsyntax und filtert schon serverseitig.
   let url = `${API}/variants/?q=${encodeURIComponent(`cards<=${MAX_KARTEN_JE_COMBO}`)}&limit=100`;
@@ -324,6 +344,17 @@ async function syncCombos(laufBegonnen) {
       const uses = variant.uses ?? [];
       if (uses.length < 2) continue;
 
+      // Combos, die zusätzlich eine VORLAGE brauchen ("Permanent Castable for {C}", "Man-Land
+      // that Enters Untapped"), bleiben draußen. Sie sind über eine Kartenliste nicht prüfbar:
+      // Der Combo-Finder würde "dir fehlt nur diese eine Karte" behaupten, obwohl daneben noch
+      // eine Karte mit einer bestimmten Eigenschaft nötig ist.
+      //
+      // Genau hier lag ein Fehler: Ohne diese Prüfung zählte "uses.length === 2" auch solche
+      // Combos als Zwei-Karten-Combo. Die Tabelle wuchs dadurch von 3.982 auf 5.190 Zeilen - und
+      // weil sie das offizielle Bracket-Kriterium trägt, hätte das Decks zu hoch eingestuft.
+      // Spellbooks eigene Suche "cards=2" kennt diese Combos zu Recht nicht.
+      if ((variant.requires ?? []).length > 0) continue;
+
       // Karten je Combo eindeutig machen: die Quelle führt eine doppelt genutzte Karte über
       // "quantity", nicht als zweiten Eintrag - ein doppelter Name wäre also eine Eigenheit der
       // Daten und würde am Primärschlüssel (combo_id, name_normalized) scheitern.
@@ -351,7 +382,7 @@ async function syncCombos(laufBegonnen) {
         card_count: karten.size,
         produces: (variant.produces ?? []).map((p) => p?.feature?.name).filter(Boolean),
         description: variant.description ?? '',
-        mana_needed: variant.manaNeeded || null,
+        ...(manaSpalte ? { mana_needed: variant.manaNeeded || null } : {}),
         mana_value_needed: variant.manaValueNeeded ?? null,
         bracket_tag: variant.bracketTag ?? null,
         popularity: variant.popularity ?? null,
