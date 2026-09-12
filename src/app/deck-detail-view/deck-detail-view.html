@@ -214,6 +214,13 @@
                         <span class="hint"> · {{ viewer.i18n.t('deckView.bracketReasonMinimum', { level: reason.minimum }) }}</span>
                       }
                     </p>
+                    @if (reason.key === 'price' && analysis.verdicts.price !== null) {
+                      <!-- Der einzige Befund ohne Karten: ohne den gemessenen Betrag stünde hier
+                           eine Behauptung ohne Zahl. -->
+                      <p class="hint bracket-reason-price">
+                        {{ viewer.i18n.t('deckView.bracketPriceFinding', { price: (analysis.verdicts.price | currency: 'EUR') ?? '', threshold: viewer.priceThresholdEur }) }}
+                      </p>
+                    }
                     @if (reason.cards.length > 0) {
                       <!-- Combo-Befunde nennen ihre Karten als Paar ("A + B"); die Gruppen halten
                            die beiden Bilder deshalb zusammen, statt alle Karten in ein Raster zu
@@ -290,6 +297,23 @@
                       class="icon-button bracket-verdict-info"
                       (click)="viewer.openBracketMath('tuning')"
                       [attr.aria-label]="viewer.i18n.t('deckView.bracketExplainAria', { topic: viewer.i18n.t('deckView.bracketRowTuning') })"
+                    >
+                      ⓘ
+                    </button>
+                  </li>
+                  <li>
+                    <span class="bracket-verdict-label">{{ viewer.i18n.t('deckView.bracketRowPrice') }}</span>
+                    <strong class="bracket-verdict-value">
+                      @if (analysis.verdicts.price !== null) {
+                        {{ analysis.verdicts.price | currency: 'EUR' }}
+                      } @else {
+                        {{ viewer.i18n.t('deckView.bracketComputing') }}
+                      }
+                    </strong>
+                    <button
+                      class="icon-button bracket-verdict-info"
+                      (click)="viewer.openBracketMath('price')"
+                      [attr.aria-label]="viewer.i18n.t('deckView.bracketExplainAria', { topic: viewer.i18n.t('deckView.bracketRowPrice') })"
                     >
                       ⓘ
                     </button>
@@ -1647,6 +1671,29 @@
               @if (analysis.verdicts.precon) {
                 <p class="hint">{{ viewer.i18n.t('deckView.bracketVerdictPrecon') }}</p>
               }
+            }
+            @case ('price') {
+              <h3>{{ viewer.i18n.t('deckView.bracketMathPriceTitle') }}</h3>
+              <p class="hint">{{ viewer.i18n.t('deckView.bracketMathPriceIntro') }}</p>
+              <p class="hint">{{ viewer.i18n.t('deckView.bracketMathPriceRule', { threshold: viewer.priceThresholdEur }) }}</p>
+              @if (analysis.verdicts.price !== null) {
+                <p class="hint">
+                  <strong>
+                    @if (math.pricePushed) {
+                      {{ viewer.i18n.t('deckView.bracketPriceFinding', { price: (analysis.verdicts.price | currency: 'EUR') ?? '', threshold: viewer.priceThresholdEur }) }}
+                    } @else {
+                      {{ viewer.i18n.t('deckView.bracketPriceBelow', { price: (analysis.verdicts.price | currency: 'EUR') ?? '', threshold: viewer.priceThresholdEur }) }}
+                    }
+                  </strong>
+                </p>
+                @if (viewer.deckPriceIncomplete()) {
+                  <p class="hint bracket-caveat">{{ viewer.i18n.t('deckView.bracketPriceIncompleteNote') }}</p>
+                }
+              } @else {
+                <p class="hint"><strong>{{ viewer.i18n.t('deckView.bracketPricePending') }}</strong></p>
+                <p class="hint bracket-caveat">{{ viewer.i18n.t('deckView.bracketPriceUnknownNote') }}</p>
+              }
+              <p class="hint bracket-caveat">{{ viewer.i18n.t('deckView.bracketMathPriceSource') }}</p>
             }
             @case ('power') {
               <h3>{{ viewer.i18n.t('deckView.bracketMathPowerTitle') }}</h3>

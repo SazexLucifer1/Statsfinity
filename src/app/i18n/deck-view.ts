@@ -163,12 +163,14 @@ export const deckView = {
     'deckView.bracketReason.comboRuthless': 'Zwei-Karten-Combo, von Spellbook als brutal benotet',
     'deckView.bracketReason.comboFast': 'Zwei-Karten-Combo, vor Zug 4 aufstellbar',
     'deckView.bracketReason.comboMidrange': 'Zwei-Karten-Combo, erst im späteren Spiel',
+    'deckView.bracketReason.price': 'Kartenwert über dem Precon-Niveau',
     'deckView.bracketReason.tuning': 'Durchgängig auf Tempo gebaut (Tutoren, Manakurve, Manabasis)',
     'deckView.bracketReason.nothing': 'Nichts gefunden, was eine höhere Stufe erzwingt',
     'deckView.bracketReasonMinimum': 'mindestens Bracket {{level}}',
     'deckView.bracketVerdictHeading': 'Die Einzelurteile',
     'deckView.bracketRowRules': 'Offiziell',
     'deckView.bracketRowSpellbook': 'Zweitmeinung',
+    'deckView.bracketRowPrice': 'Kartenwert',
     'deckView.bracketRowTuning': 'Tuning-Grad',
     'deckView.bracketRowPower': 'Power',
     'deckView.bracketLevelValue': 'Bracket {{level}}',
@@ -193,6 +195,22 @@ export const deckView = {
     'deckView.bracketMathHigherWins': 'Es gilt die höhere der beiden Stufen: Bracket {{level}}.',
     'deckView.bracketMathStepBump':
       'Der Tuning-Grad liegt bei {{percent}} und damit über {{bump}} % → eine Stufe höher: Bracket {{level}}.',
+    'deckView.bracketPriceFinding':
+      'Gemessen: {{price}} – ab {{threshold}} € gilt mindestens Bracket 3.',
+    'deckView.bracketPriceBelow':
+      '{{price}} – unter {{threshold}} €, der Kartenwert hebt hier nichts an.',
+    'deckView.bracketPricePending': 'Der Kartenwert wird noch geladen …',
+    'deckView.bracketPriceUnknownNote':
+      'Solange der Kartenwert nicht vorliegt, bleibt er außen vor – er kann die Stufe dann weder anheben noch senken.',
+    'deckView.bracketPriceIncompleteNote':
+      'Einzelne Kartenpreise konnten nicht geladen werden, die Summe ist also eher zu niedrig als zu hoch.',
+    'deckView.bracketMathPriceTitle': 'So kommt der Kartenwert ins Spiel',
+    'deckView.bracketMathPriceIntro':
+      'Das ist als einzige Regel hier keine offizielle: Das Regelwerk kennt kein Preiskriterium. Gemessen über alle 92 Commander-Precons aus 2023 bis 2026 liegt der Kartenwert im Schnitt bei 74 €, und kein regulärer Precon über 150 € (teuerster: Eldrazi Unbound, 147 €). Wer deutlich darüber liegt, hat gezielt eingekauft – und damit das verlassen, was Bracket 2 als Precon-Niveau beschreibt. Der Preis misst also nicht Stärke, sondern Absicht.',
+    'deckView.bracketMathPriceRule':
+      'Ab {{threshold}} € gilt mindestens Bracket 3 – auch für unveränderte Precons. Nach oben rechnet der Preis nichts: Bracket 4 wird ein Deck dadurch nie.',
+    'deckView.bracketMathPriceSource':
+      'Grundlage ist derselbe Betrag wie in der Kachel „Kartenpreis (ca.)“: die günstigste Druckvariante jeder Karte, in Euro über Cardmarket.',
     'deckView.bracketMathTuningTitle': 'So kommt der Tuning-Grad zustande',
     'deckView.bracketMathTuningIntro':
       'Vier Messgrößen. Jede wird auf 0 bis 1 Punkte umgerechnet, der Tuning-Grad ist ihr Durchschnitt.',
@@ -484,12 +502,14 @@ export const deckView = {
     'deckView.bracketReason.comboRuthless': 'Two-card combo, rated ruthless by Spellbook',
     'deckView.bracketReason.comboFast': 'Two-card combo, assembles before turn 4',
     'deckView.bracketReason.comboMidrange': 'Two-card combo, only in the later game',
+    'deckView.bracketReason.price': 'Deck value above precon level',
     'deckView.bracketReason.tuning': 'Built for speed throughout (tutors, mana curve, mana base)',
     'deckView.bracketReason.nothing': 'Nothing found that forces a higher bracket',
     'deckView.bracketReasonMinimum': 'at least Bracket {{level}}',
     'deckView.bracketVerdictHeading': 'The individual verdicts',
     'deckView.bracketRowRules': 'Official',
     'deckView.bracketRowSpellbook': 'Second opinion',
+    'deckView.bracketRowPrice': 'Deck value',
     'deckView.bracketRowTuning': 'Tuning level',
     'deckView.bracketRowPower': 'Power',
     'deckView.bracketLevelValue': 'Bracket {{level}}',
@@ -515,6 +535,22 @@ export const deckView = {
     'deckView.bracketMathHigherWins': 'The higher of the two applies: Bracket {{level}}.',
     'deckView.bracketMathStepBump':
       'The tuning level is {{percent}}, above {{bump}} % → one step up: Bracket {{level}}.',
+    'deckView.bracketPriceFinding':
+      'Measured: {{price}} – from {{threshold}} € upwards it is at least bracket 3.',
+    'deckView.bracketPriceBelow':
+      '{{price}} – below {{threshold}} €, the deck value raises nothing here.',
+    'deckView.bracketPricePending': 'The deck value is still loading …',
+    'deckView.bracketPriceUnknownNote':
+      'While the deck value is unknown it stays out of the calculation – it can then neither raise nor lower the level.',
+    'deckView.bracketPriceIncompleteNote':
+      'Some card prices could not be loaded, so the sum is more likely too low than too high.',
+    'deckView.bracketMathPriceTitle': 'How the deck value factors in',
+    'deckView.bracketMathPriceIntro':
+      'This is the only rule here that is not official: the rules document knows no price criterion. Measured across all 92 Commander precons from 2023 to 2026, the deck value averages 74 €, and no regular precon exceeds 150 € (most expensive: Eldrazi Unbound, 147 €). Anyone well above that has deliberately gone shopping – and thereby left what bracket 2 describes as precon level. So the price does not measure power, it measures intent.',
+    'deckView.bracketMathPriceRule':
+      'From {{threshold}} € upwards it is at least bracket 3 – for unchanged precons too. The price never raises anything beyond that: it can never make a deck bracket 4.',
+    'deckView.bracketMathPriceSource':
+      'It uses the same amount as the "Card price (approx.)" tile: the cheapest printing of every card, in euros via Cardmarket.',
     'deckView.bracketMathTuningTitle': 'How the tuning level comes about',
     'deckView.bracketMathTuningIntro':
       'Four measures. Each is converted to 0 to 1 points; the tuning level is their average.',
