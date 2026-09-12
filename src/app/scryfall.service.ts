@@ -880,6 +880,10 @@ export class ScryfallService {
    * wird, bleibt dabei jeweils die günstigste Druckvariante übrig (Karten ohne ermittelbaren Preis
    * fehlen einfach im Ergebnis). Gleiches Chunking-Muster wie filterNamesByQueryChecked() (Gruppen statt
    * einer Anfrage pro Karte, um bei größeren Decks nicht an Scryfalls Rate-Limit zu geraten).
+   *
+   * Schlüssel der zurückgegebenen Map ist die normalisierte VORDERSEITE des Kartennamens (also
+   * "esika, god of the tree", nicht "esika, god of the tree // the prismatic bridge") - so, wie
+   * auch gesucht wird und wie alle Aufrufer nachschlagen.
    */
   async cheapestPrices(cardNames: string[]): Promise<{ prices: Map<string, number>; incomplete: boolean }> {
     const prices = new Map<string, number>();
@@ -909,7 +913,13 @@ export class ScryfallService {
       }
       const data = await res.json();
       for (const card of (data.data as any[]) ?? []) {
-        const name = normalizeCardName(card.name as string);
+        // Schlüssel ist die VORDERSEITE, nicht der volle Scryfall-Name: Bei doppelseitigen,
+        // Split-, Aftermath- und Abenteuer-Karten liefert Scryfall "Vorderseite // Rückseite",
+        // während alle drei Aufrufer (Deck-Ansicht, Precon-Browser, öffentliche Decks) mit der
+        // Vorderseite nachschlagen - genauso, wie oben auch gesucht wird. Vorher passte beides
+        // nicht zusammen, jede solche Karte fiel STILL aus der Summe (über die 92 Commander-
+        // Precons aus 2023-2026 waren das 234 statt 121 preislose Karten, rund 2 € je Deck).
+        const name = normalizeCardName(frontFaceName(card.name as string));
         const price = parseFloat(card.prices?.eur);
         if (!prices.has(name) && !Number.isNaN(price)) prices.set(name, price);
       }

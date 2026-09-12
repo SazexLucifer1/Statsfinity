@@ -176,4 +176,39 @@ describe('ScryfallService', () => {
       expect(await service.creatureTypes()).toEqual([]);
     });
   });
+
+  describe('cheapestPrices', () => {
+    it('keys double-faced cards by their front face so callers actually find the price', async () => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            data: [
+              { name: 'Esika, God of the Tree // The Prismatic Bridge', prices: { eur: '4.50' } },
+              { name: 'Sol Ring', prices: { eur: '1.20' } },
+            ],
+          }),
+        ) as Response,
+      );
+
+      const { prices, incomplete } = await service.cheapestPrices([
+        'Esika, God of the Tree // The Prismatic Bridge',
+        'Sol Ring',
+      ]);
+
+      expect(prices.get('esika, god of the tree')).toBe(4.5);
+      expect(prices.get('sol ring')).toBe(1.2);
+      expect(incomplete).toBe(false);
+    });
+
+    it('reports incomplete when a chunk request fails', async () => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response(null, { status: 404 }) as Response,
+      );
+
+      const { prices, incomplete } = await service.cheapestPrices(['Sol Ring']);
+
+      expect(prices.size).toBe(0);
+      expect(incomplete).toBe(true);
+    });
+  });
 });
