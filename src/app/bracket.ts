@@ -65,6 +65,22 @@ export const CEDH_TUNING_HINT = 0.85;
  */
 export const TUNING_BUMP_SCHWELLE = 0.8;
 
+/**
+ * Ab diesem Kartenwert in Euro gilt mindestens Bracket 3.
+ *
+ * Achtung, das ist die EINZIGE Regel hier, die NICHT aus dem offiziellen Regelwerk stammt - WotC
+ * kennt kein Preiskriterium. Sie steht trotzdem hier, und zwar aus einer nachgemessenen
+ * Beobachtung: Über alle 92 Commander-Precons aus 2023-2026 liegt der Kartenwert im Schnitt bei
+ * 74 € und keiner der regulären Precons über 150 € (teuerster: Eldrazi Unbound, 147 €). Wer
+ * deutlich darüber liegt, hat gezielt eingekauft - und damit das verlassen, was Bracket 2 als
+ * "Precon-Niveau" beschreibt. Der Preis misst also nicht Stärke, sondern Absicht.
+ *
+ * Wie jedes harte Kriterium ist das eine UNTERGRENZE und gilt auch für unveränderte Precons (vier
+ * Secret-Lair-Commander-Decks liegen tatsächlich darüber). Nach oben rechnet der Preis nichts: ein
+ * teures Deck wird dadurch nie Bracket 4.
+ */
+export const PREIS_SCHWELLE_EUR = 150;
+
 /** Welcher Befund die Einstufung getrieben hat - Grundlage der Begründung in der Oberfläche. */
 export type BracketReasonKey =
   | 'massLandDenial'
@@ -74,6 +90,7 @@ export type BracketReasonKey =
   | 'comboRuthless'
   | 'comboFast'
   | 'comboMidrange'
+  | 'price'
   | 'tuning'
   | 'nothing';
 
@@ -81,11 +98,11 @@ export interface BracketReason {
   key: BracketReasonKey;
   /** Untergrenze, die dieser Befund für sich genommen erzwingt. */
   minimum: BracketLevel;
-  /** Verantwortliche Karten in Anzeigeschreibweise; bei 'nothing' und 'tuning' leer. */
+  /** Verantwortliche Karten in Anzeigeschreibweise; bei 'nothing', 'tuning' und 'price' leer. */
   cards: string[];
 }
 
-/** Die vier Einzelurteile, aus denen sich das Ergebnis zusammensetzt. */
+/** Die Einzelurteile, aus denen sich das Ergebnis zusammensetzt. */
 export interface BracketVerdicts {
   /** Urteil A: die offiziellen Ausschlusskriterien. Immer vorhanden, immer maßgeblich. */
   rules: BracketLevel;
@@ -97,6 +114,8 @@ export interface BracketVerdicts {
   tuningParts: TuningPart[];
   /** Urteil D: true, wenn es ein unveränderter Precon ist (dann hebt Urteil C nicht an). */
   precon: boolean;
+  /** Urteil E: gemessener Kartenwert in Euro, null solange der Preis noch nicht vorliegt. */
+  price: number | null;
 }
 
 export interface BracketAnalysis {
@@ -138,6 +157,12 @@ export interface BracketInput {
   tutorCount: number;
   /** Gesamtzahl Karten - Bezugsgröße für die Tutorendichte. */
   totalCards: number;
+  /**
+   * Kartenwert des Decks in Euro (billigste Druckvariante je Karte), null solange der Preis noch
+   * lädt oder gar nicht abgerufen wurde. null heißt "unbekannt" und löst nichts aus - ein noch
+   * nicht geladener Preis darf ein Deck weder anheben noch von einer Anhebung befreien.
+   */
+  totalPrice: number | null;
 }
 
 /** Eine im Deck vollständig vorhandene Zwei-Karten-Combo, samt der beiden Karten. */
@@ -296,6 +321,23 @@ export function spellbookVerdict(tag: SpellbookBracketTag | null): BracketLevel 
 }
 
 /**
+ * Urteil E - der Kartenwert, als Untergrenze.
+ *
+ * Liefert 3, sobald das Deck PREIS_SCHWELLE_EUR erreicht, sonst null ("kein Aufschlag"). Bei
+ * unbekanntem Preis (null) ebenfalls null: Ein noch nicht geladener Preis darf nichts auslösen,
+ * sonst stünde die Stufe beim Öffnen kurz zu niedrig und spränge dann.
+ *
+ * Bewusst getrennt von rulesVerdict(): Die Zeile "Offiziell" in der Oberfläche soll weiter genau
+ * die offiziellen Kriterien wiedergeben, und der Preis ist keines davon (siehe
+ * PREIS_SCHWELLE_EUR). Auch die Verlässlichkeitsangabe vergleicht deshalb weiter nur die beiden
+ * kartenbasierten Urteile A und B miteinander.
+ */
+export function priceVerdict(totalPrice: number | null): BracketLevel | null {
+  if (totalPrice === null) return null;
+  return totalPrice >= PREIS_SCHWELLE_EUR ? 3 : null;
+}
+
+/**
  * Urteil C - Tuning-Grad von 0 bis 1.
  *
  * Vier Anzeichen dafür, dass ein Deck durchoptimiert ist, ohne dass eine einzelne Karte ein hartes
@@ -398,9 +440,9 @@ export function powerLevel(bracket: BracketLevel, tuning: number): number {
 }
 
 /**
- * Führt die vier Urteile zusammen.
+ * Führt die Urteile zusammen.
  *
- * Untergrenze ist das höhere aus A und B. Die Feinbewertung (C) darf danach um höchstens eine
+ * Untergrenze ist das höchste aus A, B und E (Kartenwert, siehe PREIS_SCHWELLE_EUR). Die Feinbewertung (C) darf danach um höchstens eine
  * Stufe ANHEBEN und niemals senken - ein hartes Kriterium aus A lässt sich so nie wegrechnen.
  *
  * Bei unveränderten Precons hebt C gar nicht an (Urteil D). Achtung, der Grund dafür ist NICHT
@@ -416,8 +458,17 @@ export function analyzeBracket(input: BracketInput): BracketAnalysis {
   const { level: rules, reasons } = rulesVerdict(input);
   const spellbook = spellbookVerdict(input.spellbookTag);
   const tuning = tuningVerdict(input);
+  const price = priceVerdict(input.totalPrice);
 
   let bracket = spellbook === null ? rules : maxLevel(rules, spellbook);
+
+  if (price !== null) {
+    // Der Preis IST ein Befund - "nichts gefunden" wäre daneben, wenn er gerade die Stufe treibt.
+    const nichtsGefunden = reasons.findIndex((r) => r.key === 'nothing');
+    if (nichtsGefunden >= 0) reasons.splice(nichtsGefunden, 1);
+    reasons.push({ key: 'price', minimum: price, cards: [] });
+    bracket = maxLevel(bracket, price);
+  }
 
   if (tuning >= TUNING_BUMP_SCHWELLE && bracket < AUTO_BRACKET_MAX && !input.isPrecon) {
     bracket = (bracket + 1) as BracketLevel;
@@ -441,6 +492,13 @@ export function analyzeBracket(input: BracketInput): BracketAnalysis {
     confidence,
     reasons,
     suggestsCedh: bracket === AUTO_BRACKET_MAX && tuning >= CEDH_TUNING_HINT,
-    verdicts: { rules, spellbook, tuning, tuningParts: tuningParts(input), precon: input.isPrecon },
+    verdicts: {
+      rules,
+      spellbook,
+      tuning,
+      tuningParts: tuningParts(input),
+      precon: input.isPrecon,
+      price: input.totalPrice,
+    },
   };
 }

@@ -6,6 +6,7 @@ import {
   AUTO_BRACKET_MAX,
   BracketAnalysis,
   BracketCard,
+  PREIS_SCHWELLE_EUR,
   TUNING_BUMP_SCHWELLE,
   analyzeBracket,
   powerRange,
@@ -167,10 +168,10 @@ export interface DeckChangeGroup {
 }
 
 /**
- * Welches der vier Einzelurteile im Bracket-Kasten gerade seinen Rechenweg zeigt. Jedes Urteil hat
+ * Welches Einzelurteil im Bracket-Kasten gerade seinen Rechenweg zeigt. Jedes Urteil hat
  * sein eigenes ⓘ direkt neben der Zahl - vorher stand die ganze Kette in einem einzigen Popup.
  */
-export type BracketMathTopic = 'rules' | 'spellbook' | 'tuning' | 'power';
+export type BracketMathTopic = 'rules' | 'spellbook' | 'tuning' | 'price' | 'power';
 
 @Injectable({ providedIn: 'root' })
 export class DeckViewerService {
@@ -1012,6 +1013,7 @@ export class DeckViewerService {
       untappedLandPercent: this.untappedLandPercent(),
       tutorCount: this.tutorCards().reduce((sum, c) => sum + c.quantity, 0),
       totalCards: this.viewingTotalCards(),
+      totalPrice: this.totalDeckPrice(),
     });
   });
 
@@ -1106,6 +1108,9 @@ export class DeckViewerService {
   /** Schwelle, ab der die Feinbewertung anhebt - in Prozent, für die Erklärtexte. */
   readonly tuningBumpPercent = Math.round(TUNING_BUMP_SCHWELLE * 100);
 
+  /** Kartenwert, ab dem mindestens Bracket 3 gilt - für die Erklärtexte. */
+  readonly priceThresholdEur = PREIS_SCHWELLE_EUR;
+
   /**
    * Was das Popup an fertigen Zahlen braucht und die Vorlage nicht selbst ausrechnen soll: die
    * Punkte als ausgeschriebene Summe, deren Teiler, und die Power-Spanne des Brackets samt Breite.
@@ -1125,8 +1130,14 @@ export class DeckViewerService {
       powerSpanne: Math.round((powerBis - powerVon) * 10) / 10,
       /** true, wenn die Feinbewertung das Bracket tatsächlich um eine Stufe angehoben hat. */
       bumped: analysis.reasons.some((r) => r.key === 'tuning'),
-      /** Die Befunde aus Schritt 1 - ohne die Anhebung, die im Popup als eigener Schritt 3 steht. */
-      rulesReasons: analysis.reasons.filter((r) => r.key !== 'tuning'),
+      /** true, wenn der Kartenwert die Schwelle erreicht und damit mindestens Bracket 3 erzwingt. */
+      pricePushed: analysis.reasons.some((r) => r.key === 'price'),
+      /**
+       * Die Befunde aus Schritt 1 - ohne die Anhebung durch die Feinbewertung (eigener Schritt im
+       * Popup) und ohne den Kartenwert: der ist Statsfinitys eigene Regel und hat im Rechenweg
+       * "offizielle Kriterien" nichts zu suchen (siehe PREIS_SCHWELLE_EUR in bracket.ts).
+       */
+      rulesReasons: analysis.reasons.filter((r) => r.key !== 'tuning' && r.key !== 'price'),
       /** Stufe nach den beiden Urteilen, aber VOR einer möglichen Anhebung durch die Feinbewertung. */
       baseBracket: Math.max(analysis.verdicts.rules, analysis.verdicts.spellbook ?? 0),
     };
@@ -2774,6 +2785,7 @@ export class DeckViewerService {
     this.viewingChangeLog.set(log);
     this.cardDetailsPromise = this.loadCardDetails(cards);
     this.loadBracketEstimate(cards);
+    this.loadPriceForBracket(cards);
   }
 
   /** Cache für resolveMyPlayerIds() - ändert sich innerhalb einer Login-Session praktisch nie. */
@@ -2872,6 +2884,7 @@ export class DeckViewerService {
 
     this.cardDetailsPromise = this.loadCardDetails(cards);
     this.loadBracketEstimate(cards);
+    this.loadPriceForBracket(cards);
     this.analysisExtrasLoaded = false;
   }
 
@@ -2922,6 +2935,35 @@ export class DeckViewerService {
    */
   async ensureCardDetailsLoaded(): Promise<void> {
     if (this.cardDetailsPromise) await this.cardDetailsPromise;
+  }
+
+  /**
+   * Zieht den Preis schon beim Öffnen nach, aber nur bei Commander-Decks: Nur dort gibt es ein
+   * Bracket, und nur dort ist der Kartenwert ein Kriterium dafür. In allen anderen Formaten bleibt
+   * es beim bisherigen Verhalten - der Preis wird erst geholt, wenn jemand die Analyse aufklappt.
+   *
+   * Bewusst ohne await: Die Einstufung hängt ohnehin schon an mehreren unabhängig eintreffenden
+   * Quellen und rechnet sich neu, sobald der Preis da ist (bracketAnalysis ist ein computed über
+   * totalDeckPrice).
+   */
+  private loadPriceForBracket(cards: DeckCard[]): void {
+    if (this.showsBracket()) void this.ensureCardPricesLoaded(cards);
+  }
+
+  /** Laufender/abgeschlossener Preisabruf dieser Deck-Öffnung - siehe ensureCardPricesLoaded(). */
+  private pricePromise: Promise<void> | null = null;
+
+  /**
+   * Startet den Preisabruf höchstens einmal je Deck-Öffnung.
+   *
+   * Nötig, seit der Preis an zwei Stellen gebraucht wird: beim Öffnen eines Commander-Decks für die
+   * Bracket-Einstufung (der Kartenwert ist dort ein Kriterium, siehe PREIS_SCHWELLE_EUR) und beim
+   * Aufklappen der Analyse-Sektion für die Anzeige. Ohne diese Klammer liefe derselbe Abruf zweimal
+   * gegen Scryfall, nur um dieselbe Zahl noch einmal zu holen.
+   */
+  private ensureCardPricesLoaded(cards: DeckCard[]): Promise<void> {
+    this.pricePromise ??= this.loadCardPrices(cards);
+    return this.pricePromise;
   }
 
   /** Lädt den Gesamtpreis (billigste Druckvariante je Karte, siehe ScryfallService.cheapestPrices()) nach. */
@@ -3193,6 +3235,7 @@ export class DeckViewerService {
     this.totalDeckPrice.set(null);
     this.deckPriceIncomplete.set(false);
     this.priceBusy.set(false);
+    this.pricePromise = null;
     this.tagBasedEffectStats.set(null);
     this.effectCategoryCountsBusy.set(false);
     this.effectCategoryProgress.set(null);
@@ -3296,7 +3339,7 @@ export class DeckViewerService {
       // Nacheinander statt parallel - sonst konkurrieren beide direkt beim Aufklappen um Scryfalls
       // Rate-Limit. Preis zuerst, da meist deutlich schneller fertig als die 12 Effekt-Kategorien.
       (async () => {
-        await this.loadCardPrices(cards);
+        await this.ensureCardPricesLoaded(cards);
         await this.loadEffectCategoryCounts(cards);
       })();
     }
@@ -3318,10 +3361,11 @@ export class DeckViewerService {
     if (!this.viewingDeck()) return;
     this.reanalyzeBusy.set(true);
     const cards = this.viewingDeckCards();
+    this.pricePromise = null;
     this.cardDetailsPromise = this.loadCardDetails(cards);
     this.loadBracketEstimate(cards);
     // Nacheinander statt parallel - siehe toggleDeckAnalysis().
-    await this.loadCardPrices(cards);
+    await this.ensureCardPricesLoaded(cards);
     await this.loadEffectCategoryCounts(cards);
     this.reanalyzeBusy.set(false);
   }

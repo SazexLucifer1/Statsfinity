@@ -3,11 +3,13 @@ import {
   BracketCard,
   BracketInput,
   CEDH_TUNING_HINT,
+  PREIS_SCHWELLE_EUR,
   TUNING_BUMP_SCHWELLE,
   analyzeBracket,
   powerLevel,
   powerRange,
   presentCombos,
+  priceVerdict,
   rulesVerdict,
   spellbookVerdict,
   tuningParts,
@@ -68,6 +70,7 @@ const basis = (extra: Partial<BracketInput> = {}): BracketInput => ({
   untappedLandPercent: 70,
   tutorCount: 0,
   totalCards: 100,
+  totalPrice: null,
   ...extra,
 });
 
@@ -476,5 +479,61 @@ describe('bracket - Zusammenführung', () => {
 
     const zweiStufen = analyzeBracket(basis({ spellbookTag: 'R' }));
     expect(zweiStufen.confidence).toBe('low');
+  });
+});
+
+describe('bracket - Urteil E: Kartenwert', () => {
+  it('erzwingt ab der Schwelle mindestens Bracket 3 und lässt darunter alles, wie es war', () => {
+    expect(priceVerdict(PREIS_SCHWELLE_EUR - 0.01)).toBe(null);
+    expect(priceVerdict(PREIS_SCHWELLE_EUR)).toBe(3);
+    expect(priceVerdict(PREIS_SCHWELLE_EUR + 50)).toBe(3);
+  });
+
+  it('löst bei unbekanntem Preis nichts aus', () => {
+    expect(priceVerdict(null)).toBe(null);
+    expect(analyzeBracket(basis({ totalPrice: null })).bracket).toBe(2);
+  });
+
+  it('hebt ein unauffälliges 150-Euro-Deck von Bracket 2 auf 3', () => {
+    const guenstig = analyzeBracket(basis({ totalPrice: 149.99 }));
+    const teuer = analyzeBracket(basis({ totalPrice: 150 }));
+
+    expect(guenstig.bracket).toBe(2);
+    expect(teuer.bracket).toBe(3);
+  });
+
+  it('nennt den Preis als Befund, statt "nichts gefunden" zu behaupten', () => {
+    const analyse = analyzeBracket(basis({ totalPrice: 188.42 }));
+
+    expect(analyse.reasons.map((r) => r.key)).toEqual(['price']);
+    expect(analyse.reasons[0].minimum).toBe(3);
+    expect(analyse.verdicts.price).toBe(188.42);
+  });
+
+  it('lässt die anderen Befunde daneben stehen, statt sie zu verdrängen', () => {
+    const analyse = analyzeBracket(
+      basis({
+        cards: [karte('Armageddon'), karte('Forest')],
+        flags: flags({ Armageddon: { massLandDenial: true } }),
+        totalPrice: 200,
+      }),
+    );
+
+    expect(analyse.reasons.map((r) => r.key)).toEqual(['massLandDenial', 'price']);
+    // Der Preis ist eine Untergrenze, keine Obergrenze - Bracket 4 aus Urteil A bleibt stehen.
+    expect(analyse.bracket).toBe(4);
+  });
+
+  it('greift auch bei unveränderten Precons', () => {
+    expect(analyzeBracket(basis({ isPrecon: true, totalPrice: 196.17 })).bracket).toBe(3);
+  });
+
+  it('lässt die Zeile "Offiziell" unberührt - der Preis ist kein offizielles Kriterium', () => {
+    const analyse = analyzeBracket(basis({ totalPrice: 200, spellbookTag: 'E' }));
+
+    expect(analyse.verdicts.rules).toBe(2);
+    // Die Verlässlichkeitsangabe vergleicht weiter nur die beiden kartenbasierten Urteile.
+    expect(analyse.confidence).toBe('high');
+    expect(analyse.bracket).toBe(3);
   });
 });
