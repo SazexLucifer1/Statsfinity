@@ -245,7 +245,7 @@ async function ladeKartendaten(namen) {
 
   const karten = await supabaseNachNamen(
     'scryfall_cards',
-    'front_name_normalized,name,cmc,type_line,oracle_text,produced_mana,game_changer',
+    'front_name_normalized,name,cmc,mana_cost,type_line,oracle_text,produced_mana,game_changer',
     'front_name_normalized',
     namen,
   );
@@ -345,6 +345,7 @@ function baueEingabe(deck, daten, combos) {
       key,
       quantity: zeile.quantity,
       cmc: info.cmc ?? 0,
+      manaCost: info.mana_cost ?? '',
       typeLine: info.type_line ?? '',
       oracleText: info.oracle_text ?? '',
       producedMana: info.produced_mana ?? [],

@@ -28,6 +28,8 @@ export interface MetricCard {
   key: string;
   quantity: number;
   cmc: number;
+  /** Manakosten in Kartenschreibweise ("{1}{G}{G}") - Grundlage der Farbprüfung in mana.ts. */
+  manaCost: string;
   typeLine: string;
   oracleText: string;
   /** Farbkürzel, die diese Karte erzeugen kann (Scryfall produced_mana). */

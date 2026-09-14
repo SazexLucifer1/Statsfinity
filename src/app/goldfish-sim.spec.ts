@@ -1,11 +1,11 @@
 import type { MetricCard, MetricCombo, MetricInput } from './deck-metrics';
-import { rng, simulateGoldfish } from './goldfish-sim';
+import { cardsDrawn, rng, simulateGoldfish, starthand } from './goldfish-sim';
 
 /**
- * Was hier geprüft wird, ist nicht "die Zahl stimmt" - eine Simulation hat keine richtige Zahl.
- * Geprüft wird, dass sie sich an ihre eigenen Annahmen hält (goldfish-sim.ts, Kopfkommentar) und
- * dass die Aussagen, auf die der Bericht sich stützt, tatsächlich tragen: reproduzierbar, ohne
- * Siegweg kein Sieg, und ein schnelleres Deck gewinnt messbar früher als ein langsames.
+ * Geprüft wird nicht "die Zahl stimmt" - eine Simulation hat keine richtige Zahl. Geprüft wird,
+ * dass sie sich an die Regeln hält, die im Kopfkommentar von goldfish-sim.ts mit Regelnummer
+ * belegt sind. Drei dieser Regeln waren in der ersten Fassung falsch; für jede steht hier jetzt
+ * ein Fall, damit sie nicht wieder wegrutscht.
  */
 
 const karte = (name: string, extra: Partial<MetricCard> = {}): MetricCard => ({
@@ -13,6 +13,7 @@ const karte = (name: string, extra: Partial<MetricCard> = {}): MetricCard => ({
   key: name.toLowerCase(),
   quantity: 1,
   cmc: 2,
+  manaCost: '{1}{U}',
   typeLine: 'Artifact',
   oracleText: '',
   producedMana: [],
@@ -21,16 +22,19 @@ const karte = (name: string, extra: Partial<MetricCard> = {}): MetricCard => ({
   ...extra,
 });
 
-const insel = (n: number) =>
-  karte('Island', {
+const land = (name: string, farbe: string, n: number) =>
+  karte(name, {
     cmc: 0,
-    typeLine: 'Basic Land — Island',
-    oracleText: '({T}: Add {U}.)',
+    manaCost: '',
+    typeLine: `Basic Land — ${name}`,
+    oracleText: `({T}: Add {${farbe}}.)`,
+    producedMana: [farbe],
     quantity: n,
   });
 
-/** Füllmaterial ohne Funktion - hält die Deckgröße bei 99, damit die Ziehwahrscheinlichkeiten stimmen. */
-const fueller = (n: number) => karte('Filler', { cmc: 3, quantity: n });
+const insel = (n: number) => land('Island', 'U', n);
+const wald = (n: number) => land('Forest', 'G', n);
+const fueller = (n: number) => karte('Filler', { cmc: 5, manaCost: '{4}{U}', quantity: n });
 
 const combo = (cards: string[], extra: Partial<MetricCombo> = {}): MetricCombo => ({
   id: cards.join('-'),
@@ -56,7 +60,115 @@ describe('goldfish-sim - Zufallsgenerator', () => {
   });
 });
 
-describe('goldfish-sim', () => {
+describe('goldfish-sim - Mulligan (CR 103.5, 103.5c)', () => {
+  // Ein Deck, dessen Starthand nie taugt (nur Laender) - so wird sicher gemulligant.
+  const nurLaender = () => {
+    const stapel: MetricCard[] = [];
+    for (let i = 0; i < 99; i++)
+      stapel.push(
+        karte('Island' + i, {
+          cmc: 0,
+          manaCost: '',
+          typeLine: 'Land',
+          oracleText: '({T}: Add {U}.)',
+        }),
+      );
+    return stapel;
+  };
+
+  it('lässt den ersten Mulligan im Mehrspieler gratis und legt erst ab dem zweiten ab', () => {
+    // CR 103.5c: "the first mulligan a player takes doesn't count toward the number of cards that
+    // player will put on the bottom of their library". Nach drei Mulligans sind also zwei Karten
+    // weg, nicht drei - die Hand hat fünf Karten.
+    const stand = starthand(nurLaender(), rng(1));
+    expect(stand.hand).toHaveLength(5);
+  });
+});
+
+describe('goldfish-sim - Farbiges Mana (CR 202.1a)', () => {
+  const comboTeile = (farbe: string) => [
+    karte('A', { cmc: 1, manaCost: `{${farbe}}`, quantity: 8 }),
+    karte('B', { cmc: 1, manaCost: `{${farbe}}`, quantity: 8 }),
+  ];
+
+  it('gewinnt nicht mit Zaubern, deren Farbe das Deck gar nicht erzeugt', () => {
+    // Gruene Combo-Teile, aber nur Inseln: CR 202.1a verlangt die passende Farbe.
+    const deck = eingabe([insel(40), ...comboTeile('G'), fueller(43)], [combo(['A', 'B'])]);
+    expect(simulateGoldfish(deck, 300, 1).winRate).toBe(0);
+  });
+
+  it('gewinnt mit derselben Combo, wenn die Farbe stimmt', () => {
+    const deck = eingabe([wald(40), ...comboTeile('G'), fueller(43)], [combo(['A', 'B'])]);
+    expect(simulateGoldfish(deck, 300, 1).winRate).toBeGreaterThan(0);
+  });
+});
+
+describe('goldfish-sim - Einsatzverzögerung (CR 302.6)', () => {
+  it('lässt eine Manakreatur im Zug ihres Erscheinens nicht tappen, ein Artefakt aber schon', () => {
+    // Gleiches Deck, einziger Unterschied: Die zusaetzliche Manaquelle ist einmal eine Kreatur
+    // mit {T} (CR 302.6 greift) und einmal ein Artefakt (greift nicht).
+    const bauen = (typeLine: string) =>
+      eingabe(
+        [
+          wald(30),
+          karte('Quelle', {
+            cmc: 1,
+            manaCost: '{G}',
+            typeLine,
+            oracleText: '{T}: Add {G}.',
+            producedMana: ['G'],
+            quantity: 10,
+          }),
+          karte('A', { cmc: 3, manaCost: '{2}{G}', quantity: 8 }),
+          karte('B', { cmc: 3, manaCost: '{2}{G}', quantity: 8 }),
+          fueller(41),
+        ],
+        [combo(['A', 'B'])],
+      );
+
+    const kreatur = simulateGoldfish(bauen('Creature — Elf Druid'), 400, 2);
+    const artefakt = simulateGoldfish(bauen('Artifact'), 400, 2);
+
+    expect(artefakt.winByTurn4).toBeGreaterThan(kreatur.winByTurn4);
+  });
+});
+
+describe('goldfish-sim - Kartenziehen', () => {
+  it('liest, wie viele Karten eine Karte zieht', () => {
+    expect(cardsDrawn(karte('Ponder', { oracleText: 'Draw a card.' }))).toBe(1);
+    expect(cardsDrawn(karte('Divination', { oracleText: 'Draw two cards.' }))).toBe(2);
+  });
+
+  it('zählt kein Ziehen, das den Gegnern gehört', () => {
+    const mine = karte('Howling Mine', { oracleText: 'Each player draws an additional card.' });
+    expect(cardsDrawn(mine)).toBe(0);
+  });
+
+  it('findet mit Kartenziehen häufiger eine Combo als ohne', () => {
+    const bauen = (mitZiehen: boolean) =>
+      eingabe(
+        [
+          insel(35),
+          karte('A', { cmc: 1, manaCost: '{U}' }),
+          karte('B', { cmc: 1, manaCost: '{U}' }),
+          karte('Cantrip', {
+            cmc: 1,
+            manaCost: '{U}',
+            oracleText: mitZiehen ? 'Draw two cards.' : '',
+            quantity: 20,
+          }),
+          fueller(42),
+        ],
+        [combo(['A', 'B'])],
+      );
+
+    expect(simulateGoldfish(bauen(true), 600, 4).winRate).toBeGreaterThan(
+      simulateGoldfish(bauen(false), 600, 4).winRate,
+    );
+  });
+});
+
+describe('goldfish-sim - Siegbedingung', () => {
   it('gewinnt nie ohne gewinnende Combo im Deck', () => {
     const ergebnis = simulateGoldfish(eingabe([insel(38), fueller(61)]), 200);
     expect(ergebnis.winRate).toBe(0);
@@ -64,11 +176,10 @@ describe('goldfish-sim', () => {
   });
 
   it('wertet unendliches Mana nicht als Sieg', () => {
-    // Dieselbe Combo, nur ein anderes Ergebnis - ohne etwas, das das Mana umsetzt, ist es kein Sieg.
     const deck = [
       insel(38),
-      karte('A', { cmc: 1, quantity: 10 }),
-      karte('B', { cmc: 1, quantity: 10 }),
+      karte('A', { cmc: 1, manaCost: '{U}', quantity: 10 }),
+      karte('B', { cmc: 1, manaCost: '{U}', quantity: 10 }),
       fueller(41),
     ];
     const mana = simulateGoldfish(
@@ -88,8 +199,8 @@ describe('goldfish-sim', () => {
     const deck = eingabe(
       [
         insel(38),
-        karte('A', { cmc: 1, quantity: 8 }),
-        karte('B', { cmc: 2, quantity: 8 }),
+        karte('A', { cmc: 1, manaCost: '{U}', quantity: 8 }),
+        karte('B', { cmc: 2, manaCost: '{1}{U}', quantity: 8 }),
         fueller(45),
       ],
       [combo(['A', 'B'])],
@@ -98,32 +209,30 @@ describe('goldfish-sim', () => {
   });
 
   it('gewinnt mit billiger Combo früher als mit teurer', () => {
-    const bauen = (kosten: number) =>
+    const bauen = (kosten: number, manaCost: string) =>
       eingabe(
         [
           insel(38),
-          karte('A', { cmc: kosten, quantity: 8 }),
-          karte('B', { cmc: kosten, quantity: 8 }),
+          karte('A', { cmc: kosten, manaCost, quantity: 8 }),
+          karte('B', { cmc: kosten, manaCost, quantity: 8 }),
           fueller(45),
         ],
         [combo(['A', 'B'])],
       );
 
-    const schnell = simulateGoldfish(bauen(1), 500, 3);
-    const langsam = simulateGoldfish(bauen(5), 500, 3);
+    const schnell = simulateGoldfish(bauen(1, '{U}'), 500, 3);
+    const langsam = simulateGoldfish(bauen(5, '{4}{U}'), 500, 3);
 
     expect(schnell.winByTurn4).toBeGreaterThan(langsam.winByTurn4);
     expect(schnell.medianWinTurn).toBeLessThan(langsam.medianWinTurn ?? 99);
   });
 
-  it('rechnet den Commander aus der Kommandozone mit, statt ihn zu ziehen', () => {
-    // Eine Combo, die den Commander braucht: Läge er in der Bibliothek, käme sie nur mit Glück
-    // zustande. Aus der Kommandozone steht er immer bereit - und genau so wird Commander gespielt.
+  it('rechnet den Commander aus der Kommandozone mit (CR 903.8)', () => {
     const deck = eingabe(
       [
         insel(38),
-        karte('Kinnan', { cmc: 2, isCommander: true }),
-        karte('Basalt', { cmc: 3, quantity: 8 }),
+        karte('Kinnan', { cmc: 2, manaCost: '{1}{U}', isCommander: true }),
+        karte('Basalt', { cmc: 3, manaCost: '{3}', quantity: 8 }),
         fueller(52),
       ],
       [combo(['Kinnan', 'Basalt'], { mustBeCommander: ['kinnan'] })],

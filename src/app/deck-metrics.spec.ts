@@ -22,6 +22,7 @@ const karte = (name: string, extra: Partial<MetricCard> = {}): MetricCard => ({
   key: name.toLowerCase(),
   quantity: 1,
   cmc: 2,
+  manaCost: '{1}{U}',
   typeLine: 'Artifact',
   oracleText: '',
   producedMana: [],
