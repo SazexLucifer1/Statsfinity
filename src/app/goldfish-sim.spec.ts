@@ -111,25 +111,54 @@ describe('goldfish-sim - Einsatzverzögerung (CR 302.6)', () => {
       eingabe(
         [
           wald(30),
+          // Erzeugt MEHR als sie kostet - sonst beschleunigt sie gar nichts und der Unterschied
+          // zwischen Kreatur und Artefakt waere nicht messbar.
           karte('Quelle', {
             cmc: 1,
             manaCost: '{G}',
             typeLine,
-            oracleText: '{T}: Add {G}.',
+            oracleText: '{T}: Add {G}{G}.',
             producedMana: ['G'],
-            quantity: 10,
+            quantity: 12,
           }),
-          karte('A', { cmc: 3, manaCost: '{2}{G}', quantity: 8 }),
-          karte('B', { cmc: 3, manaCost: '{2}{G}', quantity: 8 }),
-          fueller(41),
+          karte('A', { cmc: 2, manaCost: '{1}{G}', quantity: 8 }),
+          karte('B', { cmc: 2, manaCost: '{1}{G}', quantity: 8 }),
+          fueller(39),
         ],
         [combo(['A', 'B'])],
       );
 
-    const kreatur = simulateGoldfish(bauen('Creature — Elf Druid'), 400, 2);
-    const artefakt = simulateGoldfish(bauen('Artifact'), 400, 2);
+    const kreatur = simulateGoldfish(bauen('Creature — Elf Druid'), 800, 2);
+    const artefakt = simulateGoldfish(bauen('Artifact'), 800, 2);
 
-    expect(artefakt.winByTurn4).toBeGreaterThan(kreatur.winByTurn4);
+    expect(artefakt.winByTurn3).toBeGreaterThan(kreatur.winByTurn3);
+  });
+});
+
+describe('goldfish-sim - Mana ist endlich', () => {
+  it('gibt ausgegebenes Mana innerhalb eines Zuges nicht zurück', () => {
+    // Ein Deck voller Einmana-Cantrips. Wer das verfügbare Mana je Schleifenrunde neu aus dem
+    // Spielfeld liest, statt es fortzuschreiben, bekommt die Kosten jedes Zaubers zurück und kann
+    // in einem Zug beliebig viele davon spielen - gemessen vervierfacht das die Siege bis Zug 3
+    // (0,013 gegenüber 0,053). CR 500.5 leert den Manavorrat am Ende jedes Abschnitts; INNERHALB
+    // eines Zuges ist er eine endliche Menge und keine Quelle.
+    const deck = eingabe(
+      [
+        insel(30),
+        karte('Cantrip', {
+          cmc: 1,
+          manaCost: '{U}',
+          oracleText: 'Draw a card.',
+          quantity: 60,
+        }),
+        karte('A', { cmc: 1, manaCost: '{U}' }),
+        karte('B', { cmc: 1, manaCost: '{U}' }),
+        fueller(7),
+      ],
+      [combo(['A', 'B'])],
+    );
+
+    expect(simulateGoldfish(deck, 400, 11).winByTurn3).toBeLessThan(0.03);
   });
 });
 

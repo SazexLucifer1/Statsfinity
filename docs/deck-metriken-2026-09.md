@@ -33,19 +33,19 @@ weiter ein Wert von 0,5 entfernt ist, desto mehr sagt die Kennzahl aus.
 | A Tempo | Fast Mana (erzeugt mehr als es kostet) | 7 | 2 | 1 | 0,973 | 0,93 |
 | A Tempo | Durchschnittlicher Manawert | 2,24 | 3,05 | 3,51 | 0,053 | 0,154 |
 | A Tempo | Anteil Karten für 0-1 Mana | 0,24 | 0,09 | 0,04 | 0,99 | 0,91 |
-| A Tempo | Länder | 30 | 35 | 38 | 0,033 | 0,099 |
-| A Tempo | Ungetappte Länder (%) | 100 | 92 | 78 | 0,981 | 0,853 |
-| A Tempo | Mana in Zug 3 (bestenfalls) | 3,6 | 3,1 | 2,9 | 0,977 | 0,869 |
+| A Tempo | Länder | 30 | 35 | 38 | 0,034 | 0,099 |
+| A Tempo | Ungetappte Länder (%) | 100 | 92 | 78 | 0,981 | 0,857 |
+| A Tempo | Mana in Zug 3 (bestenfalls) | 3,6 | 3,1 | 2,9 | 0,977 | 0,87 |
 | A Tempo | Günstigste gewinnende Combo (Mana) | 6 | 8 | 9 | 0,183 | 0,291 |
 | A Tempo | Frühestmöglicher Siegzug | 6 | 6 | – | – | 0,505 |
-| A Tempo | Simulation: Median-Siegzug | 8 | 8,75 | 9 | 0,162 | 0,332 |
-| A Tempo | Simulation: Sieg bis Zug 4 (Anteil) | 0 | 0 | 0 | 0,742 | 0,693 |
-| A Tempo | Simulation: Sieg bis Zug 10 (Anteil) | 0,02 | 0 | 0 | 0,76 | 0,697 |
+| A Tempo | Simulation: Median-Siegzug | 7 | 8 | 9 | 0,187 | 0,34 |
+| A Tempo | Simulation: Sieg bis Zug 4 (Anteil) | 0 | 0 | 0 | 0,748 | 0,697 |
+| A Tempo | Simulation: Sieg bis Zug 10 (Anteil) | 0,03 | 0 | 0 | 0,751 | 0,692 |
 | B Redundanz | Vollständige Combos im Deck | 5 | 1 | 0 | 0,892 | 0,695 |
 | B Redundanz | Davon gewinnende | 1 | 0 | 0 | 0,759 | 0,679 |
 | B Redundanz | Verschiedene Siegwege | 2 | 0 | 0 | 0,749 | 0,678 |
 | B Redundanz | Tutoren | 6 | 1 | 0 | 0,977 | 0,912 |
-| B Redundanz | Kartenziehen | 9,5 | 11 | 14 | 0,207 | 0,367 |
+| B Redundanz | Kartenziehen | 9,5 | 11 | 14 | 0,208 | 0,367 |
 | C Interaktion | Freie Interaktion | 5 | 2 | 1 | 0,804 | 0,77 |
 | C Interaktion | Konter | 5 | 1 | 0 | 0,853 | 0,718 |
 | C Interaktion | Entfernung | 9 | 11 | 12 | 0,234 | 0,376 |
@@ -97,7 +97,7 @@ wird die Trennung sauber:
 | Mindestens … Signale | cEDH | Nicht-cEDH (gleiche Commander) | Precon |
 | --- | --- | --- | --- |
 | 3 | 94,4 % | 31,2 % | **0 %** |
-| 4 | 92,8 % | 17,2 % | **0 %** |
+| 4 | 92,8 % | 16,8 % | **0 %** |
 | 6 | 69,6 % | 6,3 % | 0 % |
 
 Median: cEDH **6 von 7** Signalen, normale Decks 2, Precons 0. **Kein einziger der 92 Precons
@@ -105,21 +105,34 @@ erreicht drei Signale.**
 
 Für die Bracket-Automatik heißt das: **ab vier Signalen ist ein Deck nachweislich kein
 Bracket-2-Deck**, und der Vorschlag „das sieht nach cEDH aus" ist ab dieser Schwelle belegt statt
-geraten. Die 17 %, die in der Vergleichsgruppe mit anschlagen, sind vermutlich keine Fehlalarme,
+geraten. Die knapp 17 %, die in der Vergleichsgruppe mit anschlagen, sind vermutlich keine Fehlalarme,
 sondern echte Bracket-4-Decks — es ist der Durchschnittsbau derselben, ohnehin starken Commander,
 nicht eine Gruppe schwacher Decks.
 
-### 3. Die Simulation trägt weniger bei als die Zählerei — das ist ein Befund
+### 3. Die Simulation ist jetzt regelfest — und trennt trotzdem schlechter als die Zählerei
 
-Die Goldfish-Simulation trennt mit 0,74–0,76 deutlich schlechter als simples Abzählen (0,97–0,99),
-und der Median-Siegzug liegt bei allen drei Korpora bei 8 bis 9. Der Grund ist bekannt und liegt
-nicht am Modell, sondern am Material: In einer Singleton-Durchschnittsliste müssen beide
-Combo-Teile gezogen werden, was in zehn Zügen selten passiert, und die Simulation kennt kein
-Kartenziehen als Effekt — genau das, worüber cEDH-Decks ihre Teile finden.
+Die erste Fassung der Simulation hatte drei Spielregeln falsch (erster Zug ohne Ziehen, Mulligan
+ohne den im Mehrspieler freien ersten, Manakreaturen ohne Einsatzverzögerung) und kannte weder
+Manafarben noch Kartenziehen. Alle fünf Punkte sind behoben und an den Comprehensive Rules belegt,
+nachzulesen im Kopfkommentar von `goldfish-sim.ts`.
 
-**Konsequenz:** Die Simulation gehört vorerst **nicht** in die Bracket-Rechnung. Sie taugt als
-eigene Anzeige („dieses Deck gewinnt im Median in Zug X") und wird aussagekräftig, sobald sie
-Kartenziehen beherrscht oder echte Einzellisten statt Durchschnittsdecks bewertet.
+Was das gebracht hat: Die **Reihenfolge stimmt jetzt** — der Median-Siegzug liegt bei cEDH auf
+Zug 7, bei denselben Commandern ohne cEDH-Bau auf 8, bei Precons auf 9. Vorher lagen alle drei
+zwischen 8 und 9, die Simulation konnte die Gruppen also gar nicht auseinanderhalten. Gewinnen
+können überhaupt: 137 der 250 cEDH-Decks, 59 der 285 Vergleichsdecks, 8 der 92 Precons.
+
+Was es **nicht** gebracht hat: Die Trennschärfe bleibt bei **0,75** und damit deutlich unter dem,
+was simples Abzählen leistet (0,97–0,99 bei Fast Mana, Tutoren, ungetappten Ländern). Ein
+Zwischenstand an drei Decks hatte 0,99 gezeigt — das war Rauschen einer zu kleinen Stichprobe und
+ist am vollen Korpus widerlegt.
+
+Der Grund liegt weiterhin am Material, nicht mehr am Modell: In einer Singleton-Durchschnittsliste
+müssen beide Combo-Teile gezogen werden, und die Simulation kennt nach wie vor kein ausgelöstes
+oder bedingtes Ziehen (Rhystic Study, Kaskade) und keine Alternativkosten.
+
+**Konsequenz unverändert:** Die Simulation gehört **nicht** in die Bracket-Rechnung. Sie taugt als
+eigene Anzeige („dieses Deck gewinnt im Median in Zug 7") und wird erst dann ein Kriterium, wenn
+sie an echten Einzellisten statt an Durchschnittsdecks gemessen wird.
 
 ### 4. Was diese Auswertung nicht beantwortet
 
@@ -137,8 +150,11 @@ soll.
   Bauart.
 - **Combos nur bis drei Karten.** Alles darüber ist in einem 100-Karten-Deck praktisch nie
   vollständig, treibt aber die Datenmenge ins Unermessliche (siehe `ladeCombos()`).
-- **Die Simulation kennt kein Kartenziehen als Effekt und keine Manafarben.** Sie unterschätzt
-  Decks, die über Ziehen laufen, und überschätzt farbintensive Manabasen.
+- **Die Simulation kennt kein ausgelöstes oder bedingtes Kartenziehen** (Rhystic Study, Kaskade)
+  und keine Alternativkosten (Force of Will). Farbiges Mana, einfaches Ziehen, Einsatzverzögerung
+  und der Mulligan folgen seit der Überarbeitung den Comprehensive Rules; alles Übrige ist im
+  Kopfkommentar von `goldfish-sim.ts` als Vereinfachung aufgezählt. Sie unterschätzt Decks
+  dadurch — die Zahlen sind eine Untergrenze.
 - **Freie Interaktion erkennt nur den Wortlaut "without paying its mana cost"** plus Konter für
   ein Mana. Force of Will ("rather than pay") fällt durchs Raster; das ist in
   `deck-metrics.spec.ts` als bekannte Lücke festgehalten.

@@ -221,10 +221,15 @@ function spielen(
     // Zaubern, solange sich etwas Sinnvolles bezahlen lässt. Die Reihenfolge ist bewusst stur:
     // erst gewinnen, dann Mana entwickeln, dann suchen, dann ziehen. Jede Abweichung davon wäre
     // eine weitere Annahme über Spielkunst, die sich nicht belegen ließe.
+    //
+    // Das verfügbare Mana wird EINMAL je Zug ermittelt und danach fortgeschrieben. Es in jeder
+    // Runde neu aus dem Spielfeld zu lesen wäre falsch: Ausgegebenes Mana käme zurück, und das
+    // Deck könnte beliebig viele Zauber pro Zug spielen. CR 500.5 leert den Manavorrat am Ende
+    // jedes Abschnitts - innerhalb eines Zuges ist er eine endliche Menge, keine Quelle.
+    let mana = verfuegbaresMana(stand, zug);
     let weiter = true;
     while (weiter) {
       weiter = false;
-      let mana = verfuegbaresMana(stand, zug);
 
       // 1. Reicht es, um eine gewinnende Combo in diesem Zug abzuschließen?
       if (gewinntJetzt(stand, siegCombos, mana, nachSchluessel)) return zug;
@@ -237,7 +242,12 @@ function spielen(
       if (quelle) {
         mana = bezahlen(quelle, mana);
         stand.hand.splice(stand.hand.indexOf(quelle), 1);
-        stand.spielfeld.push({ card: quelle, seitZug: zug, getapptGekommen: false });
+        const gespielt = { card: quelle, seitZug: zug, getapptGekommen: false };
+        stand.spielfeld.push(gespielt);
+        // Eine frisch gespielte Manaquelle steht sofort zur Verfügung - sofern sie nicht als
+        // Kreatur unter CR 302.6 fällt; genau das prüft manaQuelleAus().
+        const neu = manaQuelleAus(gespielt, zug);
+        if (neu) mana = [...mana, ...manaUnits([neu])];
         weiter = true;
         continue;
       }
