@@ -1,5 +1,12 @@
 import type { MetricCard, MetricCombo, MetricInput } from './deck-metrics';
-import { MAX_ZUEGE, rng, simulateGoldfish } from './goldfish-sim';
+import {
+  MAX_MULLIGANS,
+  MAX_ZUEGE,
+  STARTHAND,
+  _intern,
+  rng,
+  simulateGoldfish,
+} from './goldfish-sim';
 
 /**
  * Was hier geprüft wird, ist nicht "die Zahl stimmt" - eine Simulation hat keine richtige Zahl.
@@ -235,6 +242,46 @@ describe('goldfish-sim - die Regeln, nach denen sie spielt', () => {
     const ungetappt = simulateGoldfish(bauen('{T}: Add {U}.'), 400, 8);
     const getappt = simulateGoldfish(bauen('This land enters tapped. {T}: Add {U}.'), 400, 8);
     expect(ungetappt.winByTurn3).toBeGreaterThan(getappt.winByTurn3);
+  });
+
+  it('R9 - ausgegebenes Mana kommt im selben Zug nicht zurück', () => {
+    // Der Manavorrat ist innerhalb einer Phase eine endliche Menge (CR 500.5, CR 106.4), keine
+    // Quelle, aus der jede Karte neu schöpft. Der Fall trifft genau das: 40 Länder, Manasteine für
+    // {2}, die je 1 liefern, und eine Combo für 6. In Zug 3 stehen drei Mana; davon geht einer für
+    // den Manastein drauf, der einen zurückgibt - für die Combo reicht das nie. Würde der Vorrat
+    // nach jeder Karte neu aus dem Spielfeld gelesen, ließen sich in Zug 3 drei Manasteine
+    // hintereinander legen und die Combo fiele in denselben Zug.
+    const deck = eingabe(
+      [
+        insel(40),
+        karte('Stein', {
+          cmc: 2,
+          manaCost: '{2}',
+          oracleText: '{T}: Add {U}.',
+          producedMana: ['U'],
+          quantity: 25,
+        }),
+        karte('A', { cmc: 6, manaCost: '{6}', quantity: 15 }),
+        fueller(19),
+      ],
+      [combo(['A'])],
+    );
+    const ergebnis = simulateGoldfish(deck, 500, 21);
+    expect(ergebnis.winByTurn3).toBe(0);
+    expect(ergebnis.winRate).toBeGreaterThan(0);
+  });
+
+  it('CR 103.5c - der erste Mulligan legt im Mehrspieler nichts zurück', () => {
+    // Ein Deck ganz ohne Manaquellen: Jede Starthand fällt bei H1 durch, es wird also bis zum
+    // Anschlag gemulligant (MAX_MULLIGANS = 3). Nach CR 103.5c zählt der erste davon nicht mit -
+    // zurück gehen zwei Karten, die Hand hat fünf. Ohne die Regel wären es vier. Das Ergebnis
+    // hängt an keiner Zufallsfolge, deshalb genügt hier ein Aufruf.
+    const stapel = _intern.bibliothekAus(
+      [karte('Ohne Mana', { quantity: 99 })].map((c) => _intern.simKarteAus(c, false)),
+    );
+    const { handGroesse } = _intern.starthandZiehen(stapel, rng(1));
+    expect(handGroesse).toBe(STARTHAND - (MAX_MULLIGANS - 1));
+    expect(handGroesse).toBe(5);
   });
 
   it('R5 - nur ein Land je Zug', () => {

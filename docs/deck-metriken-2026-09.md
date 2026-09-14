@@ -93,7 +93,7 @@ Wert von 0,5 entfernt ist, desto mehr sagt die Kennzahl aus.
 | A Tempo | Mana in Zug 3 (bestenfalls) | 3,6 | 3,1 | 2,9 | 0,977 | 0,869 |
 | A Tempo | Günstigste gewinnende Combo (Mana) | 6 | 8 | 9 | 0,183 | 0,291 |
 | A Tempo | Frühestmöglicher Siegzug | 6 | 6 | – | – | 0,506 |
-| A Tempo | Simulation: Median-Siegzug | 8 | 8 | 8,5 | 0,213 | 0,358 |
+| A Tempo | Simulation: Median-Siegzug | 8 | 8 | 8,5 | 0,208 | 0,357 |
 | A Tempo | Simulation: Sieg bis Zug 4 (Anteil) | 0 | 0 | 0 | 0,75 | 0,706 |
 | A Tempo | Simulation: Sieg bis Zug 10 (Anteil) | 0,06 | 0 | 0 | 0,767 | 0,71 |
 | B Redundanz | Vollständige Combos im Deck | 5 | 1 | 0 | 0,892 | 0,695 |
@@ -126,8 +126,8 @@ in der Praxis geht - **4 gegen 3** und **5 gegen 4**.
 | Mana in Zug 3 (bestenfalls) | 3 | 3 | 3 | 3,1 | 3,7 | 0,615 | 0,902 |
 | Günstigste gewinnende Combo (Mana) | 11 | 9,5 | 9 | 9 | 4 | 0,431 | 0,22 |
 | Frühestmöglicher Siegzug | – | 4 | 4 | 4 | 4 | 0,519 | 0,443 |
-| Simulation: Median-Siegzug | 9 | 9 | 9 | 8 | 7 | 0,369 | 0,254 |
-| Simulation: Sieg bis Zug 4 (Anteil) | 0 | 0 | 0 | 0 | 0,02 | 0,564 | 0,732 |
+| Simulation: Median-Siegzug | 9,25 | 9 | 9 | 8 | 7 | 0,353 | 0,253 |
+| Simulation: Sieg bis Zug 4 (Anteil) | 0 | 0 | 0 | 0 | 0,02 | 0,56 | 0,732 |
 | Simulation: Sieg bis Zug 10 (Anteil) | 0 | 0 | 0 | 0 | 0,18 | 0,578 | 0,712 |
 | Vollständige Combos im Deck | 0 | 0 | 1 | 4 | 6 | 0,619 | 0,672 |
 | Davon gewinnende | 0 | 0 | 0 | 0 | 2 | 0,562 | 0,642 |
@@ -171,7 +171,7 @@ Dieselbe Rechnung an der Grenze, die eine Bracket-Automatik tatsächlich ziehen 
 | Anteil Karten für 0-1 Mana | ≥ 0,1 | 62 % | 35 % |
 | Freie Interaktion | ≥ 4 | 37 % | 12 % |
 | Ungetappte Länder (%) | ≥ 94 | 52 % | 27 % |
-| Simulation: Median-Siegzug | ≤ 7,5 | 33,3 % | 12,5 % |
+| Simulation: Median-Siegzug | ≤ 8 | 52,8 % | 33,3 % |
 | Vollständige Combos im Deck | ≥ 2 | 70 % | 48 % |
 
 ## Was daraus folgt
@@ -238,13 +238,14 @@ Prüfung, und an dieser Grenze liegen die Stufen ohnehin dicht beieinander.
 ### 4. Die Simulation spielt jetzt nach den Regeln — und trennt trotzdem nicht besser als Abzählen
 
 Die Simulation ist neu gebaut: farbige Kosten statt einer bloßen Manazahl, Hybrid, Phyrexia und
-{X}, Kartenziehen, Einsatzverzögerung bei Manakreaturen, Mehrspieler-Ziehschritt im ersten Zug.
-Jede Regel steht mit ihrer Nummer im Kopfkommentar von `goldfish-sim.ts`, der Wortlaut in
-`docs/mtg-regeln.md`. Das Ergebnis ist zweigeteilt, und beide Hälften gehören in die Antwort:
+{X}, Kartenziehen, Einsatzverzögerung bei Manakreaturen, Mehrspieler-Ziehschritt im ersten Zug
+(CR 103.8c) und der im Mehrspieler freie erste Mulligan (CR 103.5c). Jede Regel steht mit ihrer
+Nummer im Kopfkommentar von `goldfish-sim.ts`, der Wortlaut in `docs/mtg-regeln.md`. Das Ergebnis
+ist zweigeteilt, und beide Hälften gehören in die Antwort:
 
 **Was besser wurde.** Entlang der Bracket-Labels ordnet die Simulation jetzt streng monoton — über
 die Decks, die überhaupt eine Siegcombo haben, steigt der Anteil gewonnener Spiele von
-0,7 % (B1) über 1,3 %, 3,1 %, 6,6 % auf **35,5 % (B5)**, der Median-Siegzug fällt von Zug 9 auf
+0,7 % (B1) über 1,4 %, 3,1 %, 6,7 % auf **36,0 % (B5)**, der Median-Siegzug fällt von Zug 9,5 auf
 Zug 7. Eine Kennzahl, die die fünf Stufen in der richtigen Reihenfolge sortiert, hatte die
 Auswertung vorher nicht.
 

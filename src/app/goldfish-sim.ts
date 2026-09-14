@@ -22,8 +22,8 @@ import { parseManaCost, payManaCost, poolAus } from './mana-symbols';
  *
  *   R1  Commander ist Mehrspieler-Freeforall: 40 Leben, 100 Karten, Singleton, Commander in der
  *       Kommandozone, Commander-Steuer ab dem zweiten Wirken.      903.1/.2/.5a/.5b/.7/.8, 119.1c
- *   R2  Sieben Karten Starthand, London-Mulligan: neue Sieben, danach so viele Karten unter die
- *       Bibliothek, wie oft gemulligant wurde.                                             103.5
+ *   R2  Sieben Karten Starthand, London-Mulligan: neue Sieben, danach Karten unter die
+ *       Bibliothek - im Mehrspieler-Spiel ist der erste Mulligan davon frei.        103.5, 103.5c
  *   R3  Im Mehrspieler-Spiel überspringt NIEMAND den Ziehschritt des ersten Zuges - auch nicht,
  *       wer anfängt. (Im Zweispieler-Spiel wäre es andersherum.)                  103.8a, 103.8c
  *   R4  Zugablauf: Enttappen, Versorgung, Ziehen, erste Hauptphase, Endschritt.
@@ -641,8 +641,14 @@ function handTaugt(hand: readonly SimKarte[]): boolean {
  * the number of times that player has taken a mulligan on the bottom of their library in any
  * order."
  *
- * Genau so: immer sieben neue, und erst danach wandern so viele Karten nach unten, wie gemulligant
- * wurde. Unter die Bibliothek gehen die teuersten Karten (H1) - sie sind das, was eine Starthand am
+ * Genau so: immer sieben neue, und erst danach wandern Karten nach unten. WIE VIELE, sagt für
+ * Commander aber nicht 103.5 allein, sondern CR 103.5c: "In a multiplayer game and in any Brawl
+ * game, the first mulligan a player takes doesn't count toward the number of cards that player will
+ * put on the bottom of their library or the number of mulligans that player may take. Subsequent
+ * mulligans are counted toward these numbers as normal." Der erste Mulligan ist im Commander also
+ * gratis - eine Regel, die eine Simulation, die sie übersieht, systematisch zu langsam macht.
+ *
+ * Unter die Bibliothek gehen die teuersten Karten (H1) - sie sind das, was eine Starthand am
  * wenigsten braucht.
  */
 function starthandZiehen(
@@ -654,16 +660,18 @@ function starthandZiehen(
   for (let mulligan = 0; mulligan <= MAX_MULLIGANS; mulligan++) {
     const hand = bibliothek.slice(0, STARTHAND);
     if (handTaugt(hand) || mulligan === MAX_MULLIGANS) {
-      if (mulligan === 0) return { bibliothek, handGroesse: STARTHAND };
+      // CR 103.5c: der erste Mulligan zählt im Mehrspieler-Spiel nicht mit.
+      const zurueck = Math.max(0, mulligan - 1);
+      if (zurueck === 0) return { bibliothek, handGroesse: STARTHAND };
 
-      // Die teuersten `mulligan` Karten unter die Bibliothek. Sortiert werden POSITIONEN und
+      // Die teuersten `zurueck` Karten unter die Bibliothek. Sortiert werden POSITIONEN und
       // nicht Karten: Ein Deck enthält dieselbe Karte zwar nur einmal (CR 903.5b), Standardländer
       // aber beliebig oft, und die teilen sich hier ein Objekt - über indexOf() träfe das
       // Zurücklegen dann zweimal dieselbe Stelle und die Hand behielte eine Karte zu viel.
       const nachUnten = hand
         .map((karte, index) => ({ karte, index }))
         .sort((a, b) => b.karte.karte.cmc - a.karte.karte.cmc)
-        .slice(0, mulligan)
+        .slice(0, zurueck)
         .map((e) => e.index);
       const bleibt = hand.filter((_, i) => !nachUnten.includes(i));
       bibliothek = [...bleibt, ...bibliothek.slice(STARTHAND), ...nachUnten.map((i) => hand[i])];
@@ -732,4 +740,4 @@ export function simulateGoldfish(input: MetricInput, games = 2000, seed = 1): Go
  * Nur für den Test und für das Auswertungsskript: Ohne diesen Export ließe sich weder festnageln,
  * wie die Simulation eine Karte liest, noch im Bericht nachzählen, wie viel sie davon erfasst.
  */
-export const _intern = { simKarteAus, ziehungenAus, quelleAus };
+export const _intern = { simKarteAus, ziehungenAus, quelleAus, starthandZiehen, bibliothekAus };
