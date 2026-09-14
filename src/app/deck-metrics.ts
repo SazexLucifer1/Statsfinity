@@ -28,6 +28,14 @@ export interface MetricCard {
   key: string;
   quantity: number;
   cmc: number;
+  /**
+   * Die Manakosten als Symbolkette, z. B. "{1}{G/W}{G/W}" (Scryfalls mana_cost).
+   *
+   * Neben cmc, weil die Zahl allein die Frage nicht beantwortet, die beim Spielen zählt: Nicht
+   * "kostet drei", sondern "welche Farben". Gelesen wird die Kette in mana-symbols.ts, gebraucht
+   * in goldfish-sim.ts. Leer, wenn die Karte keine Manakosten hat (Länder) - CR 202.3a.
+   */
+  manaCost: string;
   typeLine: string;
   oracleText: string;
   /** Farbkürzel, die diese Karte erzeugen kann (Scryfall produced_mana). */
