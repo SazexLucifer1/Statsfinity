@@ -344,14 +344,81 @@ async function ladeBestand(supabase) {
 }
 
 /**
- * Schreibt ein Deck samt Karten.
+ * Hält die Zuordnung Kartenname -> Zahl, die archidekt_pool_card_names festlegt.
  *
- * Erst der Deck-Kopf, dann die Karten - schlägt der zweite Schritt fehl, wird der Kopf wieder
+ * Einmal je Lauf geladen und danach im Speicher fortgeschrieben: Bei 10.000 Decks kämen sonst
+ * Hunderttausende Nachschlag-Abfragen zusammen. Die Tabelle wächst nur, wenn ein Deck eine Karte
+ * enthält, die im Vorrat noch nie vorkam - nach den ersten paar hundert Decks ist das die
+ * Ausnahme.
+ */
+class Kartennamen {
+  constructor(supabase) {
+    this.supabase = supabase;
+    this.idZuName = new Map();
+  }
+
+  /** Lädt den Bestand seitenweise - Supabase deckelt eine Antwort ohne range auf 1.000 Zeilen. */
+  async laden() {
+    const SEITE = 1000;
+    for (let von = 0; ; von += SEITE) {
+      const { data, error } = await this.supabase
+        .from('archidekt_pool_card_names')
+        .select('id, name_normalized')
+        .range(von, von + SEITE - 1);
+      if (error) throw new Error(`Kartennamen konnten nicht geladen werden: ${error.message}`);
+      for (const zeile of data) this.idZuName.set(zeile.name_normalized, zeile.id);
+      if (data.length < SEITE) break;
+    }
+  }
+
+  /**
+   * Liefert zu jeder Karte ihre Zahl und legt unbekannte Namen vorher an.
+   *
+   * Das insert nimmt alle neuen Namen auf einmal und liest die vergebenen Zahlen gleich zurück;
+   * ignoreDuplicates fängt den Fall ab, dass ein paralleler Lauf denselben Namen zuerst anlegt.
+   */
+  async ids(karten) {
+    const neu = [...new Set(karten.map((k) => k.name_normalized))].filter(
+      (n) => !this.idZuName.has(n),
+    );
+
+    if (neu.length > 0) {
+      const anzulegen = neu.map((n) => ({
+        name_normalized: n,
+        name: karten.find((k) => k.name_normalized === n).name,
+      }));
+      const { error } = await this.supabase
+        .from('archidekt_pool_card_names')
+        .upsert(anzulegen, { onConflict: 'name_normalized', ignoreDuplicates: true });
+      if (error) throw new Error(`Kartennamen konnten nicht angelegt werden: ${error.message}`);
+
+      const { data, error: leseFehler } = await this.supabase
+        .from('archidekt_pool_card_names')
+        .select('id, name_normalized')
+        .in('name_normalized', neu);
+      if (leseFehler)
+        throw new Error(`Kartennamen konnten nicht gelesen werden: ${leseFehler.message}`);
+      for (const zeile of data) this.idZuName.set(zeile.name_normalized, zeile.id);
+    }
+
+    return karten.map((k) => this.idZuName.get(k.name_normalized));
+  }
+}
+
+/**
+ * Schreibt ein Deck samt Kartenliste.
+ *
+ * Erst der Deck-Kopf, dann die Kartenliste - schlägt der zweite Schritt fehl, wird der Kopf wieder
  * entfernt, damit kein Deck ohne Kartenliste im Vorrat zurückbleibt (ein solches Deck wäre für
  * jede Auswertung Gift und würde durch den unique constraint auf cards_hash auch einen späteren
  * korrekten Import derselben Liste blockieren).
+ *
+ * Die Karten gehen als EINE Zeile mit drei Zahlen-Arrays hinaus, nicht als eine Zeile je Karte.
+ * Begründung und Messwerte: sql/archidekt-pool-card-arrays-2026-09-15.sql.
  */
-async function schreibeDeck(supabase, deckZeile, karten) {
+async function schreibeDeck(supabase, kartennamen, deckZeile, karten) {
+  const ids = await kartennamen.ids(karten);
+
   const { data, error } = await supabase
     .from('archidekt_deck_pool')
     .insert(deckZeile)
@@ -366,9 +433,12 @@ async function schreibeDeck(supabase, deckZeile, karten) {
     );
   }
 
-  const { error: kartenFehler } = await supabase
-    .from('archidekt_deck_pool_cards')
-    .insert(karten.map((k) => ({ ...k, deck_id: data.id })));
+  const { error: kartenFehler } = await supabase.from('archidekt_deck_pool_cardlists').insert({
+    deck_id: data.id,
+    card_ids: ids,
+    quantities: karten.map((k) => k.quantity),
+    commander_ids: ids.filter((_, i) => karten[i].is_commander),
+  });
 
   if (kartenFehler) {
     await supabase.from('archidekt_deck_pool').delete().eq('id', data.id);
@@ -384,7 +454,7 @@ async function schreibeDeck(supabase, deckZeile, karten) {
 // Ein Bracket abarbeiten
 // =====================================================================================
 
-async function importiereBracket(supabase, bracket, ziel, bestand, trockenlauf) {
+async function importiereBracket(supabase, kartennamen, bracket, ziel, bestand, trockenlauf) {
   console.log(`\n=== Bracket ${bracket}: ${ziel} Deck(s) gesucht ===`);
 
   let aufgenommen = 0;
@@ -444,7 +514,7 @@ async function importiereBracket(supabase, bracket, ziel, bestand, trockenlauf) 
           `    + ${deckZeile.name} (${commander.join(' + ')}) - ${deckZeile.card_count} Karten`,
         );
       } else {
-        const { uebersprungen } = await schreibeDeck(supabase, deckZeile, karten);
+        const { uebersprungen } = await schreibeDeck(supabase, kartennamen, deckZeile, karten);
         if (uebersprungen) {
           merkeGrund(uebersprungen);
           continue;
@@ -553,6 +623,7 @@ async function main() {
   );
 
   let supabase = null;
+  let kartennamen = null;
   let bestand = { ids: new Set(), hashes: new Set() };
 
   if (trockenlauf) {
@@ -571,12 +642,23 @@ async function main() {
     const { createClient } = require('@supabase/supabase-js');
     supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
     bestand = await ladeBestand(supabase);
-    console.log(`Im Vorrat: ${bestand.ids.size} Deck(s).`);
+    kartennamen = new Kartennamen(supabase);
+    await kartennamen.laden();
+    console.log(
+      `Im Vorrat: ${bestand.ids.size} Deck(s), ${kartennamen.idZuName.size} bekannte Kartennamen.`,
+    );
   }
 
   let aufgenommen = 0;
   for (const { bracket, anzahl } of plan) {
-    aufgenommen += await importiereBracket(supabase, bracket, anzahl, bestand, trockenlauf);
+    aufgenommen += await importiereBracket(
+      supabase,
+      kartennamen,
+      bracket,
+      anzahl,
+      bestand,
+      trockenlauf,
+    );
   }
 
   console.log(

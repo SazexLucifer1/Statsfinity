@@ -21,7 +21,7 @@ export interface PoolDeck {
   importedAt: string;
 }
 
-/** Eine Karte eines solchen Decks (Tabelle archidekt_deck_pool_cards). */
+/** Eine Karte eines solchen Decks - aus archidekt_deck_pool_cardlists zusammengesetzt. */
 export interface PoolCard {
   /** Name wie auf Archidekt, inklusive " // " bei doppelseitigen Karten. */
   name: string;
@@ -29,18 +29,6 @@ export interface PoolCard {
   isCommander: boolean;
 }
 
-/**
- * Der Archidekt-Deckvorrat für die Developer-Ansicht.
- *
- * Hält zwei Dinge zusammen, weil beide nur von dieser einen Ansicht gebraucht werden: den
- * Auf/Zu-Zustand der Seite (gleiches Muster wie LegalPageService und DeckViewerService - ein
- * Signal, das app.html auswertet; die App hat bewusst keinen Router) und das Laden der Daten.
- *
- * SICHTBARKEIT: Die Tabellen sind per RLS nur für Developer lesbar (profiles.is_developer). Für
- * alle anderen Konten kommt hier schlicht eine leere Liste zurück - die Datenbank filtert, nicht
- * die App. Die Prüfung auf isDeveloper im Profil-Tab blendet den Knopf aus; sie ist Bequemlichkeit,
- * nicht die Absicherung.
- */
 /** Womit die Liste gerade eingegrenzt ist. Leere Bracket-Liste heißt "keine Stufe gewählt". */
 export interface PoolFilter {
   search: string;
@@ -72,6 +60,18 @@ function suchbegriffAufbereiten(begriff: string): string {
     .trim();
 }
 
+/**
+ * Der Archidekt-Deckvorrat für die Developer-Ansicht.
+ *
+ * Hält zwei Dinge zusammen, weil beide nur von dieser einen Ansicht gebraucht werden: den
+ * Auf/Zu-Zustand der Seite (gleiches Muster wie LegalPageService und DeckViewerService - ein
+ * Signal, das app.html auswertet; die App hat bewusst keinen Router) und das Laden der Daten.
+ *
+ * SICHTBARKEIT: Die Tabellen sind per RLS nur für Developer lesbar (profiles.is_developer). Für
+ * alle anderen Konten kommt hier schlicht eine leere Liste zurück - die Datenbank filtert, nicht
+ * die App. Die Prüfung auf isDeveloper im Profil-Tab blendet den Knopf aus; sie ist Bequemlichkeit,
+ * nicht die Absicherung.
+ */
 @Injectable({ providedIn: 'root' })
 export class ArchidektPoolService {
   /** Steuert, ob die Vorrats-Seite statt der Tabs angezeigt wird (ausgewertet in app.html). */
@@ -161,24 +161,53 @@ export class ArchidektPoolService {
     );
   }
 
-  /** Die Kartenliste eines Decks. Commander zuerst, danach alphabetisch - wie in der lesbaren View. */
+  /**
+   * Die Kartenliste eines Decks. Commander zuerst, danach alphabetisch - wie in der lesbaren View.
+   *
+   * Zwei Abfragen statt einer, weil die Kartenliste als Zahlen-Array abgelegt ist und nicht als
+   * Tabelle mit Fremdschlüssel: PostgREST kann nur über echte Beziehungen einbetten, ein int[]
+   * ist keine. Also erst die Liste, dann die Namen zu den darin enthaltenen Zahlen. Bei rund 100
+   * Karten je Deck sind das zwei kleine Anfragen - der Grund für das Array-Format steht in
+   * sql/archidekt-pool-card-arrays-2026-09-15.sql: eine Zeile je Karte hat den Vorrat auf das
+   * Siebzehnfache aufgebläht und die Datenbank an ihre Grenze gebracht.
+   */
   async loadCards(deckId: string): Promise<PoolCard[] | null> {
-    const { data, error } = await supabase
-      .from('archidekt_deck_pool_cards')
-      .select('name, quantity, is_commander')
+    const { data: liste, error } = await supabase
+      .from('archidekt_deck_pool_cardlists')
+      .select('card_ids, quantities, commander_ids')
       .eq('deck_id', deckId)
-      .order('is_commander', { ascending: false })
-      .order('name', { ascending: true });
+      .maybeSingle();
 
-    if (error || !data) {
+    if (error) {
       console.error('Konnte die Kartenliste nicht laden:', error);
       return null;
     }
+    if (!liste) return [];
 
-    return data.map((row) => ({
-      name: row.name,
-      quantity: row.quantity,
-      isCommander: row.is_commander,
-    }));
+    const kartenIds: number[] = liste.card_ids ?? [];
+    const mengen: number[] = liste.quantities ?? [];
+    const commander = new Set<number>(liste.commander_ids ?? []);
+
+    const { data: namen, error: namenFehler } = await supabase
+      .from('archidekt_pool_card_names')
+      .select('id, name')
+      .in('id', kartenIds);
+
+    if (namenFehler || !namen) {
+      console.error('Konnte die Kartennamen nicht laden:', namenFehler);
+      return null;
+    }
+
+    const nameZuId = new Map<number, string>(namen.map((n) => [n.id, n.name]));
+
+    return kartenIds
+      .map((id, i) => ({
+        name: nameZuId.get(id) ?? `#${id}`,
+        quantity: mengen[i] ?? 1,
+        isCommander: commander.has(id),
+      }))
+      .sort(
+        (a, b) => Number(b.isCommander) - Number(a.isCommander) || a.name.localeCompare(b.name),
+      );
   }
 }
