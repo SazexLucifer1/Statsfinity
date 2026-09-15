@@ -54,28 +54,45 @@ export class ArchidektPoolBrowser {
    */
   readonly bracketFilter = signal<Set<string>>(new Set(BRACKETS));
 
+  /** Läuft beim Tippen, damit nicht jeder Tastendruck eine eigene Abfrage auslöst. */
+  private suchTimer: ReturnType<typeof setTimeout> | null = null;
+
+  constructor() {
+    // app.html hängt die Komponente nur bei isOpen() ein, es gibt also je Öffnen eine frische
+    // Instanz - hier zu laden heißt: die Liste ist beim Öffnen immer aktuell.
+    void this.neuLaden();
+  }
+
+  setSearch(wert: string): void {
+    this.search.set(wert);
+    if (this.suchTimer) clearTimeout(this.suchTimer);
+    this.suchTimer = setTimeout(() => void this.neuLaden(), 300);
+  }
+
+  setBrackets(next: Set<string>): void {
+    this.bracketFilter.set(next);
+    void this.neuLaden();
+  }
+
+  /**
+   * Ob gerade ein Filter aktiv ist. Entscheidet bei null Treffern, ob "nichts gefunden" oder
+   * "noch nichts importiert" dasteht - zwei sehr verschiedene Aussagen.
+   */
+  readonly eingegrenzt = computed(
+    () => this.search().trim().length > 0 || this.bracketFilter().size < BRACKETS.length,
+  );
+
+  private neuLaden(): Promise<void> {
+    return this.pool.loadDecks({
+      search: this.search(),
+      brackets: [...this.bracketFilter()].map(Number),
+    });
+  }
+
   readonly selected = signal<PoolDeck | null>(null);
   readonly cards = signal<PoolCardEntry[]>([]);
   readonly deckBusy = signal(false);
   readonly deckFailed = signal(false);
-
-  /** Nach Name und Commander, beides klein geschrieben verglichen. Rein im Browser, ohne Nachladen. */
-  readonly filteredDecks = computed(() => {
-    const begriff = this.search().trim().toLowerCase();
-    const stufen = this.bracketFilter();
-
-    return this.pool.decks().filter((deck) => {
-      if (!stufen.has(String(deck.creatorBracket))) return false;
-      if (!begriff) return true;
-      return (
-        deck.name.toLowerCase().includes(begriff) ||
-        deck.commanderNames.some((c) => c.toLowerCase().includes(begriff))
-      );
-    });
-  });
-
-  /** Für die Kopfzeile: "3 von 12" macht sichtbar, dass ein Filter gerade etwas ausblendet. */
-  readonly totalCount = computed(() => this.pool.decks().length);
 
   readonly commanderCards = computed(() =>
     this.cards()

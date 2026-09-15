@@ -156,6 +156,8 @@ export const profile = {
     'profile.poolAllBrackets': 'Alle',
     'profile.poolCount': '{{shown}} von {{total}} Decks',
     'profile.poolNoResults': 'Kein Deck passt zu dieser Suche.',
+    'profile.poolLimited':
+      'Anzeige begrenzt – grenze die Suche weiter ein, um die übrigen zu sehen.',
     'profile.poolEmpty':
       'Noch keine Decks importiert. Der Import läuft über den Workflow „Archidekt deck import“.',
     'profile.poolLoadFailed': 'Der Deckvorrat konnte nicht geladen werden.',
@@ -319,6 +321,7 @@ export const profile = {
     'profile.poolAllBrackets': 'All',
     'profile.poolCount': '{{shown}} of {{total}} decks',
     'profile.poolNoResults': 'No deck matches this search.',
+    'profile.poolLimited': 'Display limited – narrow the search to see the rest.',
     'profile.poolEmpty':
       'No decks imported yet. The import runs via the "Archidekt deck import" workflow.',
     'profile.poolLoadFailed': 'The deck pool could not be loaded.',

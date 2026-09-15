@@ -14,10 +14,11 @@
           type="search"
           [placeholder]="i18n.t('profile.poolSearchPlaceholder')"
           [ngModel]="search()"
-          (ngModelChange)="search.set($event)"
+          (ngModelChange)="setSearch($event)"
         />
         <app-multi-select
-          [(value)]="bracketFilter"
+          [value]="bracketFilter()"
+          (valueChange)="setBrackets($event)"
           [options]="brackets"
           [label]="i18n.t('profile.poolBracketFilter')"
           [allLabel]="i18n.t('profile.poolAllBrackets')"
@@ -28,32 +29,29 @@
         <p class="hint">{{ i18n.t('login.pleaseWait') }}</p>
       } @else if (pool.failed()) {
         <p class="hint">{{ i18n.t('profile.poolLoadFailed') }}</p>
-      } @else if (totalCount() === 0) {
-        <p class="hint">{{ i18n.t('profile.poolEmpty') }}</p>
+      } @else if (pool.total() === 0) {
+        <p class="hint">
+          {{ i18n.t(eingegrenzt() ? 'profile.poolNoResults' : 'profile.poolEmpty') }}
+        </p>
       } @else {
         <p class="hint pool-count">
-          {{ i18n.t('profile.poolCount', { shown: filteredDecks().length, total: totalCount() }) }}
+          {{ i18n.t('profile.poolCount', { shown: pool.decks().length, total: pool.total() }) }}
+          @if (pool.begrenzt()) {
+            <br />{{ i18n.t('profile.poolLimited') }}
+          }
         </p>
 
-        @if (filteredDecks().length === 0) {
-          <p class="hint">{{ i18n.t('profile.poolNoResults') }}</p>
-        } @else {
-          <ul class="pool-list">
-            @for (deck of filteredDecks(); track deck.id) {
-              <li class="pool-list-entry" (click)="openDeck(deck)">
-                <div class="pool-entry-main">
-                  <span class="pool-entry-name">{{ deck.name }}</span>
-                  <span class="pool-entry-commander">{{ deck.commanderNames.join(' + ') }}</span>
-                </div>
-                <app-bracket-badge
-                  [bracket]="deck.creatorBracket"
-                  source="manual"
-                  [compact]="true"
-                />
-              </li>
-            }
-          </ul>
-        }
+        <ul class="pool-list">
+          @for (deck of pool.decks(); track deck.id) {
+            <li class="pool-list-entry" (click)="openDeck(deck)">
+              <div class="pool-entry-main">
+                <span class="pool-entry-name">{{ deck.name }}</span>
+                <span class="pool-entry-commander">{{ deck.commanderNames.join(' + ') }}</span>
+              </div>
+              <app-bracket-badge [bracket]="deck.creatorBracket" source="manual" [compact]="true" />
+            </li>
+          }
+        </ul>
       }
     } @else {
       <div class="pool-deck-header">
