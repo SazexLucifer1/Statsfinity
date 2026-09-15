@@ -104,7 +104,13 @@ export class ArchidektPoolBrowser {
 
     this.cards.set(
       geladen.map((k) => ({
-        card: kartenMap.get(k.name) ?? { name: k.name },
+        // findCardsBulk legt jede Karte unter dem KLEINGESCHRIEBENEN Originalnamen ab (siehe
+        // scryfall.service.ts: `original?.toLowerCase()`), nicht unter dem Namen, wie er
+        // hineingereicht wurde. Ohne toLowerCase() geht jeder Treffer daneben und jede Karte
+        // fällt stillschweigend auf die Namens-Kachel zurück - genau so nachgeschlagen wie in
+        // precon-browser.ts. Das trim() deckt zusätzlich ab, dass die Map ihre Schlüssel aus den
+        // getrimmten Namen baut, die Namen hier aber unverändert aus der Datenbank kommen.
+        card: kartenMap.get(k.name.trim().toLowerCase()) ?? { name: k.name },
         quantity: k.quantity,
         isCommander: k.isCommander,
       })),
