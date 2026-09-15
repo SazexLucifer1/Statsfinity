@@ -1,0 +1,71 @@
+name: Archidekt deck import
+
+# Holt fremde Commander-Decks von Archidekt in den eigenen Auswertungsvorrat, damit sich die
+# Bracket-Einstufung aus src/app/bracket.ts gegen Decks prüfen lässt, deren Stufe jemand anders
+# festgelegt hat. Tabellen: sql/archidekt-deck-pool-2026-09-15.sql, Ablauf:
+# scripts/import-archidekt-decks.js
+#
+# ANDERS ALS DIE DREI ÜBRIGEN WORKFLOWS ist das KEIN Nachtlauf, sondern ausschließlich von Hand
+# auslösbar: Der Vorrat soll bewusst wachsen, wenn jemand ihn braucht, nicht unbeobachtet jede
+# Nacht. Auslösen unter "Actions" -> "Archidekt deck import" -> "Run workflow", dann Bracket und
+# Anzahl eintragen.
+#
+# Braucht dasselbe Repo-Secret SUPABASE_SERVICE_ROLE_KEY wie die beiden Abgleiche
+# (Supabase-Dashboard -> Project Settings -> API -> "service_role", NICHT der öffentliche
+# Anon-Key aus supabase.client.ts). Nötig, weil die Tabellen nur für Developer lesbar und über RLS
+# für niemanden schreibbar sind - der Service-Role-Key umgeht RLS. Für einen Trockenlauf wird das
+# Secret nicht gebraucht.
+#
+# Wichtig: Die Migration sql/archidekt-deck-pool-2026-09-15.sql muss EINMAL von Hand im
+# Supabase-SQL-Editor gelaufen sein, sonst findet das Skript die Tabellen nicht. Ein Merge allein
+# ändert an der Datenbank nichts.
+
+on:
+  workflow_dispatch:
+    inputs:
+      bracket:
+        description: 'Bracket-Stufe des Erstellers (1 = Exhibition ... 5 = cEDH)'
+        required: true
+        type: choice
+        options: ['1', '2', '3', '4', '5']
+        default: '3'
+      anzahl:
+        description: 'Wie viele NEUE Decks dieser Stufe (1-200; bereits vorhandene zählen nicht mit)'
+        required: true
+        default: '25'
+      dry_run:
+        description: 'Trockenlauf - nur anzeigen, was importiert würde, nichts schreiben'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check that SUPABASE_SERVICE_ROLE_KEY is set
+        if: ${{ !inputs.dry_run }}
+        run: |
+          if [ -z "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" ]; then
+            echo "::error::Secret SUPABASE_SERVICE_ROLE_KEY ist nicht gesetzt - siehe Kommentar oben in dieser Datei. Import wird übersprungen."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Import decks from Archidekt
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          node scripts/import-archidekt-decks.js \
+            --bracket '${{ inputs.bracket }}' \
+            --anzahl '${{ inputs.anzahl }}' \
+            ${{ inputs.dry_run && '--dry-run' || '' }}
