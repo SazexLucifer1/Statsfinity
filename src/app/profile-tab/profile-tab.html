@@ -606,6 +606,19 @@
 
 <div class="profile-grid">
   @if (profileService.profile()?.isDeveloper) {
+  <!-- Archidekt-Deckvorrat: fremde Decks als Referenz für die Bracket-Auswertung. Die Liste
+       selbst ist eine eigene Seite (app-archidekt-pool-browser, geschaltet in app.html) - 100
+       Kartenbilder gehören nicht mitten ins Profil. -->
+  <section class="glass-card span-full">
+    <div class="section-header-row">
+      <h2>{{ i18n.t('profile.poolSectionTitle') }}</h2>
+      <button class="glass-chip small" (click)="archidektPool.open()">
+        {{ i18n.t('profile.poolOpen') }}
+      </button>
+    </div>
+    <p class="hint">{{ i18n.t('profile.poolSectionHint') }}</p>
+  </section>
+
   <section class="glass-card span-full">
     <div class="section-header-row">
       <h2>{{ i18n.t('feedback.developerTitle') }}</h2>

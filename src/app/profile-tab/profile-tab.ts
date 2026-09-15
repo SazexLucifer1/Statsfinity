@@ -2,6 +2,7 @@ import { Component, computed, effect, inject, signal, viewChild } from '@angular
 import { FormsModule } from '@angular/forms';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import QRCode from 'qrcode';
+import { ArchidektPoolService } from '../archidekt-pool.service';
 import { ProfileService } from '../profile.service';
 import { MtgService } from '../mtg.service';
 import { GroupService } from '../group.service';
@@ -54,6 +55,7 @@ const COLOR_RADAR_AXES: readonly string[] = [...FILTER_COLORS, COLORLESS];
 })
 export class ProfileTab {
   readonly profileService = inject(ProfileService);
+  readonly archidektPool = inject(ArchidektPoolService);
   readonly mtg = inject(MtgService);
   readonly groupService = inject(GroupService);
   private readonly deckService = inject(DeckService);

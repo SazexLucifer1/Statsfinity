@@ -1,0 +1,142 @@
+<div class="pool-page">
+  <div class="pool-header">
+    <button type="button" class="glass-button small" (click)="selected() ? backToList() : close()">
+      {{ selected() ? i18n.t('profile.poolBackToList') : i18n.t('profile.poolClose') }}
+    </button>
+    <h2>{{ selected()?.name ?? i18n.t('profile.poolTitle') }}</h2>
+  </div>
+
+  <section class="glass-card">
+    @if (!selected()) {
+      <div class="pool-filter-row">
+        <input
+          class="glass-input"
+          type="search"
+          [placeholder]="i18n.t('profile.poolSearchPlaceholder')"
+          [ngModel]="search()"
+          (ngModelChange)="search.set($event)"
+        />
+        <app-multi-select
+          [(value)]="bracketFilter"
+          [options]="brackets"
+          [label]="i18n.t('profile.poolBracketFilter')"
+          [allLabel]="i18n.t('profile.poolAllBrackets')"
+        />
+      </div>
+
+      @if (pool.loading()) {
+        <p class="hint">{{ i18n.t('login.pleaseWait') }}</p>
+      } @else if (pool.failed()) {
+        <p class="hint">{{ i18n.t('profile.poolLoadFailed') }}</p>
+      } @else if (totalCount() === 0) {
+        <p class="hint">{{ i18n.t('profile.poolEmpty') }}</p>
+      } @else {
+        <p class="hint pool-count">
+          {{ i18n.t('profile.poolCount', { shown: filteredDecks().length, total: totalCount() }) }}
+        </p>
+
+        @if (filteredDecks().length === 0) {
+          <p class="hint">{{ i18n.t('profile.poolNoResults') }}</p>
+        } @else {
+          <ul class="pool-list">
+            @for (deck of filteredDecks(); track deck.id) {
+              <li class="pool-list-entry" (click)="openDeck(deck)">
+                <div class="pool-entry-main">
+                  <span class="pool-entry-name">{{ deck.name }}</span>
+                  <span class="pool-entry-commander">{{ deck.commanderNames.join(' + ') }}</span>
+                </div>
+                <app-bracket-badge
+                  [bracket]="deck.creatorBracket"
+                  source="manual"
+                  [compact]="true"
+                />
+              </li>
+            }
+          </ul>
+        }
+      }
+    } @else {
+      <div class="pool-deck-header">
+        @if (commanderCards().length > 0) {
+          <div class="pool-commander-image">
+            <app-partner-card-image
+              [cards]="commanderCards()"
+              [compact]="true"
+              (imageClick)="openPreview($event)"
+            />
+          </div>
+        }
+        <div class="pool-deck-meta">
+          <app-bracket-badge [bracket]="selected()!.creatorBracket" source="manual" />
+          <p class="hint">
+            {{ i18n.t('profile.poolCardCount', { count: selected()!.cardCount }) }}
+            @if (selected()!.ownerUsername) {
+              · {{ selected()!.ownerUsername }}
+            }
+          </p>
+          <a
+            class="glass-chip small"
+            [href]="archidektUrl(selected()!)"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {{ i18n.t('profile.poolOpenOnArchidekt') }}
+          </a>
+        </div>
+      </div>
+
+      @if (deckBusy()) {
+        <p class="hint">{{ i18n.t('login.pleaseWait') }}</p>
+      } @else if (deckFailed()) {
+        <p class="hint">{{ i18n.t('profile.poolCardsFailed') }}</p>
+      } @else {
+        @if (commanderCards().length > 0) {
+          <h4 class="pool-section-title">{{ i18n.t('profile.poolCommanderSection') }}</h4>
+          <div class="card-grid">
+            @for (entry of commanderCards(); track entry.name) {
+              <div class="card-tile" (click)="openPreview(entry)">
+                <div class="card-tile-image">
+                  @if (entry.imageUrl) {
+                    <app-card-image
+                      [imageUrl]="entry.imageUrl"
+                      [backImageUrl]="entry.backImageUrl"
+                      [alt]="entry.name"
+                      [compact]="true"
+                    />
+                  } @else {
+                    <div class="card-tile-placeholder">{{ entry.name }}</div>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        }
+
+        <h4 class="pool-section-title">
+          {{ i18n.t('profile.poolDeckSection', { count: mainCards().length }) }}
+        </h4>
+        <div class="card-grid">
+          @for (entry of mainCards(); track entry.card.name) {
+            <div class="card-tile" (click)="openPreview(entry.card)">
+              <div class="card-tile-image">
+                @if (entry.card.imageUrl) {
+                  <app-card-image
+                    [imageUrl]="entry.card.imageUrl"
+                    [backImageUrl]="entry.card.backImageUrl"
+                    [alt]="entry.card.name"
+                    [compact]="true"
+                  />
+                } @else {
+                  <div class="card-tile-placeholder">{{ entry.card.name }}</div>
+                }
+              </div>
+              @if (entry.quantity > 1) {
+                <span class="card-tile-count">×{{ entry.quantity }}</span>
+              }
+            </div>
+          }
+        </div>
+      }
+    }
+  </section>
+</div>
