@@ -113,7 +113,7 @@
         }
 
         <h4 class="pool-section-title">
-          {{ i18n.t('profile.poolDeckSection', { count: mainCards().length }) }}
+          {{ i18n.t('profile.poolDeckSection', { count: mainCardCount() }) }}
         </h4>
         <div class="card-grid">
           @for (entry of mainCards(); track entry.card.name) {

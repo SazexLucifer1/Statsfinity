@@ -85,6 +85,17 @@ export class ArchidektPoolBrowser {
 
   readonly mainCards = computed(() => this.cards().filter((e) => !e.isCommander));
 
+  /**
+   * Summe der Mengen, nicht die Zahl der Kacheln: Mehrfach enthaltene Karten - in der Praxis fast
+   * immer Standardländer - stehen als EINE Zeile mit ihrer Menge da (der Primärschlüssel der
+   * Kartentabelle ist (deck_id, name_normalized)). Die Kachelzahl wäre deshalb kleiner als das
+   * Deck und widerspräche der Kartenzahl in der Kopfzeile: "8x Forest" sind acht Karten, eine
+   * Kachel. Ohne diese Summe stand über einem vollständigen Deck "Deck (92)" statt "Deck (99)".
+   */
+  readonly mainCardCount = computed(() =>
+    this.mainCards().reduce((summe, e) => summe + e.quantity, 0),
+  );
+
   async openDeck(deck: PoolDeck): Promise<void> {
     this.selected.set(deck);
     this.cards.set([]);
