@@ -31,7 +31,11 @@
   </header>
 
 <main class="content">
-  @if (deckViewer.viewingDeck()) {
+  @if (archidektPool.isOpen()) {
+  <!-- Developer-Ansicht auf den Archidekt-Deckvorrat. Wie die Deck-Detailansicht eine eigene Seite
+       im Inhaltsbereich statt eines Vollbild-Popups - sonst scrollen zwei Ebenen gleichzeitig. -->
+  <app-archidekt-pool-browser />
+  } @else if (deckViewer.viewingDeck()) {
   <!-- Die Deck-Detailansicht ist eine eigene Seite im Inhaltsbereich statt eines Vollbild-Popups:
        so scrollt nur das Fenster selbst (statt Seite + Overlay gleichzeitig) und der App-Hintergrund
        bleibt wie in den Tabs sichtbar. -->

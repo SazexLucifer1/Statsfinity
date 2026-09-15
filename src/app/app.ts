@@ -25,6 +25,8 @@ import { ResetPassword } from './reset-password/reset-password';
 import { GameSessionService } from './game-session.service';
 import { AuthService } from './auth.service';
 import { NavigationService, AppTab } from './navigation.service';
+import { ArchidektPoolBrowser } from './archidekt-pool-browser/archidekt-pool-browser';
+import { ArchidektPoolService } from './archidekt-pool.service';
 import { DeckViewerService } from './deck-viewer.service';
 import { I18nService } from './i18n.service';
 import { FeedbackService } from './feedback.service';
@@ -56,6 +58,7 @@ import { APP_VERSION, APP_COMMIT } from './version';
     Dialog,
     LegalFooter,
     LegalPageView,
+    ArchidektPoolBrowser,
     SearchTab,
     LoginRequired,
     GlobalStats,
@@ -72,6 +75,7 @@ export class App {
   readonly tournament = inject(TournamentService);
   readonly loginOverlay = inject(LoginOverlayService);
   readonly deckViewer = inject(DeckViewerService);
+  readonly archidektPool = inject(ArchidektPoolService);
 
   /** Nur injiziert, damit der Dienst überhaupt existiert: er hängt sich an den Tab-Wechsel und holt
    * die Ansicht zurück, falls nach dem Zurückkommen nichts mehr gerendert wird (weißer Bildschirm). */
