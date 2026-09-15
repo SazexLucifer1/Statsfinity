@@ -81,9 +81,20 @@ const normalizedFrontName = (name) => normalizeCardName(frontName(name));
 // =====================================================================================
 // Rate-Limit
 //
-// Archidekt veröffentlicht keine Obergrenze, also wird bewusst zurückhaltend angefragt statt
-// ausgetestet, wo es knallt. Die Zahlen sind an scripts/sync-spellbook-bracket.js angelehnt, wo
-// ein Lauf schon einmal an einem Rate-Limit gescheitert ist (HTTP 429 nach 136 Anfragen).
+// Archidekt veröffentlicht keine Obergrenze und schickt keine Rate-Limit-Header (nachgesehen:
+// nur "server: nginx"). Die Zahlen unten sind deshalb NACHGEMESSEN, nicht geraten:
+//
+//   100 Anfragen seriell ohne jede Pause -> 4,14 Anfragen/s, 242 ms mittlere Latenz, 100x HTTP 200
+//   300 Anfragen über drei Minuten bei ~1,7/s                                      -> 300x HTTP 200
+//
+// 4 Anfragen/s sind also die physikalische Obergrenze, solange streng seriell angefragt wird.
+// PAUSE_JE_ANFRAGE liegt bei der Hälfte davon: schnell genug für große Läufe, langsam genug, dass
+// die Bremse eine Bremse bleibt. Zum Vergleich der Anlass für all das: In
+// scripts/sync-spellbook-bracket.js ist ein Lauf schon einmal an einem Rate-Limit gescheitert
+// (HTTP 429 nach 136 Anfragen).
+//
+// NICHT gemessen ist ein Kontingent pro Stunde - der längste Test lief drei Minuten. Sollte es
+// eines geben, wartet der 429-Zweig unten das Fenster aus und der Lauf geht weiter.
 //
 // Drei Bremsen greifen zusammen:
 //   1. ALLE Anfragen laufen streng der Reihe nach - nie parallel. Ein Promise.all über 25
@@ -94,28 +105,33 @@ const normalizedFrontName = (name) => normalizeCardName(frontName(name));
 //      wenn die Suche unerwartet viele Seiten mit lauter Duplikaten liefert.
 //
 // Ein Deck kostet eine Anfrage, eine Suchseite (60 Treffer) ebenfalls eine. Nicht jedes geprüfte
-// Deck wird aufgenommen (Kartenzahl, fehlender Commander, Duplikate), 1.000 aufgenommene Decks
-// kosten also eher 1.400 bis 1.800 Anfragen - bei einer Sekunde Pause rund eine halbe Stunde. Das
-// ist für einen von Hand ausgelösten Lauf in Ordnung: Die Sekundenpause ist das Einzige, was
-// zuverlässig vor einem Rate-Limit schützt, und sie wird für mehr Tempo NICHT angetastet.
+// Deck wird aufgenommen (Kartenzahl, fehlender Commander, Duplikate), 10.000 aufgenommene Decks
+// kosten also eher 14.000 bis 18.000 Anfragen - bei 500 ms Pause rund zwei bis drei Stunden.
+//
+// Die harte Grenze dahinter ist NICHT Archidekt, sondern GitHub Actions: Ein Job wird nach sechs
+// Stunden abgebrochen. Deshalb ist MAX_DECKS_JE_LAUF so gesetzt, dass ein voller Lauf mit
+// deutlichem Abstand darunter bleibt. Passiert es trotzdem, ist es kein Drama: Jedes Deck wird
+// einzeln geschrieben, und der Bestandsabgleich sorgt dafür, dass der nächste Lauf dort
+// weitermacht, wo der abgebrochene aufhörte.
 //
 // Ein Abbruch mitten im Lauf kostet übrigens nur Zeit, keine Daten: Jedes Deck wird einzeln
 // geschrieben, und beim nächsten Lauf sorgt der Bestandsabgleich dafür, dass er dort weitermacht,
 // wo der letzte aufhörte.
 // =====================================================================================
-const PAUSE_JE_ANFRAGE = 1000;
+const PAUSE_JE_ANFRAGE = 500;
 const PAUSE_NACH_LIMIT = 60000;
 const VERSUCHE = 6;
 
 /**
  * Harte Obergrenze für den ganzen Lauf. Großzügig über dem, was MAX_DECKS_JE_LAUF im Normalfall
- * braucht (rund 1.400-1.800), damit nicht ein Lauf mit vielen aussortierten Decks kurz vor dem
- * Ziel abbricht - aber eng genug, dass ein Lauf, der ins Leere läuft, nicht stundenlang weitergeht.
+ * braucht (rund 14.000-18.000), damit nicht ein Lauf mit vielen aussortierten Decks kurz vor dem
+ * Ziel abbricht - aber eng genug, dass ein Lauf, der ins Leere läuft, nicht bis zum
+ * Job-Abbruch nach sechs Stunden weiterläuft.
  */
-const MAX_ANFRAGEN = 3000;
+const MAX_ANFRAGEN = 25000;
 
 /** Obergrenze für --anzahl. Mehr als das gehört auf mehrere Läufe verteilt. */
-const MAX_DECKS_JE_LAUF = 1000;
+const MAX_DECKS_JE_LAUF = 10000;
 
 /** Archidekt liefert immer 60 Treffer je Seite, pageSize wird serverseitig ignoriert. */
 const TREFFER_JE_SEITE = 60;
@@ -123,12 +139,12 @@ const TREFFER_JE_SEITE = 60;
 /**
  * Reißleine, falls die Suche endlos Seiten mit lauter bereits bekannten Decks liefert.
  *
- * 100 Seiten sind 6.000 geprüfte Kandidaten je Stufe - genug, um auch bei einem gut gefüllten
- * Vorrat noch 1.000 neue Decks zu finden. Nachgemessen: Archidekts Suche blättert weit über die
+ * 400 Seiten sind 24.000 geprüfte Kandidaten je Stufe - genug, um auch bei einem gut gefüllten
+ * Vorrat noch 10.000 neue Decks zu finden. Nachgemessen: Archidekts Suche blättert weit über die
  * angezeigten "count: 1000" hinaus (Seite 400 liefert noch 60 Treffer, ohne Überschneidung zu
  * Seite 1), der Vorrat ist also nicht die Grenze.
  */
-const MAX_SEITEN_JE_BRACKET = 100;
+const MAX_SEITEN_JE_BRACKET = 400;
 
 let anfragenGesamt = 0;
 let letzteAnfrage = 0;
@@ -505,7 +521,7 @@ function leseArgumente(argv) {
   const gesamt = plan.reduce((s, p) => s + p.anzahl, 0);
   if (gesamt > MAX_DECKS_JE_LAUF)
     throw new Error(
-      `${gesamt} Decks in einem Lauf sind zu viel (Obergrenze ${MAX_DECKS_JE_LAUF}). Bei einer Anfrage pro Sekunde wäre das mehr als eine halbe Stunde Dauerlast auf einer fremden API - bitte auf mehrere Läufe aufteilen. Das kostet nichts: Bereits importierte Decks werden übersprungen, ein zweiter Lauf macht also dort weiter, wo der erste aufhörte.`,
+      `${gesamt} Decks in einem Lauf sind zu viel (Obergrenze ${MAX_DECKS_JE_LAUF}). Ein so langer Lauf liefe in den Job-Abbruch von GitHub Actions nach sechs Stunden - bitte auf mehrere Läufe aufteilen. Das kostet nichts: Bereits importierte Decks werden übersprungen, ein zweiter Lauf macht also dort weiter, wo der erste aufhörte.`,
     );
 
   return { plan, trockenlauf, gesamt };
@@ -520,11 +536,20 @@ async function main() {
     `Archidekt-Import${trockenlauf ? ' (Trockenlauf - es wird nichts geschrieben)' : ''}: ` +
       plan.map((p) => `Bracket ${p.bracket} x${p.anzahl}`).join(', '),
   );
+  // Die Schätzung ist bewusst als SPANNE ausgegeben. Die untere Grenze wäre nur zu halten, wenn
+  // jedes geprüfte Deck auch aufgenommen wird; in der Praxis kosten aussortierte Decks (Kartenzahl,
+  // fehlender Commander, Duplikate) je eine weitere Anfrage. Bei kleinen Läufen ist der
+  // Unterschied ein paar Sekunden, bei 10.000 sind es Stunden - eine einzelne Zahl hätte dort in
+  // die Irre geführt.
+  const minuten = (anfragen) => Math.ceil((anfragen * (PAUSE_JE_ANFRAGE / 1000)) / 60);
+  const grundlast = gesamt + gesamt / TREFFER_JE_SEITE + plan.length;
   console.log(
     `Rate-Limit: eine Anfrage pro ${PAUSE_JE_ANFRAGE / 1000}s, streng der Reihe nach, ` +
-      `höchstens ${MAX_ANFRAGEN} Anfragen im Lauf. Grobe Schätzung: ` +
-      `${Math.ceil((gesamt + gesamt / TREFFER_JE_SEITE + plan.length) * (PAUSE_JE_ANFRAGE / 1000))}s ` +
-      'bei lauter Treffern.',
+      `höchstens ${MAX_ANFRAGEN} Anfragen im Lauf.`,
+  );
+  console.log(
+    `Laufzeit: ab ${minuten(grundlast)} Min (wenn jedes geprüfte Deck passt), ` +
+      `eher ${minuten(grundlast * 1.6)} Min mit den üblichen Aussortierten.`,
   );
 
   let supabase = null;
