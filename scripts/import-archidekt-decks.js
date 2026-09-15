@@ -93,22 +93,42 @@ const normalizedFrontName = (name) => normalizeCardName(frontName(name));
 //   3. MAX_ANFRAGEN als harte Obergrenze für den ganzen Lauf. Sie begrenzt die Laufzeit auch dann,
 //      wenn die Suche unerwartet viele Seiten mit lauter Duplikaten liefert.
 //
-// Ein Deck kostet eine Anfrage, eine Suchseite (60 Treffer) ebenfalls eine. 25 Decks sind damit
-// rund 27 Anfragen und knapp eine halbe Minute - unkritisch. Die Obergrenze für --anzahl liegt
-// bei MAX_DECKS_JE_LAUF, weil jenseits davon ein Lauf so lang wird, dass er besser in mehrere
-// zerfällt.
+// Ein Deck kostet eine Anfrage, eine Suchseite (60 Treffer) ebenfalls eine. Nicht jedes geprüfte
+// Deck wird aufgenommen (Kartenzahl, fehlender Commander, Duplikate), 1.000 aufgenommene Decks
+// kosten also eher 1.400 bis 1.800 Anfragen - bei einer Sekunde Pause rund eine halbe Stunde. Das
+// ist für einen von Hand ausgelösten Lauf in Ordnung: Die Sekundenpause ist das Einzige, was
+// zuverlässig vor einem Rate-Limit schützt, und sie wird für mehr Tempo NICHT angetastet.
+//
+// Ein Abbruch mitten im Lauf kostet übrigens nur Zeit, keine Daten: Jedes Deck wird einzeln
+// geschrieben, und beim nächsten Lauf sorgt der Bestandsabgleich dafür, dass er dort weitermacht,
+// wo der letzte aufhörte.
 // =====================================================================================
 const PAUSE_JE_ANFRAGE = 1000;
 const PAUSE_NACH_LIMIT = 60000;
 const VERSUCHE = 6;
-const MAX_ANFRAGEN = 600;
-const MAX_DECKS_JE_LAUF = 200;
+
+/**
+ * Harte Obergrenze für den ganzen Lauf. Großzügig über dem, was MAX_DECKS_JE_LAUF im Normalfall
+ * braucht (rund 1.400-1.800), damit nicht ein Lauf mit vielen aussortierten Decks kurz vor dem
+ * Ziel abbricht - aber eng genug, dass ein Lauf, der ins Leere läuft, nicht stundenlang weitergeht.
+ */
+const MAX_ANFRAGEN = 3000;
+
+/** Obergrenze für --anzahl. Mehr als das gehört auf mehrere Läufe verteilt. */
+const MAX_DECKS_JE_LAUF = 1000;
 
 /** Archidekt liefert immer 60 Treffer je Seite, pageSize wird serverseitig ignoriert. */
 const TREFFER_JE_SEITE = 60;
 
-/** Reißleine, falls die Suche endlos Seiten mit lauter bereits bekannten Decks liefert. */
-const MAX_SEITEN_JE_BRACKET = 40;
+/**
+ * Reißleine, falls die Suche endlos Seiten mit lauter bereits bekannten Decks liefert.
+ *
+ * 100 Seiten sind 6.000 geprüfte Kandidaten je Stufe - genug, um auch bei einem gut gefüllten
+ * Vorrat noch 1.000 neue Decks zu finden. Nachgemessen: Archidekts Suche blättert weit über die
+ * angezeigten "count: 1000" hinaus (Seite 400 liefert noch 60 Treffer, ohne Überschneidung zu
+ * Seite 1), der Vorrat ist also nicht die Grenze.
+ */
+const MAX_SEITEN_JE_BRACKET = 100;
 
 let anfragenGesamt = 0;
 let letzteAnfrage = 0;
@@ -485,7 +505,7 @@ function leseArgumente(argv) {
   const gesamt = plan.reduce((s, p) => s + p.anzahl, 0);
   if (gesamt > MAX_DECKS_JE_LAUF)
     throw new Error(
-      `${gesamt} Decks in einem Lauf sind zu viel (Obergrenze ${MAX_DECKS_JE_LAUF}). Ein so langer Lauf riskiert genau das Timeout, das die Pausen verhindern sollen - bitte auf mehrere Läufe aufteilen.`,
+      `${gesamt} Decks in einem Lauf sind zu viel (Obergrenze ${MAX_DECKS_JE_LAUF}). Bei einer Anfrage pro Sekunde wäre das mehr als eine halbe Stunde Dauerlast auf einer fremden API - bitte auf mehrere Läufe aufteilen. Das kostet nichts: Bereits importierte Decks werden übersprungen, ein zweiter Lauf macht also dort weiter, wo der erste aufhörte.`,
     );
 
   return { plan, trockenlauf, gesamt };

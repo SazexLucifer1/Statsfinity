@@ -30,7 +30,7 @@ on:
         options: ['1', '2', '3', '4', '5']
         default: '3'
       anzahl:
-        description: 'Wie viele NEUE Decks dieser Stufe (1-200; bereits vorhandene zählen nicht mit)'
+        description: 'Wie viele NEUE Decks dieser Stufe (1-1000; bereits vorhandene zählen nicht mit). 1000 dauern rund eine halbe Stunde.'
         required: true
         default: '25'
       dry_run:
