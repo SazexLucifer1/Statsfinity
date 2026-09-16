@@ -309,6 +309,55 @@ async function sucheSeite(bracket, seite) {
 }
 
 // =====================================================================================
+// Supabase: Wiederholungen bei Netzaussetzern
+//
+// Teuer gelernt: Ein Lauf über 10.000 Decks ist nach 3 Stunden 13 Minuten an einem einzigen
+// "TypeError: fetch failed" gestorben - 2.876 importierte Decks waren zwar gespeichert, aber der
+// Rest des Laufs war verloren. Die Archidekt-Seite hatte längst Wiederholungen, die Supabase-Seite
+// nicht.
+//
+// Die Tücke: supabase-js WIRFT bei einem Netzfehler nicht, sondern gibt ihn wie einen
+// Datenbankfehler in error zurück. Ein "fetch failed" sah damit genauso aus wie eine verletzte
+// Eindeutigkeit, und beides endete im selben throw.
+//
+// Unterschieden wird am Code: PostgREST und Postgres liefern immer einen (23505 für eine
+// Doppelung, 42703 für eine fehlende Spalte). Das sind ANTWORTEN, keine Aussetzer - sie gehören
+// unverändert an den Aufrufer zurück, der sie kennt und behandelt. Ein Netzfehler kommt ohne Code
+// an und ist der Fall, der eine Wiederholung verdient.
+// =====================================================================================
+
+/** 6 Versuche mit 2, 4, 8, 16, 32 s Pause - überbrückt gut eine Minute Aussetzer. */
+const DB_VERSUCHE = 6;
+
+async function mitWiederholung(was, aufruf) {
+  let letzterFehler = null;
+
+  for (let versuch = 0; versuch < DB_VERSUCHE; versuch++) {
+    let ergebnis;
+    try {
+      ergebnis = await aufruf();
+    } catch (err) {
+      // Falls supabase-js doch einmal wirft statt zurückzugeben.
+      ergebnis = { error: { message: String(err?.message ?? err) } };
+    }
+
+    // Erfolg, oder ein Fehler MIT Code: beides ist eine Antwort, keine Störung.
+    if (!ergebnis.error || ergebnis.error.code) return ergebnis;
+
+    letzterFehler = ergebnis.error;
+    if (versuch === DB_VERSUCHE - 1) break;
+
+    const wartezeit = 2000 * 2 ** versuch;
+    console.log(
+      `    ${was}: ${letzterFehler.message} - erneut in ${wartezeit / 1000}s (Versuch ${versuch + 2}/${DB_VERSUCHE}) ...`,
+    );
+    await sleep(wartezeit);
+  }
+
+  return { error: letzterFehler };
+}
+
+// =====================================================================================
 // Vorhandenen Bestand laden (die Duplikatsperre)
 // =====================================================================================
 
@@ -328,10 +377,12 @@ async function ladeBestand(supabase) {
   const SEITE = 1000;
 
   for (let von = 0; ; von += SEITE) {
-    const { data, error } = await supabase
-      .from('archidekt_deck_pool')
-      .select('archidekt_id, cards_hash')
-      .range(von, von + SEITE - 1);
+    const { data, error } = await mitWiederholung('Bestand laden', () =>
+      supabase
+        .from('archidekt_deck_pool')
+        .select('archidekt_id, cards_hash')
+        .range(von, von + SEITE - 1),
+    );
     if (error) throw new Error(`Bestand konnte nicht geladen werden: ${error.message}`);
     for (const zeile of data) {
       ids.add(Number(zeile.archidekt_id));
@@ -361,10 +412,12 @@ class Kartennamen {
   async laden() {
     const SEITE = 1000;
     for (let von = 0; ; von += SEITE) {
-      const { data, error } = await this.supabase
-        .from('archidekt_pool_card_names')
-        .select('id, name_normalized')
-        .range(von, von + SEITE - 1);
+      const { data, error } = await mitWiederholung('Kartennamen laden', () =>
+        this.supabase
+          .from('archidekt_pool_card_names')
+          .select('id, name_normalized')
+          .range(von, von + SEITE - 1),
+      );
       if (error) throw new Error(`Kartennamen konnten nicht geladen werden: ${error.message}`);
       for (const zeile of data) this.idZuName.set(zeile.name_normalized, zeile.id);
       if (data.length < SEITE) break;
@@ -387,15 +440,19 @@ class Kartennamen {
         name_normalized: n,
         name: karten.find((k) => k.name_normalized === n).name,
       }));
-      const { error } = await this.supabase
-        .from('archidekt_pool_card_names')
-        .upsert(anzulegen, { onConflict: 'name_normalized', ignoreDuplicates: true });
+      const { error } = await mitWiederholung('Kartennamen anlegen', () =>
+        this.supabase
+          .from('archidekt_pool_card_names')
+          .upsert(anzulegen, { onConflict: 'name_normalized', ignoreDuplicates: true }),
+      );
       if (error) throw new Error(`Kartennamen konnten nicht angelegt werden: ${error.message}`);
 
-      const { data, error: leseFehler } = await this.supabase
-        .from('archidekt_pool_card_names')
-        .select('id, name_normalized')
-        .in('name_normalized', neu);
+      const { data, error: leseFehler } = await mitWiederholung('Kartennamen lesen', () =>
+        this.supabase
+          .from('archidekt_pool_card_names')
+          .select('id, name_normalized')
+          .in('name_normalized', neu),
+      );
       if (leseFehler)
         throw new Error(`Kartennamen konnten nicht gelesen werden: ${leseFehler.message}`);
       for (const zeile of data) this.idZuName.set(zeile.name_normalized, zeile.id);
@@ -419,11 +476,9 @@ class Kartennamen {
 async function schreibeDeck(supabase, kartennamen, deckZeile, karten) {
   const ids = await kartennamen.ids(karten);
 
-  const { data, error } = await supabase
-    .from('archidekt_deck_pool')
-    .insert(deckZeile)
-    .select('id')
-    .single();
+  const { data, error } = await mitWiederholung('Deck speichern', () =>
+    supabase.from('archidekt_deck_pool').insert(deckZeile).select('id').single(),
+  );
 
   if (error) {
     // 23505 = unique violation: zwischen Bestandsabgleich und Insert dazugekommen.
@@ -433,15 +488,19 @@ async function schreibeDeck(supabase, kartennamen, deckZeile, karten) {
     );
   }
 
-  const { error: kartenFehler } = await supabase.from('archidekt_deck_pool_cardlists').insert({
-    deck_id: data.id,
-    card_ids: ids,
-    quantities: karten.map((k) => k.quantity),
-    commander_ids: ids.filter((_, i) => karten[i].is_commander),
-  });
+  const { error: kartenFehler } = await mitWiederholung('Kartenliste speichern', () =>
+    supabase.from('archidekt_deck_pool_cardlists').insert({
+      deck_id: data.id,
+      card_ids: ids,
+      quantities: karten.map((k) => k.quantity),
+      commander_ids: ids.filter((_, i) => karten[i].is_commander),
+    }),
+  );
 
   if (kartenFehler) {
-    await supabase.from('archidekt_deck_pool').delete().eq('id', data.id);
+    await mitWiederholung('Deck-Kopf zurücknehmen', () =>
+      supabase.from('archidekt_deck_pool').delete().eq('id', data.id),
+    );
     throw new Error(
       `Karten von Deck ${deckZeile.archidekt_id} konnten nicht gespeichert werden (Deck wieder entfernt): ${kartenFehler.message}`,
     );
