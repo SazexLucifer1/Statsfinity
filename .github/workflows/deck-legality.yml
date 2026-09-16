@@ -1,0 +1,62 @@
+name: Deck legality check
+
+# Prüft alle Decks des Archidekt-Vorrats darauf, ob ihre Karten im Commander spielbar sind, und
+# markiert sie. Ablauf: scripts/check-deck-legality.js, Spalten und Begründung:
+# sql/deck-pool-legality-2026-09-16.sql
+#
+# WOZU: Der Vorrat ist die Referenz für die Bracket-Eichung. Ein Deck mit Karten, die es im
+# Commander gar nicht geben darf, beschreibt kein Deck, das jemand an einem Tisch spielen könnte.
+# Die Goldfish-Simulation lässt markierte Decks danach aus.
+#
+# MARKIERT, LÖSCHT NICHT: Der Import zieht Decks nach ihrer Archidekt-ID; ein gelöschtes Deck wäre
+# beim nächsten Import wieder da.
+#
+# Von Hand auslösbar: "Actions" -> "Deck legality check" -> "Run workflow".
+#
+# REIHENFOLGE: Beide Migrationen (sql/scryfall-commander-legality-2026-09-16.sql und
+# sql/deck-pool-legality-2026-09-16.sql) müssen gelaufen sein, und danach der Scryfall-Abgleich
+# MIT gesetztem "force" - sonst steht die Legalität bei allen Karten auf null. Das Skript bricht in
+# dem Fall von selbst ab, statt stillschweigend jedes Deck als legal zu markieren.
+
+on:
+  workflow_dispatch:
+    inputs:
+      alle:
+        description: 'Auch schon geprüfte Decks erneut prüfen (nach einem neuen Scryfall-Abgleich sinnvoll)'
+        required: false
+        type: boolean
+        default: false
+      dry_run:
+        description: 'Trockenlauf - prüfen und zählen, aber nichts markieren'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check that SUPABASE_SERVICE_ROLE_KEY is set
+        run: |
+          if [ -z "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" ]; then
+            echo "::error::Secret SUPABASE_SERVICE_ROLE_KEY ist nicht gesetzt - siehe Kommentar oben in dieser Datei."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check deck legality
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          node scripts/check-deck-legality.js \
+            ${{ inputs.alle && '--alle' || '' }} \
+            ${{ inputs.dry_run && '--dry-run' || '' }}

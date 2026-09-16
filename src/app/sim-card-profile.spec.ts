@@ -779,3 +779,19 @@ describe('buildSimCard - Fast-Mana und Massenziehen', () => {
     expect(sim.tutor).toBe(true);
   });
 });
+
+describe('buildSimCard - Manabetrag', () => {
+  it('deckelt einen absurden Manabetrag', () => {
+    // Gleemax, Silberrand-Scherzkarte, hat Manabetrag 1.000.000. Ohne Deckel hebt eine einzige
+    // solche Karte den Durchschnitt einer ganzen Bracket-Stufe um mehr als eine Manastufe an -
+    // im ersten grossen Lauf stand Bracket 1 deswegen bei 8,16 statt bei rund 3.
+    const sim = buildSimCard(
+      karte({ name: 'Gleemax', typeLine: 'Artifact', manaCost: '{1000000}', cmc: 1000000 }),
+    );
+    expect(sim.cmc).toBe(20);
+  });
+
+  it('laesst echte Manabetraege unangetastet', () => {
+    expect(buildSimCard(karte({ typeLine: 'Creature', manaCost: '{15}', cmc: 15 })).cmc).toBe(15);
+  });
+});

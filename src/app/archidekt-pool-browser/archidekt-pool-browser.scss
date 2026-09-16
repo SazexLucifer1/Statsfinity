@@ -176,3 +176,11 @@
   opacity: 0.75;
   text-align: center;
 }
+
+/* Markierung an Decks, deren Karten im Commander nicht spielbar sind. Bewusst nur ein Zeichen vor
+   dem Namen: Die Decks bleiben sichtbar (sie werden markiert, nicht gelöscht), sollen aber auf
+   einen Blick von denen zu unterscheiden sein, die in die Auswertung eingehen. */
+.pool-illegal {
+  margin-right: var(--sp-1);
+  cursor: help;
+}

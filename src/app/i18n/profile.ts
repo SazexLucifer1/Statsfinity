@@ -154,6 +154,9 @@ export const profile = {
     'profile.poolSearchPlaceholder': 'Deck oder Commander suchen …',
     'profile.poolBracketFilter': 'Bracket',
     'profile.poolCount': '{{shown}} von {{total}} Decks',
+    'profile.poolLegalCount': '{{legal}} von {{total}} im Commander legal',
+    'profile.poolIllegalHint':
+      'Enthält Karten, die im Commander nicht spielbar sind – dieses Deck fließt nicht in die Auswertung ein.',
     'profile.poolNoResults': 'Kein Deck passt zu dieser Suche.',
     'profile.poolNoneInBracket': 'In dieser Bracket-Stufe liegt noch kein Deck.',
     'profile.poolLimited':
@@ -319,6 +322,9 @@ export const profile = {
     'profile.poolSearchPlaceholder': 'Search deck or commander …',
     'profile.poolBracketFilter': 'Bracket',
     'profile.poolCount': '{{shown}} of {{total}} decks',
+    'profile.poolLegalCount': '{{legal}} of {{total}} legal in Commander',
+    'profile.poolIllegalHint':
+      'Contains cards that are not playable in Commander – this deck is excluded from the analysis.',
     'profile.poolNoResults': 'No deck matches this search.',
     'profile.poolNoneInBracket': 'No deck in this bracket yet.',
     'profile.poolLimited': 'Display limited – narrow the search to see the rest.',

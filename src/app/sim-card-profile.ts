@@ -247,6 +247,20 @@ function zahl(wort: string | undefined): number {
 }
 
 /**
+ * Obergrenze für den Manabetrag.
+ *
+ * Gleemax, eine Scherzkarte aus einem Silberrand-Set, hat einen Manabetrag von EINER MILLION - und
+ * ist damit die einzige Karte über 25. Im Deckvorrat steckt sie in einigen Spaßdecks, und eine
+ * einzige davon hebt den Durchschnitt ihrer Bracket-Stufe um rund 1,6 an: Der erste große Lauf
+ * meldete für Bracket 1 einen Schnitt von 8,16 gegen 2,4 bis 3,3 bei allen anderen Stufen.
+ *
+ * 20 ist hoch genug, dass keine echte Karte davon berührt wird (die teuerste regulär gedruckte
+ * liegt bei 16), und niedrig genug, dass eine Zahl aus einem Witz keine Auswertung mehr kippt. Am
+ * Spielverlauf ändert der Deckel nichts: Weder für eine Million noch für 20 Mana reicht es je.
+ */
+const MAX_CMC = 20;
+
+/**
  * Stärke als Zahl.
  *
  * "*" und "1+*" (Tarmogoyf, Alptraum) bekommen bewusst 2 statt 0 oder einer optimistischen
@@ -589,7 +603,7 @@ export function buildSimCard(data: SimCardData): SimCard {
     key: data.key,
     name: data.name,
     kosten: istLand ? KOSTENLOS : parseCost(data.manaCost),
-    cmc: data.cmc ?? 0,
+    cmc: Math.min(data.cmc ?? 0, MAX_CMC),
     istLand,
     bleibend: BLEIBENDE_TYPEN.test(typeLine),
     landAufRueckseite: rueckseiteLand,

@@ -19,6 +19,11 @@ export interface PoolDeck {
   ownerUsername: string | null;
   viewCount: number | null;
   importedAt: string;
+  /**
+   * Sind alle Karten im Commander spielbar? null heisst NOCH NICHT GEPRÜFT und ist ausdrücklich
+   * nicht dasselbe wie "illegal" - siehe sql/deck-pool-legality-2026-09-16.sql.
+   */
+  legal: boolean | null;
 }
 
 /** Eine Karte eines solchen Decks - aus archidekt_deck_pool_cardlists zusammengesetzt. */
@@ -87,6 +92,12 @@ export class ArchidektPoolService {
   readonly decks = signal<PoolDeck[]>([]);
   /** Treffer insgesamt laut Datenbank - kann weit über den geladenen MAX_TREFFER liegen. */
   readonly total = signal(0);
+  /**
+   * Wie viele der Treffer geprüft UND legal sind. null, solange die Zahl nicht vorliegt (etwa weil
+   * die Migration noch nicht gelaufen ist) - dann zeigt die Ansicht gar nichts an, statt eine Null
+   * zu behaupten.
+   */
+  readonly legalCount = signal<number | null>(null);
   readonly loading = signal(false);
   /** Gesetzt, wenn das Laden fehlschlug - die Ansicht unterscheidet das von "nichts importiert". */
   readonly failed = signal(false);
@@ -125,7 +136,7 @@ export class ArchidektPoolService {
     let query = supabase
       .from('archidekt_deck_pool')
       .select(
-        'id, archidekt_id, name, commander_names, creator_bracket, card_count, owner_username, view_count, imported_at',
+        'id, archidekt_id, name, commander_names, creator_bracket, card_count, owner_username, view_count, imported_at, legal',
         { count: 'exact' },
       )
       .order('name', { ascending: true })
@@ -147,6 +158,7 @@ export class ArchidektPoolService {
       this.failed.set(true);
       this.decks.set([]);
       this.total.set(0);
+      this.legalCount.set(null);
       return;
     }
 
@@ -163,8 +175,40 @@ export class ArchidektPoolService {
         ownerUsername: row.owner_username,
         viewCount: row.view_count,
         importedAt: row.imported_at,
+        legal: row.legal ?? null,
       })),
     );
+
+    await this.ladeLegalZahl(filter);
+  }
+
+  /**
+   * Wie viele Decks dieser Auswahl sind geprüft und legal?
+   *
+   * Eine eigene Abfrage, weil sich das aus den geladenen Zeilen nicht ablesen lässt: Die Liste
+   * zeigt höchstens MAX_TREFFER Decks, die Frage gilt aber allen Treffern. head + count holt nur
+   * die Zahl, keine einzige Zeile.
+   *
+   * Schlägt sie fehl (etwa weil die Spalte noch nicht existiert), bleibt die Zahl null und die
+   * Ansicht schweigt dazu - das ist ehrlicher als eine Null, die wie "keins legal" aussieht.
+   */
+  private async ladeLegalZahl(filter: PoolFilter): Promise<void> {
+    let query = supabase
+      .from('archidekt_deck_pool')
+      .select('id', { count: 'exact', head: true })
+      .eq('creator_bracket', filter.bracket)
+      .eq('legal', true);
+
+    const begriff = suchbegriffAufbereiten(filter.search);
+    if (begriff) query = query.like('search_text', `%${begriff}%`);
+
+    const { count, error } = await query;
+    if (error) {
+      console.error('Konnte die Zahl der legalen Decks nicht laden:', error);
+      this.legalCount.set(null);
+      return;
+    }
+    this.legalCount.set(count ?? 0);
   }
 
   /**
