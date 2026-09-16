@@ -62,13 +62,40 @@ async function main() {
 
   console.log('Kartenlegalität laden ...');
   const karten = await ladeAlle('scryfall_cards', 'front_name_normalized, name, commander_legal');
+
+  // ACHTUNG, DER SCHLÜSSEL IST NICHT EINDEUTIG. Mehrere Einträge können denselben normalisierten
+  // Vorderseiten-Namen haben - nachgemessen 45 Namen, bei 21 davon ist einer legal und ein anderer
+  // nicht:
+  //
+  //   Savage Lands (Land)                legal     <- die echte Karte
+  //   Savage Lands (Card)                nicht     <- ein Eintrag ohne Kartencharakter
+  //   Smelt (Instant)                    legal     <- die echte Karte
+  //   Smelt // Herd // Saw               nicht     <- eine Playtest-Karte
+  //
+  // Die erste Fassung merkte sich stur den unspielbaren Eintrag und hat damit 875 Decks allein
+  // wegen Savage Lands aussortiert - einem Dreifarben-Land, das in jedem Commander-Deck erlaubt
+  // ist. Richtig ist die Frage andersherum: Ein Name ist nur dann nicht spielbar, wenn es GAR
+  // KEINE spielbare Fassung von ihm gibt. Existiert eine, darf man die Karte spielen.
+  const legaleNamen = new Set();
   const nichtLegal = new Map();
   let unbekannteLegalitaet = 0;
   for (const k of karten) {
-    if (k.commander_legal === null) unbekannteLegalitaet++;
-    else if (k.commander_legal === false) nichtLegal.set(k.front_name_normalized, k.name);
+    if (k.commander_legal === true) legaleNamen.add(k.front_name_normalized);
+    else if (k.commander_legal === null) unbekannteLegalitaet++;
+    else if (!nichtLegal.has(k.front_name_normalized)) {
+      nichtLegal.set(k.front_name_normalized, k.name);
+    }
   }
-  console.log(`  ${karten.length} Karten, davon ${nichtLegal.size} im Commander nicht spielbar.`);
+  let gerettet = 0;
+  for (const name of legaleNamen) {
+    if (nichtLegal.delete(name)) gerettet++;
+  }
+  console.log(
+    `  ${karten.length} Karten, davon ${nichtLegal.size} im Commander nicht spielbar` +
+      (gerettet
+        ? ` (${gerettet} Namen haben daneben eine spielbare Fassung und zählen als legal).`
+        : '.'),
+  );
 
   if (unbekannteLegalitaet > karten.length / 2) {
     console.error(
