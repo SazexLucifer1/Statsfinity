@@ -637,3 +637,145 @@ describe('buildSimCard - die Luecken aus dem Precon-Nachtest', () => {
     expect(sim.faehigkeit?.kosten.gesamt).toBe(0);
   });
 });
+
+describe('buildSimCard - Fast-Mana und Massenziehen', () => {
+  // Die vier Faelle aus dem cEDH-Nachtest: Der Simulator war am schnellen Ende zu langsam, und
+  // zwar nicht wegen der Spielweise, sondern weil er genau die Karten nicht las, aus denen cEDH
+  // seine Geschwindigkeit zieht.
+
+  it('macht aus Lotus Petal eine EINMALIGE Manaquelle, keine dauerhafte', () => {
+    const sim = buildSimCard(
+      karte({
+        name: 'Lotus Petal',
+        typeLine: 'Artifact',
+        oracleText: '{T}, Sacrifice this artifact: Add one mana of any color.',
+        manaCost: '{0}',
+        cmc: 0,
+        producedMana: ['W', 'U', 'B', 'R', 'G'],
+      }),
+    );
+    // Vorher zaehlte es als Quelle, die JEDEN Zug wieder ein Mana macht - frei erfunden.
+    expect(sim.manaquelle).toBeNull();
+    expect(sim.ritual).toBe(1);
+  });
+
+  it('rechnet Jeweled Lotus als drei Mana, aber nur einmal', () => {
+    const sim = buildSimCard(
+      karte({
+        name: 'Jeweled Lotus',
+        typeLine: 'Artifact',
+        oracleText:
+          '{T}, Sacrifice this artifact: Add three mana of any one color. Spend this mana only to cast your commander.',
+        manaCost: '{0}',
+        cmc: 0,
+        producedMana: ['W', 'U', 'B', 'R', 'G'],
+      }),
+    );
+    expect(sim.manaquelle).toBeNull();
+    expect(sim.ritual).toBe(3);
+  });
+
+  it('laesst Sol Ring eine dauerhafte Quelle bleiben - der opfert sich nicht', () => {
+    const sim = buildSimCard(
+      karte({
+        name: 'Sol Ring',
+        typeLine: 'Artifact',
+        oracleText: '{T}: Add {C}{C}.',
+        manaCost: '{1}',
+        cmc: 1,
+        producedMana: ['C'],
+      }),
+    );
+    expect(sim.manaquelle?.menge).toBe(2);
+    expect(sim.ritual).toBe(0);
+  });
+
+  it('laesst Lion\u2019s Eye Diamond bewusst unerkannt', () => {
+    // Die Kosten sind "Discard your hand" - abbildbar waere das, aber die Spielweise kennt kein
+    // "nur wenn die Hand ohnehin leer ist". Gierig gewirkt macht die Karte das Deck schlechter,
+    // als sie gar nicht zu kennen.
+    const sim = buildSimCard(
+      karte({
+        name: 'Lion\u2019s Eye Diamond',
+        typeLine: 'Artifact',
+        oracleText:
+          'Discard your hand, Sacrifice this artifact: Add three mana of any one color. Activate only as an instant.',
+        manaCost: '{0}',
+        cmc: 0,
+      }),
+    );
+    expect(sim.manaquelle).toBeNull();
+    expect(sim.ritual).toBe(0);
+  });
+
+  it('erkennt Necropotence als Zieh-Engine ohne das Wort "draw"', () => {
+    const sim = buildSimCard(
+      karte({
+        name: 'Necropotence',
+        typeLine: 'Enchantment',
+        oracleText:
+          'Skip your draw step.\nWhenever you discard a card, exile that card from your graveyard.\nPay 1 life: Exile the top card of your library face down. Put that card into your hand at the beginning of your next end step.',
+        manaCost: '{B}{B}{B}',
+        cmc: 3,
+      }),
+    );
+    expect(sim.faehigkeit?.ziehen).toBe(1);
+    expect(sim.faehigkeit?.kosten.gesamt).toBe(0);
+  });
+
+  it('zaehlt "target player draws" - man zielt auf sich selbst', () => {
+    const sim = buildSimCard(
+      karte({
+        name: 'Sign in Blood',
+        typeLine: 'Sorcery',
+        oracleText: 'Target player draws two cards and loses 2 life.',
+        manaCost: '{B}{B}',
+        cmc: 2,
+      }),
+    );
+    expect(sim.ziehen).toBe(2);
+  });
+
+  it('zaehlt "each player draws" - man ist selbst auch ein Spieler', () => {
+    const sim = buildSimCard(
+      karte({
+        name: 'Timetwister',
+        typeLine: 'Sorcery',
+        oracleText:
+          'Each player shuffles their hand and graveyard into their library, then draws seven cards.',
+        manaCost: '{2}{U}',
+        cmc: 3,
+      }),
+    );
+    expect(sim.ziehen).toBe(7);
+  });
+
+  it('zaehlt NICHT, wenn der Gegner zieht', () => {
+    const sim = buildSimCard(
+      karte({
+        name: 'Howling Mine',
+        typeLine: 'Artifact',
+        oracleText: 'Each opponent draws an additional card during their draw step.',
+        manaCost: '{2}',
+        cmc: 2,
+      }),
+    );
+    expect(sim.ziehen).toBe(0);
+  });
+
+  it('zaehlt einen Tutor nicht doppelt als Kartenfluss', () => {
+    const sim = buildSimCard(
+      karte({
+        name: 'Demonic Tutor',
+        typeLine: 'Sorcery',
+        oracleText:
+          'Search your library for a card, then shuffle and put that card into your hand.',
+        manaCost: '{1}{B}',
+        cmc: 2,
+        tutor: true,
+      }),
+    );
+    expect(sim.ziehen).toBe(0);
+    expect(sim.tutor).toBe(true);
+  });
+});

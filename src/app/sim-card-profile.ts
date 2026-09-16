@@ -271,8 +271,19 @@ export function parsePower(power: string | null | undefined): number {
  * Betretens-Auslöser ("When this creature enters, draw a card") sind ausdrücklich NICHT
  * ausgeschlossen: Die kommen beim Ausspielen zuverlässig, das ist der Unterschied.
  */
-const BEDINGTE_ZEILE =
-  /\b(whenever|at the beginning|each opponent|target player|opponent draws|may pay|unless)\b/i;
+const BEDINGTE_ZEILE = /\b(whenever|at the beginning|unless)\b/i;
+
+/**
+ * Zieht hier ein GEGNER die Karten?
+ *
+ * "Each player draws seven cards" (Timetwister) und "Target player draws two cards" (Sign in Blood)
+ * sind Kartenfluss - man ist selbst ein Spieler, und auf sich selbst zeigt man immer. "Each
+ * opponent draws a card" dagegen nicht. Diese Frage gehoert an die Zieh-Zaehlung und NICHT in den
+ * Filter fuer bedingte Zeilen: Dort hat sie vorher Timetwister und Sign in Blood mit
+ * weggeworfen - und nebenbei jede Zeile "deals X damage to each opponent", die kein
+ * Betretens-Ausloeser war.
+ */
+const GEGNER_ZIEHT = /\bopponents?\s+draws?\b/i;
 
 const BETRITT = /\bwhen(?:ever)? [^,]*enters\b/i;
 
@@ -308,20 +319,39 @@ function handlungsZeilen(text: string): string[] {
  * bringt zwei Mana und kostet eines, netto also eins. Ohne diesen Abzug wären Signets doppelt so
  * gut wie Sol Ring, was sie erkennbar nicht sind.
  */
-function manafaehigkeit(text: string): { farben: Farbmaske; menge: number } | null {
+function manafaehigkeit(
+  text: string,
+): { farben: Farbmaske; menge: number; einmalig: boolean } | null {
   for (const zeile of text.split('\n')) {
     const doppelpunkt = zeile.indexOf(':');
     if (doppelpunkt < 0) continue;
 
     const kostenTeil = zeile.slice(0, doppelpunkt);
     const wirkung = zeile.slice(doppelpunkt + 1);
-    if (!/\{T\}/i.test(kostenTeil)) continue;
+
+    // Wer sich selbst opfert, ist keine Dauerquelle. Genau hier lag ein Fehler in BEIDE
+    // Richtungen: Lotus Petal und Jeweled Lotus sagen "{T}, Sacrifice this artifact: Add ..." und
+    // galten als Quelle, die JEDEN Zug wieder Mana macht - ein Lotus Petal, das jede Runde ein
+    // Mana gibt, ist schlicht erfunden. Lion's Eye Diamond wiederum sagt "Discard your hand,
+    // Sacrifice this artifact: ..." ohne {T} und fiel deshalb ganz durch.
+    const opfert = /\bsacrifice\b/i.test(kostenTeil);
+    if (!/\{T\}/i.test(kostenTeil) && !opfert) continue;
+
+    // "Discard your hand" als Kosten bleibt bewusst unerkannt: Der Preis waere zwar abbildbar,
+    // aber die Spielweise hier kennt kein "nur wenn die Hand ohnehin leer ist". Eine Karte, die
+    // der Simulator gierig wirkt und sich dabei die Hand wegwirft, macht das Deck schlechter, als
+    // sie gar nicht zu kennen.
+    if (/discard your hand/i.test(kostenTeil)) continue;
 
     const ergebnis = addWirkung(wirkung);
     if (!ergebnis) continue;
 
     const aktivierung = parseCost(kostenTeil);
-    return { farben: ergebnis.farben, menge: Math.max(0, ergebnis.menge - aktivierung.gesamt) };
+    return {
+      farben: ergebnis.farben,
+      menge: Math.max(0, ergebnis.menge - aktivierung.gesamt),
+      einmalig: opfert,
+    };
   }
   return null;
 }
@@ -386,13 +416,18 @@ function aktivierteFaehigkeit(text: string, istKreatur: boolean): SimFaehigkeit 
     if (/\b(sacrifice|exile)\b/i.test(kostenTeil)) continue;
     if (/add [{]/i.test(wirkung)) continue; // das ist eine Manafähigkeit, die steht anderswo
 
+    if (/discard your hand/i.test(kostenTeil)) continue;
     const zieht = wirkung.match(/draw (\w+) cards?/i);
+    // Necropotence sagt "Pay 1 life: Exile the top card ... Put that card into your hand" - eine
+    // Zieh-Engine ohne das Wort "draw". Ohne diese Zeile faellt die beste Kartenmaschine des
+    // Formats als wirkungslos durch.
+    const inDieHand = kartenInDieHand(wirkung);
     const laender = LAND_SUCHE.test(wirkung) && /onto the battlefield/i.test(wirkung);
-    if (!zieht && !laender) continue;
+    if (!zieht && !inDieHand && !laender) continue;
 
     return {
       kosten: parseCost(kostenTeil),
-      ziehen: zieht ? zahl(zieht[1]) : 0,
+      ziehen: zieht ? zahl(zieht[1]) : inDieHand,
       laenderAufsFeld: laender ? 1 : 0,
       brauchtBereitschaft: istKreatur && /\{T\}/i.test(kostenTeil),
       brauchtKreatur: false,
@@ -414,6 +449,9 @@ function aktivierteFaehigkeit(text: string, istKreatur: boolean): SimFaehigkeit 
  * im Zweifel untertreiben.
  */
 function kartenInDieHand(zeile: string): number {
+  // Eine Suche in der Bibliothek ist ein Tutor und wird anderswo gezaehlt - sonst zaehlte
+  // "search your library for a card, put it into your hand" hier ein zweites Mal.
+  if (/search your library/i.test(zeile)) return 0;
   // "put one pile into your hand", "put that card into your hand", "put them into your hand"
   if (/put (?:one|that|those|them|it|the rest)[^.]{0,40}into your hand/i.test(zeile)) return 1;
   // "put up to two of them into your hand"
@@ -598,7 +636,12 @@ export function buildSimCard(data: SimCardData): SimCard {
 
   // --- Manaquelle, die kein Land ist ----------------------------------------------------------
   const faehigkeit = manafaehigkeit(text);
-  if (faehigkeit && faehigkeit.menge > 0) {
+  if (faehigkeit && faehigkeit.menge > 0 && faehigkeit.einmalig) {
+    // Einmaliges Mana verhaelt sich wie ein Ritual: es steht in dem Zug zur Verfuegung, in dem die
+    // Karte gespielt wird, und danach nie wieder.
+    karte.ritual = faehigkeit.menge - karte.kosten.gesamt;
+    if (karte.ritual > 0) merke('einmalmana');
+  } else if (faehigkeit && faehigkeit.menge > 0) {
     karte.manaquelle = {
       // produced_mana ist die verlässlichere Quelle für die Farben (Scryfall wertet dafür alle
       // Fähigkeiten aus, auch die, deren Text dieses Modul nicht liest); der Text liefert nur die
@@ -617,7 +660,7 @@ export function buildSimCard(data: SimCardData): SimCard {
   }
 
   // --- Ritual: Mana ohne Tappen, einmalig -----------------------------------------------------
-  if (!karte.manaquelle && /\b(Instant|Sorcery)\b/.test(typeLine)) {
+  if (!karte.manaquelle && karte.ritual === 0 && /\b(Instant|Sorcery)\b/.test(typeLine)) {
     const sofort = addWirkung(text);
     if (sofort && sofort.menge > 0) {
       karte.ritual = sofort.menge - karte.kosten.gesamt;
@@ -644,8 +687,10 @@ export function buildSimCard(data: SimCardData): SimCard {
 
   // --- Kartenfluss ----------------------------------------------------------------------------
   for (const zeile of handlungsZeilen(text)) {
-    for (const [, wort] of zeile.matchAll(/draw (\w+) cards?/gi)) {
-      karte.ziehen += zahl(wort);
+    if (!GEGNER_ZIEHT.test(zeile)) {
+      for (const [, wort] of zeile.matchAll(/draws? (\w+) cards?/gi)) {
+        karte.ziehen += zahl(wort);
+      }
     }
     karte.ziehen += kartenInDieHand(zeile);
   }
