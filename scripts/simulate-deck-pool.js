@@ -218,6 +218,11 @@ async function ladeDeckAuswahl(bracket, anzahl) {
       .from('archidekt_deck_pool')
       .select('id, name, creator_bracket')
       .eq('creator_bracket', bracket)
+      // Decks mit Karten, die im Commander nicht spielbar sind, gehoeren nicht in die Eichung
+      // (siehe sql/deck-pool-legality-2026-09-16.sql). Ausgeschlossen wird nur, was GEPRUEFT und
+      // durchgefallen ist - ein noch ungepruefetes Deck (legal = null) bleibt drin. Es
+      // stillschweigend zu uebergehen waere der unauffaelligere und damit schlimmere Fehler.
+      .not('legal', 'is', false)
       // Feste Reihenfolge, damit zwei Läufe dieselben Decks erwischen - sonst ist ein Ergebnis
       // nicht wiederholbar und eine Abweichung nicht einzuordnen.
       .order('id')

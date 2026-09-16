@@ -211,6 +211,10 @@ function toRow(data) {
     // Faces - ohne den Rückgriff hätte jede Transform-Kreatur keine Stärke.
     power: data.power ?? data.card_faces?.[0]?.power ?? null,
     toughness: data.toughness ?? data.card_faces?.[0]?.toughness ?? null,
+    // "not_legal" und "banned" landen beide auf false - fuer die Frage, ob ein Deck in die
+    // Bracket-Eichung darf, ist der Unterschied ohne Belang (siehe
+    // sql/scryfall-commander-legality-2026-09-16.sql).
+    commander_legal: data.legalities?.commander === 'legal',
     all_parts:
       data.all_parts?.map((p) => ({
         id: p.id,

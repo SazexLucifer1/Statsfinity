@@ -47,6 +47,14 @@
       } @else {
         <p class="hint pool-count">
           {{ i18n.t('profile.poolCount', { shown: pool.decks().length, total: pool.total() }) }}
+          @if (pool.legalCount() !== null) {
+            <br />{{
+              i18n.t('profile.poolLegalCount', {
+                legal: pool.legalCount()!,
+                total: pool.total(),
+              })
+            }}
+          }
           @if (pool.begrenzt()) {
             <br />{{ i18n.t('profile.poolLimited') }}
           }
@@ -56,7 +64,12 @@
           @for (deck of pool.decks(); track deck.id) {
             <li class="pool-list-entry" (click)="openDeck(deck)">
               <div class="pool-entry-main">
-                <span class="pool-entry-name">{{ deck.name }}</span>
+                <span class="pool-entry-name">
+                  @if (deck.legal === false) {
+                    <span class="pool-illegal" [title]="i18n.t('profile.poolIllegalHint')">⚠</span>
+                  }
+                  {{ deck.name }}
+                </span>
                 <span class="pool-entry-commander">{{ deck.commanderNames.join(' + ') }}</span>
               </div>
               <app-bracket-badge [bracket]="deck.creatorBracket" source="manual" [compact]="true" />
