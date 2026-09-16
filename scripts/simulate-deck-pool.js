@@ -33,7 +33,7 @@ const { createClient } = require('@supabase/supabase-js');
  * still überschreibt. Ohne sie ließe sich hinterher nicht mehr sagen, ob ein verschobenes Ergebnis
  * am Deck liegt oder an einer Änderung hier.
  */
-const SIM_VERSION = '3';
+const SIM_VERSION = '4';
 
 /** Voreinstellung: so oft wird jedes Deck ausgespielt. */
 const SPIELE_JE_DECK = 200;
