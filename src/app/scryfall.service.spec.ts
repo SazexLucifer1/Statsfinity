@@ -21,8 +21,20 @@ describe('ScryfallService', () => {
       new Response(
         JSON.stringify({
           data: [
-            { id: '1', code: 'm10', name: 'Magic 2010', released_at: '2009-07-17', set_type: 'core' },
-            { id: '2', code: 'znr', name: 'Zendikar Rising', released_at: '2020-09-25', set_type: 'expansion' },
+            {
+              id: '1',
+              code: 'm10',
+              name: 'Magic 2010',
+              released_at: '2009-07-17',
+              set_type: 'core',
+            },
+            {
+              id: '2',
+              code: 'znr',
+              name: 'Zendikar Rising',
+              released_at: '2020-09-25',
+              set_type: 'expansion',
+            },
           ],
         }),
       ) as Response,
@@ -113,7 +125,10 @@ describe('ScryfallService', () => {
       const pairs = await service.searchCommanderPairs(['W', 'U', 'B']);
 
       expect(pairs).toHaveLength(1);
-      expect(pairs[0].map((c) => c.name).sort()).toEqual(['Silas Renn, Seeker Adept', 'Tymna the Weaver']);
+      expect(pairs[0].map((c) => c.name).sort()).toEqual([
+        'Silas Renn, Seeker Adept',
+        'Tymna the Weaver',
+      ]);
     });
 
     it('excludes a bare-Partner pair whose combined color identity does not exactly equal the target', async () => {
@@ -136,14 +151,18 @@ describe('ScryfallService', () => {
         name: 'Ranger Background',
         type_line: 'Legendary Enchantment — Background',
         color_identity: ['G'],
-        oracle_text: 'Whenever you cast a spell that targets only a permanent or player you control, draw a card.',
+        oracle_text:
+          'Whenever you cast a spell that targets only a permanent or player you control, draw a card.',
       };
       mockPartnerFetch([chooseBackgroundCommander], [background]);
 
       const pairs = await service.searchCommanderPairs(['W', 'G']);
 
       expect(pairs).toHaveLength(1);
-      expect(pairs[0].map((c) => c.name).sort()).toEqual(["Abdel Adrian, Gorion's Ward", 'Ranger Background']);
+      expect(pairs[0].map((c) => c.name).sort()).toEqual([
+        "Abdel Adrian, Gorion's Ward",
+        'Ranger Background',
+      ]);
     });
   });
 
@@ -172,7 +191,9 @@ describe('ScryfallService', () => {
       // status 404 statt 500: fetchWithRetry() behandelt 404 als "gültige, sofortige Antwort ohne
       // Wiederholung" (siehe scryfall.service.ts) - ein echter 5xx-Fehlschlag würde hier reale
       // Sleeps zwischen den Wiederholungsversuchen auslösen und den Test unnötig verlangsamen.
-      vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 404 }) as Response);
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response(null, { status: 404 }) as Response,
+      );
       expect(await service.creatureTypes()).toEqual([]);
     });
   });

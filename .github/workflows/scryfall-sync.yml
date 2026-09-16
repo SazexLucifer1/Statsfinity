@@ -16,7 +16,13 @@ on:
     - cron: '0 4 * * *' # täglich 04:00 UTC - eine Stunde nach dem Datenbank-Backup (backup.yml),
       # damit sich die beiden Läufe nicht überschneiden. Scryfall erzeugt
       # seine Bulk-Dateien etwa täglich gegen 21:00 UTC.
-  workflow_dispatch: {} # manuell auslösbar zum Testen
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Datei auch laden, wenn sich bei Scryfall nichts geändert hat - nötig nach einer neuen Spalte, sonst bleibt sie leer'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   sync:
@@ -42,4 +48,4 @@ jobs:
       - name: Sync Scryfall data
         env:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: node scripts/sync-scryfall-bulk.js
+        run: node scripts/sync-scryfall-bulk.js ${{ inputs.force && '--force' || '' }}

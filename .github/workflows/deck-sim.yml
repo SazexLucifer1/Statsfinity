@@ -1,0 +1,74 @@
+name: Deck simulation
+
+# Spielt jedes Deck aus dem Archidekt-Vorrat ein paar hundert Mal ohne Gegner aus und schreibt die
+# Ergebnisse nach deck_sim_results. Ablauf: scripts/simulate-deck-pool.js, Tabelle und Begründung:
+# sql/deck-sim-results-2026-09-16.sql
+#
+# WOZU: Die offiziellen Bracket-Kriterien zählen Karten und messen kein Tempo. Man kann die Regeln
+# von Bracket 2 einhalten und trotzdem ein Deck bauen, das mit Bracket-4-Decks mithält. Dieser Lauf
+# liefert die Gegenprobe an 40.000 fremden Decks, deren Stufe jemand anders festgelegt hat.
+#
+# WIE DIE DREI ÜBRIGEN AUSWERTUNGS-LÄUFE ist das KEIN Nachtlauf, sondern ausschließlich von Hand
+# auslösbar: "Actions" -> "Deck simulation" -> "Run workflow".
+#
+# ERST KLEIN ANFANGEN: Ein Trockenlauf über ein paar hundert Decks schreibt nichts, zeigt aber
+# schon die Gegenüberstellung nach Bracket im Protokoll. Erst wenn die plausibel aussieht, lohnt
+# der große Durchgang.
+#
+# Braucht das Repo-Secret SUPABASE_SERVICE_ROLE_KEY (der Vorrat ist per RLS nur für Developer
+# lesbar) und setzt voraus, dass sql/deck-sim-results-2026-09-16.sql EINMAL von Hand im
+# Supabase-SQL-Editor gelaufen ist. Ein Merge allein ändert an der Datenbank nichts.
+
+on:
+  workflow_dispatch:
+    inputs:
+      bracket:
+        description: 'Welche Stufe simulieren? "alle" nimmt den ganzen Vorrat.'
+        required: true
+        type: choice
+        options: ['alle', '1', '2', '3', '4', '5']
+        default: 'alle'
+      anzahl:
+        description: 'Höchstens so viele Decks. Faustregel: rund 20 Decks je Sekunde, 40000 also gut eine halbe Stunde inklusive Laden.'
+        required: true
+        default: '1000'
+      spiele:
+        description: 'Wie oft jedes Deck ausgespielt wird. Unter 100 wird das Ergebnis je Deck zufällig, über 500 bringt es kaum noch etwas.'
+        required: true
+        default: '200'
+      dry_run:
+        description: 'Trockenlauf - rechnen und die Übersicht zeigen, aber nichts schreiben'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  simulate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check that SUPABASE_SERVICE_ROLE_KEY is set
+        run: |
+          if [ -z "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" ]; then
+            echo "::error::Secret SUPABASE_SERVICE_ROLE_KEY ist nicht gesetzt - siehe Kommentar oben in dieser Datei. Lauf wird übersprungen."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Simulate decks
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          node scripts/simulate-deck-pool.js \
+            --bracket '${{ inputs.bracket }}' \
+            --anzahl '${{ inputs.anzahl }}' \
+            --spiele '${{ inputs.spiele }}' \
+            ${{ inputs.dry_run && '--dry-run' || '' }}

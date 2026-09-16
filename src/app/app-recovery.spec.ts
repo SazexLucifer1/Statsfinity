@@ -2,7 +2,7 @@ import {
   isAppBlank,
   isModuleLoadError,
   shouldAutoReload,
-  MIN_RELOAD_DISTANCE_MS
+  MIN_RELOAD_DISTANCE_MS,
 } from './app-recovery';
 
 /**
@@ -30,8 +30,8 @@ describe('app-recovery', () => {
     it('erkennt die Meldungen der Browser für einen fehlenden Code-Chunk', () => {
       expect(
         isModuleLoadError(
-          new TypeError('Failed to fetch dynamically imported module: /chunk-A1B2.js')
-        )
+          new TypeError('Failed to fetch dynamically imported module: /chunk-A1B2.js'),
+        ),
       ).toBe(true);
       expect(isModuleLoadError(new Error('error loading dynamically imported module'))).toBe(true);
       expect(isModuleLoadError(new Error('Importing a module script failed.'))).toBe(true);

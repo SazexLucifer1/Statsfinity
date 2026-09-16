@@ -37,6 +37,17 @@ const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 const API = 'https://api.scryfall.com';
 
 /**
+ * --force: die Bulk-Datei auch dann laden, wenn sich bei Scryfall nichts geändert hat.
+ *
+ * Gebraucht wird das nach einer SCHEMA-Änderung. Der Lauf bricht sonst früh ab, sobald der
+ * gespeicherte Stand dem bei Scryfall entspricht (so möchte es Scryfall selbst) - eine gerade erst
+ * angelegte Spalte bliebe damit leer, bis Scryfall von sich aus eine neue Datei baut, und niemand
+ * käme auf die Idee, dass genau das der Grund ist. Genau dieser Fall ist beim Nachrüsten von
+ * power/toughness eingetreten: Migration gelaufen, Abgleich angestoßen, Spalten trotzdem leer.
+ */
+const FORCE = process.argv.includes('--force');
+
+/**
  * Scryfall bittet ausdrücklich um einen aussagekräftigen User-Agent. Aus dem Browser heraus geht
  * das gar nicht (User-Agent ist dort ein verbotener Header und wird stillschweigend verworfen -
  * die Angabe in ScryfallService.buildHeaders() hat faktisch keine Wirkung). Hier, serverseitig,
@@ -192,6 +203,14 @@ function toRow(data) {
       null,
     back_image_url: hasFlippableBack ? backFace.image_uris.normal : null,
     back_type_line: hasFlippableBack ? (backFace.type_line ?? null) : null,
+    // Rückseitentext nur bei echten umdrehbaren Karten - bei Split/Adventure ist "Face 2" nur die
+    // zweite Hälfte derselben Karte, und ihr Text als "Rückseite" wäre schlicht falsch.
+    back_oracle_text: hasFlippableBack ? (backFace.oracle_text ?? null) : null,
+    // Wörtlich wie bei Scryfall, "*" und "1+*" eingeschlossen (siehe
+    // sql/scryfall-sim-fields-2026-09-16.sql). Bei doppelseitigen Karten steht beides nur auf den
+    // Faces - ohne den Rückgriff hätte jede Transform-Kreatur keine Stärke.
+    power: data.power ?? data.card_faces?.[0]?.power ?? null,
+    toughness: data.toughness ?? data.card_faces?.[0]?.toughness ?? null,
     all_parts:
       data.all_parts?.map((p) => ({
         id: p.id,
@@ -217,11 +236,12 @@ async function syncKarten() {
 
   const stand = await readSyncState('cards');
   if (
+    !FORCE &&
     stand?.source_updated_at &&
     new Date(stand.source_updated_at).getTime() === new Date(eintrag.updated_at).getTime()
   ) {
     console.log(
-      'Unverändert seit dem letzten Lauf - Datei wird gar nicht erst geladen (so möchte es Scryfall).',
+      'Unverändert seit dem letzten Lauf - Datei wird gar nicht erst geladen (so möchte es Scryfall). Mit --force trotzdem laden, z.B. nach einer neuen Spalte.',
     );
     return;
   }
