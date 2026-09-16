@@ -182,26 +182,66 @@ async function ladeGewinnCombos() {
   return { combos, nachKarte };
 }
 
+/**
+ * Die Decks, über die simuliert wird.
+ *
+ * GLEICHMÄSSIG ÜBER DIE STUFEN, nicht die ersten N Zeilen. Der erste Lauf hat gezeigt, warum das
+ * kein Detail ist: Ohne Sortierung gibt Postgres die Zeilen in beliebiger Reihenfolge zurück, und
+ * die ersten 1.000 bestanden aus 802 Decks der Stufe 1, 5 der Stufe 5 und KEINEM einzigen der
+ * Stufe 4. Ein Vergleich der Stufen war damit unmöglich - und das Ergebnis sah trotzdem
+ * vollständig aus, was der gefährlichere Teil daran ist.
+ *
+ * "anzahl" gilt deshalb JE STUFE, nicht insgesamt: Wer 300 einträgt, bekommt bis zu 300 Decks aus
+ * jeder Stufe und damit eine Gegenüberstellung, auf die sich etwas geben lässt.
+ */
+async function ladeDeckAuswahl(bracket, anzahl) {
+  const zeilen = [];
+  for (let von = 0; von < anzahl; von += SEITE) {
+    const bis = Math.min(von + SEITE, anzahl) - 1;
+    const { data, error } = await supabase
+      .from('archidekt_deck_pool')
+      .select('id, name, creator_bracket')
+      .eq('creator_bracket', bracket)
+      // Feste Reihenfolge, damit zwei Läufe dieselben Decks erwischen - sonst ist ein Ergebnis
+      // nicht wiederholbar und eine Abweichung nicht einzuordnen.
+      .order('id')
+      .range(von, bis);
+    if (error) throw new Error(`Laden aus archidekt_deck_pool fehlgeschlagen: ${error.message}`);
+    zeilen.push(...data);
+    if (data.length < bis - von + 1) break;
+  }
+  return zeilen;
+}
+
 async function ladeDecks() {
   console.log('Decks laden ...');
-  const decks = await ladeAlle(
-    'archidekt_deck_pool',
-    'id, name, creator_bracket, commander_names',
-    (q) => (bracketFilter === 'alle' ? q : q.eq('creator_bracket', Number(bracketFilter))),
-  );
-  const ausgewaehlt = decks.slice(0, maxDecks);
+  const stufen = bracketFilter === 'alle' ? [1, 2, 3, 4, 5] : [Number(bracketFilter)];
+  const decks = [];
+  for (const stufe of stufen) {
+    const teil = await ladeDeckAuswahl(stufe, maxDecks);
+    console.log(`  Bracket ${stufe}: ${teil.length} Decks`);
+    decks.push(...teil);
+  }
 
   const namen = await ladeAlle('archidekt_pool_card_names', 'id, name_normalized');
   const nameNachId = new Map(namen.map((n) => [n.id, n.name_normalized]));
 
-  const listen = await ladeAlle(
-    'archidekt_deck_pool_cardlists',
-    'deck_id, card_ids, quantities, commander_ids',
-  );
-  const listeNachDeck = new Map(listen.map((l) => [l.deck_id, l]));
+  // Nur die Kartenlisten der gewählten Decks holen. Alle zu laden kostete im ersten Lauf 50
+  // Sekunden für 42.000 Zeilen - bei einem Trockenlauf über 300 Decks ist das die längste
+  // Wartezeit des ganzen Ablaufs, für nichts.
+  const listeNachDeck = new Map();
+  const ids = decks.map((d) => d.id);
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data, error } = await supabase
+      .from('archidekt_deck_pool_cardlists')
+      .select('deck_id, card_ids, quantities, commander_ids')
+      .in('deck_id', ids.slice(i, i + 200));
+    if (error) throw new Error(`Laden der Kartenlisten fehlgeschlagen: ${error.message}`);
+    for (const l of data) listeNachDeck.set(l.deck_id, l);
+  }
 
-  console.log(`  ${ausgewaehlt.length} Decks (von ${decks.length} in dieser Auswahl).`);
-  return { decks: ausgewaehlt, nameNachId, listeNachDeck };
+  console.log(`  ${decks.length} Decks insgesamt, ${listeNachDeck.size} Kartenlisten.`);
+  return { decks, nameNachId, listeNachDeck };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -367,7 +407,7 @@ async function schreibe(zeilen) {
 
 async function main() {
   console.log(
-    `Goldfish-Stapellauf, Fassung ${SIM_VERSION}: Bracket ${bracketFilter}, bis zu ${maxDecks} Decks, ${spiele} Spiele je Deck.`,
+    `Goldfish-Stapellauf, Fassung ${SIM_VERSION}: Bracket ${bracketFilter}, bis zu ${maxDecks} Decks JE STUFE, ${spiele} Spiele je Deck.`,
   );
 
   const buendel = ladeSimulator();
@@ -438,13 +478,15 @@ function zeigeUebersicht(zeilen, decks) {
 
   const mittel = (liste, feld) => liste.reduce((s, z) => s + z[feld], 0) / liste.length;
   console.log(
-    '\nBracket | Decks | Siegzug | kumulativ | Rampe | Ziehen | Interakt. | Tutoren | Ø CMC | erkannt',
+    '\nBracket | Decks | Siegzug | kumulativ | Siegquote | Combos | Rampe | Ziehen | Interakt. | Tutoren | Ø CMC | erkannt',
   );
   for (const b of [...nachBracket.keys()].sort()) {
     const l = nachBracket.get(b);
     console.log(
       `      ${b} | ${String(l.length).padStart(5)} | ${mittel(l, 'median_siegzug').toFixed(1).padStart(7)} | ` +
-        `${mittel(l, 'kumulativ_median').toFixed(1).padStart(9)} | ${mittel(l, 'rampe').toFixed(1).padStart(5)} | ` +
+        `${mittel(l, 'kumulativ_median').toFixed(1).padStart(9)} | ` +
+        `${(mittel(l, 'siegquote') * 100).toFixed(0).padStart(8)}% | ${mittel(l, 'gewinn_combos').toFixed(1).padStart(6)} | ` +
+        `${mittel(l, 'rampe').toFixed(1).padStart(5)} | ` +
         `${mittel(l, 'kartenziehen').toFixed(1).padStart(6)} | ${mittel(l, 'interaktion').toFixed(1).padStart(9)} | ` +
         `${mittel(l, 'tutoren').toFixed(1).padStart(7)} | ${mittel(l, 'avg_cmc').toFixed(2).padStart(5)} | ` +
         `${(mittel(l, 'karten_erkannt') * 100).toFixed(0).padStart(6)}%`,

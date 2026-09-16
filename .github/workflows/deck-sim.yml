@@ -29,9 +29,9 @@ on:
         options: ['alle', '1', '2', '3', '4', '5']
         default: 'alle'
       anzahl:
-        description: 'Höchstens so viele Decks. Faustregel: rund 20 Decks je Sekunde, 40000 also gut eine halbe Stunde inklusive Laden.'
+        description: 'Höchstens so viele Decks JE STUFE (bei "alle" also bis zu fünfmal so viele). Faustregel: rund 30 Decks je Sekunde, 10000 je Stufe also gut 25 Minuten.'
         required: true
-        default: '1000'
+        default: '300'
       spiele:
         description: 'Wie oft jedes Deck ausgespielt wird. Unter 100 wird das Ergebnis je Deck zufällig, über 500 bringt es kaum noch etwas.'
         required: true
