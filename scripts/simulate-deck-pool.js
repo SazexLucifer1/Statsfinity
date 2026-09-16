@@ -33,7 +33,7 @@ const { createClient } = require('@supabase/supabase-js');
  * still überschreibt. Ohne sie ließe sich hinterher nicht mehr sagen, ob ein verschobenes Ergebnis
  * am Deck liegt oder an einer Änderung hier.
  */
-const SIM_VERSION = '4';
+const SIM_VERSION = '5';
 
 /** Voreinstellung: so oft wird jedes Deck ausgespielt. */
 const SPIELE_JE_DECK = 200;
@@ -134,12 +134,37 @@ async function ladeAlle(tabelle, spalten, anpassen = (q) => q) {
   }
 }
 
+/**
+ * Je Kartenname genau eine Zeile - und zwar die SPIELBARE.
+ *
+ * Der normalisierte Vorderseiten-Name ist nicht eindeutig: 45 Namen haben mehrere Einträge, und
+ * bei 21 davon ist einer im Commander spielbar und ein anderer nicht. "Savage Lands" gibt es als
+ * Dreifarben-Land (spielbar) und als Eintrag mit der Typzeile "Card" (nicht spielbar), "Smelt" als
+ * Instant und als Playtest-Karte "Smelt // Herd // Saw".
+ *
+ * Ohne diese Auswahl gewinnt schlicht die zuletzt geladene Zeile - also der Zufall. Ein Land, das
+ * als Nicht-Land eingestuft wird, verschiebt das ganze simulierte Spiel, und bei "Savage Lands"
+ * hinge das an 875 Decks. Die Reihenfolge ist deshalb: spielbar schlägt unbekannt schlägt
+ * unspielbar.
+ */
+function ohneDoppelte(zeilen) {
+  const beste = new Map();
+  const rang = (zeile) =>
+    zeile.commander_legal === true ? 2 : zeile.commander_legal === null ? 1 : 0;
+  for (const zeile of zeilen) {
+    const vorhanden = beste.get(zeile.front_name_normalized);
+    if (!vorhanden || rang(zeile) > rang(vorhanden)) beste.set(zeile.front_name_normalized, zeile);
+  }
+  return [...beste.values()];
+}
+
 async function ladeKartendaten() {
   console.log('Kartendaten laden ...');
-  const karten = await ladeAlle(
+  const rohe = await ladeAlle(
     'scryfall_cards',
-    'front_name_normalized, name, type_line, oracle_text, back_type_line, back_oracle_text, mana_cost, cmc, produced_mana, power, keywords, game_changer, color_identity',
+    'front_name_normalized, name, type_line, oracle_text, back_type_line, back_oracle_text, mana_cost, cmc, produced_mana, power, keywords, game_changer, color_identity, commander_legal',
   );
+  const karten = ohneDoppelte(rohe);
   const flags = await ladeAlle('spellbook_card_flags', 'name_normalized, tutor');
   const effekte = await ladeAlle('scryfall_card_effects', 'category, front_name_normalized', (q) =>
     q.in('category', [...INTERAKTION, ...WEITERE_KATEGORIEN]),
@@ -160,7 +185,8 @@ async function ladeKartendaten() {
   }
 
   console.log(
-    `  ${karten.length} Karten, ${tutoren.size} Tutoren, ${kategorien.size} Karten mit Effekt-Kategorie.`,
+    `  ${karten.length} Karten (${rohe.length - karten.length} doppelte Namen zusammengefasst), ` +
+      `${tutoren.size} Tutoren, ${kategorien.size} Karten mit Effekt-Kategorie.`,
   );
   return { karten, tutoren, kategorien, farbenNachKarte };
 }
