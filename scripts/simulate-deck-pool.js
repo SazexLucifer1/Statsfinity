@@ -122,7 +122,13 @@ async function ladeAlle(tabelle, spalten, anpassen = (q) => q) {
         .select(spalten)
         .range(von, von + SEITE - 1),
     );
-    if (error) throw new Error(`Laden aus ${tabelle} fehlgeschlagen: ${error.message}`);
+    if (error) {
+      const hinweis =
+        tabelle === 'spellbook_winning_combos'
+          ? ' Migration sql/spellbook-winning-combos-matview-2026-09-16.sql schon ausgefuehrt?'
+          : '';
+      throw new Error(`Laden aus ${tabelle} fehlgeschlagen: ${error.message}.${hinweis}`);
+    }
     zeilen.push(...data);
     if (data.length < SEITE) return zeilen;
   }
@@ -161,6 +167,10 @@ async function ladeKartendaten() {
 
 async function ladeGewinnCombos() {
   console.log('Gewinnende Combos laden ...');
+  // spellbook_winning_combos ist eine MATERIALISIERTE Ansicht - sie liefert fertige Zeilen. Als
+  // gewoehnliche Ansicht hat dieselbe Abfrage die Verknuepfung ueber 369.706 Kartenzeilen bei
+  // JEDEM der zwanzig Pakete neu gerechnet und ist irgendwann in die Zeitueberschreitung gelaufen
+  // (siehe sql/spellbook-winning-combos-matview-2026-09-16.sql).
   const combos = await ladeAlle(
     'spellbook_winning_combos',
     'combo_id, mana_value_needed, card_names, commander_required',
