@@ -274,7 +274,11 @@ export function simuliereSpiel(deck: SimDeck, seed: number): SimSpiel {
     const vorrat = quellen(deck, stand);
     const gesamtMana = summe(vorrat);
 
-    const schadenDiesenZug = hauptphase(deck, stand, vorrat);
+    // Erst prüfen, dann wirken: Steht die Combo schon zu Beginn der Hauptphase, darf das Mana
+    // dafür nicht vorher in einen Bären wandern. Die Prüfung nach der Hauptphase bleibt zusätzlich
+    // bestehen - sie fängt den Fall, dass das letzte Teil gerade erst gewirkt wurde.
+    const comboVorher = comboSteht(deck, stand, vorrat);
+    const schadenDiesenZug = comboVorher ? 0 : hauptphase(deck, stand, vorrat);
 
     if (stand.zug === 3) spiel.manaProben[0] = gesamtMana;
     if (stand.zug === 5) spiel.manaProben[1] = gesamtMana;
@@ -283,7 +287,7 @@ export function simuliereSpiel(deck: SimDeck, seed: number): SimSpiel {
     const angriff = angriffsschaden(stand) + schadenDiesenZug;
     stand.schadenGesamt += angriff;
 
-    if (comboSteht(deck, stand, vorrat)) {
+    if (comboVorher || comboSteht(deck, stand, vorrat)) {
       spiel.siegZug = stand.zug;
       spiel.art = 'combo';
     } else if (angriff >= LETHAL) {
@@ -428,6 +432,7 @@ function hauptphase(deck: SimDeck, stand: Stand, vorrat: Quelle[]): number {
       if (karte.land) continue;
       if (!kannZahlen(mitRabatt(karte.kosten, abzug), vorrat)) continue;
       const rang = rangFuer(karte, deck, stand);
+      if (rang < 0) continue;
       if (rang > besterRang) {
         besterRang = rang;
         beste = i;
@@ -459,10 +464,20 @@ function mitRabatt(kosten: SimKosten, abzug: number): SimKosten {
   };
 }
 
-/** Je höher, desto eher wird die Karte gewirkt. */
-function rangFuer(karte: SimCard, deck: SimDeck, stand: Stand): number {
+/**
+ * Je höher, desto eher wird die Karte gewirkt. Ein negativer Rang heißt: gar nicht wirken.
+ *
+ * Der negative Fall ist keine Feinheit, sondern verhindert, dass sich das Deck selbst die Combo
+ * zerlegt: Ein Combo-Teil, das NICHT liegen bleibt (Spontanzauber, Hexerei), ist nach dem Wirken
+ * weg - ohne Gegenstück also ersatzlos verheizt. Ein bleibendes Teil darf dagegen jederzeit
+ * gewirkt werden, es steht danach auf dem Feld und zählt weiter zur Combo.
+ *
+ * Auf der Hand behalten kostet nichts: comboSteht() zählt Teile in der Hand mit, sofern das Mana
+ * reicht, sie im selben Zug nachzuwirken.
+ */
+export function rangFuer(karte: SimCard, deck: SimDeck, stand: { zug: number }): number {
   if (karte.gewinntSofort) return 100;
-  if (istZielteil(karte, deck)) return 90;
+  if (istZielteil(karte, deck)) return karte.bleibend ? 90 : -1;
   if (karte.manaquelle && stand.zug <= 8) return 70 + karte.manaquelle.menge;
   if (karte.laenderAufsFeld > 0 && stand.zug <= 8) return 70 + karte.laenderAufsFeld;
   if (karte.tutor && deck.ziele.length > 0) return 60;

@@ -7,6 +7,7 @@ import {
   istSiegCombo,
   kannZahlen,
   perzentil,
+  rangFuer,
   rngAus,
   simuliereDeck,
   simuliereSpiel,
@@ -182,6 +183,34 @@ describe('angriffsschaden', () => {
   });
 });
 
+describe('rangFuer', () => {
+  const ziel = [{ keys: ['teil a', 'teil b'], zusatzMana: 0 }];
+  const zug = { zug: 3 };
+
+  it('wirkt ein bleibendes Combo-Teil sofort - es steht danach auf dem Feld', () => {
+    const teil = buildSimCard(
+      daten({ name: 'Teil A', key: 'teil a', typeLine: 'Artifact', manaCost: '{2}', cmc: 2 }),
+    );
+    expect(rangFuer(teil, deckAus([], ziel), zug)).toBeGreaterThan(0);
+  });
+
+  it('wirkt ein Combo-Teil NICHT, das nach dem Wirken weg wäre', () => {
+    // Eine Hexerei als Combo-Teil ohne Gegenstück zu wirken hiesse, sich die eigene Combo zu
+    // zerlegen: Die Karte ist danach im Friedhof und kommt nie wieder.
+    const teil = buildSimCard(
+      daten({ name: 'Teil B', key: 'teil b', typeLine: 'Sorcery', manaCost: '{2}', cmc: 2 }),
+    );
+    expect(rangFuer(teil, deckAus([], ziel), zug)).toBeLessThan(0);
+  });
+
+  it('wirkt dieselbe Hexerei sehr wohl, wenn sie gar kein Combo-Teil ist', () => {
+    const egal = buildSimCard(
+      daten({ name: 'Egal', key: 'egal', typeLine: 'Sorcery', manaCost: '{2}', cmc: 2 }),
+    );
+    expect(rangFuer(egal, deckAus([], ziel), zug)).toBeGreaterThan(0);
+  });
+});
+
 describe('simuliereSpiel', () => {
   it('gewinnt mit 99 Ländern nie', () => {
     const ergebnis = simuliereDeck(deckAus(vervielfache(wald(), 99)), 20);
@@ -228,6 +257,29 @@ describe('simuliereSpiel', () => {
     expect(mitZiel.median).toBeLessThan(MAX_ZUEGE);
     // Dieselben Karten ohne gewinnende Combo gewinnen deutlich später oder gar nicht.
     expect(ohneZiel.median).toBeGreaterThan(mitZiel.median);
+  });
+
+  it('hebt das Mana für eine bereits vollständige Combo auf', () => {
+    // Beide Teile sind Hexereien und liegen im Deck reichlich vor; das Deck hat daneben nur
+    // billige Kreaturen, in die es sein Mana sonst stecken würde.
+    const teilA = buildSimCard(
+      daten({ name: 'Teil A', key: 'teil a', typeLine: 'Sorcery', manaCost: '{1}', cmc: 1 }),
+    );
+    const teilB = buildSimCard(
+      daten({ name: 'Teil B', key: 'teil b', typeLine: 'Sorcery', manaCost: '{1}', cmc: 1 }),
+    );
+    const deck = deckAus(
+      [
+        ...vervielfache(wald(), 40),
+        ...vervielfache(teilA, 10),
+        ...vervielfache(teilB, 10),
+        ...vervielfache(kreatur('Koeder', 1, 1), 39),
+      ],
+      [{ keys: ['teil a', 'teil b'], zusatzMana: 0 }],
+    );
+
+    const ergebnis = simuliereDeck(deck, 100);
+    expect(ergebnis.median).toBeLessThanOrEqual(6);
   });
 
   it('macht ein Deck mit Manasteinen schneller als dasselbe Deck ohne', () => {
