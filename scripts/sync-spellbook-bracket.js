@@ -610,7 +610,32 @@ async function main() {
   const laufBegonnen = new Date().toISOString();
   await syncKartenFlags(laufBegonnen);
   await syncCombos(laufBegonnen);
+  await frischeGewinnCombosAuf();
   console.log('Abgleich abgeschlossen.');
+}
+
+/**
+ * Die materialisierte Ansicht der spielbeendenden Combos auffrischen.
+ *
+ * Sie speichert ihr Ergebnis (siehe sql/spellbook-winning-combos-matview-2026-09-16.sql) und weiss
+ * von den Combos, die dieser Lauf gerade eingespielt hat, sonst nichts. Ohne diesen Aufruf wuerde
+ * der Goldfish-Stapellauf auf einem Stand von gestern rechnen, ohne dass es irgendwo auffiele.
+ *
+ * Ein Fehlschlag beendet den Abgleich NICHT: Die Kartendaten sind zu diesem Zeitpunkt vollstaendig
+ * geschrieben, und die ganze Nacht wegen einer Nebensache als gescheitert zu melden hiesse, den
+ * naechsten Blick ins Protokoll an die falsche Stelle zu lenken. Fehlt die Ansicht noch (Migration
+ * nicht ausgefuehrt), steht genau das im Protokoll.
+ */
+async function frischeGewinnCombosAuf() {
+  console.log('--- Teil 3: Gewinn-Combos auffrischen ---');
+  const { error } = await supabase.rpc('refresh_spellbook_winning_combos');
+  if (error) {
+    console.warn(
+      `Auffrischen von spellbook_winning_combos fehlgeschlagen: ${error.message}. Migration sql/spellbook-winning-combos-matview-2026-09-16.sql schon ausgefuehrt?`,
+    );
+    return;
+  }
+  console.log('spellbook_winning_combos ist auf dem neuesten Stand.');
 }
 
 main().catch((err) => {
