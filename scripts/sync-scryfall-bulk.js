@@ -192,6 +192,14 @@ function toRow(data) {
       null,
     back_image_url: hasFlippableBack ? backFace.image_uris.normal : null,
     back_type_line: hasFlippableBack ? (backFace.type_line ?? null) : null,
+    // Rückseitentext nur bei echten umdrehbaren Karten - bei Split/Adventure ist "Face 2" nur die
+    // zweite Hälfte derselben Karte, und ihr Text als "Rückseite" wäre schlicht falsch.
+    back_oracle_text: hasFlippableBack ? (backFace.oracle_text ?? null) : null,
+    // Wörtlich wie bei Scryfall, "*" und "1+*" eingeschlossen (siehe
+    // sql/scryfall-sim-fields-2026-09-16.sql). Bei doppelseitigen Karten steht beides nur auf den
+    // Faces - ohne den Rückgriff hätte jede Transform-Kreatur keine Stärke.
+    power: data.power ?? data.card_faces?.[0]?.power ?? null,
+    toughness: data.toughness ?? data.card_faces?.[0]?.toughness ?? null,
     all_parts:
       data.all_parts?.map((p) => ({
         id: p.id,
