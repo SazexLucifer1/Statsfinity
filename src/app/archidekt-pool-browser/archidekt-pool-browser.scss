@@ -39,6 +39,17 @@
   }
 }
 
+// Fünf Stufen nebeneinander auf 390px: gleiche Breite, damit die Reihe nicht ausfranst und
+// jeder Chip dieselbe Trefferfläche hat. Der Abstand kommt aus .chip-row (--sp-3), hier wird nur
+// die Aufteilung festgelegt.
+.pool-bracket-row {
+  margin-bottom: 0;
+
+  button {
+    flex: 1;
+  }
+}
+
 .pool-count {
   margin: 0 0 8px;
 }

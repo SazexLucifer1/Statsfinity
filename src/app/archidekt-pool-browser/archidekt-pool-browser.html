@@ -16,13 +16,24 @@
           [ngModel]="search()"
           (ngModelChange)="setSearch($event)"
         />
-        <app-multi-select
-          [value]="bracketFilter()"
-          (valueChange)="setBrackets($event)"
-          [options]="brackets"
-          [label]="i18n.t('profile.poolBracketFilter')"
-          [allLabel]="i18n.t('profile.poolAllBrackets')"
-        />
+        <div
+          class="chip-row pool-bracket-row"
+          role="group"
+          [attr.aria-label]="i18n.t('profile.poolBracketFilter')"
+        >
+          @for (stufe of brackets; track stufe) {
+            <button
+              type="button"
+              class="glass-chip small"
+              [class.active]="bracket() === stufe"
+              [attr.aria-pressed]="bracket() === stufe"
+              [title]="i18n.t('deck.bracket.name' + stufe)"
+              (click)="setBracket(stufe)"
+            >
+              B{{ stufe }}
+            </button>
+          }
+        </div>
       </div>
 
       @if (pool.loading()) {
@@ -31,7 +42,7 @@
         <p class="hint">{{ i18n.t('profile.poolLoadFailed') }}</p>
       } @else if (pool.total() === 0) {
         <p class="hint">
-          {{ i18n.t(eingegrenzt() ? 'profile.poolNoResults' : 'profile.poolEmpty') }}
+          {{ i18n.t(eingegrenzt() ? 'profile.poolNoResults' : 'profile.poolNoneInBracket') }}
         </p>
       } @else {
         <p class="hint pool-count">
