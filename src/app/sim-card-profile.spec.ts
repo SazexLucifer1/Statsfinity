@@ -502,3 +502,138 @@ describe('erkennungsquote', () => {
     expect(erkennungsquote([land, land, land, unbekannt])).toBe(0);
   });
 });
+
+describe('buildSimCard - die Luecken aus dem Precon-Nachtest', () => {
+  // Alle Karten hier sind im Zendikar-Rising-Precon "Sneak Attack" durchgefallen: Der Simulator
+  // hielt sie fuer wirkungslos, obwohl sie Stärke, Marken oder Karten bringen.
+
+  it('erkennt den Staerkebonus einer Ausruestung', () => {
+    const sim = buildSimCard(
+      karte({
+        name: 'Heirloom Blade',
+        typeLine: 'Artifact — Equipment',
+        oracleText:
+          'Equipped creature gets +3/+1.\nWhenever equipped creature dies, you may reveal cards from the top of your library until you reveal a creature card that shares a creature type with it.\nEquip {2}',
+        manaCost: '{3}',
+        cmc: 3,
+      }),
+    );
+    expect(sim.ausruestung).toBe(3);
+  });
+
+  it('erkennt denselben Bonus auf einer Aura', () => {
+    const sim = buildSimCard(
+      karte({
+        name: 'Ethereal Armor',
+        typeLine: 'Enchantment — Aura',
+        oracleText:
+          'Enchant creature\nEnchanted creature gets +1/+1 for each enchantment you control and has first strike.',
+        manaCost: '{W}',
+        cmc: 1,
+      }),
+    );
+    expect(sim.ausruestung).toBe(1);
+  });
+
+  it('erkennt ein Anthem, das die Kreaturen nicht "you control" nennt', () => {
+    const sim = buildSimCard(
+      karte({
+        name: 'Obelisk of Urd',
+        typeLine: 'Artifact',
+        oracleText:
+          'Convoke\nAs this artifact enters, choose a creature type.\nCreatures of the chosen type get +2/+2.',
+        manaCost: '{4}{W}{W}',
+        cmc: 6,
+      }),
+    );
+    expect(sim.anthem).toBe(2);
+  });
+
+  it('haelt einen Malus fuer gegnerische Kreaturen NICHT fuer ein Anthem', () => {
+    const sim = buildSimCard(
+      karte({
+        name: 'Elesh Norn, Grand Cenobite',
+        typeLine: 'Legendary Creature — Praetor',
+        oracleText:
+          'Vigilance\nOther creatures you control get +2/+2.\nCreatures your opponents control get -2/-2.',
+        manaCost: '{5}{W}{W}',
+        cmc: 7,
+        power: '4',
+      }),
+    );
+    expect(sim.anthem).toBe(2);
+  });
+
+  it('erkennt Kreaturenmarken', () => {
+    const sim = buildSimCard(
+      karte({
+        name: 'Secure the Wastes',
+        typeLine: 'Instant',
+        oracleText: 'Create X 1/1 white Warrior creature tokens.',
+        manaCost: '{X}{W}',
+        cmc: 1,
+      }),
+    );
+    // X haengt am Spielzustand - eine Marke ist die vorsichtige Annahme, keine geratene Zahl.
+    expect(sim.tokenAnzahl).toBe(1);
+    expect(sim.tokenStaerke).toBe(1);
+  });
+
+  it('zaehlt mehrere Marken richtig', () => {
+    const sim = buildSimCard(
+      karte({
+        name: 'Rampaging Baloths',
+        typeLine: 'Creature — Beast',
+        oracleText:
+          'Trample\nLandfall — Whenever a land you control enters, create a 4/4 green Beast creature token.',
+        manaCost: '{4}{G}{G}',
+        cmc: 6,
+        power: '6',
+      }),
+    );
+    expect(sim.tokenStaerke).toBe(4);
+  });
+
+  it('erkennt Fact or Fiction als Kartenfluss, obwohl "draw" nicht darin vorkommt', () => {
+    const sim = buildSimCard(
+      karte({
+        name: 'Fact or Fiction',
+        typeLine: 'Instant',
+        oracleText:
+          'Reveal the top five cards of your library. An opponent separates those cards into two piles. Put one pile into your hand and the other into your graveyard.',
+        manaCost: '{3}{U}',
+        cmc: 4,
+      }),
+    );
+    expect(sim.ziehen).toBe(1);
+  });
+
+  it('erkennt Impuls-Ziehen aus dem Exil', () => {
+    const sim = buildSimCard(
+      karte({
+        name: 'Light Up the Stage',
+        typeLine: 'Sorcery',
+        oracleText:
+          'Spectacle {R}\nExile the top two cards of your library. Until the end of your next turn, you may play those cards.',
+        manaCost: '{2}{R}',
+        cmc: 3,
+      }),
+    );
+    expect(sim.ziehen).toBe(2);
+  });
+
+  it('erkennt einen Angriffs-Ausloeser als Engine, die Kreaturen braucht', () => {
+    const sim = buildSimCard(
+      karte({
+        name: 'Military Intelligence',
+        typeLine: 'Enchantment',
+        oracleText: 'Whenever you attack with two or more creatures, draw a card.',
+        manaCost: '{1}{U}',
+        cmc: 2,
+      }),
+    );
+    expect(sim.faehigkeit?.ziehen).toBe(1);
+    expect(sim.faehigkeit?.brauchtKreatur).toBe(true);
+    expect(sim.faehigkeit?.kosten.gesamt).toBe(0);
+  });
+});

@@ -1,4 +1,4 @@
-import { ALLE_FARBEN, Farbmaske, SimCard, SimKosten } from './sim-card-profile';
+import { ALLE_FARBEN, Farbmaske, SimCard, SimKosten, tokenKarte } from './sim-card-profile';
 
 /**
  * Der Goldfish-Simulator: ein Deck spielt gegen niemanden, bis es gewinnen könnte.
@@ -464,6 +464,9 @@ function engines(stand: Stand, vorrat: Quelle[]): void {
     const f = eintrag.karte.faehigkeit;
     if (!f) continue;
     if (f.brauchtBereitschaft && eintrag.seitZug === stand.zug) continue;
+    if (f.brauchtKreatur && !stand.feld.some((e) => e.karte.istKreatur && e.karte.staerke > 0)) {
+      continue;
+    }
     if (!zahle(f.kosten, vorrat)) continue;
 
     if (f.ziehen > 0) ziehe(stand, f.ziehen);
@@ -510,7 +513,9 @@ export function rangFuer(karte: SimCard, deck: SimDeck, stand: { zug: number }):
   if (karte.tutor && deck.ziele.length > 0) return 60;
   if (karte.ziehen >= 2) return 50;
   if (karte.massenpump !== 0 || karte.extraKampf) return 45;
-  if (karte.istKreatur) return 20 + Math.min(karte.staerke, 15);
+  const brettgewinn = karte.staerke + karte.tokenAnzahl * karte.tokenStaerke;
+  if (karte.istKreatur || karte.tokenAnzahl > 0) return 20 + Math.min(brettgewinn, 15);
+  if (karte.ausruestung > 0) return 22;
   if (karte.anthem > 0) return 25;
   if (karte.ziehen > 0) return 15;
   return 5;
@@ -553,6 +558,10 @@ function spieleKarte(karte: SimCard, deck: SimDeck, stand: Stand, vorrat: Quelle
   }
   if (karte.manaquelle && !karte.manaquelle.brauchtBereitschaft) {
     vorrat.push({ farben: karte.manaquelle.farben || ALLE_FARBEN, menge: karte.manaquelle.menge });
+  }
+
+  for (let i = 0; i < karte.tokenAnzahl; i++) {
+    stand.feld.push({ karte: tokenKarte(karte.tokenStaerke), seitZug: stand.zug });
   }
 
   if (karte.bleibend) stand.feld.push({ karte, seitZug: stand.zug });
@@ -620,12 +629,14 @@ export function angriffsschaden(stand: {
   let kreaturen = 0;
   let gesamt = 0;
   let anthem = 0;
+  let ausruestung = 0;
   let pump = 0;
   let extraKampf = false;
 
   for (const eintrag of stand.feld) {
     const k = eintrag.karte;
     anthem += k.anthem;
+    ausruestung += k.ausruestung;
     if (k.extraKampf) extraKampf = true;
     if (k.massenpump !== 0) pump = Math.max(pump, k.massenpump);
     if (!k.istKreatur || k.staerke <= 0) continue;
@@ -637,6 +648,11 @@ export function angriffsschaden(stand: {
 
   if (kreaturen === 0) return 0;
   gesamt += anthem * kreaturen;
+  // Eine Ausrüstung hängt an EINER Kreatur, nicht an allen - deshalb einmal der Bonus und nicht
+  // einmal je Kreatur. Mehrere Ausrüstungen dürfen sich auf derselben Kreatur stapeln, ihre Boni
+  // also addieren; die Ausrüstungskosten bleiben unberücksichtigt, weil im späten Spiel ohnehin
+  // Mana übrig ist.
+  gesamt += ausruestung;
   // -1 steht für "+X/+X, X = Anzahl der Kreaturen" (Craterhoof-Muster).
   gesamt += (pump === -1 ? kreaturen : pump) * kreaturen;
   return extraKampf ? gesamt * 2 : gesamt;

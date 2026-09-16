@@ -173,6 +173,8 @@ export interface SimFaehigkeit {
   laenderAufsFeld: number;
   /** true = die Fähigkeit verlangt Tappen und die Kreatur muss erst bereit sein. */
   brauchtBereitschaft: boolean;
+  /** true = sie hängt am Angriff und bringt nur etwas, wenn überhaupt Kreaturen dastehen. */
+  brauchtKreatur: boolean;
 }
 
 /** Der fertige Steckbrief einer Karte. */
@@ -207,6 +209,11 @@ export interface SimCard {
   eile: boolean;
   /** Dauerhafte Verstärkung aller eigenen Kreaturen ("+1/+1"). */
   anthem: number;
+  /** Stärkebonus einer Ausrüstung oder Aura - wirkt auf GENAU EINE Kreatur, nicht auf alle. */
+  ausruestung: number;
+  /** Wie viele Kreaturenmarken die Karte erzeugt, und wie stark eine davon ist. */
+  tokenAnzahl: number;
+  tokenStaerke: number;
   /** Einmalige Verstärkung aller Kreaturen bis Zugende. -1 steht für "+X/+X", X = Kreaturenzahl. */
   massenpump: number;
   extraKampf: boolean;
@@ -353,6 +360,23 @@ function addWirkung(text: string): { farben: Farbmaske; menge: number } | null {
  * als sie zu übersehen - siehe die Regel, im Zweifel zu untertreiben.
  */
 function aktivierteFaehigkeit(text: string, istKreatur: boolean): SimFaehigkeit | null {
+  // Ausgelöst statt aktiviert, aber im Goldfish dasselbe: Angegriffen wird jeden Zug, sobald
+  // Kreaturen dastehen. Military Intelligence ("Whenever you attack with two or more creatures,
+  // draw a card") ist im nachgesehenen Precon genau daran durchgefallen - der Filter für bedingte
+  // Zeilen hat sie verworfen, obwohl die Bedingung hier praktisch immer zutrifft.
+  for (const zeile of text.split('\n')) {
+    if (!/whenever you attack/i.test(zeile)) continue;
+    const zieht = zeile.match(/draw (\w+) cards?/i);
+    if (!zieht) continue;
+    return {
+      kosten: KOSTENLOS,
+      ziehen: zahl(zieht[1]),
+      laenderAufsFeld: 0,
+      brauchtBereitschaft: false,
+      brauchtKreatur: true,
+    };
+  }
+
   for (const zeile of text.split('\n')) {
     const doppelpunkt = zeile.indexOf(':');
     if (doppelpunkt < 0) continue;
@@ -371,9 +395,110 @@ function aktivierteFaehigkeit(text: string, istKreatur: boolean): SimFaehigkeit 
       ziehen: zieht ? zahl(zieht[1]) : 0,
       laenderAufsFeld: laender ? 1 : 0,
       brauchtBereitschaft: istKreatur && /\{T\}/i.test(kostenTeil),
+      brauchtKreatur: false,
     };
   }
   return null;
+}
+
+/**
+ * Karten, die in der Hand landen, ohne dass "draw" dasteht.
+ *
+ * Fact or Fiction sagt "put one pile into your hand", die rote Impuls-Variante "exile the top three
+ * cards of your library. You may play them this turn". Beides ist Kartenfluss, und beides verpasst
+ * ein Muster, das nur nach "draw" sucht - im nachgesehenen Precon war Fact or Fiction eine von vier
+ * Zieh-Karten, die dadurch als wirkungslos galten.
+ *
+ * Bewusst knauserig gezählt: Fact or Fiction zieht im Schnitt zweieinhalb Karten, hier steht 1.
+ * Ein Stapel, dessen Größe der Gegner bestimmt, ist nicht seriös zu schätzen, und die Regel lautet
+ * im Zweifel untertreiben.
+ */
+function kartenInDieHand(zeile: string): number {
+  // "put one pile into your hand", "put that card into your hand", "put them into your hand"
+  if (/put (?:one|that|those|them|it|the rest)[^.]{0,40}into your hand/i.test(zeile)) return 1;
+  // "put up to two of them into your hand"
+  const mehrere = zeile.match(
+    /put (?:up to )?(\w+) of (?:them|those cards)[^.]{0,20}into your hand/i,
+  );
+  if (mehrere) return zahl(mehrere[1]);
+  // Impuls-Ziehen: die Karten liegen im Exil, spielbar sind sie trotzdem.
+  const impuls = zeile.match(/exile the top (\w+) cards?[^.]*\.[^.]*you may play/i);
+  if (impuls) return zahl(impuls[1]);
+  return 0;
+}
+
+/**
+ * Der Anthem-Betrag - alle eigenen Kreaturen bekommen dauerhaft dazu.
+ *
+ * Das frühere Muster verlangte wörtlich "creatures you control get". Obelisk of Urd sagt
+ * "Creatures of the chosen type get +2/+2" und fiel damit durch, obwohl es dasselbe tut. Jetzt
+ * zählt jede Formulierung - außer denen, die die Kreaturen der GEGNER meinen, denn ein Minus für
+ * andere ist kein Plus für einen selbst.
+ */
+function anthemBetrag(text: string): number {
+  for (const zeile of text.split('\n')) {
+    if (/\b(opponents?|you don't control|each player)\b/i.test(zeile)) continue;
+    const treffer = zeile.match(/creatures[^.]{0,40}get \+(\d+)\/\+\d+/i);
+    if (treffer) return Number(treffer[1]);
+  }
+  return 0;
+}
+
+/**
+ * "Create two 1/1 white Soldier creature tokens" - Anzahl und Stärke einer Marke.
+ *
+ * Eine variable Anzahl ("Create X 1/1 ... tokens") zählt als eine einzige Marke: X hängt am
+ * Spielzustand, und eine geratene Zahl wäre hier besonders teuer, weil sie sich direkt in Schaden
+ * übersetzt.
+ */
+function tokenAngabe(text: string): { anzahl: number; staerke: number } | null {
+  for (const zeile of handlungsZeilen(text)) {
+    const treffer = zeile.match(/create (\w+) (\d+)\/(\d+)[^.]{0,60}?creature tokens?/i);
+    if (!treffer) continue;
+    const anzahl = /^x$/i.test(treffer[1]) ? 1 : zahl(treffer[1]);
+    if (anzahl <= 0) continue;
+    return { anzahl, staerke: Number(treffer[2]) };
+  }
+  return null;
+}
+
+/**
+ * Eine Kreaturenmarke als Steckbrief - für den Simulator ist sie eine Kreatur wie jede andere,
+ * nur ohne Karte dahinter.
+ */
+export function tokenKarte(staerke: number): SimCard {
+  return {
+    key: `#token/${staerke}`,
+    name: `Marke ${staerke}/${staerke}`,
+    kosten: KOSTENLOS,
+    cmc: 0,
+    istLand: false,
+    bleibend: true,
+    landAufRueckseite: false,
+    land: null,
+    manaquelle: null,
+    faehigkeit: null,
+    ritual: 0,
+    laenderAufsFeld: 0,
+    laenderInDieHand: 0,
+    ziehen: 0,
+    tutor: false,
+    kostenrabatt: 0,
+    istKreatur: true,
+    staerke,
+    unblockbar: false,
+    eile: false,
+    anthem: 0,
+    ausruestung: 0,
+    tokenAnzahl: 0,
+    tokenStaerke: 0,
+    massenpump: 0,
+    extraKampf: false,
+    schadenJeGegner: 0,
+    gewinntSofort: false,
+    gameChanger: false,
+    regeln: ['marke'],
+  };
 }
 
 /**
@@ -444,6 +569,9 @@ export function buildSimCard(data: SimCardData): SimCard {
     unblockbar: false,
     eile: false,
     anthem: 0,
+    ausruestung: 0,
+    tokenAnzahl: 0,
+    tokenStaerke: 0,
     massenpump: 0,
     extraKampf: false,
     schadenJeGegner: 0,
@@ -519,6 +647,7 @@ export function buildSimCard(data: SimCardData): SimCard {
     for (const [, wort] of zeile.matchAll(/draw (\w+) cards?/gi)) {
       karte.ziehen += zahl(wort);
     }
+    karte.ziehen += kartenInDieHand(zeile);
   }
   if (karte.ziehen > 0) merke('ziehen');
 
@@ -538,9 +667,9 @@ export function buildSimCard(data: SimCardData): SimCard {
   karte.eile = schlagwoerter.has('haste');
   if (istKreatur && karte.staerke > 0) merke('kreatur');
 
-  const dauerpump = text.match(/creatures you control get \+(\d+)\/\+\d+/i);
-  if (dauerpump && !/until end of turn/i.test(text)) {
-    karte.anthem = Number(dauerpump[1]);
+  const dauerpump = anthemBetrag(text);
+  if (dauerpump > 0 && !/until end of turn/i.test(text)) {
+    karte.anthem = dauerpump;
     merke('anthem');
   } else if (
     /creatures you control (?:gain [^.]*and )?get \+(?:X|\d+)\/\+(?:X|\d+)[^.]*until end of turn/i.test(
@@ -550,6 +679,23 @@ export function buildSimCard(data: SimCardData): SimCard {
     const betrag = text.match(/get \+(\d+)\/\+\d+[^.]*until end of turn/i);
     karte.massenpump = betrag ? Number(betrag[1]) : -1;
     merke('massenpump');
+  }
+
+  // Ausrüstungen und Auren hängen an EINER Kreatur, sind aber trotzdem Stärke auf dem Feld. Sie
+  // gar nicht zu zählen hiesse, ein Deck mit fünf Ausrüstungen genauso zu bewerten wie eines ohne.
+  const traeger = text.match(/(?:equipped|enchanted) creature gets \+(\d+)\/[+-]?\d+/i);
+  if (traeger) {
+    karte.ausruestung = Number(traeger[1]);
+    merke('ausruestung');
+  }
+
+  // Marken: für das Schadensmodell sind sie schlicht Kreaturen. Sie zu übersehen hiesse, die halbe
+  // Commander-Landschaft als schadlos zu führen - Marken-Decks gewinnen genau darüber.
+  const marken = tokenAngabe(text);
+  if (marken) {
+    karte.tokenAnzahl = marken.anzahl;
+    karte.tokenStaerke = marken.staerke;
+    merke('token');
   }
 
   if (/additional combat phase/i.test(text)) {
