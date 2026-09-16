@@ -191,8 +191,14 @@ async function ladeGewinnCombos() {
  * Stufe 4. Ein Vergleich der Stufen war damit unmöglich - und das Ergebnis sah trotzdem
  * vollständig aus, was der gefährlichere Teil daran ist.
  *
- * "anzahl" gilt deshalb JE STUFE, nicht insgesamt: Wer 300 einträgt, bekommt bis zu 300 Decks aus
- * jeder Stufe und damit eine Gegenüberstellung, auf die sich etwas geben lässt.
+ * "anzahl" ist die GESAMTZAHL und wird bei "alle" gleichmäßig auf die fünf Stufen aufgeteilt: Wer
+ * 1000 einträgt, bekommt 200 Decks je Stufe. Gleich große Gruppen sind dabei nicht Bequemlichkeit,
+ * sondern Voraussetzung - ein Mittelwert über 800 Decks der einen und 5 der anderen Stufe
+ * vergleicht nichts, er stellt nur zwei ungleich verlässliche Zahlen nebeneinander.
+ *
+ * Liefert eine Stufe weniger als ihren Anteil (weil so viele gar nicht importiert sind), bleibt es
+ * dabei - der Rest wird NICHT auf die anderen verteilt. Sonst wäre die Gruppe, die ohnehin schon
+ * die größte ist, am Ende auch noch übergewichtet.
  */
 async function ladeDeckAuswahl(bracket, anzahl) {
   const zeilen = [];
@@ -216,9 +222,10 @@ async function ladeDeckAuswahl(bracket, anzahl) {
 async function ladeDecks() {
   console.log('Decks laden ...');
   const stufen = bracketFilter === 'alle' ? [1, 2, 3, 4, 5] : [Number(bracketFilter)];
+  const proStufe = Math.ceil(maxDecks / stufen.length);
   const decks = [];
   for (const stufe of stufen) {
-    const teil = await ladeDeckAuswahl(stufe, maxDecks);
+    const teil = await ladeDeckAuswahl(stufe, proStufe);
     console.log(`  Bracket ${stufe}: ${teil.length} Decks`);
     decks.push(...teil);
   }
@@ -407,7 +414,9 @@ async function schreibe(zeilen) {
 
 async function main() {
   console.log(
-    `Goldfish-Stapellauf, Fassung ${SIM_VERSION}: Bracket ${bracketFilter}, bis zu ${maxDecks} Decks JE STUFE, ${spiele} Spiele je Deck.`,
+    `Goldfish-Stapellauf, Fassung ${SIM_VERSION}: Bracket ${bracketFilter}, bis zu ${maxDecks} Decks${
+      bracketFilter === 'alle' ? ' (gleichmäßig auf die fünf Stufen verteilt)' : ''
+    }, ${spiele} Spiele je Deck.`,
   );
 
   const buendel = ladeSimulator();
