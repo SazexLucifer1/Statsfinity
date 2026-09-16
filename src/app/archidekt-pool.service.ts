@@ -29,10 +29,17 @@ export interface PoolCard {
   isCommander: boolean;
 }
 
-/** Womit die Liste gerade eingegrenzt ist. Leere Bracket-Liste heißt "keine Stufe gewählt". */
+/**
+ * Womit die Liste gerade eingegrenzt ist.
+ *
+ * GENAU EINE Stufe, nicht mehrere: Der Vorrat ist dazu da, Stufen gegeneinander zu halten, und
+ * dafür will man immer eine sehen. Vorher stand hier eine Mehrfachauswahl - die startete mit allen
+ * fünf Stufen angehakt, sodass ein Tipp auf "2" die Stufe ABWÄHLTE statt sie auszuwählen. Genau
+ * so gemeldet: "ich wähle B2 und sehe trotzdem B1".
+ */
 export interface PoolFilter {
   search: string;
-  brackets: number[];
+  bracket: number;
 }
 
 /**
@@ -115,28 +122,16 @@ export class ArchidektPoolService {
     this.loading.set(true);
     this.failed.set(false);
 
-    // Keine Stufe gewählt heißt KEINE Decks, nicht alle. Vorher stand hier ein
-    // "if (brackets.length > 0)", das den Filter bei leerer Auswahl schlicht wegließ - die
-    // Ansicht zeigte dann den ganzen Vorrat, während der Knopf daneben "Keine Auswahl" meldete.
-    // Hier abzubrechen spart zugleich eine sinnlose Abfrage.
-    if (filter.brackets.length === 0) {
-      this.decks.set([]);
-      this.total.set(0);
-      this.loading.set(false);
-      return;
-    }
-
     let query = supabase
       .from('archidekt_deck_pool')
       .select(
         'id, archidekt_id, name, commander_names, creator_bracket, card_count, owner_username, view_count, imported_at',
         { count: 'exact' },
       )
-      .order('creator_bracket', { ascending: true })
       .order('name', { ascending: true })
       .limit(MAX_TREFFER);
 
-    query = query.in('creator_bracket', filter.brackets);
+    query = query.eq('creator_bracket', filter.bracket);
 
     // like statt ilike: search_text ist bereits klein geschrieben, der Begriff wird es auch. Das
     // trifft denselben Trigramm-Index, spart aber das Kleinschreiben jeder Zeile zur Laufzeit.

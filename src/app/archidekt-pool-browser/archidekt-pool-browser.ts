@@ -7,7 +7,6 @@ import { I18nService } from '../i18n.service';
 import { PartnerCardImage } from '../partner-card-image/partner-card-image';
 import { ScryfallCard, ScryfallService } from '../scryfall.service';
 import { BracketBadge } from '../ui/bracket-badge/bracket-badge';
-import { MultiSelect } from '../ui/multi-select/multi-select';
 
 /** Eine Karte der geöffneten Deckliste, angereichert um die Scryfall-Daten (vor allem das Bild). */
 interface PoolCardEntry {
@@ -17,7 +16,7 @@ interface PoolCardEntry {
 }
 
 /** Die fünf offiziellen Bracket-Stufen als Filteroptionen. */
-const BRACKETS = ['1', '2', '3', '4', '5'] as const;
+const BRACKETS = [1, 2, 3, 4, 5] as const;
 
 /**
  * Developer-Ansicht auf den Archidekt-Deckvorrat (Tabellen in
@@ -34,7 +33,7 @@ const BRACKETS = ['1', '2', '3', '4', '5'] as const;
  */
 @Component({
   selector: 'app-archidekt-pool-browser',
-  imports: [FormsModule, CardImage, PartnerCardImage, BracketBadge, MultiSelect],
+  imports: [FormsModule, CardImage, PartnerCardImage, BracketBadge],
   templateUrl: './archidekt-pool-browser.html',
   styleUrl: './archidekt-pool-browser.scss',
 })
@@ -47,12 +46,8 @@ export class ArchidektPoolBrowser {
   readonly brackets = BRACKETS;
 
   readonly search = signal('');
-  /**
-   * Startet mit allen Stufen - gleiche Konvention wie selectedModes in stats-tab.ts. Wichtig, weil
-   * MultiSelect eine VOLLSTÄNDIGE Auswahl als "Alle" beschriftet und eine leere als "Keine
-   * Auswahl": Würde hier leer für "alle" stehen, widerspräche der Knopf dem, was die Liste zeigt.
-   */
-  readonly bracketFilter = signal<Set<string>>(new Set(BRACKETS));
+  /** Genau eine Stufe ist immer gewählt - siehe PoolFilter. Startwert ist die unterste. */
+  readonly bracket = signal<number>(1);
 
   /** Läuft beim Tippen, damit nicht jeder Tastendruck eine eigene Abfrage auslöst. */
   private suchTimer: ReturnType<typeof setTimeout> | null = null;
@@ -69,23 +64,23 @@ export class ArchidektPoolBrowser {
     this.suchTimer = setTimeout(() => void this.neuLaden(), 300);
   }
 
-  setBrackets(next: Set<string>): void {
-    this.bracketFilter.set(next);
+  setBracket(stufe: number): void {
+    if (stufe === this.bracket()) return;
+    this.bracket.set(stufe);
     void this.neuLaden();
   }
 
   /**
-   * Ob gerade ein Filter aktiv ist. Entscheidet bei null Treffern, ob "nichts gefunden" oder
-   * "noch nichts importiert" dasteht - zwei sehr verschiedene Aussagen.
+   * Ob gerade gesucht wird. Entscheidet bei null Treffern zwischen "nichts gefunden" und "in
+   * dieser Stufe liegt noch nichts" - zwei sehr verschiedene Aussagen. Eine Stufe ist immer
+   * gewählt, deshalb zählt hier nur der Suchbegriff.
    */
-  readonly eingegrenzt = computed(
-    () => this.search().trim().length > 0 || this.bracketFilter().size < BRACKETS.length,
-  );
+  readonly eingegrenzt = computed(() => this.search().trim().length > 0);
 
   private neuLaden(): Promise<void> {
     return this.pool.loadDecks({
       search: this.search(),
-      brackets: [...this.bracketFilter()].map(Number),
+      bracket: this.bracket(),
     });
   }
 

@@ -153,9 +153,9 @@ export const profile = {
     'profile.poolBackToList': '← Liste',
     'profile.poolSearchPlaceholder': 'Deck oder Commander suchen …',
     'profile.poolBracketFilter': 'Bracket',
-    'profile.poolAllBrackets': 'Alle',
     'profile.poolCount': '{{shown}} von {{total}} Decks',
     'profile.poolNoResults': 'Kein Deck passt zu dieser Suche.',
+    'profile.poolNoneInBracket': 'In dieser Bracket-Stufe liegt noch kein Deck.',
     'profile.poolLimited':
       'Anzeige begrenzt – grenze die Suche weiter ein, um die übrigen zu sehen.',
     'profile.poolEmpty':
@@ -318,9 +318,9 @@ export const profile = {
     'profile.poolBackToList': '← List',
     'profile.poolSearchPlaceholder': 'Search deck or commander …',
     'profile.poolBracketFilter': 'Bracket',
-    'profile.poolAllBrackets': 'All',
     'profile.poolCount': '{{shown}} of {{total}} decks',
     'profile.poolNoResults': 'No deck matches this search.',
+    'profile.poolNoneInBracket': 'No deck in this bracket yet.',
     'profile.poolLimited': 'Display limited – narrow the search to see the rest.',
     'profile.poolEmpty':
       'No decks imported yet. The import runs via the "Archidekt deck import" workflow.',
