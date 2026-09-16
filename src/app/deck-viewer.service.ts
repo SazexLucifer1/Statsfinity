@@ -34,11 +34,7 @@ import { I18nService } from './i18n.service';
 import { COMMANDER_ARCHETYPE_FILTERS } from './commander-archetype-filters';
 import { ColorSelection, EMPTY_COLOR_SELECTION, matchesColorSelection } from './color-filter-match';
 import { BarChartDatum } from './ui/bar-chart/bar-chart';
-import {
-  manaCurveChartData,
-  pipChartData,
-  typeChartData,
-} from './ui/bar-chart/deck-chart-data';
+import { manaCurveChartData, pipChartData, typeChartData } from './ui/bar-chart/deck-chart-data';
 import { DeckFormat, DECK_FORMATS } from './models';
 
 export interface ManaCurveBucket {
@@ -270,7 +266,13 @@ export class DeckViewerService {
         previousTime !== null && Math.abs(previousTime - time) <= CHANGE_GROUP_GAP_MS;
 
       if (!belongsToPrevious) {
-        groups.push({ changedAt: entry.changedAt, added: [], removed: [], addedCount: 0, removedCount: 0 });
+        groups.push({
+          changedAt: entry.changedAt,
+          added: [],
+          removed: [],
+          addedCount: 0,
+          removedCount: 0,
+        });
       }
       const group = groups[groups.length - 1];
 
@@ -369,24 +371,25 @@ export class DeckViewerService {
   readonly viewingTotalCards = computed(() =>
     this.editedDeckCards()
       .filter((c) => !c.isMaybeboard && !c.isToken)
-      .reduce((sum, c) => sum + c.quantity, 0)
+      .reduce((sum, c) => sum + c.quantity, 0),
   );
 
   /** Gespeicherte Deck-Karten ohne Maybeboard/Marken - Basis für sämtliche Deck-Analysen (Kurve, Pips, Game-Changer, Tutoren, Bracket-Schätzung). */
   private readonly analysisDeckCards = computed(() =>
-    this.viewingDeckCards().filter((c) => !c.isMaybeboard && !c.isToken)
+    this.viewingDeckCards().filter((c) => !c.isMaybeboard && !c.isToken),
   );
 
   /** Nicht-Land-Karten - Basis für Manakurve, Pip-Verteilung und Game-Changer-Auswertung. */
   private readonly nonLandCards = computed(() =>
-    this.analysisDeckCards().filter((c) => !(c.typeLine ?? '').includes('Land'))
+    this.analysisDeckCards().filter((c) => !(c.typeLine ?? '').includes('Land')),
   );
 
   readonly manaCurve = computed<ManaCurveBucket[]>(() => {
     const buckets = [0, 1, 2, 3, 4, 5, 6].map((cmc) => ({ label: `${cmc}`, count: 0 }));
     const sevenPlus = { label: '7+', count: 0 };
     for (const card of this.nonLandCards()) {
-      const bucket = card.cmc >= 7 ? sevenPlus : buckets[Math.min(6, Math.max(0, Math.round(card.cmc)))];
+      const bucket =
+        card.cmc >= 7 ? sevenPlus : buckets[Math.min(6, Math.max(0, Math.round(card.cmc)))];
       bucket.count += card.quantity;
     }
     return [...buckets, sevenPlus];
@@ -403,7 +406,7 @@ export class DeckViewerService {
 
   /** Land-Karten (inkl. Basisländer) - Basis für Landzahl und Nichtbasis-Land-Anteil. */
   private readonly landCards = computed(() =>
-    this.analysisDeckCards().filter((c) => (c.typeLine ?? '').includes('Land'))
+    this.analysisDeckCards().filter((c) => (c.typeLine ?? '').includes('Land')),
   );
 
   readonly landCount = computed(() => this.landCards().reduce((sum, c) => sum + c.quantity, 0));
@@ -551,7 +554,14 @@ export class DeckViewerService {
     }));
   });
 
-  private static readonly MANA_SOURCE_COLORS: ManaSourceCount['color'][] = ['W', 'U', 'B', 'R', 'G', 'C'];
+  private static readonly MANA_SOURCE_COLORS: ManaSourceCount['color'][] = [
+    'W',
+    'U',
+    'B',
+    'R',
+    'G',
+    'C',
+  ];
 
   /** Karten (inkl. Länder), die laut Scryfall überhaupt Mana erzeugen können - Basis der Manaquellen-Auswertung. */
   private readonly manaSourceCards = computed(() => {
@@ -605,7 +615,7 @@ export class DeckViewerService {
   });
 
   readonly gameChangerCount = computed(() =>
-    this.gameChangerCards().reduce((sum, c) => sum + c.quantity, 0)
+    this.gameChangerCards().reduce((sum, c) => sum + c.quantity, 0),
   );
 
   /**
@@ -689,7 +699,7 @@ export class DeckViewerService {
    */
   private cardsWithFlag(
     waehle: (f: SpellbookCardFlags) => boolean,
-    ausEstimate: (c: { massLandDenial: boolean; extraTurn: boolean }) => boolean
+    ausEstimate: (c: { massLandDenial: boolean; extraTurn: boolean }) => boolean,
   ): GameChangerEntry[] {
     const flags = this.spellbookCardFlags();
     if (flags.size > 0) {
@@ -708,15 +718,15 @@ export class DeckViewerService {
   readonly massLandDenialCards = computed<GameChangerEntry[]>(() =>
     this.cardsWithFlag(
       (f) => f.massLandDenial,
-      (c) => c.massLandDenial
-    )
+      (c) => c.massLandDenial,
+    ),
   );
 
   readonly extraTurnCards = computed<GameChangerEntry[]>(() =>
     this.cardsWithFlag(
       (f) => f.extraTurn,
-      (c) => c.extraTurn
-    )
+      (c) => c.extraTurn,
+    ),
   );
 
   /**
@@ -726,6 +736,11 @@ export class DeckViewerService {
    * WAS eine Combo erzeugt.
    */
   readonly spellbookCombos = signal<SpellbookTwoCardCombo[]>([]);
+  /**
+   * Zahl der spielbeendenden Combos, die vollständig im Deck stecken - Grundlage von Urteil F in
+   * bracket.ts. 0, solange nichts geladen ist.
+   */
+  readonly winningCombos = signal(0);
 
   /**
    * ALLE im Deck gefundenen Combos für die Anzeige, aus beiden Quellen auf eine Form gebracht:
@@ -762,12 +777,12 @@ export class DeckViewerService {
 
   /** Combos aus genau zwei Karten - die, die das offizielle Kriterium meint. */
   readonly twoCardComboList = computed(() =>
-    this.analysisCombos().filter((c) => c.cardNames.length <= 2)
+    this.analysisCombos().filter((c) => c.cardNames.length <= 2),
   );
 
   /** Alle übrigen Combos: drei oder mehr beteiligte Karten. */
   readonly moreCardComboList = computed(() =>
-    this.analysisCombos().filter((c) => c.cardNames.length > 2)
+    this.analysisCombos().filter((c) => c.cardNames.length > 2),
   );
 
   /**
@@ -777,7 +792,7 @@ export class DeckViewerService {
   readonly comboPopupKind = signal<'two' | 'more' | null>(null);
 
   readonly comboPopupCombos = computed(() =>
-    this.comboPopupKind() === 'more' ? this.moreCardComboList() : this.twoCardComboList()
+    this.comboPopupKind() === 'more' ? this.moreCardComboList() : this.twoCardComboList(),
   );
 
   openComboPopup(kind: 'two' | 'more'): void {
@@ -991,7 +1006,7 @@ export class DeckViewerService {
    * wir aus dem Nachtlauf trotzdem.
    */
   readonly localTwoCardCombos = computed(() =>
-    presentCombos(this.bracketCards(), this.spellbookCombos(), this.spellbookCardFlags())
+    presentCombos(this.bracketCards(), this.spellbookCombos(), this.spellbookCardFlags()),
   );
 
   readonly bracketAnalysis = computed<BracketAnalysis | null>(() => {
@@ -1012,6 +1027,7 @@ export class DeckViewerService {
       averageCmc: this.averageCmc(),
       untappedLandPercent: this.untappedLandPercent(),
       tutorCount: this.tutorCards().reduce((sum, c) => sum + c.quantity, 0),
+      winningCombos: this.winningCombos(),
       totalCards: this.viewingTotalCards(),
       totalPrice: this.totalDeckPrice(),
     });
@@ -1069,7 +1085,8 @@ export class DeckViewerService {
     const level = analysis.bracket;
     void this.deckService.saveDeckAutoBracket(deck.id, level).then((ok) => {
       // Lokal nachziehen, sonst liefe der effect() bei der nächsten Änderung erneut an.
-      if (ok) this.viewingDeck.update((d) => (d && d.id === deck.id ? { ...d, bracketAuto: level } : d));
+      if (ok)
+        this.viewingDeck.update((d) => (d && d.id === deck.id ? { ...d, bracketAuto: level } : d));
     });
   });
 
@@ -1189,7 +1206,7 @@ export class DeckViewerService {
   readonly hiddenMdfcLandCount = computed(() =>
     this.editedDeckCards()
       .filter((c) => !c.isCommander && !c.isMaybeboard && !c.isToken && this.isHiddenMdfcLand(c))
-      .reduce((sum, c) => sum + c.quantity, 0)
+      .reduce((sum, c) => sum + c.quantity, 0),
   );
 
   /**
@@ -1227,7 +1244,9 @@ export class DeckViewerService {
   /** Karten gruppiert nach Commander -> Typ, innerhalb jeder Gruppe nach Manawert sortiert. */
   readonly groupedDeckCards = computed(() => {
     const commander = this.editedDeckCards().filter((c) => c.isCommander);
-    const rest = this.editedDeckCards().filter((c) => !c.isCommander && !c.isMaybeboard && !c.isToken);
+    const rest = this.editedDeckCards().filter(
+      (c) => !c.isCommander && !c.isMaybeboard && !c.isToken,
+    );
     const maybe = this.editedDeckCards().filter((c) => !c.isCommander && c.isMaybeboard);
     const tokens = this.editedDeckCards().filter((c) => c.isToken);
 
@@ -1241,11 +1260,15 @@ export class DeckViewerService {
 
     const sections: { label: string; cards: DeckCard[] }[] = [];
     if (commander.length > 0) {
-      sections.push({ label: 'Commander', cards: [...commander].sort(DeckViewerService.sortByCmc) });
+      sections.push({
+        label: 'Commander',
+        cards: [...commander].sort(DeckViewerService.sortByCmc),
+      });
     }
     for (const { label } of DeckViewerService.TYPE_ORDER) {
       const cards = groups.get(label);
-      if (cards?.length) sections.push({ label, cards: [...cards].sort(DeckViewerService.sortByCmc) });
+      if (cards?.length)
+        sections.push({ label, cards: [...cards].sort(DeckViewerService.sortByCmc) });
     }
     const other = groups.get('Sonstiges');
     if (other?.length) {
@@ -1284,7 +1307,9 @@ export class DeckViewerService {
    */
   readonly groupedDeckCardsByTag = computed(() => {
     const commander = this.editedDeckCards().filter((c) => c.isCommander);
-    const rest = this.editedDeckCards().filter((c) => !c.isCommander && !c.isMaybeboard && !c.isToken);
+    const rest = this.editedDeckCards().filter(
+      (c) => !c.isCommander && !c.isMaybeboard && !c.isToken,
+    );
     const maybe = this.editedDeckCards().filter((c) => !c.isCommander && c.isMaybeboard);
     const tokens = this.editedDeckCards().filter((c) => c.isToken);
 
@@ -1304,7 +1329,10 @@ export class DeckViewerService {
 
     const sections: { label: string; cards: DeckCard[] }[] = [];
     if (commander.length > 0) {
-      sections.push({ label: 'Commander', cards: [...commander].sort(DeckViewerService.sortByCmc) });
+      sections.push({
+        label: 'Commander',
+        cards: [...commander].sort(DeckViewerService.sortByCmc),
+      });
     }
     for (const tag of [...groups.keys()].sort((a, b) => a.localeCompare(b))) {
       sections.push({ label: tag, cards: [...groups.get(tag)!].sort(DeckViewerService.sortByCmc) });
@@ -1362,13 +1390,17 @@ export class DeckViewerService {
     }
 
     const creatureType = this.creatureTypeFilter();
-    if (creatureType !== 'all' && !DeckViewerService.parseSubtypes(card.typeLine).includes(creatureType)) {
+    if (
+      creatureType !== 'all' &&
+      !DeckViewerService.parseSubtypes(card.typeLine).includes(creatureType)
+    ) {
       return false;
     }
 
     const colors = this.colorFilter();
     if (colors.colors.length > 0) {
-      const identity = this.viewingCardDetails().get(card.cardName.toLowerCase())?.colorIdentity ?? [];
+      const identity =
+        this.viewingCardDetails().get(card.cardName.toLowerCase())?.colorIdentity ?? [];
       if (!matchesColorSelection(identity, colors)) return false;
     }
 
@@ -1395,7 +1427,9 @@ export class DeckViewerService {
     const typeFilter = this.typeFilterValue();
     const source = sortMode === 'tags' ? this.groupedDeckCardsByTag() : this.groupedDeckCards();
     return source
-      .filter((section) => sortMode === 'tags' || typeFilter === 'all' || section.label === typeFilter)
+      .filter(
+        (section) => sortMode === 'tags' || typeFilter === 'all' || section.label === typeFilter,
+      )
       .map((section) => ({
         label: section.label,
         cards: section.cards.filter((c) => this.cardMatchesFilters(c)),
@@ -1411,7 +1445,7 @@ export class DeckViewerService {
       this.creatureTypeFilter() !== 'all' ||
       this.colorFilter().colors.length > 0 ||
       this.keywordFilter() !== 'all' ||
-      this.effectFilter() !== 'all'
+      this.effectFilter() !== 'all',
   );
 
   resetCardFilters(): void {
@@ -1448,7 +1482,11 @@ export class DeckViewerService {
     const effect = this.effectFilter();
     if (DeckViewerService.LOCAL_EFFECT_FILTERS.has(effect)) {
       const entries =
-        effect === 'tutor' ? this.tutorCards() : effect === 'extraturn' ? this.extraTurnCards() : this.massLandDenialCards();
+        effect === 'tutor'
+          ? this.tutorCards()
+          : effect === 'extraturn'
+            ? this.extraTurnCards()
+            : this.massLandDenialCards();
       this.effectMatchNames.set(this.toNormalizedNameSet(entries));
       this.effectFilterBusy.set(false);
       return;
@@ -1497,11 +1535,11 @@ export class DeckViewerService {
   readonly addCardResultsPage = signal(0);
 
   readonly addCardResultsTotalPages = computed(() =>
-    Math.max(1, Math.ceil(this.addCardResults().length / DeckViewerService.ADD_CARD_PAGE_SIZE))
+    Math.max(1, Math.ceil(this.addCardResults().length / DeckViewerService.ADD_CARD_PAGE_SIZE)),
   );
 
   readonly addCardResultsEffectivePage = computed(() =>
-    Math.min(this.addCardResultsPage(), this.addCardResultsTotalPages() - 1)
+    Math.min(this.addCardResultsPage(), this.addCardResultsTotalPages() - 1),
   );
 
   readonly pagedAddCardResults = computed(() => {
@@ -1535,8 +1573,7 @@ export class DeckViewerService {
     {
       value: 'counterspell',
       label: 'Konter',
-      query:
-        'otag:counterspell',
+      query: 'otag:counterspell',
     },
     { value: 'boardwipe', label: 'Bretträumung', query: 'otag:board-wipe' },
     {
@@ -1551,8 +1588,7 @@ export class DeckViewerService {
     {
       value: 'reanimate',
       label: 'Wiederbelebung',
-      query:
-        'otag:reanimate',
+      query: 'otag:reanimate',
     },
     { value: 'recursion', label: 'Rekursion', query: 'otag:recursion' },
     { value: 'tutor', label: 'Tutor', query: '' },
@@ -1669,7 +1705,7 @@ export class DeckViewerService {
         result.push(
           isCommander === card.isCommander && isMaybeboard === card.isMaybeboard
             ? card
-            : { ...card, isCommander, isMaybeboard }
+            : { ...card, isCommander, isMaybeboard },
         );
       } else if (change.quantity > 0) {
         result.push({ ...card, quantity: change.quantity, isCommander, isMaybeboard });
@@ -1757,7 +1793,9 @@ export class DeckViewerService {
   /** Verschiebt eine Karte im Bearbeitungsmodus zwischen Hauptdeck und Maybeboard - nur lokal, bis saveEdits(). */
   toggleCardMaybeboard(card: DeckCard): void {
     if (!this.canEditViewingDeck()) return;
-    this.pendingMaybeboardChanges.update((map) => new Map(map).set(card.cardName.toLowerCase(), !card.isMaybeboard));
+    this.pendingMaybeboardChanges.update((map) =>
+      new Map(map).set(card.cardName.toLowerCase(), !card.isMaybeboard),
+    );
   }
 
   readonly tokenScanBusy = signal(false);
@@ -1783,7 +1821,7 @@ export class DeckViewerService {
     const details = this.viewingCardDetails();
     const existingTokens = this.viewingDeckCards().filter((c) => c.isToken);
     const existingTokenOracleIds = new Set(
-      existingTokens.filter((c) => c.scryfallOracleId).map((c) => c.scryfallOracleId!)
+      existingTokens.filter((c) => c.scryfallOracleId).map((c) => c.scryfallOracleId!),
     );
     // Vor diesem Fix gescannte Marken haben noch keine oracleId - über Name+Bild lassen sie sich
     // trotzdem der richtigen neu gefundenen Marke zuordnen, um sie nachträglich zu befüllen statt
@@ -1813,16 +1851,24 @@ export class DeckViewerService {
     const newByOracleId = new Map<string, ScryfallCard>();
     for (const data of tokenCards.values()) {
       const oracleId = data.oracleId;
-      if (!oracleId || existingTokenOracleIds.has(oracleId) || newByOracleId.has(oracleId)) continue;
+      if (!oracleId || existingTokenOracleIds.has(oracleId) || newByOracleId.has(oracleId))
+        continue;
       newByOracleId.set(oracleId, data);
     }
 
     let added = 0;
     let backfilled = 0;
     for (const [oracleId, data] of newByOracleId) {
-      const legacy = legacyTokensByNameAndImage.get(`${data.name.toLowerCase()}|${data.imageUrl ?? ''}`);
+      const legacy = legacyTokensByNameAndImage.get(
+        `${data.name.toLowerCase()}|${data.imageUrl ?? ''}`,
+      );
       if (legacy) {
-        const ok = await this.deckService.backfillTokenOracleId(deck.id, legacy.cardName, legacy.imageUrl ?? '', oracleId);
+        const ok = await this.deckService.backfillTokenOracleId(
+          deck.id,
+          legacy.cardName,
+          legacy.imageUrl ?? '',
+          oracleId,
+        );
         if (ok) backfilled++;
         continue;
       }
@@ -1841,7 +1887,7 @@ export class DeckViewerService {
         ? this.i18n.t('deckView.tokensFound', { count: String(added) })
         : backfilled > 0
           ? this.i18n.t('deckView.tokensBackfilled', { count: String(backfilled) })
-          : this.i18n.t('deckView.noNewTokensFound')
+          : this.i18n.t('deckView.noNewTokensFound'),
     );
     await this.reloadDeckCards();
   }
@@ -1921,10 +1967,14 @@ export class DeckViewerService {
     const candidateType = candidate.typeLine ?? '';
 
     if (existingKw.includes('Partner') && candidateKw.includes('Partner')) return true;
-    if (existingKw.includes('Choose a background') && candidateType.includes('Background')) return true;
-    if (candidateKw.includes('Choose a background') && existingType.includes('Background')) return true;
-    if (existingKw.includes("Doctor's companion") && candidateType.includes('Time Lord Doctor')) return true;
-    if (candidateKw.includes("Doctor's companion") && existingType.includes('Time Lord Doctor')) return true;
+    if (existingKw.includes('Choose a background') && candidateType.includes('Background'))
+      return true;
+    if (candidateKw.includes('Choose a background') && existingType.includes('Background'))
+      return true;
+    if (existingKw.includes("Doctor's companion") && candidateType.includes('Time Lord Doctor'))
+      return true;
+    if (candidateKw.includes("Doctor's companion") && existingType.includes('Time Lord Doctor'))
+      return true;
 
     return false;
   }
@@ -1940,7 +1990,9 @@ export class DeckViewerService {
     this.commanderMarkError.set(null);
 
     if (card.isCommander) {
-      this.pendingCommanderChanges.update((map) => new Map(map).set(card.cardName.toLowerCase(), false));
+      this.pendingCommanderChanges.update((map) =>
+        new Map(map).set(card.cardName.toLowerCase(), false),
+      );
       return;
     }
 
@@ -1956,13 +2008,15 @@ export class DeckViewerService {
           this.i18n.t('deckViewer.msg.secondCommanderInvalid', {
             existing: existing.cardName,
             card: card.cardName,
-          })
+          }),
         );
         return;
       }
     }
 
-    this.pendingCommanderChanges.update((map) => new Map(map).set(card.cardName.toLowerCase(), true));
+    this.pendingCommanderChanges.update((map) =>
+      new Map(map).set(card.cardName.toLowerCase(), true),
+    );
   }
 
   // NEU - Artwork/Edition einer Karte wechseln (Bearbeitungsmodus)
@@ -2013,7 +2067,7 @@ export class DeckViewerService {
 
     const key = card.cardName.toLowerCase();
     this.viewingDeckCards.update((cards) =>
-      cards.map((c) => (c.cardName.toLowerCase() === key ? { ...c, imageUrl } : c))
+      cards.map((c) => (c.cardName.toLowerCase() === key ? { ...c, imageUrl } : c)),
     );
     // Kurze Rückmeldung, da das Artwork sofort gespeichert wird (unabhängig vom
     // Speichern-Button für Karten hinzufügen/entfernen) - ohne die dachte man leicht, es sei noch
@@ -2077,7 +2131,7 @@ export class DeckViewerService {
 
     const key = card.cardName.toLowerCase();
     this.viewingDeckCards.update((cards) =>
-      cards.map((c) => (c.cardName.toLowerCase() === key ? { ...c, customTags: next } : c))
+      cards.map((c) => (c.cardName.toLowerCase() === key ? { ...c, customTags: next } : c)),
     );
     this.tagEditorCard.set({ ...card, customTags: next });
   }
@@ -2253,7 +2307,7 @@ export class DeckViewerService {
             cmc: change.cmc,
           },
           diff,
-          maybeboardChanges.get(key) ?? false
+          maybeboardChanges.get(key) ?? false,
         );
       } else {
         await this.deckService.removeCardFromDeck(deck.id, change.cardName, -diff);
@@ -2286,7 +2340,9 @@ export class DeckViewerService {
         .map((c) => this.viewingCardDetails().get(c.cardName.toLowerCase()))
         .filter((c): c is ScryfallCard => c !== undefined);
 
-      const colorIdentity = [...new Set(commanderCards.flatMap((c) => c.colorIdentity ?? []))].sort();
+      const colorIdentity = [
+        ...new Set(commanderCards.flatMap((c) => c.colorIdentity ?? [])),
+      ].sort();
       await this.deckService.updateDeckCommanderMetadata(deck.id, colorIdentity);
     }
 
@@ -2406,11 +2462,15 @@ export class DeckViewerService {
     this.addCardSearchTimer = setTimeout(async () => {
       this.addCardBusy.set(true);
       const results = await this.scryfall.searchCards(query, {
-        type: type === 'all' ? undefined : DeckViewerService.TYPE_TO_SCRYFALL[type] ?? type.toLowerCase(),
+        type:
+          type === 'all'
+            ? undefined
+            : (DeckViewerService.TYPE_TO_SCRYFALL[type] ?? type.toLowerCase()),
         creatureType: creatureType.trim() || undefined,
         colors,
         cmc: cmc === 'all' ? null : cmc,
-        effectQuery: effect === 'all' ? undefined : this.effectFilters.find((f) => f.value === effect)?.query,
+        effectQuery:
+          effect === 'all' ? undefined : this.effectFilters.find((f) => f.value === effect)?.query,
         keyword: keyword === 'all' ? undefined : keyword,
         colorIdentitySubset: this.deckColorIdentitySubset(),
         order: this.addCardSortMode(),
@@ -2437,7 +2497,8 @@ export class DeckViewerService {
   addCard(card: ScryfallCard): void {
     if (!this.canEditViewingDeck()) return;
     const key = card.name.toLowerCase();
-    const currentQty = this.editedDeckCards().find((c) => c.cardName.toLowerCase() === key)?.quantity ?? 0;
+    const currentQty =
+      this.editedDeckCards().find((c) => c.cardName.toLowerCase() === key)?.quantity ?? 0;
     const existingInDeck = this.viewingDeckCards().find((c) => c.cardName.toLowerCase() === key);
 
     this.pendingChanges.update((map) => {
@@ -2453,7 +2514,9 @@ export class DeckViewerService {
       return next;
     });
     if (!existingInDeck) {
-      this.pendingMaybeboardChanges.update((map) => new Map(map).set(key, this.addCardToMaybeboard()));
+      this.pendingMaybeboardChanges.update((map) =>
+        new Map(map).set(key, this.addCardToMaybeboard()),
+      );
     }
     // Direkt mit in viewingCardDetails übernehmen, damit z.B. die Partner-Prüfung beim
     // Commander-Markieren auch für gerade erst (noch ungespeichert) hinzugefügte Karten
@@ -2487,7 +2550,7 @@ export class DeckViewerService {
     // haben - setzt dabei edhrecLists() auf null und lädt neu, was die gesamte Vorschlagsliste kurz
     // kollabieren und wieder aufklappen lässt (sichtbar als Scroll-Sprung beim Karten-Hinzufügen aus
     // den Vorschlägen, abhängig davon, wie lange der Netzwerk-Reload dauert).
-    { equal: (a, b) => a.length === b.length && a.every((name, i) => name === b[i]) }
+    { equal: (a, b) => a.length === b.length && a.every((name, i) => name === b[i]) },
   );
   /** Anzeige-Name für die EDHREC-Hinweistexte - bei einem Paar beide Namen kombiniert. */
   readonly edhrecCommanderName = computed(() => {
@@ -2507,7 +2570,7 @@ export class DeckViewerService {
 
   /** Der gerade tatsächlich für die Vorschläge verwendete Tag - Browse-Override hat Vorrang vor dem gespeicherten Deck-Tag. */
   readonly effectiveEdhrecTag = computed(() =>
-    this.edhrecBrowseTagActive() ? this.edhrecBrowseTag() : this.edhrecTagSlug()
+    this.edhrecBrowseTagActive() ? this.edhrecBrowseTag() : this.edhrecTagSlug(),
   );
 
   /** Grob lesbarer Name aus dem Tag-Slug, ohne extra Netzwerk-Anfrage (z.B. "group-hug" -> "Group Hug"). */
@@ -2667,7 +2730,9 @@ export class DeckViewerService {
 
   isCardInDeck(cardName: string): boolean {
     const target = DeckViewerService.frontFaceKey(cardName);
-    return this.editedDeckCards().some((c) => DeckViewerService.frontFaceKey(c.cardName) === target);
+    return this.editedDeckCards().some(
+      (c) => DeckViewerService.frontFaceKey(c.cardName) === target,
+    );
   }
 
   /**
@@ -2676,7 +2741,9 @@ export class DeckViewerService {
    * Anlegen fehlschlug). Heilt die Anzeige dadurch von selbst, ohne die Datenbank zu reparieren.
    */
   resolvedCardImage(card: DeckCard): string | null {
-    return card.imageUrl ?? this.viewingCardDetails().get(card.cardName.toLowerCase())?.imageUrl ?? null;
+    return (
+      card.imageUrl ?? this.viewingCardDetails().get(card.cardName.toLowerCase())?.imageUrl ?? null
+    );
   }
 
   /**
@@ -2859,6 +2926,7 @@ export class DeckViewerService {
     this.viewingCardDetails.set(new Map());
     this.flippedDeckCardKeys.set(new Set());
     this.spellbookCombos.set([]);
+    this.winningCombos.set(0);
     this.bracketEstimate.set(null);
     this.bracketEstimateFailed.set(false);
     this.bracketEstimateErrorDetail.set(null);
@@ -2917,14 +2985,17 @@ export class DeckViewerService {
     // Parallel: Markierungen (eine kleine Abfrage, danach je Sitzung zwischengespeichert) und
     // Combos sind die Grundlage der Bracket-Einstufung und sollen die Kartendetails nicht
     // verzögern.
-    const [found, flags, combos] = await Promise.all([
+    const commanderNames = cards.filter((c) => c.isCommander).map((c) => c.cardName);
+    const [found, flags, combos, gewinnCombos] = await Promise.all([
       this.cardData.findCardsBulk(names),
       this.cardData.spellbookCardFlags(),
       this.cardData.twoCardCombosFor(names),
+      this.cardData.winningCombosIn(names, commanderNames),
     ]);
     this.viewingCardDetails.set(found);
     this.spellbookCardFlags.set(flags);
     this.spellbookCombos.set(combos);
+    this.winningCombos.set(gewinnCombos);
     this.analysisBusy.set(false);
   }
 
@@ -3012,7 +3083,11 @@ export class DeckViewerService {
   // Bereits verifiziert: Konter, Rampe, Entfernung, Kartenziehen, Bretträumung, Marken,
   // Lebenspunkte gewinnen, +1/+1-Zähler, Proliferate, Wiederbelebung, Opferung.
   // Aktuell in Prüfung (letzte der 12): Extra-Kampfphase.
-  private static readonly EFFECT_TAG_CATEGORIES: { key: string; labelKey: string; query: string }[] = [
+  private static readonly EFFECT_TAG_CATEGORIES: {
+    key: string;
+    labelKey: string;
+    query: string;
+  }[] = [
     {
       key: 'removal',
       labelKey: 'deckView.removalTile',
@@ -3021,8 +3096,7 @@ export class DeckViewerService {
     {
       key: 'counterspell',
       labelKey: 'deckView.counterspellTile',
-      query:
-        'otag:counterspell',
+      query: 'otag:counterspell',
     },
     {
       key: 'boardwipe',
@@ -3075,8 +3149,7 @@ export class DeckViewerService {
       // Oberkategorie + bekannte Unter-Tags (wie bei Konter) - Scryfalls Tagger rollt Karten, die
       // nur mit einem spezifischeren Unter-Tag getaggt sind, nicht automatisch in die Oberkategorie
       // hoch (recherchiert, siehe reanimate-creature/-artifact/-enchantment/-planeswalker).
-      query:
-        'otag:reanimate',
+      query: 'otag:reanimate',
     },
     {
       key: 'sacrifice',
@@ -3107,10 +3180,16 @@ export class DeckViewerService {
   readonly effectCategoryStats = computed<EffectCategoryStat[] | null>(() => {
     const tagStats = this.tagBasedEffectStats();
     if (!tagStats) return null;
-    const countOf = (entries: GameChangerEntry[]) => entries.reduce((sum, c) => sum + c.quantity, 0);
+    const countOf = (entries: GameChangerEntry[]) =>
+      entries.reduce((sum, c) => sum + c.quantity, 0);
     return [
       ...tagStats,
-      { key: 'tutor', labelKey: 'deckView.tutorsTitle', count: countOf(this.tutorCards()), cards: this.tutorCards() },
+      {
+        key: 'tutor',
+        labelKey: 'deckView.tutorsTitle',
+        count: countOf(this.tutorCards()),
+        cards: this.tutorCards(),
+      },
       {
         key: 'extraturn',
         labelKey: 'deckView.extraTurnsTitle',
@@ -3142,16 +3221,24 @@ export class DeckViewerService {
    */
   private async loadEffectCategoryCounts(cards: DeckCard[]): Promise<void> {
     this.effectCategoryCountsBusy.set(true);
-    const names = [...new Set(cards.filter((c) => !c.isMaybeboard && !c.isToken).map((c) => c.cardName))];
+    const names = [
+      ...new Set(cards.filter((c) => !c.isMaybeboard && !c.isToken).map((c) => c.cardName)),
+    ];
 
     // Vorderseiten-Name für den Abgleich - sowohl der Abgleich als auch classifyCards()
     // klassifizieren Doppelkarten unter ihrem Vorderseiten-Namen, der volle Deck-Kartenname
     // ("A // B") würde hier nie matchen.
     const entriesFromMatched = (matched: Set<string>): GameChangerEntry[] =>
       cards
-        .filter((c) => !c.isMaybeboard && !c.isToken && matched.has(normalizeCardName(c.cardName.split(' // ')[0].trim())))
+        .filter(
+          (c) =>
+            !c.isMaybeboard &&
+            !c.isToken &&
+            matched.has(normalizeCardName(c.cardName.split(' // ')[0].trim())),
+        )
         .map((c) => ({ cardName: c.cardName, quantity: c.quantity }));
-    const countOf = (entries: GameChangerEntry[]) => entries.reduce((sum, c) => sum + c.quantity, 0);
+    const countOf = (entries: GameChangerEntry[]) =>
+      entries.reduce((sum, c) => sum + c.quantity, 0);
 
     const categories = DeckViewerService.EFFECT_TAG_CATEGORIES;
     const [ausDatenbank, bekannt] = await Promise.all([
@@ -3159,12 +3246,14 @@ export class DeckViewerService {
       this.cardData.knownCardNames(names),
     ]);
     const matchedByKey = new Map<string, Set<string>>(
-      categories.map((category) => [category.key, new Set(ausDatenbank.get(category.key) ?? [])])
+      categories.map((category) => [category.key, new Set(ausDatenbank.get(category.key) ?? [])]),
     );
 
     // Nur Karten, die der Abgleich noch nicht kennt, gehen überhaupt noch ins Netz. Das ist im
     // Normalfall eine leere Liste - dann bleibt die ganze Schleife samt Pausen einfach aus.
-    const unbekannt = names.filter((name) => !bekannt.has(normalizeCardName(name.split(' // ')[0].trim())));
+    const unbekannt = names.filter(
+      (name) => !bekannt.has(normalizeCardName(name.split(' // ')[0].trim())),
+    );
     if (unbekannt.length > 0) {
       for (let i = 0; i < categories.length; i++) {
         if (i > 0) await sleep(300); // Wie bisher: vermeidet Bursts gegen Scryfalls Rate-Limit.
@@ -3178,8 +3267,13 @@ export class DeckViewerService {
     this.tagBasedEffectStats.set(
       categories.map((category) => {
         const entries = entriesFromMatched(matchedByKey.get(category.key)!);
-        return { key: category.key, labelKey: category.labelKey, count: countOf(entries), cards: entries };
-      })
+        return {
+          key: category.key,
+          labelKey: category.labelKey,
+          count: countOf(entries),
+          cards: entries,
+        };
+      }),
     );
     this.effectCategoryCountsBusy.set(false);
     this.effectCategoryProgress.set(null);
@@ -3189,10 +3283,17 @@ export class DeckViewerService {
   private async loadBracketEstimate(cards: DeckCard[]): Promise<void> {
     this.bracketEstimateBusy.set(true);
     const real = cards.filter((c) => !c.isMaybeboard && !c.isToken);
-    const commanders = real.filter((c) => c.isCommander).map((c) => ({ card: c.cardName, quantity: c.quantity }));
-    const main = real.filter((c) => !c.isCommander).map((c) => ({ card: c.cardName, quantity: c.quantity }));
+    const commanders = real
+      .filter((c) => c.isCommander)
+      .map((c) => ({ card: c.cardName, quantity: c.quantity }));
+    const main = real
+      .filter((c) => !c.isCommander)
+      .map((c) => ({ card: c.cardName, quantity: c.quantity }));
 
-    const { estimate, errorDetail } = await this.commanderSpellbook.estimateBracket(commanders, main);
+    const { estimate, errorDetail } = await this.commanderSpellbook.estimateBracket(
+      commanders,
+      main,
+    );
     this.bracketEstimate.set(estimate);
     this.bracketEstimateFailed.set(estimate === null);
     this.bracketEstimateErrorDetail.set(errorDetail);
@@ -3228,6 +3329,7 @@ export class DeckViewerService {
     this.viewingCardDetails.set(new Map());
     this.flippedDeckCardKeys.set(new Set());
     this.spellbookCombos.set([]);
+    this.winningCombos.set(0);
     this.bracketEstimate.set(null);
     this.bracketEstimateBusy.set(false);
     this.bracketEstimateFailed.set(false);

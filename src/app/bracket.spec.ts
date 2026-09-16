@@ -71,6 +71,7 @@ const basis = (extra: Partial<BracketInput> = {}): BracketInput => ({
   tutorCount: 0,
   totalCards: 100,
   totalPrice: null,
+  winningCombos: 0,
   ...extra,
 });
 
@@ -535,5 +536,44 @@ describe('bracket - Urteil E: Kartenwert', () => {
     // Die Verlässlichkeitsangabe vergleicht weiter nur die beiden kartenbasierten Urteile.
     expect(analyse.confidence).toBe('high');
     expect(analyse.bracket).toBe(3);
+  });
+});
+
+describe('Urteil F - Combo plus Tutoren', () => {
+  // Der einzige Befund dieser Einstufung, der nicht aus dem Regelwerk stammt, sondern aus 48.638
+  // gemessenen Decks: Wer eine spielbeendende Combo UND mindestens zwei Tutoren hat, liegt zu
+  // 93 % in Bracket 4 oder 5.
+
+  const harmlos = (extra: Partial<BracketInput> = {}): BracketInput => basis(extra);
+
+  it('hebt auf Bracket 4, wenn Combo und Tutoren zusammenkommen', () => {
+    const ergebnis = analyzeBracket(harmlos({ winningCombos: 1, tutorCount: 2 }));
+    expect(ergebnis.bracket).toBe(4);
+    expect(ergebnis.reasons.map((r) => r.key)).toContain('comboAndTutors');
+  });
+
+  it('hebt NICHT an, wenn nur die Combo da ist', () => {
+    // Das Regelwerk erlaubt in Bracket 2 ausdrücklich langsame Combos, und 9,9 % der
+    // Bracket-2-Decks haben eine - allein sagt sie zu wenig.
+    expect(analyzeBracket(harmlos({ winningCombos: 2, tutorCount: 1 })).bracket).toBe(2);
+  });
+
+  it('hebt NICHT an, wenn nur die Tutoren da sind', () => {
+    expect(analyzeBracket(harmlos({ winningCombos: 0, tutorCount: 5 })).bracket).toBe(2);
+  });
+
+  it('verdrängt den Befund "nichts gefunden"', () => {
+    const ergebnis = analyzeBracket(harmlos({ winningCombos: 1, tutorCount: 3 }));
+    expect(ergebnis.reasons.map((r) => r.key)).not.toContain('nothing');
+  });
+
+  it('hebt nie über Bracket 4 - auch das bleibt eine Untergrenze', () => {
+    const ergebnis = analyzeBracket(harmlos({ winningCombos: 9, tutorCount: 9 }));
+    expect(ergebnis.bracket).toBe(4);
+  });
+
+  it('rechnet ohne die Zahl einfach weiter', () => {
+    // 0 heisst "liegt nicht vor" - dann darf Urteil F nichts behaupten.
+    expect(analyzeBracket(harmlos({ winningCombos: 0, tutorCount: 2 })).bracket).toBe(2);
   });
 });

@@ -81,6 +81,37 @@ export const TUNING_BUMP_SCHWELLE = 0.8;
  */
 export const PREIS_SCHWELLE_EUR = 150;
 
+/**
+ * Urteil F, die beiden Schwellen: mindestens eine spielbeendende Combo UND mindestens zwei
+ * Tutoren heißt mindestens Bracket 4.
+ *
+ * Das ist das erste Kriterium dieser Einstufung, das NICHT aus dem Regelwerk stammt, sondern aus
+ * gemessenen Decks - und es ist gemessen, nicht geschätzt. Über 48.638 fremde Commander-Decks,
+ * deren Stufe ihr jeweiliger Ersteller selbst angegeben hat, verteilen sich Decks mit beiden
+ * Merkmalen so:
+ *
+ *   Bracket 1     75 Decks   (0,8 % der Stufe)
+ *   Bracket 2     68 Decks   (0,7 %)
+ *   Bracket 3    457 Decks   (4,7 %)
+ *   Bracket 4  2.120 Decks  (21,2 %)
+ *   Bracket 5  5.595 Decks  (57,3 %)
+ *
+ * 93 % aller Decks mit beiden Merkmalen liegen also in Bracket 4 oder 5, und von Stufe 2 zu Stufe
+ * 4 ist es ein Faktor 30. Das ist der schärfste Befund der ganzen Auswertung.
+ *
+ * WARUM BEIDES ZUSAMMEN und nicht jedes für sich: Einzeln trennen sie viel schwächer. Eine Combo
+ * allein haben 9,9 % der Bracket-2-Decks - das Regelwerk erlaubt in Bracket 2 ausdrücklich
+ * langsame Combos. Zwei Tutoren allein haben 6,0 %. Erst die Verbindung beschreibt, worum es
+ * geht: ein Deck, das einen Gewinnweg hat UND danach sucht.
+ *
+ * WAS DAS URTEIL NICHT KANN: 61 % der Bracket-4-Decks zeigen keines der beiden Merkmale. Es ist
+ * also ein Marker, der in genau eine Richtung funktioniert - er sagt nie "das ist höchstens
+ * Bracket 2", nur "das ist mindestens Bracket 4". Genau dazu passt der Aufbau dieser Datei: Jedes
+ * Urteil hier ist eine Untergrenze, keines eine Obergrenze.
+ */
+export const EMPIRISCH_MIN_COMBOS = 1;
+export const EMPIRISCH_MIN_TUTOREN = 2;
+
 /** Welcher Befund die Einstufung getrieben hat - Grundlage der Begründung in der Oberfläche. */
 export type BracketReasonKey =
   | 'massLandDenial'
@@ -92,6 +123,7 @@ export type BracketReasonKey =
   | 'comboMidrange'
   | 'price'
   | 'tuning'
+  | 'comboAndTutors'
   | 'nothing';
 
 export interface BracketReason {
@@ -155,6 +187,17 @@ export interface BracketInput {
   untappedLandPercent: number | null;
   /** Anzahl Tutoren im Deck (aus der kuratierten Liste). */
   tutorCount: number;
+  /**
+   * Wie viele SPIELBEENDENDE Combos stecken vollständig im Deck?
+   *
+   * Nicht dasselbe wie `combos`: Dort stehen Zwei-Karten-Combos jeder Art, hier zählen nur die,
+   * deren Ergebnis ein Spiel beendet - und zwar über beliebig viele Karten. Kommt aus der
+   * Datenbankfunktion winning_combos_in_deck (sql/winning-combos-in-deck-2026-09-16.sql).
+   *
+   * 0, solange die Zahl nicht vorliegt. Das ist die vorsichtige Richtung: Urteil F hebt dann
+   * nicht an, statt auf einer fehlenden Angabe eine Stufe zu behaupten.
+   */
+  winningCombos: number;
   /** Gesamtzahl Karten - Bezugsgröße für die Tutorendichte. */
   totalCards: number;
   /**
@@ -468,6 +511,20 @@ export function analyzeBracket(input: BracketInput): BracketAnalysis {
     if (nichtsGefunden >= 0) reasons.splice(nichtsGefunden, 1);
     reasons.push({ key: 'price', minimum: price, cards: [] });
     bracket = maxLevel(bracket, price);
+  }
+
+  // Urteil F: der gemessene Befund aus 48.638 fremden Decks (siehe EMPIRISCH_MIN_COMBOS). Steht
+  // bewusst VOR der Feinbewertung: Es ist ein harter Befund wie die übrigen Untergrenzen, kein
+  // weiches Anheben um eine Stufe.
+  if (
+    input.winningCombos >= EMPIRISCH_MIN_COMBOS &&
+    input.tutorCount >= EMPIRISCH_MIN_TUTOREN &&
+    bracket < AUTO_BRACKET_MAX
+  ) {
+    const nichtsGefunden = reasons.findIndex((r) => r.key === 'nothing');
+    if (nichtsGefunden >= 0) reasons.splice(nichtsGefunden, 1);
+    reasons.push({ key: 'comboAndTutors', minimum: AUTO_BRACKET_MAX, cards: [] });
+    bracket = AUTO_BRACKET_MAX;
   }
 
   if (tuning >= TUNING_BUMP_SCHWELLE && bracket < AUTO_BRACKET_MAX && !input.isPrecon) {
