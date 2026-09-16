@@ -63,7 +63,7 @@ weil die Hauptdatei sonst über das harte Style-Budget von 12 kB liefe.
 | Spiel & Turnier       | `game-session.service.ts`, `goldfish.service.ts`, `tournament.service.ts`                                                                                                                                                                           |
 | Konto & Gruppe        | `auth.service.ts`, `profile.service.ts`, `group.service.ts`, `group-permissions.ts`, `login-overlay.service.ts`                                                                                                                                     |
 | Infrastruktur         | `navigation.service.ts`, `dialog.service.ts`, `i18n.service.ts`, `app-recovery.service.ts`, `global-error-handler.ts`, `page-visibility.service.ts`, `background.service.ts`, `feedback.service.ts`, `legal-page.service.ts`, `tutorial.service.ts` |
-| Hilfsfunktionen       | `array-utils.ts`, `match-utils.ts`, `color-filter-match.ts`, `color-combo-names.ts`, `card-effect-filters.ts`, `commander-archetype-filters.ts`, `rank-sort.ts`, `bracket.ts`, `combo-finder.ts`                                                    |
+| Hilfsfunktionen       | `array-utils.ts`, `match-utils.ts`, `color-filter-match.ts`, `color-combo-names.ts`, `card-effect-filters.ts`, `commander-archetype-filters.ts`, `rank-sort.ts`, `bracket.ts`, `combo-finder.ts`, `sim-card-profile.ts`, `goldfish-sim.ts`                                                    |
 
 ### Weitere Orte
 
