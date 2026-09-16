@@ -115,6 +115,17 @@ export class ArchidektPoolService {
     this.loading.set(true);
     this.failed.set(false);
 
+    // Keine Stufe gewählt heißt KEINE Decks, nicht alle. Vorher stand hier ein
+    // "if (brackets.length > 0)", das den Filter bei leerer Auswahl schlicht wegließ - die
+    // Ansicht zeigte dann den ganzen Vorrat, während der Knopf daneben "Keine Auswahl" meldete.
+    // Hier abzubrechen spart zugleich eine sinnlose Abfrage.
+    if (filter.brackets.length === 0) {
+      this.decks.set([]);
+      this.total.set(0);
+      this.loading.set(false);
+      return;
+    }
+
     let query = supabase
       .from('archidekt_deck_pool')
       .select(
@@ -125,7 +136,7 @@ export class ArchidektPoolService {
       .order('name', { ascending: true })
       .limit(MAX_TREFFER);
 
-    if (filter.brackets.length > 0) query = query.in('creator_bracket', filter.brackets);
+    query = query.in('creator_bracket', filter.brackets);
 
     // like statt ilike: search_text ist bereits klein geschrieben, der Begriff wird es auch. Das
     // trifft denselben Trigramm-Index, spart aber das Kleinschreiben jeder Zeile zur Laufzeit.
