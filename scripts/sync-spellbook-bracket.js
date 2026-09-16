@@ -168,6 +168,159 @@ async function ladeAlleSeiten(startUrl, aufZeile) {
   return { zeilen, seiten, gesehen };
 }
 
+// =====================================================================================
+// Supabase: Wiederholungen bei Netzaussetzern
+//
+// Übernommen aus scripts/import-archidekt-decks.js, samt der dort teuer gelernten Lehre: Die
+// Spellbook-Seite hatte längst Wiederholungen, die Supabase-Seite nicht - und ein Lauf über gut
+// eine Stunde starb an einem einzigen Aussetzer ("Upsert in spellbook_combos fehlgeschlagen:
+// Gateway Timeout", Nachtlauf vom 14.09.2026, nach 150 von 1.085 Seiten).
+//
+// Die Tücke: supabase-js WIRFT bei einem Netzfehler nicht, sondern gibt ihn wie einen
+// Datenbankfehler in error zurück. Unterschieden wird am Code: PostgREST und Postgres liefern
+// immer einen (57014 für eine Zeitüberschreitung, 42703 für eine fehlende Spalte). Das sind
+// ANTWORTEN, keine Störungen - sie gehören unverändert an den Aufrufer zurück, der sie kennt und
+// behandelt. Ein Netzfehler kommt ohne Code an und ist der Fall, der eine Wiederholung verdient.
+// =====================================================================================
+
+/** 6 Versuche mit 2, 4, 8, 16, 32 s Pause - überbrückt gut eine Minute Aussetzer. */
+const DB_VERSUCHE = 6;
+
+async function mitWiederholung(was, aufruf) {
+  let letzterFehler = null;
+
+  for (let versuch = 0; versuch < DB_VERSUCHE; versuch++) {
+    let ergebnis;
+    try {
+      ergebnis = await aufruf();
+    } catch (err) {
+      // Falls supabase-js doch einmal wirft statt zurückzugeben.
+      ergebnis = { error: { message: String(err?.message ?? err) } };
+    }
+
+    // Erfolg, oder ein Fehler MIT Code: beides ist eine Antwort, keine Störung.
+    if (!ergebnis.error || ergebnis.error.code) return ergebnis;
+
+    letzterFehler = ergebnis.error;
+    if (versuch === DB_VERSUCHE - 1) break;
+
+    const wartezeit = 2000 * 2 ** versuch;
+    console.log(
+      `    ${was}: ${letzterFehler.message} - erneut in ${wartezeit / 1000}s (Versuch ${versuch + 2}/${DB_VERSUCHE}) ...`,
+    );
+    await sleep(wartezeit);
+  }
+
+  return { error: letzterFehler };
+}
+
+// =====================================================================================
+// Aufräumen: was in der Quelle nicht mehr vorkommt
+// =====================================================================================
+
+/**
+ * Wie viele veraltete Zeilen ein Löschblock höchstens umfasst.
+ *
+ * Nicht alles in EINEM delete: Ein einziges Statement über zehntausende Zeilen - bei
+ * spellbook_combos samt der Kaskade auf spellbook_combo_cards - reißt das statement_timeout von
+ * PostgREST, und dann ist nicht ein Block verloren, sondern das ganze Aufräumen. In Blöcken
+ * kostet ein Fehlschlag höchstens den laufenden Block.
+ */
+const LOESCH_BLOCK = 500;
+
+/**
+ * Höchstlänge der Schlüsselwerte eines einzelnen delete.
+ *
+ * supabase-js baut aus .in() eine Liste IM URL, und die darf nicht beliebig lang werden - bei
+ * spellbook_card_flags sind die Schlüssel Kartennamen mit bis zu 140 Zeichen, 500 davon wären
+ * ein 70-kB-Aufruf. Deshalb wird ein Fund nicht nach Anzahl, sondern nach Zeichen aufgeteilt.
+ */
+const LOESCH_URL_BUDGET = 2000;
+
+/** Teilt die Schlüssel in Gruppen, deren Werte zusammen unter LOESCH_URL_BUDGET bleiben. */
+function inBloecke(werte) {
+  const bloecke = [];
+  let block = [];
+  let laenge = 0;
+
+  for (const wert of werte) {
+    const kosten = String(wert).length + 3; // Anführungszeichen und Komma je Wert
+    if (block.length > 0 && laenge + kosten > LOESCH_URL_BUDGET) {
+      bloecke.push(block);
+      block = [];
+      laenge = 0;
+    }
+    block.push(wert);
+    laenge += kosten;
+  }
+  if (block.length > 0) bloecke.push(block);
+
+  return bloecke;
+}
+
+/** 57014 ist Postgres' Code für "canceling statement due to statement timeout". */
+function aufraeumFehler(tabelle, fehler) {
+  const zeitueberschreitung =
+    fehler.code === '57014' || /statement timeout/i.test(fehler.message ?? '');
+  const hinweis = zeitueberschreitung
+    ? ' - fehlt der Index auf synced_at? Dann liest Postgres für diesen Schritt die ganze ' +
+      'Tabelle. sql/spellbook-sync-cleanup-2026-09-16.sql im Supabase-SQL-Editor ausführen.'
+    : '';
+  return new Error(`Aufräumen in ${tabelle} fehlgeschlagen: ${fehler.message}${hinweis}`);
+}
+
+/**
+ * Entfernt, was in der Quelle nicht mehr vorkommt: alle Zeilen mit einem Zeitstempel VOR diesem
+ * Lauf. Blockweise über blockSpalte - das ist die (erste) Schlüsselspalte der Tabelle; bei
+ * spellbook_combo_cards reicht combo_id, weil der Zeitstempelfilter im delete stehen bleibt und
+ * frische Zeilen derselben Combo deshalb unangetastet bleiben.
+ */
+async function raeumeAuf(tabelle, blockSpalte, laufBegonnen) {
+  let entfernt = 0;
+
+  for (;;) {
+    const { data, error: leseFehler } = await mitWiederholung(
+      `Veraltete Zeilen in ${tabelle} suchen`,
+      () =>
+        supabase
+          .from(tabelle)
+          .select(blockSpalte)
+          .lt('synced_at', laufBegonnen)
+          .limit(LOESCH_BLOCK),
+    );
+    if (leseFehler) throw aufraeumFehler(tabelle, leseFehler);
+    if (!data || data.length === 0) break;
+
+    const werte = [...new Set(data.map((zeile) => zeile[blockSpalte]))];
+    let dieseRunde = 0;
+
+    for (const block of inBloecke(werte)) {
+      const { error, count } = await mitWiederholung(`Aufräumen in ${tabelle}`, () =>
+        supabase
+          .from(tabelle)
+          .delete({ count: 'exact' })
+          .lt('synced_at', laufBegonnen)
+          .in(blockSpalte, block),
+      );
+      if (error) throw aufraeumFehler(tabelle, error);
+      dieseRunde += count ?? 0;
+    }
+
+    if (dieseRunde === 0) {
+      // Kann nur eintreten, wenn der Filter im delete die eben gefundenen Zeilen nicht trifft -
+      // dann lieber laut abbrechen als endlos im Kreis laufen.
+      throw new Error(
+        `Aufräumen in ${tabelle}: ${data.length} veraltete Zeilen gefunden, aber keine gelöscht.`,
+      );
+    }
+
+    entfernt += dieseRunde;
+    if (data.length < LOESCH_BLOCK) break;
+  }
+
+  if (entfernt) console.log(`  ${entfernt} veraltete Zeilen aus ${tabelle} entfernt.`);
+}
+
 /**
  * Schreibt eine Tabelle neu: alles hochladen (mit dem Zeitstempel dieses Laufs), danach alles
  * löschen, was einen älteren Zeitstempel trägt - das sind genau die Zeilen, die es in der Quelle
@@ -180,24 +333,24 @@ async function ladeAlleSeiten(startUrl, aufZeile) {
  */
 async function schreibeTabelle(tabelle, konflikt, zeilen, laufBegonnen) {
   for (let i = 0; i < zeilen.length; i += 500) {
-    const { error } = await supabase
-      .from(tabelle)
-      .upsert(zeilen.slice(i, i + 500), { onConflict: konflikt });
+    const { error } = await mitWiederholung(`Upsert in ${tabelle}`, () =>
+      supabase.from(tabelle).upsert(zeilen.slice(i, i + 500), { onConflict: konflikt }),
+    );
     if (error) throw new Error(`Upsert in ${tabelle} fehlgeschlagen: ${error.message}`);
   }
 
-  const { error, count } = await supabase
-    .from(tabelle)
-    .delete({ count: 'exact' })
-    .lt('synced_at', laufBegonnen);
-  if (error) throw new Error(`Aufräumen in ${tabelle} fehlgeschlagen: ${error.message}`);
-  if (count) console.log(`  ${count} veraltete Zeilen aus ${tabelle} entfernt.`);
+  await raeumeAuf(tabelle, konflikt, laufBegonnen);
 }
 
 async function writeSyncState(id, rowCount) {
-  const { error } = await supabase
-    .from('spellbook_sync_state')
-    .upsert({ id, synced_at: new Date().toISOString(), row_count: rowCount }, { onConflict: 'id' });
+  const { error } = await mitWiederholung(`spellbook_sync_state (${id}) schreiben`, () =>
+    supabase
+      .from('spellbook_sync_state')
+      .upsert(
+        { id, synced_at: new Date().toISOString(), row_count: rowCount },
+        { onConflict: 'id' },
+      ),
+  );
   if (error)
     throw new Error(`Konnte spellbook_sync_state (${id}) nicht schreiben: ${error.message}`);
 }
@@ -267,18 +420,10 @@ const PUFFER = 500;
  */
 async function schreibeBlock(tabelle, konflikt, zeilen) {
   if (zeilen.length === 0) return;
-  const { error } = await supabase.from(tabelle).upsert(zeilen, { onConflict: konflikt });
+  const { error } = await mitWiederholung(`Upsert in ${tabelle}`, () =>
+    supabase.from(tabelle).upsert(zeilen, { onConflict: konflikt }),
+  );
   if (error) throw new Error(`Upsert in ${tabelle} fehlgeschlagen: ${error.message}`);
-}
-
-/** Entfernt, was in der Quelle nicht mehr vorkommt - dieselbe Logik wie in schreibeTabelle(). */
-async function raeumeAuf(tabelle, laufBegonnen) {
-  const { error, count } = await supabase
-    .from(tabelle)
-    .delete({ count: 'exact' })
-    .lt('synced_at', laufBegonnen);
-  if (error) throw new Error(`Aufräumen in ${tabelle} fehlgeschlagen: ${error.message}`);
-  if (count) console.log(`  ${count} veraltete Zeilen aus ${tabelle} entfernt.`);
 }
 
 /**
@@ -290,7 +435,9 @@ async function raeumeAuf(tabelle, laufBegonnen) {
  * Lieber die Manaangabe eine Nacht später als alles gar nicht.
  */
 async function hatManaSpalte() {
-  const { error } = await supabase.from('spellbook_combos').select('mana_needed').limit(1);
+  const { error } = await mitWiederholung('Spalte mana_needed pruefen', () =>
+    supabase.from('spellbook_combos').select('mana_needed').limit(1),
+  );
   if (!error) return true;
   console.warn(
     'Spalte spellbook_combos.mana_needed fehlt - die Manaangaben bleiben diesmal leer. ' +
@@ -443,9 +590,9 @@ async function syncCombos(laufBegonnen) {
   // Erst die Kartenzeilen, dann die Combos: eine gelöschte Combo nimmt ihre Karten per
   // "on delete cascade" ohnehin mit, andersherum blieben Kartenzeilen zu noch existierenden
   // Combos stehen, die dort inzwischen nicht mehr mitspielen.
-  await raeumeAuf('spellbook_combo_cards', laufBegonnen);
-  await raeumeAuf('spellbook_combos', laufBegonnen);
-  await raeumeAuf('spellbook_two_card_combos', laufBegonnen);
+  await raeumeAuf('spellbook_combo_cards', 'combo_id', laufBegonnen);
+  await raeumeAuf('spellbook_combos', 'id', laufBegonnen);
+  await raeumeAuf('spellbook_two_card_combos', 'id', laufBegonnen);
 
   await writeSyncState('combos', combos);
   await writeSyncState('combo_cards', kartenzeilen);
