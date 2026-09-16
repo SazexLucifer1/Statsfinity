@@ -2,6 +2,8 @@ import {
   KEIN_SIEG,
   MAX_ZUEGE,
   Quelle,
+  SCHADENSFENSTER,
+  SIEG_MUSTER,
   SimDeck,
   angriffsschaden,
   istSiegCombo,
@@ -137,18 +139,6 @@ describe('perzentil', () => {
     const werte = [3, 4, ...Array(8).fill(KEIN_SIEG)];
     expect(perzentil(werte, 0.5)).toBe(KEIN_SIEG);
     expect(perzentil(werte, 0.1)).toBe(3);
-  });
-});
-
-describe('istSiegCombo', () => {
-  it('erkennt Ergebnisse, die ein Spiel beenden', () => {
-    expect(istSiegCombo(['Infinite damage'])).toBe(true);
-    expect(istSiegCombo(['Each opponent loses the game'])).toBe(true);
-  });
-
-  it('zählt unendlich Mana NICHT als Sieg - davon stirbt niemand', () => {
-    expect(istSiegCombo(['Infinite colorless mana'])).toBe(false);
-    expect(istSiegCombo(['Infinite lifegain'])).toBe(false);
   });
 });
 
@@ -322,5 +312,90 @@ describe('simuliereSpiel', () => {
     );
     expect(mitRampe.manaZug5).toBeGreaterThan(ohneRampe.manaZug5);
     expect(mitRampe.median).toBeLessThanOrEqual(ohneRampe.median);
+  });
+});
+
+describe('istSiegCombo - eine Liste, nicht zwei', () => {
+  /**
+   * Der Ausdruck stand doppelt: einmal hier, einmal im SQL der Ansicht spellbook_winning_combos,
+   * mit einem Kommentar, beide müssten dieselbe Auswahl treffen. Sie taten es nicht. Diese Tests
+   * halten genau die beiden Abweichungen fest, die daraus entstanden waren.
+   */
+  it('zählt "You lose the game" NICHT als Sieg', () => {
+    // Die alte TypeScript-Fassung enthielt "lose the game" ohne Gegenüber - und hat damit eine
+    // Combo, bei der man selbst verliert, als Siegbedingung geführt.
+    expect(istSiegCombo(['You lose the game'])).toBe(false);
+    expect(istSiegCombo(['Each opponent loses the game'])).toBe(true);
+  });
+
+  it('erkennt auch die Mehrzahlform, die das SQL verpasst hat', () => {
+    // Die alte SQL-Fassung kannte nur "loses the game" und ist an "All opponents lose the game"
+    // vorbeigelaufen.
+    expect(istSiegCombo(['All opponents lose the game'])).toBe(true);
+  });
+
+  it('erkennt die Ergebnisse, die ein Spiel wirklich beenden', () => {
+    expect(istSiegCombo(['Infinite damage'])).toBe(true);
+    expect(istSiegCombo(['Infinite turns'])).toBe(true);
+  });
+
+  it('zählt unendlich Mana NICHT als Sieg - davon stirbt niemand', () => {
+    expect(istSiegCombo(['Infinite colorless mana'])).toBe(false);
+    expect(istSiegCombo(['Infinite lifegain'])).toBe(false);
+  });
+
+  it('kommt ohne \\b aus - Postgres liest das als Rückschritt-Zeichen', () => {
+    // Der Ausdruck wird wörtlich auch im SQL benutzt. Ein \\b darin wäre dort etwas anderes als
+    // hier, und genau solche stillen Unterschiede soll die gemeinsame Zeichenkette verhindern.
+    expect(SIEG_MUSTER).not.toContain('\\b');
+  });
+});
+
+describe('simuliereDeck - die neuen Kennzahlen', () => {
+  /** Ein Deck, das verlässlich über Schaden gewinnt: viele Länder, billige dicke Kreaturen. */
+  const schnellesSchadensdeck = () =>
+    deckAus([...vervielfache(wald(), 40), ...vervielfache(kreatur('Baer', 1, 10), 59)]);
+
+  /** Dasselbe Deck, nur mit unbezahlbar teuren Kreaturen - es stolpert. */
+  const lahmesDeck = () =>
+    deckAus([...vervielfache(wald(), 40), ...vervielfache(kreatur('Koloss', 9, 4), 59)]);
+
+  it('misst den Schaden bis Zug 10 auch dort, wo kein Sieg zustande kommt', () => {
+    const lahm = simuliereDeck(lahmesDeck(), 60);
+    const schnell = simuliereDeck(schnellesSchadensdeck(), 60);
+
+    // Die eigentliche Zusage: Diese Uhr trennt zwei Decks auch dann, wenn der Siegzug bei beiden
+    // am Anschlag steht - genau das kann der zensierte Median nicht.
+    expect(schnell.schadenZug10).toBeGreaterThan(lahm.schadenZug10);
+    expect(lahm.schadenZug10).toBeGreaterThanOrEqual(0);
+  });
+
+  it('zählt einen Sieg weiterhin im Zug des Sieges, obwohl bis Zug 10 weitergespielt wird', () => {
+    const ergebnis = simuliereDeck(schnellesSchadensdeck(), 60);
+    expect(ergebnis.median).toBeLessThan(SCHADENSFENSTER);
+  });
+
+  it('meldet Leerlaufzüge, wenn nichts bezahlbar ist', () => {
+    const lahm = simuliereDeck(lahmesDeck(), 40);
+    const schnell = simuliereDeck(schnellesSchadensdeck(), 40);
+
+    expect(lahm.leerlaufSchnitt).toBeGreaterThan(schnell.leerlaufSchnitt);
+  });
+
+  it('meldet die Streuung als eigene Achse neben dem Median', () => {
+    const ergebnis = simuliereDeck(schnellesSchadensdeck(), 60);
+
+    expect(ergebnis.p25).toBeLessThanOrEqual(ergebnis.p75);
+    expect(ergebnis.streuung).toBe(ergebnis.p75 - ergebnis.p25);
+  });
+
+  it('meldet Mulligans und Abbrüche als Ehrlichkeitszahlen', () => {
+    // Ein Deck ohne jedes Land muss oft mulliganen und kommt nie ins Spiel.
+    const ohneLand = deckAus(vervielfache(kreatur('Baer', 1, 4), 99));
+    const ergebnis = simuliereDeck(ohneLand, 30);
+
+    expect(ergebnis.mulliganSchnitt).toBeGreaterThan(0);
+    expect(ergebnis.abbruchAnteil).toBe(0);
+    expect(ergebnis.median).toBe(KEIN_SIEG);
   });
 });

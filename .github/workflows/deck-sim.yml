@@ -16,8 +16,15 @@ name: Deck simulation
 # der große Durchgang.
 #
 # Braucht das Repo-Secret SUPABASE_SERVICE_ROLE_KEY (der Vorrat ist per RLS nur für Developer
-# lesbar) und setzt voraus, dass sql/deck-sim-results-2026-09-16.sql EINMAL von Hand im
-# Supabase-SQL-Editor gelaufen ist. Ein Merge allein ändert an der Datenbank nichts.
+# lesbar) und setzt voraus, dass DREI Migrationen EINMAL von Hand im Supabase-SQL-Editor gelaufen
+# sind. Ein Merge allein ändert an der Datenbank nichts:
+#
+#   sql/deck-sim-results-2026-09-16.sql     Tabelle und Auswertungs-Ansichten
+#   sql/winning-combo-muster-2026-09-16.sql  gemeinsame Sieg-Definition (der Lauf bricht ohne sie ab)
+#   sql/deck-sim-v6-2026-09-16.sql          die Spalten der Fassung 6
+#
+# Der Lauf prüft als Erstes, ob die Sieg-Definition der Datenbank wörtlich der des Simulators
+# entspricht, und bricht sonst ab - lieber kein Ergebnis als eines aus zwei Definitionen.
 
 on:
   workflow_dispatch:

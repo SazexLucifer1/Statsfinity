@@ -56,6 +56,15 @@ export const MAX_ZUEGE = 20;
 /** Der Wert, der für "kein Sieg" in die Statistik geht - damit sich Perzentile rechnen lassen. */
 export const KEIN_SIEG = MAX_ZUEGE + 1;
 
+/**
+ * Bis zu diesem Zug wird der aufaddierte Schaden mitgeschrieben (siehe SimSpiel.schadenBisZug10).
+ *
+ * Zehn, weil ein Commander-Spiel dort entschieden ist, ohne dass die Zahl schon an der Decke
+ * klebt: Bei zwanzig Zügen erreichen fast alle Decks irgendwann 40 Schaden und die Spalte wäre so
+ * nichtssagend wie der zensierte Siegzug, bei fünf fast keines.
+ */
+export const SCHADENSFENSTER = 10;
+
 const STARTHAND = 7;
 /** Nach drei Mulligans wird jede Hand behalten - so spielt es auch ein Mensch. */
 const MAX_MULLIGANS = 3;
@@ -94,6 +103,28 @@ export interface SimSpiel {
   kumulativZug: number;
   /** Verfügbares Mana in Zug 3, 5 und 7 - die Tempo-Achse unabhängig vom Sieg. */
   manaProben: [number, number, number];
+  /**
+   * Aufaddierter Schaden bis einschließlich Zug 10 - die UNZENSIERTE Uhr.
+   *
+   * Warum das wichtig genug für eine eigene Zahl ist: Der Siegzug ist ein zensierter Wert. Wer bis
+   * Zug 20 nicht gewinnt, bekommt 21 - und das trifft die große Mehrheit aller Decks. Eine Spalte,
+   * in der zwei Drittel aller Zeilen denselben Wert tragen, kann nichts mehr trennen, egal wie gut
+   * die Simulation darunter ist. Der Schaden bis Zug 10 hat dieses Problem nicht: Er unterscheidet
+   * auch zwischen zwei Decks, die beide nie "gewinnen", aber 12 und 34 Schaden aufbauen.
+   */
+  schadenBisZug10: number;
+  /** Wie oft musste die Starthand neu gezogen werden? */
+  mulligans: number;
+  /**
+   * Züge, in denen gar kein Zauber gewirkt wurde - das Maß für "das Deck stolpert".
+   *
+   * Ein Zug ohne Wirkung heißt: kein bezahlbarer Zauber auf der Hand. Ein durchgebautes Deck hat
+   * das selten, ein Deck mit teurer Kurve und dünner Manabasis oft. Gezählt werden nur die Züge
+   * bis zum Spielende, sonst wäre die Zahl bloß eine zweite Schreibweise des Siegzugs.
+   */
+  leerlaufZuege: number;
+  /** true = die Sicherung gegen Endlosschleifen in der Hauptphase hat gegriffen. */
+  abgebrochen: boolean;
 }
 
 export interface SimErgebnis {
@@ -111,18 +142,53 @@ export interface SimErgebnis {
   manaZug3: number;
   manaZug5: number;
   manaZug7: number;
+  /** Das langsamste Viertel bzw. das schnellste Viertel - zusammen die Streuung. */
+  p25: number;
+  p75: number;
+  /**
+   * p75 - p25, also wie WEIT die Siegzüge auseinanderliegen.
+   *
+   * Eine eigene Achse neben dem Median, und zwar eine, die der Median nicht enthält: Zwei Decks
+   * können beide im Schnitt in Zug 8 gewinnen - das eine immer, das andere in der Hälfte der
+   * Spiele in Zug 5 und in der anderen gar nicht. Am Tisch sind das zwei völlig verschiedene
+   * Decks. Verlässlichkeit ist das, was ein durchgebautes Deck von einem Glücksdeck unterscheidet,
+   * und sie steht in keiner der bisherigen Spalten.
+   */
+  streuung: number;
+  /** Median des aufaddierten Schadens bis Zug 10 - die unzensierte Uhr. */
+  schadenZug10: number;
+  /** Mulligans je Spiel im Schnitt. */
+  mulliganSchnitt: number;
+  /** Züge ohne gewirkten Zauber, je Spiel im Schnitt. */
+  leerlaufSchnitt: number;
+  /** Anteil der Spiele, in denen die Schleifensicherung griff - die Ehrlichkeitszahl. */
+  abbruchAnteil: number;
 }
 
 /**
- * Welche Combo-Ergebnisse beenden ein Spiel?
+ * Welche Combo-Ergebnisse beenden ein Spiel? - DIE EINE Fassung dieser Liste.
  *
  * Commander Spellbook beschreibt jedes Ergebnis im Klartext ("Infinite damage", "Infinite mana").
  * Der Unterschied ist wesentlich: Unendlich VIEL MANA gewinnt gar nichts, solange nichts da ist,
  * wofür man es ausgibt - unendlich Schaden schon. Diese Liste ist deshalb bewusst eng und nennt
  * nur Ergebnisse, die ein Spiel unmittelbar entscheiden.
+ *
+ * WARUM DER AUSDRUCK ALS ZEICHENKETTE EXPORTIERT WIRD, und das ist die Lehre aus einem Fehler:
+ * Dieselbe Liste stand ein zweites Mal im SQL (spellbook_winning_combos), mit dem Kommentar, beide
+ * müssten dieselbe Auswahl treffen. Sie taten es nicht. Die TypeScript-Fassung enthielt "lose the
+ * game" und zählte damit "You lose the game" als SIEG; die SQL-Fassung kannte nur "loses the game"
+ * und verpasste jedes "All opponents lose the game". Zwei Listen, ein Kommentar, der ihre
+ * Gleichheit behauptet - und niemand, der es nachprüft.
+ *
+ * Jetzt gibt es diese eine Zeichenkette. Das SQL benutzt wörtlich denselben Ausdruck (die Funktion
+ * spellbook_winning_combo_muster() gibt ihn zurück), und scripts/simulate-deck-pool.js vergleicht
+ * beide vor jedem Lauf und bricht bei Abweichung ab. Der Ausdruck kommt deshalb ohne \b aus: In
+ * Postgres bedeutet \b ein Rückschritt-Zeichen, nicht eine Wortgrenze.
  */
-const SIEG_ERGEBNIS =
-  /win the game|infinite damage|infinite turns|infinite mill|infinite loss of life|each opponent loses the game|lose the game/i;
+export const SIEG_MUSTER =
+  'win the game|infinite damage|infinite turns|infinite mill|infinite loss of life|opponent loses the game|opponents lose the game';
+
+const SIEG_ERGEBNIS = new RegExp(SIEG_MUSTER, 'i');
 
 export function istSiegCombo(produces: readonly string[]): boolean {
   return produces.some((p) => SIEG_ERGEBNIS.test(p));
@@ -247,7 +313,7 @@ export function simuliereSpiel(deck: SimDeck, seed: number): SimSpiel {
     schadenGesamt: 0,
   };
 
-  starthand(deck, stand, rng);
+  const mulligans = starthand(deck, stand, rng);
   // Der Commander liegt in der Kommandozone und ist jeden Zug verfügbar. Ihn einfach in die Hand
   // zu legen ist die Näherung dafür: Im Goldfish stirbt er nie, die Kommandosteuer fällt also
   // nie an, und mehr als "er ist da, sobald das Mana reicht" braucht der Simulator nicht.
@@ -258,6 +324,10 @@ export function simuliereSpiel(deck: SimDeck, seed: number): SimSpiel {
     art: null,
     kumulativZug: KEIN_SIEG,
     manaProben: [0, 0, 0],
+    schadenBisZug10: 0,
+    mulligans,
+    leerlaufZuege: 0,
+    abgebrochen: false,
   };
 
   while (stand.zug < MAX_ZUEGE) {
@@ -278,8 +348,15 @@ export function simuliereSpiel(deck: SimDeck, seed: number): SimSpiel {
     // dafür nicht vorher in einen Bären wandern. Die Prüfung nach der Hauptphase bleibt zusätzlich
     // bestehen - sie fängt den Fall, dass das letzte Teil gerade erst gewirkt wurde.
     const comboVorher = comboSteht(deck, stand, vorrat);
-    const schadenDiesenZug = comboVorher ? 0 : hauptphase(deck, stand, vorrat);
-    if (!comboVorher) engines(stand, vorrat);
+    const zug = comboVorher
+      ? { schaden: 0, gewirkt: 0, abgebrochen: false }
+      : hauptphase(deck, stand, vorrat);
+    const schadenDiesenZug = zug.schaden;
+    if (zug.abgebrochen) spiel.abgebrochen = true;
+    if (!comboVorher) {
+      if (zug.gewirkt === 0) spiel.leerlaufZuege++;
+      engines(stand, vorrat);
+    }
 
     if (stand.zug === 3) spiel.manaProben[0] = gesamtMana;
     if (stand.zug === 5) spiel.manaProben[1] = gesamtMana;
@@ -288,17 +365,28 @@ export function simuliereSpiel(deck: SimDeck, seed: number): SimSpiel {
     const angriff = angriffsschaden(stand) + schadenDiesenZug;
     stand.schadenGesamt += angriff;
 
-    if (comboVorher || comboSteht(deck, stand, vorrat)) {
-      spiel.siegZug = stand.zug;
-      spiel.art = 'combo';
-    } else if (angriff >= LETHAL) {
-      spiel.siegZug = stand.zug;
-      spiel.art = 'schaden';
+    // Nur der ERSTE Sieg zählt. Seit die Schleife für das Schadensfenster über den Siegzug hinaus
+    // weiterläuft, wäre das ohne diese Abfrage der letzte statt des ersten - und der Median eines
+    // Combo-Decks sprang von Zug 4 auf Zug 10, ohne dass sich am Deck etwas geändert hätte.
+    if (spiel.siegZug === KEIN_SIEG) {
+      if (comboVorher || comboSteht(deck, stand, vorrat)) {
+        spiel.siegZug = stand.zug;
+        spiel.art = 'combo';
+      } else if (angriff >= LETHAL) {
+        spiel.siegZug = stand.zug;
+        spiel.art = 'schaden';
+      }
     }
     if (spiel.kumulativZug === KEIN_SIEG && stand.schadenGesamt >= LETHAL) {
       spiel.kumulativZug = stand.zug;
     }
-    if (spiel.siegZug !== KEIN_SIEG) break;
+    if (stand.zug <= SCHADENSFENSTER) spiel.schadenBisZug10 = stand.schadenGesamt;
+
+    // WEITERSPIELEN TROTZ SIEG, bis das Schadensfenster voll ist: Sonst stünde bei einem Deck, das
+    // in Zug 4 gewinnt, ein kleinerer Schaden-bis-Zug-10 als bei einem langsamen Deck, das bis
+    // dahin weiter angreifen durfte - die Uhr würde die schnellen Decks bestrafen. Der Siegzug
+    // selbst ist längst notiert; was danach passiert, ändert an ihm nichts.
+    if (spiel.siegZug !== KEIN_SIEG && stand.zug >= SCHADENSFENSTER) break;
   }
 
   // Ein Sieg ist immer auch kumulativ einer - sonst stünde für ein Combo-Deck hier KEIN_SIEG.
@@ -314,7 +402,7 @@ export function simuliereSpiel(deck: SimDeck, seed: number): SimSpiel {
  * aber nicht nur Länder. Die Spanne wird mit jedem Mulligan enger, weil eine Hand aus fünf Karten
  * sich kein Wunschdenken mehr leisten kann.
  */
-function starthand(deck: SimDeck, stand: Stand, rng: () => number): void {
+function starthand(deck: SimDeck, stand: Stand, rng: () => number): number {
   for (let mulligan = 0; ; mulligan++) {
     stand.bibliothek = mischen(deck.karten, rng);
     stand.hand = stand.bibliothek.splice(0, STARTHAND);
@@ -330,7 +418,7 @@ function starthand(deck: SimDeck, stand: Stand, rng: () => number): void {
         }
         stand.bibliothek.push(...stand.hand.splice(teuerste, 1));
       }
-      return;
+      return mulligan;
     }
   }
 }
@@ -416,14 +504,21 @@ function quellen(deck: SimDeck, stand: Stand): Quelle[] {
  * der Plan. Feinheiten (wann hält man etwas zurück, wann wirkt man einen Gegenzauber) sind
  * bewusst nicht drin: Sie würden den Vergleich zweier Decks nicht genauer machen, nur langsamer.
  *
- * Rückgabewert ist der direkte Schaden, den die gewirkten Zauber an jeden Gegner ausgeteilt haben.
+ * Rückgabe: der direkte Schaden an jeden Gegner, wie viele Zauber überhaupt gewirkt wurden (ein
+ * Zug mit null Zaubern ist ein Leerlaufzug), und ob die Schleifensicherung gegriffen hat.
  */
-function hauptphase(deck: SimDeck, stand: Stand, vorrat: Quelle[]): number {
+function hauptphase(
+  deck: SimDeck,
+  stand: Stand,
+  vorrat: Quelle[],
+): { schaden: number; gewirkt: number; abgebrochen: boolean } {
   let schaden = 0;
+  let gewirkt = 0;
 
   // Obergrenze gegen eine Endlosschleife, falls eine Karte sich selbst nachzieht. 40 Zauber in
-  // einem Zug hat kein Deck dieser Auswertung je erreicht; die Grenze ist eine Sicherung, kein Maß.
-  for (let schritt = 0; schritt < 40; schritt++) {
+  // einem Zug hat kein Deck dieser Auswertung je erreicht; die Grenze ist eine Sicherung, kein Maß
+  // - und dass sie gegriffen hat, wird ab jetzt gemeldet statt stillschweigend verschluckt.
+  for (let schritt = 0; schritt < MAX_ZAUBER_JE_ZUG; schritt++) {
     const abzug = kostenrabatt(stand);
     let beste = -1;
     let besterRang = -Infinity;
@@ -439,14 +534,18 @@ function hauptphase(deck: SimDeck, stand: Stand, vorrat: Quelle[]): number {
         beste = i;
       }
     }
-    if (beste < 0) break;
+    if (beste < 0) return { schaden, gewirkt, abgebrochen: false };
 
     const karte = stand.hand.splice(beste, 1)[0];
     zahle(mitRabatt(karte.kosten, abzug), vorrat);
     schaden += spieleKarte(karte, deck, stand, vorrat);
+    gewirkt++;
   }
-  return schaden;
+  return { schaden, gewirkt, abgebrochen: true };
 }
+
+/** Sicherung gegen Endlosschleifen in der Hauptphase - siehe hauptphase(). */
+const MAX_ZAUBER_JE_ZUG = 40;
 
 /**
  * Die wiederholbaren Fähigkeiten auf dem Feld, einmal je Zug - Zieh-Engines, wiederholbare Rampe.
@@ -662,16 +761,21 @@ export function angriffsschaden(stand: {
 export function simuliereDeck(deck: SimDeck, spiele: number, seed = 1): SimErgebnis {
   const siegZuege: number[] = [];
   const kumulativ: number[] = [];
+  const schaden10: number[] = [];
   let siege = 0;
   let comboSiege = 0;
   let mana3 = 0;
   let mana5 = 0;
   let mana7 = 0;
+  let mulligans = 0;
+  let leerlauf = 0;
+  let abbrueche = 0;
 
   for (let i = 0; i < spiele; i++) {
     const spiel = simuliereSpiel(deck, seed + i);
     siegZuege.push(spiel.siegZug);
     kumulativ.push(spiel.kumulativZug);
+    schaden10.push(spiel.schadenBisZug10);
     if (spiel.siegZug !== KEIN_SIEG) {
       siege++;
       if (spiel.art === 'combo') comboSiege++;
@@ -679,7 +783,13 @@ export function simuliereDeck(deck: SimDeck, spiele: number, seed = 1): SimErgeb
     mana3 += spiel.manaProben[0];
     mana5 += spiel.manaProben[1];
     mana7 += spiel.manaProben[2];
+    mulligans += spiel.mulligans;
+    leerlauf += spiel.leerlaufZuege;
+    if (spiel.abgebrochen) abbrueche++;
   }
+
+  const p25 = perzentil(siegZuege, 0.25);
+  const p75 = perzentil(siegZuege, 0.75);
 
   return {
     spiele,
@@ -691,6 +801,13 @@ export function simuliereDeck(deck: SimDeck, spiele: number, seed = 1): SimErgeb
     manaZug3: mana3 / spiele,
     manaZug5: mana5 / spiele,
     manaZug7: mana7 / spiele,
+    p25,
+    p75,
+    streuung: p75 - p25,
+    schadenZug10: perzentil(schaden10, 0.5),
+    mulliganSchnitt: mulligans / spiele,
+    leerlaufSchnitt: leerlauf / spiele,
+    abbruchAnteil: abbrueche / spiele,
   };
 }
 
