@@ -29,7 +29,8 @@ export const deckView = {
     'deckView.asPdf': '🖨️ Als PDF',
     'deckView.reimportList': '📋 Kartenliste neu einfügen',
     'deckView.noChangesLogYet': 'Noch keine Änderungen an diesem Deck.',
-    'deckView.noAddedCardsInGroup': 'Bei dieser Bearbeitung kamen keine Karten dazu - nichts zu drucken.',
+    'deckView.noAddedCardsInGroup':
+      'Bei dieser Bearbeitung kamen keine Karten dazu - nichts zu drucken.',
     'deckView.printAddedCards': '🖨️ Diese {{count}} neuen Karten drucken',
     'deckView.printAddedCardsBusy': '🖨️ Kartenbilder werden geladen …',
     'deckView.noChanges': 'Noch keine Änderungen.',
@@ -157,6 +158,8 @@ export const deckView = {
       'Sehr hoch bewertet – falls das ein cEDH-Deck ist, stell Bracket 5 von Hand ein.',
     'deckView.bracketReasonHeading': 'Was die Stufe treibt',
     'deckView.bracketReason.massLandDenial': 'Mass Land Denial im Deck',
+    'deckView.bracketReason.comboAndTutors':
+      'Spielbeendende Combo im Deck und mindestens zwei Tutoren – 93 % der Decks mit dieser Verbindung spielen Bracket 4 oder 5 (gemessen an 48.638 Decks)',
     'deckView.bracketReason.gameChangerMany': 'Vier oder mehr Game Changer',
     'deckView.bracketReason.gameChangerFew': 'Ein bis drei Game Changer',
     'deckView.bracketReason.extraTurnLoop': 'Extra-Turn-Schleife (Combo mit Extra-Zug-Karte)',
@@ -492,10 +495,11 @@ export const deckView = {
     'deckView.bracketWhyToggle': 'Why this bracket?',
     'deckView.bracketNeverAutoNote':
       'The automatic rating never assigns Bracket 1 (Exhibition) or 5 (cEDH). Neither is defined by cards but by intent – you set those yourself.',
-    'deckView.bracketCedhHint':
-      'Rated very high – if this is a cEDH deck, set Bracket 5 manually.',
+    'deckView.bracketCedhHint': 'Rated very high – if this is a cEDH deck, set Bracket 5 manually.',
     'deckView.bracketReasonHeading': 'What drives the bracket',
     'deckView.bracketReason.massLandDenial': 'Mass land denial in the deck',
+    'deckView.bracketReason.comboAndTutors':
+      'Game-ending combo in the deck plus at least two tutors – 93% of decks with this combination play bracket 4 or 5 (measured across 48,638 decks)',
     'deckView.bracketReason.gameChangerMany': 'Four or more Game Changers',
     'deckView.bracketReason.gameChangerFew': 'One to three Game Changers',
     'deckView.bracketReason.extraTurnLoop': 'Extra-turn loop (combo with an extra-turn card)',
@@ -528,8 +532,7 @@ export const deckView = {
     'deckView.bracketMathSpellbookIntro':
       'Commander Spellbook rates the same decklist independently and live, mainly from the combos it finds in it. Statsfinity takes that rating as the second verdict, unchanged.',
     'deckView.bracketMathStepRules': 'Official criteria → Bracket {{level}}',
-    'deckView.bracketMathStepSpellbook':
-      'Second opinion, Commander Spellbook → Bracket {{level}}',
+    'deckView.bracketMathStepSpellbook': 'Second opinion, Commander Spellbook → Bracket {{level}}',
     'deckView.bracketMathStepSpellbookMissing':
       'Second opinion, Commander Spellbook → unavailable, the official rating alone counts',
     'deckView.bracketMathHigherWins': 'The higher of the two applies: Bracket {{level}}.',

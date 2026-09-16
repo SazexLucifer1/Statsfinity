@@ -336,6 +336,37 @@ export class CardDataService {
    * Leeres Ergebnis bei einem Fehler (Tabelle noch nicht angelegt, kein Netz): die Einstufung
    * läuft dann ohne Combo-Kriterium weiter, statt ganz auszufallen.
    */
+  /**
+   * Wie viele SPIELBEENDENDE Combos stecken vollständig in dieser Deckliste?
+   *
+   * Grundlage von Urteil F in bracket.ts. Die Frage lautet "welche Combos sind VOLLSTÄNDIG
+   * enthalten", und die lässt sich mit PostgREST-Filtern nicht stellen - deshalb die
+   * Datenbankfunktion winning_combos_in_deck (sql/winning-combos-in-deck-2026-09-16.sql). Sie
+   * nimmt die rund hundert Kartennamen im Rumpf der Anfrage entgegen; als Filter in der
+   * Adresszeile wären das mehrere Kilobyte URL.
+   *
+   * 0 bei einem Fehler (Funktion noch nicht angelegt, kein Netz): Die Einstufung läuft dann ohne
+   * Urteil F weiter, statt ganz auszufallen - dieselbe Haltung wie bei twoCardCombosFor().
+   */
+  async winningCombosIn(cardNames: string[], commanderNames: string[]): Promise<number> {
+    const keys = [...new Set(cardNames.map((n) => this.lookupKey(n)).filter(Boolean))];
+    if (keys.length === 0) return 0;
+
+    const { data, error } = await supabase.rpc('winning_combos_in_deck', {
+      deck_names: keys,
+      commander_names: [...new Set(commanderNames.map((n) => this.lookupKey(n)).filter(Boolean))],
+    });
+
+    if (error) {
+      console.warn(
+        'Gewinn-Combos konnten nicht gezählt werden, Bracket-Einstufung ohne Urteil F:',
+        error.message,
+      );
+      return 0;
+    }
+    return typeof data === 'number' ? data : 0;
+  }
+
   async twoCardCombosFor(cardNames: string[]): Promise<SpellbookTwoCardCombo[]> {
     const keys = [...new Set(cardNames.map((n) => this.lookupKey(n)).filter(Boolean))];
     if (keys.length === 0) return [];
@@ -348,14 +379,14 @@ export class CardDataService {
       const { data, error } = await supabase
         .from('spellbook_two_card_combos')
         .select(
-          'id, card_a_normalized, card_b_normalized, a_must_be_commander, b_must_be_commander, mana_value_needed, bracket_tag, popularity'
+          'id, card_a_normalized, card_b_normalized, a_must_be_commander, b_must_be_commander, mana_value_needed, bracket_tag, popularity',
         )
         .in('card_a_normalized', block);
 
       if (error) {
         console.warn(
           'Spellbook-Combos konnten nicht geladen werden, Bracket-Einstufung ohne Combo-Kriterium:',
-          error.message
+          error.message,
         );
         return [];
       }
