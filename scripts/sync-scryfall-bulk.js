@@ -37,6 +37,17 @@ const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 const API = 'https://api.scryfall.com';
 
 /**
+ * --force: die Bulk-Datei auch dann laden, wenn sich bei Scryfall nichts geändert hat.
+ *
+ * Gebraucht wird das nach einer SCHEMA-Änderung. Der Lauf bricht sonst früh ab, sobald der
+ * gespeicherte Stand dem bei Scryfall entspricht (so möchte es Scryfall selbst) - eine gerade erst
+ * angelegte Spalte bliebe damit leer, bis Scryfall von sich aus eine neue Datei baut, und niemand
+ * käme auf die Idee, dass genau das der Grund ist. Genau dieser Fall ist beim Nachrüsten von
+ * power/toughness eingetreten: Migration gelaufen, Abgleich angestoßen, Spalten trotzdem leer.
+ */
+const FORCE = process.argv.includes('--force');
+
+/**
  * Scryfall bittet ausdrücklich um einen aussagekräftigen User-Agent. Aus dem Browser heraus geht
  * das gar nicht (User-Agent ist dort ein verbotener Header und wird stillschweigend verworfen -
  * die Angabe in ScryfallService.buildHeaders() hat faktisch keine Wirkung). Hier, serverseitig,
@@ -225,11 +236,12 @@ async function syncKarten() {
 
   const stand = await readSyncState('cards');
   if (
+    !FORCE &&
     stand?.source_updated_at &&
     new Date(stand.source_updated_at).getTime() === new Date(eintrag.updated_at).getTime()
   ) {
     console.log(
-      'Unverändert seit dem letzten Lauf - Datei wird gar nicht erst geladen (so möchte es Scryfall).',
+      'Unverändert seit dem letzten Lauf - Datei wird gar nicht erst geladen (so möchte es Scryfall). Mit --force trotzdem laden, z.B. nach einer neuen Spalte.',
     );
     return;
   }

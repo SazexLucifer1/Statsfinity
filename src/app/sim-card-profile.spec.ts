@@ -3,6 +3,7 @@ import {
   FARB_BIT,
   SimCardData,
   buildSimCard,
+  erkennungsquote,
   parseCost,
   parsePower,
 } from './sim-card-profile';
@@ -413,5 +414,91 @@ describe('buildSimCard - bleibende Karten', () => {
       karte({ typeLine: 'Enchantment', oracleText: 'Players can’t untap more than two lands.' }),
     );
     expect(unbekannt.regeln).toEqual([]);
+  });
+});
+
+describe('buildSimCard - wiederholbare Fähigkeiten', () => {
+  it('erkennt eine Zieh-Engine auf einer Kreatur samt Einsatzverzögerung', () => {
+    const sim = buildSimCard(
+      karte({
+        name: 'Arcanis the Omnipotent',
+        typeLine: 'Legendary Creature — Wizard',
+        oracleText:
+          '{T}: Draw three cards.\n{2}{U}{U}: Return Arcanis the Omnipotent to its owner\u2019s hand.',
+        manaCost: '{3}{U}{U}{U}',
+        cmc: 6,
+        power: '3',
+      }),
+    );
+    expect(sim.faehigkeit?.ziehen).toBe(3);
+    expect(sim.faehigkeit?.brauchtBereitschaft).toBe(true);
+    expect(sim.regeln).toContain('faehigkeit');
+  });
+
+  it('erkennt eine Fähigkeit mit Manakosten', () => {
+    const sim = buildSimCard(
+      karte({
+        name: 'Endless Atlas',
+        typeLine: 'Artifact',
+        oracleText:
+          '{2}, {T}: Draw a card. Activate only if you control three or more lands with the same name.',
+        manaCost: '{3}',
+        cmc: 3,
+      }),
+    );
+    expect(sim.faehigkeit?.ziehen).toBe(1);
+    expect(sim.faehigkeit?.kosten.gesamt).toBe(2);
+    expect(sim.faehigkeit?.brauchtBereitschaft).toBe(false);
+  });
+
+  it('zählt eine Fähigkeit NICHT, die die Karte selbst verbraucht', () => {
+    // Einmal opfern heißt einmal ziehen - das ist keine Engine, die jeden Zug etwas beiträgt.
+    const sim = buildSimCard(
+      karte({
+        name: 'Wayfarer\u2019s Bauble',
+        typeLine: 'Artifact',
+        oracleText:
+          '{2}, {T}, Sacrifice Wayfarer\u2019s Bauble: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.',
+        manaCost: '{1}',
+        cmc: 1,
+      }),
+    );
+    expect(sim.faehigkeit).toBeNull();
+  });
+
+  it('verwechselt eine Manafähigkeit nicht mit einer Engine', () => {
+    const sim = buildSimCard(
+      karte({
+        name: 'Llanowar Elves',
+        typeLine: 'Creature — Elf Druid',
+        oracleText: '{T}: Add {G}.',
+        manaCost: '{G}',
+        cmc: 1,
+        producedMana: ['G'],
+        power: '1',
+      }),
+    );
+    expect(sim.faehigkeit).toBeNull();
+    expect(sim.manaquelle).not.toBeNull();
+  });
+});
+
+describe('erkennungsquote', () => {
+  it('misst den Anteil der Nicht-Länder, bei denen ein Muster gegriffen hat', () => {
+    const erkannt = buildSimCard(karte({ typeLine: 'Sorcery', oracleText: 'Draw two cards.' }));
+    const unbekannt = buildSimCard(
+      karte({ typeLine: 'Instant', oracleText: 'Destroy target creature.' }),
+    );
+    expect(erkennungsquote([erkannt, erkannt, unbekannt, unbekannt])).toBe(0.5);
+  });
+
+  it('lässt Länder außen vor - die werden immer erkannt und würden die Quote schönen', () => {
+    const land = buildSimCard(
+      karte({ typeLine: 'Land', oracleText: '{T}: Add {G}.', producedMana: ['G'] }),
+    );
+    const unbekannt = buildSimCard(
+      karte({ typeLine: 'Instant', oracleText: 'Counter target spell.' }),
+    );
+    expect(erkennungsquote([land, land, land, unbekannt])).toBe(0);
   });
 });

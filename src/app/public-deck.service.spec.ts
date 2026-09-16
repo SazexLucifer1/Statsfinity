@@ -11,7 +11,10 @@ import { supabase } from './supabase.client';
  * eine SECURITY DEFINER-Funktion statt einer View, siehe public-deck.service.ts#getStats) - die
  * Responses werden über denselben "Tabellenname"-Schlüssel (hier: Funktionsname) angegeben.
  */
-function mockSupabaseFrom(responses: Record<string, { data: any[] | null; error: unknown }>, eqSpy?: (column: string, value: unknown) => void) {
+function mockSupabaseFrom(
+  responses: Record<string, { data: any[] | null; error: unknown }>,
+  eqSpy?: (column: string, value: unknown) => void,
+) {
   vi.spyOn(supabase, 'rpc').mockImplementation((fn: string) => {
     const response = responses[fn] ?? { data: [], error: null };
     return Promise.resolve(response) as any;
@@ -66,7 +69,13 @@ describe('PublicDeckService', () => {
         error: null,
       },
       deck_cards: {
-        data: [{ deck_id: 'deck-1', card_name: 'Meren of Clan Nel Toth', image_url: 'https://example.com/meren.jpg' }],
+        data: [
+          {
+            deck_id: 'deck-1',
+            card_name: 'Meren of Clan Nel Toth',
+            image_url: 'https://example.com/meren.jpg',
+          },
+        ],
         error: null,
       },
       deck_public_stats: {
@@ -92,8 +101,24 @@ describe('PublicDeckService', () => {
     mockSupabaseFrom({
       decks: {
         data: [
-          { id: 'low', name: 'Low winrate', format: null, updated_at: '2026-08-01T00:00:00Z', edhrec_tag: null, color_identity: [], commander_types: [] },
-          { id: 'high', name: 'High winrate', format: null, updated_at: '2026-08-02T00:00:00Z', edhrec_tag: null, color_identity: [], commander_types: [] },
+          {
+            id: 'low',
+            name: 'Low winrate',
+            format: null,
+            updated_at: '2026-08-01T00:00:00Z',
+            edhrec_tag: null,
+            color_identity: [],
+            commander_types: [],
+          },
+          {
+            id: 'high',
+            name: 'High winrate',
+            format: null,
+            updated_at: '2026-08-02T00:00:00Z',
+            edhrec_tag: null,
+            color_identity: [],
+            commander_types: [],
+          },
         ],
         error: null,
       },
@@ -117,7 +142,9 @@ describe('PublicDeckService', () => {
     // text[]-Spalte ein ungültiges Array-Literal, das Postgres/PostgREST ablehnt. Die Query muss
     // stattdessen selbst das "{B,G}"-Literal bauen (siehe searchPublicDecks()).
     const eqCalls: [string, unknown][] = [];
-    mockSupabaseFrom({ decks: { data: [], error: null } }, (column, value) => eqCalls.push([column, value]));
+    mockSupabaseFrom({ decks: { data: [], error: null } }, (column, value) =>
+      eqCalls.push([column, value]),
+    );
 
     await service.searchPublicDecks({ colors: ['G', 'B'], sort: 'recent' });
 

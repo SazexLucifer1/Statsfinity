@@ -159,6 +159,22 @@ export interface SimLand {
   holtLand: boolean;
 }
 
+/**
+ * Eine aktivierte Fähigkeit, die kein Mana macht - eine Zieh-Engine, wiederholbare Rampe.
+ *
+ * Genau das unterscheidet ein Deck, das "rund läuft", von einem, das nur Karten aneinanderreiht:
+ * Ein bleibender Dauereffekt, der JEDEN Zug etwas beiträgt, ist über zehn Züge zehnmal so viel
+ * wert wie derselbe Effekt einmalig. Ohne diese Größe wäre eine Zieh-Engine für den Simulator
+ * eine tote Karte.
+ */
+export interface SimFaehigkeit {
+  kosten: SimKosten;
+  ziehen: number;
+  laenderAufsFeld: number;
+  /** true = die Fähigkeit verlangt Tappen und die Kreatur muss erst bereit sein. */
+  brauchtBereitschaft: boolean;
+}
+
 /** Der fertige Steckbrief einer Karte. */
 export interface SimCard {
   key: string;
@@ -175,6 +191,8 @@ export interface SimCard {
   landAufRueckseite: boolean;
   land: SimLand | null;
   manaquelle: SimManaquelle | null;
+  /** Wiederholbare Fähigkeit, einmal je Zug nutzbar. null heißt "keine". */
+  faehigkeit: SimFaehigkeit | null;
   /** Netto-Mana eines Rituals (Dark Ritual: +2). 0 heißt "kein Ritual". */
   ritual: number;
   laenderAufsFeld: number;
@@ -325,6 +343,56 @@ function addWirkung(text: string): { farben: Farbmaske; menge: number } | null {
 }
 
 /**
+ * Eine aktivierte Fähigkeit, die sich JEDEN Zug wieder nutzen lässt.
+ *
+ * Gelesen wird dieselbe Form wie bei der Manafähigkeit - "Kosten: Wirkung" -, nur wird hier nach
+ * dem gesucht, was KEIN Mana macht: Karten ziehen und Länder holen.
+ *
+ * Ausgeschlossen sind Fähigkeiten, deren Kosten die Karte selbst verbrauchen ("Sacrifice",
+ * "Exile"): Die gibt es genau einmal, und sie als Dauer-Engine zu zählen wäre der größere Fehler
+ * als sie zu übersehen - siehe die Regel, im Zweifel zu untertreiben.
+ */
+function aktivierteFaehigkeit(text: string, istKreatur: boolean): SimFaehigkeit | null {
+  for (const zeile of text.split('\n')) {
+    const doppelpunkt = zeile.indexOf(':');
+    if (doppelpunkt < 0) continue;
+
+    const kostenTeil = zeile.slice(0, doppelpunkt);
+    const wirkung = zeile.slice(doppelpunkt + 1);
+    if (/\b(sacrifice|exile)\b/i.test(kostenTeil)) continue;
+    if (/add [{]/i.test(wirkung)) continue; // das ist eine Manafähigkeit, die steht anderswo
+
+    const zieht = wirkung.match(/draw (\w+) cards?/i);
+    const laender = LAND_SUCHE.test(wirkung) && /onto the battlefield/i.test(wirkung);
+    if (!zieht && !laender) continue;
+
+    return {
+      kosten: parseCost(kostenTeil),
+      ziehen: zieht ? zahl(zieht[1]) : 0,
+      laenderAufsFeld: laender ? 1 : 0,
+      brauchtBereitschaft: istKreatur && /\{T\}/i.test(kostenTeil),
+    };
+  }
+  return null;
+}
+
+/**
+ * Wie viel dieses Decks versteht der Simulator überhaupt?
+ *
+ * Anteil der Nicht-Länder, bei denen mindestens ein Muster gegriffen hat (0-1). Das ist die
+ * Ehrlichkeitszahl zu jedem Ergebnis: Bei einem Deck, von dem nur 40 % erkannt wurden, sagt ein
+ * später Siegzug womöglich mehr über die Grenzen dieser Auswertung aus als über das Deck. Ohne
+ * diese Zahl wäre beides nicht auseinanderzuhalten.
+ *
+ * Länder zählen bewusst nicht mit: Sie werden immer erkannt und würden die Quote nur schönen.
+ */
+export function erkennungsquote(karten: readonly SimCard[]): number {
+  const zauber = karten.filter((k) => !k.istLand);
+  if (zauber.length === 0) return 1;
+  return zauber.filter((k) => k.regeln.length > 0).length / zauber.length;
+}
+
+/**
  * Kommt dieses Land getappt herein?
  *
  * Die Reihenfolge ist entscheidend und deshalb hier festgehalten: Erst wird geprüft, ob es sich
@@ -364,6 +432,7 @@ export function buildSimCard(data: SimCardData): SimCard {
     landAufRueckseite: rueckseiteLand,
     land: null,
     manaquelle: null,
+    faehigkeit: null,
     ritual: 0,
     laenderAufsFeld: 0,
     laenderInDieHand: 0,
@@ -411,6 +480,12 @@ export function buildSimCard(data: SimCardData): SimCard {
       brauchtBereitschaft: istKreatur,
     };
     merke(istKreatur ? 'manakreatur' : 'manastein');
+  }
+
+  // --- Wiederholbare Fähigkeit ----------------------------------------------------------------
+  if (BLEIBENDE_TYPEN.test(typeLine)) {
+    karte.faehigkeit = aktivierteFaehigkeit(text, istKreatur);
+    if (karte.faehigkeit) merke('faehigkeit');
   }
 
   // --- Ritual: Mana ohne Tappen, einmalig -----------------------------------------------------

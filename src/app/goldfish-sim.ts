@@ -279,6 +279,7 @@ export function simuliereSpiel(deck: SimDeck, seed: number): SimSpiel {
     // bestehen - sie fängt den Fall, dass das letzte Teil gerade erst gewirkt wurde.
     const comboVorher = comboSteht(deck, stand, vorrat);
     const schadenDiesenZug = comboVorher ? 0 : hauptphase(deck, stand, vorrat);
+    if (!comboVorher) engines(stand, vorrat);
 
     if (stand.zug === 3) spiel.manaProben[0] = gesamtMana;
     if (stand.zug === 5) spiel.manaProben[1] = gesamtMana;
@@ -445,6 +446,32 @@ function hauptphase(deck: SimDeck, stand: Stand, vorrat: Quelle[]): number {
     schaden += spieleKarte(karte, deck, stand, vorrat);
   }
   return schaden;
+}
+
+/**
+ * Die wiederholbaren Fähigkeiten auf dem Feld, einmal je Zug - Zieh-Engines, wiederholbare Rampe.
+ *
+ * Läuft NACH der Wirk-Phase, also mit dem Mana, das übrig geblieben ist. Das ist die Reihenfolge,
+ * die auch ein Mensch spielt: erst die Karten aus der Hand, die dieser Zug hergibt, und was dann
+ * noch dasteht, geht in die Engine. Andersherum würde eine Zieh-Engine dem Deck den eigenen
+ * Zugablauf verhungern lassen.
+ *
+ * Die so gezogenen Karten sind erst im nächsten Zug spielbar - auch das entspricht dem üblichen
+ * Ablauf, eine Zieh-Fähigkeit am Ende des Zuges zu benutzen.
+ */
+function engines(stand: Stand, vorrat: Quelle[]): void {
+  for (const eintrag of stand.feld) {
+    const f = eintrag.karte.faehigkeit;
+    if (!f) continue;
+    if (f.brauchtBereitschaft && eintrag.seitZug === stand.zug) continue;
+    if (!zahle(f.kosten, vorrat)) continue;
+
+    if (f.ziehen > 0) ziehe(stand, f.ziehen);
+    for (let i = 0; i < f.laenderAufsFeld; i++) {
+      const land = holeLandAusBibliothek(stand);
+      if (land) stand.feld.push({ karte: land, seitZug: stand.zug });
+    }
+  }
 }
 
 function kostenrabatt(stand: Stand): number {

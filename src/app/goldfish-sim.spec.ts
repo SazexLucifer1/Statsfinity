@@ -282,6 +282,26 @@ describe('simuliereSpiel', () => {
     expect(ergebnis.median).toBeLessThanOrEqual(6);
   });
 
+  it('nutzt eine Zieh-Engine jeden Zug und kommt dadurch schneller durchs Deck', () => {
+    const engine = buildSimCard(
+      daten({
+        name: 'Endless Atlas',
+        key: 'endless atlas',
+        typeLine: 'Artifact',
+        oracleText: '{2}, {T}: Draw a card.',
+        manaCost: '{3}',
+        cmc: 3,
+      }),
+    );
+    const grundstock = [...vervielfache(wald(), 38), ...vervielfache(kreatur('Dicker', 5, 6), 51)];
+    const mitEngine = simuliereDeck(deckAus([...grundstock, ...vervielfache(engine, 10)]), 100);
+    const ohneEngine = simuliereDeck(
+      deckAus([...grundstock, ...vervielfache(kreatur('Blindgaenger', 3, 0), 10)]),
+      100,
+    );
+    expect(mitEngine.median).toBeLessThan(ohneEngine.median);
+  });
+
   it('macht ein Deck mit Manasteinen schneller als dasselbe Deck ohne', () => {
     const solRing = buildSimCard(
       daten({
