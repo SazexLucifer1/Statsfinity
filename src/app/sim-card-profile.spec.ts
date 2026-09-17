@@ -484,22 +484,83 @@ describe('buildSimCard - wiederholbare Fähigkeiten', () => {
 });
 
 describe('erkennungsquote', () => {
+  /** Ein Aufputsch-Zauber auf ein einzelnes Ziel - dafuer gibt es bis heute kein Muster. */
+  const unbekannt = () =>
+    buildSimCard(
+      karte({ typeLine: 'Instant', oracleText: 'Target creature gets +3/+3 until end of turn.' }),
+    );
+
   it('misst den Anteil der Nicht-Länder, bei denen ein Muster gegriffen hat', () => {
     const erkannt = buildSimCard(karte({ typeLine: 'Sorcery', oracleText: 'Draw two cards.' }));
-    const unbekannt = buildSimCard(
-      karte({ typeLine: 'Instant', oracleText: 'Destroy target creature.' }),
-    );
-    expect(erkennungsquote([erkannt, erkannt, unbekannt, unbekannt])).toBe(0.5);
+    expect(erkennungsquote([erkannt, erkannt, unbekannt(), unbekannt()])).toBe(0.5);
   });
 
   it('lässt Länder außen vor - die werden immer erkannt und würden die Quote schönen', () => {
     const land = buildSimCard(
       karte({ typeLine: 'Land', oracleText: '{T}: Add {G}.', producedMana: ['G'] }),
     );
-    const unbekannt = buildSimCard(
-      karte({ typeLine: 'Instant', oracleText: 'Counter target spell.' }),
+    expect(erkennungsquote([land, land, land, unbekannt()])).toBe(0);
+  });
+});
+
+describe('buildSimCard - verstanden, aber nicht gespielt', () => {
+  /**
+   * Der Anlass, mit Zahlen: Ein durchgebautes Urza-Deck aus der Praxis kam auf eine
+   * Erkennungsquote von 43 % - von 99 Karten hatte der Steckbrief bei 41 kein einziges Muster.
+   * Darunter praktisch alles, was das Deck ausmacht. Die Auswertung haette es wegen der Quote
+   * komplett aussortiert. Nach dieser Erweiterung sind es 100 %.
+   *
+   * Der Punkt ist NICHT, diese Karten zu spielen. Ein Gegenzauber hat im Goldfish nichts zu
+   * kontern, dabei bleibt es.
+   */
+  const bau = (typeLine: string, oracleText: string) =>
+    buildSimCard(karte({ typeLine, oracleText, manaCost: '{1}{U}', cmc: 2 }));
+
+  it('erkennt einen Gegenzauber und markiert ihn als reaktiv', () => {
+    const fow = bau(
+      'Instant',
+      'If you\u2019re casting this spell for its alternative cost, you may pay {0} rather than pay its mana cost.\nCounter target spell.',
     );
-    expect(erkennungsquote([land, land, land, unbekannt])).toBe(0);
+    expect(fow.regeln).toContain('konter');
+    expect(fow.reaktiv).toBe(true);
+  });
+
+  it('erkennt gezieltes Removal und Handstörung als reaktiv', () => {
+    expect(bau('Instant', 'Destroy target creature.').reaktiv).toBe(true);
+    expect(bau('Sorcery', 'Each opponent discards a card.').reaktiv).toBe(true);
+  });
+
+  it('erkennt Bounce und Kopiereffekte, ohne sie unspielbar zu machen', () => {
+    const chain = bau('Instant', "Return target permanent to its owner's hand.");
+    const kopie = bau('Artifact', 'You may have Copy Artifact enter as a copy of any artifact.');
+    expect(chain.regeln).toContain('bounce');
+    expect(kopie.regeln).toContain('kopie');
+    expect(chain.reaktiv).toBe(false);
+    expect(kopie.reaktiv).toBe(false);
+  });
+
+  it('erkennt einen Zieh-Auslöser, der am Gegner hängt', () => {
+    // Rhystic Study zuendet im Goldfish nie - verstanden ist die Karte trotzdem.
+    const rhystic = bau(
+      'Enchantment',
+      'Whenever an opponent casts a spell, you may draw a card unless that player pays {1}.',
+    );
+    expect(rhystic.regeln).toContain('gegnerausloeser');
+    expect(rhystic.reaktiv).toBe(false);
+  });
+
+  /**
+   * Die Gegenprobe, und sie ist die wichtigere: Eine Karte, die NEBENBEI etwas zerstoert, aber
+   * eigentlich Laender holt, darf nicht als reaktiv aus dem Deck verschwinden.
+   */
+  it('macht eine Karte NICHT reaktiv, die daneben etwas Spielbares kann', () => {
+    const beides = bau(
+      'Sorcery',
+      'Destroy target creature. Search your library for a basic land card, put it onto the battlefield, then shuffle.',
+    );
+    expect(beides.regeln).toContain('removal');
+    expect(beides.laenderAufsFeld).toBeGreaterThan(0);
+    expect(beides.reaktiv).toBe(false);
   });
 });
 

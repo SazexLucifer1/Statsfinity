@@ -182,32 +182,57 @@ export interface SimErgebnis {
 }
 
 /**
- * Welche Combo-Ergebnisse beenden ein Spiel? - DIE EINE Fassung dieser Liste.
+ * Welche Combo-Ergebnisse zaehlen - DIE EINE Fassung dieser Listen.
  *
- * Commander Spellbook beschreibt jedes Ergebnis im Klartext ("Infinite damage", "Infinite mana").
- * Der Unterschied ist wesentlich: Unendlich VIEL MANA gewinnt gar nichts, solange nichts da ist,
- * wofür man es ausgibt - unendlich Schaden schon. Diese Liste ist deshalb bewusst eng und nennt
- * nur Ergebnisse, die ein Spiel unmittelbar entscheiden.
+ * Es sind ZWEI Fragen, und sie brauchen zwei verschiedene Antworten:
  *
- * WARUM DER AUSDRUCK ALS ZEICHENKETTE EXPORTIERT WIRD, und das ist die Lehre aus einem Fehler:
- * Dieselbe Liste stand ein zweites Mal im SQL (spellbook_winning_combos), mit dem Kommentar, beide
- * müssten dieselbe Auswahl treffen. Sie taten es nicht. Die TypeScript-Fassung enthielt "lose the
- * game" und zählte damit "You lose the game" als SIEG; die SQL-Fassung kannte nur "loses the game"
- * und verpasste jedes "All opponents lose the game". Zwei Listen, ein Kommentar, der ihre
- * Gleichheit behauptet - und niemand, der es nachprüft.
+ *   SOFORT_SIEG   Beendet dieses Ergebnis das Spiel unmittelbar? Das ist die enge Liste, und sie
+ *                 speist Urteil F der Bracket-Einstufung. Sie bleibt unveraendert, weil die
+ *                 Schwellen von Urteil F an genau dieser Liste gemessen wurden - sie zu erweitern
+ *                 hiesse, eine geeichte Regel ohne neue Eichung zu verschieben.
+ *   SIEG          Ist dieses Ergebnis der Endpunkt eines Decks? Das ist die weite Liste, und sie
+ *                 sagt dem SIMULATOR, worauf ein Deck hinspielt.
  *
- * Jetzt gibt es diese eine Zeichenkette. Das SQL benutzt wörtlich denselben Ausdruck (die Funktion
- * spellbook_winning_combo_muster() gibt ihn zurück), und scripts/simulate-deck-pool.js vergleicht
- * beide vor jedem Lauf und bricht bei Abweichung ab. Der Ausdruck kommt deshalb ohne \b aus: In
- * Postgres bedeutet \b ein Rückschritt-Zeichen, nicht eine Wortgrenze.
+ * WARUM DIE WEITE LISTE GEBRAUCHT WIRD, an einem gemessenen Fall: Ein Urza-cEDH-Deck aus der
+ * Praxis enthaelt 22 vollstaendige Combos von Commander Spellbook. Nach der engen Liste sind davon
+ * NULL ein Sieg - die Ergebnisse heissen "Infinite storm count", "Infinite colorless mana",
+ * "Cast all spells in your library". Der Simulator hielt das Deck deshalb fuer ein Kreaturendeck
+ * ohne Plan und meldete in 1000 Spielen keinen einzigen Sieg. Mit der weiten Liste gewinnt
+ * dasselbe Deck in 60 % der Spiele, im schnellsten Zehntel in Zug 5.
+ *
+ * DIE AUSNAHMEN sind kein Beiwerk. Das Vokabular von Commander Spellbook kennt 1.320 Ergebnisse,
+ * und darunter sind Formulierungen, die auf das positive Muster passen und trotzdem keinen Sieg
+ * bedeuten: "Infinite damage to all creatures" ist ein Boardwipe, "Near-infinite damage to you"
+ * trifft einen selbst, und "Infinite self-mill" ist ohne Laborschwester das Gegenteil eines
+ * Sieges. Alle drei wuerden sonst als Sieg gezaehlt.
+ *
+ * GEPRUEFT GEGEN DIE ECHTE LISTE, nicht gegen ausgedachte Beispiele: Von den 1.320 Ergebnissen
+ * zaehlen 46 als Sieg (vorher 28), neun werden durch die Ausnahmen ausgeschlossen, und die fuenf
+ * Schutzeffekte der Bauart "You can't lose the game" fallen von selbst durch.
+ *
+ * KEIN \b in den Ausdruecken: In Postgres ist das ein Rueckschritt-Zeichen, keine Wortgrenze, und
+ * dieselben Zeichenketten stehen dort in spellbook_winning_combo_muster().
  */
-export const SIEG_MUSTER =
+export const SOFORT_SIEG_MUSTER =
   'win the game|infinite damage|infinite turns|infinite mill|infinite loss of life|opponent loses the game|opponents lose the game';
 
-const SIEG_ERGEBNIS = new RegExp(SIEG_MUSTER, 'i');
+export const SIEG_MUSTER =
+  'win the game|(opponent|player)[^,]{0,40}loses? the game|(near-)?infinite[^,]{0,30}(damage|mill|turns|combat phases|storm count|loss of life|poison)|cast all spells in your library';
 
+export const SIEG_AUSNAHME = 'damage to [^,]{0,25}creatures|damage to you|mill for you|self-mill';
+
+const SOFORT_SIEG = new RegExp(SOFORT_SIEG_MUSTER, 'i');
+const SIEG = new RegExp(SIEG_MUSTER, 'i');
+const AUSNAHME = new RegExp(SIEG_AUSNAHME, 'i');
+
+/** Beendet dieses Ergebnis das Spiel unmittelbar? Enge Liste - Grundlage von Urteil F. */
+export function istSofortSieg(produces: readonly string[]): boolean {
+  return produces.some((p) => SOFORT_SIEG.test(p) && !AUSNAHME.test(p));
+}
+
+/** Ist dieses Ergebnis der Endpunkt eines Decks? Weite Liste - Grundlage der Simulation. */
 export function istSiegCombo(produces: readonly string[]): boolean {
-  return produces.some((p) => SIEG_ERGEBNIS.test(p));
+  return produces.some((p) => SIEG.test(p) && !AUSNAHME.test(p));
 }
 
 /**
@@ -666,6 +691,10 @@ function mitRabatt(kosten: SimKosten, abzug: number): SimKosten {
  * comboSteht() zählt Teile in der Hand mit, sofern das Mana reicht, sie nachzuwirken.
  */
 export function rangFuer(karte: SimCard, deck: SimDeck, stand: { zug: number }): number {
+  // Braucht einen Gegner - im Goldfish gibt es keinen. Ein Gegenzauber hat nichts zu kontern, ein
+  // gezieltes Removal nichts zu zerstoeren. Sie zu wirken wuerde nur Mana verbrennen, das dem
+  // eigenen Plan fehlt, und jedes kontrolllastige Deck langsamer aussehen lassen, als es ist.
+  if (karte.reaktiv) return -1;
   if (karte.gewinntSofort) return 100;
 
   // Combo-Teile zuerst prüfen, damit die Schutzregel jede andere Einordnung schlägt: Ein

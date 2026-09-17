@@ -264,7 +264,25 @@ export interface SimCard {
   /** "You win the game" - Laborschwester, Thassas Orakel und Verwandte. */
   gewinntSofort: boolean;
   gameChanger: boolean;
-  /** Welche Muster gegriffen haben. Leer bei einem Nicht-Land heißt: nichts erkannt. */
+  /**
+   * Braucht diese Karte einen GEGNER oder dessen Zauber, um überhaupt gespielt werden zu können?
+   *
+   * Ein Gegenzauber hat im Goldfish nichts zu kontern, ein gezieltes Removal nichts zu zerstören -
+   * solche Karten sind hier schlicht unspielbar. Sie trotzdem zu wirken wäre der schlechtere
+   * Fehler: Es verbrennt Mana, das dem eigenen Plan fehlt, und lässt jedes kontrolllastige Deck
+   * langsamer aussehen, als es ist. Erkannt werden sie trotzdem (siehe `regeln`) - sie zählen in
+   * die Erkennungsquote und in die gezählten Interaktionskennzahlen.
+   */
+  reaktiv: boolean;
+  /**
+   * Welche Muster gegriffen haben. Leer bei einem Nicht-Land heißt: nichts erkannt.
+   *
+   * ACHTUNG, die Bedeutung hat sich am 17.09.2026 geändert: Vorher stand hier nur, was der
+   * Simulator AUSSPIELEN kann. Jetzt steht hier auch, was er bloß VERSTEHT - Gegenzauber, Removal,
+   * Kopiereffekte, Hasskarten. Die Erkennungsquote misst damit das, was ihr Name sagt: wie viel
+   * von einem Deck die Kartenauswertung überhaupt einordnen kann. Quoten aus Fassung 7 und früher
+   * sind mit denen ab Fassung 8 deshalb nicht vergleichbar.
+   */
   regeln: string[];
 }
 
@@ -653,6 +671,7 @@ export function tokenKarte(staerke: number): SimCard {
     schadenJeGegner: 0,
     gewinntSofort: false,
     gameChanger: false,
+    reaktiv: false,
     regeln: ['marke'],
   };
 }
@@ -690,6 +709,111 @@ function landGetappt(text: string): boolean {
   if (/enters(?: the battlefield)? tapped unless you pay/i.test(text)) return false;
   return /enters(?: the battlefield)? tapped/i.test(text);
 }
+
+/**
+ * Karten, die der Simulator VERSTEHT, aber nicht ausspielt.
+ *
+ * WOZU DAS DA IST, mit Zahlen: Ein durchgebautes Urza-Deck aus der Praxis kam auf eine
+ * Erkennungsquote von 43 % - von 99 Karten hatte der Steckbrief bei 41 kein einziges Muster.
+ * Darunter war praktisch alles, was das Deck ausmacht: Force of Will, Flusterstorm, Chain of
+ * Vapor, Copy Artifact, Rhystic Study. Die Auswertung hätte dieses Deck wegen der Quote komplett
+ * aussortiert - und damit ausgerechnet die Deckklasse, um die es geht.
+ *
+ * Der Punkt ist nicht, diese Karten zu SPIELEN. Ein Gegenzauber hat im Goldfish nichts zu
+ * kontern, dabei bleibt es. Der Punkt ist, sie nicht länger als "unbekannt" zu führen: Die
+ * Erkennungsquote soll messen, wie viel von einem Deck die Auswertung einordnen kann, und nicht,
+ * wie viel davon zufällig im Goldfish etwas tut. Erst dann ist sie die Ehrlichkeitszahl, für die
+ * sie gehalten wird.
+ *
+ * `reaktiv` markiert die Karten, die einen Gegner BRAUCHEN. Sie werden nicht gewirkt (siehe
+ * SimCard.reaktiv); der Rest darf gewirkt werden und tut dann eben nichts.
+ */
+const VERSTANDEN: { regel: string; muster: RegExp; reaktiv: boolean }[] = [
+  // Braucht einen Gegner oder dessen Zauber - im Goldfish unspielbar.
+  {
+    regel: 'konter',
+    muster: /counter target|counter that spell|counter it unless/i,
+    reaktiv: true,
+  },
+  {
+    regel: 'removal',
+    muster: /(destroy|exile) target (creature|permanent|artifact|enchantment|planeswalker|player)/i,
+    reaktiv: true,
+  },
+  {
+    regel: 'handstoerung',
+    muster: /(each opponent|target player|target opponent) discards/i,
+    reaktiv: true,
+  },
+  // "You control enchanted enchantment" (Steal Enchantment) sagt nicht "gain control of target",
+  // meint aber dasselbe - und braucht ein fremdes Permanent, ist also reaktiv.
+  { regel: 'steuerung', muster: /gain control of target|you control enchanted/i, reaktiv: true },
+  // Spellskite sagt "Change A target of target spell", nicht "the target".
+  { regel: 'umlenken', muster: /change (a|the) target|new target/i, reaktiv: true },
+  // "Exile any number of target spells" (Mindbreak Trap) ist ein Gegenzauber in Grün.
+  { regel: 'konter', muster: /exile [^.]{0,25}target spells?/i, reaktiv: true },
+
+  // Verstanden, aber ohne Wirkung im Goldfish - dürfen gewirkt werden.
+  {
+    regel: 'bounce',
+    muster: /return target [^.]{0,60}to (its|their) owner'?s? hand/i,
+    reaktiv: false,
+  },
+  // "a copy of target permanent" (Flash Photography) faellt sonst durch - "copy of target" statt
+  // "copy target".
+  {
+    regel: 'kopie',
+    muster: /as a copy of|copy of target|copy target|becomes a copy/i,
+    reaktiv: false,
+  },
+  // "Untap ANOTHER target artifact" (Manifold Key) braucht die Luecke zwischen Wort und "target".
+  { regel: 'entappen', muster: /untap [^.]{0,25}target|untap all|untap each/i, reaktiv: false },
+  {
+    regel: 'massenentfernung',
+    muster: /destroy all|exile all|each creature gets -/i,
+    reaktiv: false,
+  },
+  {
+    regel: 'hasskarte',
+    muster: /can'?t be cast|can'?t enter|players can'?t|opponents can'?t|activated abilities of/i,
+    reaktiv: false,
+  },
+  { regel: 'steuer', muster: /costs? \{\d+\} more to cast/i, reaktiv: false },
+  {
+    regel: 'schutz',
+    muster: /gains? (hexproof|indestructible|shroud)|protection from/i,
+    reaktiv: false,
+  },
+  {
+    regel: 'friedhof',
+    muster:
+      /return target [^.]{0,60}from your graveyard|from (a|your) graveyard to the battlefield/i,
+    reaktiv: false,
+  },
+  { regel: 'lebensgewinn', muster: /you gain \w+ life/i, reaktiv: false },
+  {
+    regel: 'opferschlund',
+    muster: /sacrifice (a|another|an) (creature|artifact|permanent)/i,
+    reaktiv: false,
+  },
+  // Zieh-Ausloeser, die an einem Gegner haengen (Rhystic Study, Mystic Remora): im Goldfish
+  // wirkungslos, aber sehr wohl verstanden - der Filter fuer bedingte Zeilen warf sie vorher weg.
+  {
+    regel: 'gegnerausloeser',
+    muster: /whenever an opponent|whenever a player|whenever one or more opponents/i,
+    reaktiv: false,
+  },
+  // Eine Suche in der Bibliothek, die die kuratierte Tutorenliste nicht kennt (Whir of Invention,
+  // Transmute Artifact). NUR erkannt, nicht gespielt: Welche Karten als Tutor ZAEHLEN, entscheidet
+  // weiterhin allein die kuratierte Liste - sonst verschoebe sich Urteil F ohne neue Eichung.
+  { regel: 'suche', muster: /search your library/i, reaktiv: false },
+  // Aktivierungskosten senken (Power Artifact) - kein Zauberrabatt, aber verstanden.
+  { regel: 'aktivierungsrabatt', muster: /costs? \{\d+\} less to activate/i, reaktiv: false },
+  // Verzoegertes Ziehen (Mishra's Bauble): kommt sicher, aber erst im naechsten Zug. Bewusst ohne
+  // Wirkung gezaehlt - im Zweifel untertreiben.
+  { regel: 'ziehen-verzoegert', muster: /draw a card at the beginning/i, reaktiv: false },
+  { regel: 'schatz', muster: /treasure token/i, reaktiv: false },
+];
 
 /** Baut den Steckbrief einer Karte. Reine Funktion - gleiche Eingabe, gleiche Ausgabe. */
 export function buildSimCard(data: SimCardData): SimCard {
@@ -737,6 +861,7 @@ export function buildSimCard(data: SimCardData): SimCard {
     schadenJeGegner: 0,
     gewinntSofort: false,
     gameChanger: data.gameChanger,
+    reaktiv: false,
     regeln,
   };
 
@@ -913,5 +1038,38 @@ export function buildSimCard(data: SimCardData): SimCard {
     merke('sieg');
   }
 
+  // --- Verstanden, aber im Goldfish ohne Wirkung ----------------------------------------------
+  // Ganz am Ende, damit eine Karte, die BEIDES kann, ihre spielbare Eigenschaft behaelt: Ein
+  // Zauber, der Laender holt UND eine Kreatur zerstoert, wird weiter als Rampe gespielt.
+  for (const eintrag of VERSTANDEN) {
+    if (!eintrag.muster.test(text)) continue;
+    merke(eintrag.regel);
+    // Reaktiv nur, wenn die Karte sonst nichts Spielbares kann - sonst wuerde ein Zauber, der
+    // nebenbei etwas zerstoert, aus dem Deck verschwinden.
+    if (eintrag.reaktiv && !kannEtwasImGoldfish(karte)) karte.reaktiv = true;
+  }
+
   return karte;
+}
+
+/** Tut diese Karte im Goldfish ueberhaupt etwas Eigenes? Grundlage der Reaktiv-Markierung. */
+function kannEtwasImGoldfish(k: SimCard): boolean {
+  return (
+    k.manaquelle !== null ||
+    k.faehigkeit !== null ||
+    k.ritual > 0 ||
+    k.laenderAufsFeld > 0 ||
+    k.laenderInDieHand > 0 ||
+    k.ziehen > 0 ||
+    k.tutor ||
+    k.kostenrabatt > 0 ||
+    (k.istKreatur && k.staerke > 0) ||
+    k.tokenAnzahl > 0 ||
+    k.anthem > 0 ||
+    k.ausruestung > 0 ||
+    k.massenpump !== 0 ||
+    k.extraKampf ||
+    k.schadenJeGegner !== 0 ||
+    k.gewinntSofort
+  );
 }
