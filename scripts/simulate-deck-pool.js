@@ -35,7 +35,7 @@ const { createClient } = require('@supabase/supabase-js');
  * still überschreibt. Ohne sie ließe sich hinterher nicht mehr sagen, ob ein verschobenes Ergebnis
  * am Deck liegt oder an einer Änderung hier.
  */
-const SIM_VERSION = '7';
+const SIM_VERSION = '8';
 
 /** Voreinstellung: so oft wird jedes Deck ausgespielt. */
 const SPIELE_JE_DECK = 200;
@@ -214,22 +214,29 @@ async function ladeKartendaten() {
  * nichts es geprüft hat. Jetzt bricht der Lauf ab, statt Zahlen aus zwei Definitionen zu mischen.
  */
 async function pruefeSiegDefinition(sim) {
-  const { data, error } = await supabase.rpc('spellbook_winning_combo_muster');
-  if (error) {
-    throw new Error(
-      `Sieg-Definition der Datenbank nicht lesbar: ${error.message}. ` +
-        'Migration sql/winning-combo-muster-2026-09-16.sql schon ausgefuehrt?',
-    );
+  const paare = [
+    ['spellbook_winning_combo_muster', sim.SIEG_MUSTER, 'weite Sieg-Definition'],
+    ['spellbook_sofort_sieg_muster', sim.SOFORT_SIEG_MUSTER, 'enge Sieg-Definition (Urteil F)'],
+    ['spellbook_sieg_ausnahme', sim.SIEG_AUSNAHME, 'Ausnahmeliste'],
+  ];
+  for (const [funktion, erwartet, bezeichnung] of paare) {
+    const { data, error } = await supabase.rpc(funktion);
+    if (error) {
+      throw new Error(
+        `${bezeichnung} nicht lesbar (${funktion}): ${error.message}. ` +
+          'Migration sql/sieg-definition-breit-2026-09-17.sql schon ausgefuehrt?',
+      );
+    }
+    if (data !== erwartet) {
+      throw new Error(
+        `Die ${bezeichnung} der Datenbank weicht vom Simulator ab.\n` +
+          `  Datenbank:  ${data}\n` +
+          `  Simulator:  ${erwartet}\n` +
+          'Beide muessen woertlich gleich sein - sonst zaehlen Stapellauf und App Verschiedenes.',
+      );
+    }
   }
-  if (data !== sim.SIEG_MUSTER) {
-    throw new Error(
-      'Die Sieg-Definition der Datenbank weicht vom Simulator ab.\n' +
-        `  Datenbank:  ${data}\n` +
-        `  Simulator:  ${sim.SIEG_MUSTER}\n` +
-        'Beide muessen woertlich gleich sein - sonst zaehlen Stapellauf und App verschiedene Combos.',
-    );
-  }
-  console.log('Sieg-Definition stimmt zwischen Datenbank und Simulator ueberein.');
+  console.log('Alle drei Sieg-Definitionen stimmen zwischen Datenbank und Simulator ueberein.');
 }
 
 async function ladeGewinnCombos() {
@@ -240,7 +247,7 @@ async function ladeGewinnCombos() {
   // (siehe sql/spellbook-winning-combos-matview-2026-09-16.sql).
   const combos = await ladeAlle(
     'spellbook_winning_combos',
-    'combo_id, mana_value_needed, card_names, commander_required',
+    'combo_id, mana_value_needed, card_names, commander_required, beendet_sofort',
   );
 
   // Welche Combos enthalten diese Karte? Ohne diesen Index müsste je Deck die ganze Liste
@@ -255,7 +262,11 @@ async function ladeGewinnCombos() {
     }
   });
 
-  console.log(`  ${combos.length} spielbeendende Combos über ${nachKarte.size} Karten.`);
+  const sofort = combos.filter((c) => c.beendet_sofort).length;
+  console.log(
+    `  ${combos.length} Combos nach der weiten Definition über ${nachKarte.size} Karten, ` +
+      `davon ${sofort} spielbeendend nach der engen (Urteil F).`,
+  );
   return { combos, nachKarte };
 }
 
@@ -390,11 +401,13 @@ function findeZiele(kartenKeys, commanderKeys, gewinnCombos) {
   }
 
   const ziele = [];
+  let sofortCombos = 0;
   for (const [index, anzahl] of treffer) {
     const combo = gewinnCombos.combos[index];
     if (anzahl !== combo.card_names.length) continue;
     // Verlangt die Combo eine Karte in der Kommandozone, muss sie dort auch stehen.
     if ((combo.commander_required ?? []).some((n) => !commanderKeys.has(n))) continue;
+    if (combo.beendet_sofort) sofortCombos++;
     ziele.push({ keys: combo.card_names, zusatzMana: combo.mana_value_needed ?? 0 });
   }
   const comboTeile = new Set(ziele.flatMap((z) => z.keys));
@@ -402,7 +415,15 @@ function findeZiele(kartenKeys, commanderKeys, gewinnCombos) {
   // Die billigsten zuerst - danach sucht der Simulator, und mehr als eine Handvoll Ziele
   // gleichzeitig zu verfolgen bringt nichts.
   ziele.sort((a, b) => a.keys.length - b.keys.length || a.zusatzMana - b.zusatzMana);
-  return { ziele: ziele.slice(0, VERFOLGTE_ZIELE), comboTeile };
+  return {
+    ziele: ziele.slice(0, VERFOLGTE_ZIELE),
+    comboTeile,
+    // BEIDE Zaehlungen wandern ungedeckelt in die Ergebniszeile: die enge fuer Urteil F, die weite
+    // fuer die Simulation. Erst die Trennschaerfe-Ansicht sagt, welche die Stufen besser trennt -
+    // deshalb wird keine durch die andere ersetzt.
+    sofortCombos,
+    siegCombos: ziele.length,
+  };
 }
 
 /** So viele Combos verfolgt der Simulator gleichzeitig - siehe findeZiele(). */
@@ -456,7 +477,11 @@ function werteDeckAus(sim, deck, liste, umgebung) {
   for (const key of commanderKeys) {
     farben |= sim.farbmaske(kartendaten.farbenNachKarte.get(key) ?? []);
   }
-  const { ziele, comboTeile } = findeZiele(keys, commanderKeys, gewinnCombos);
+  const { ziele, comboTeile, sofortCombos, siegCombos } = findeZiele(
+    keys,
+    commanderKeys,
+    gewinnCombos,
+  );
 
   const simDeck = {
     karten,
@@ -490,7 +515,10 @@ function werteDeckAus(sim, deck, liste, umgebung) {
     mulligans: Number(ergebnis.mulliganSchnitt.toFixed(2)),
     leerlauf: Number(ergebnis.leerlaufSchnitt.toFixed(2)),
     abbruch_anteil: Number(ergebnis.abbruchAnteil.toFixed(3)),
-    gewinn_combos: ziele.length,
+    // Eng: beendet das Spiel unmittelbar - dieselbe Zaehlung, an der Urteil F geeicht ist.
+    gewinn_combos: sofortCombos,
+    // Weit: Endpunkt eines Decks. Neu in Fassung 8.
+    sieg_combos: siegCombos,
     karten_erkannt: Number(sim.erkennungsquote([...karten, ...commander]).toFixed(3)),
     rampe: zaehler.ramp,
     kartenziehen: zaehler.draw,
@@ -597,7 +625,7 @@ function zeigeUebersicht(zeilen, decks) {
 
   const mittel = (liste, feld) => liste.reduce((s, z) => s + z[feld], 0) / liste.length;
   console.log(
-    '\nBracket | Decks | Siegzug | Schaden10 | Streuung | Leerlauf | Siegquote | Combos | Interakt. | Tutoren | Ø CMC | erkannt',
+    '\nBracket | Decks | Siegzug | Schaden10 | Streuung | Leerlauf | Siegquote | Combos eng/weit | Interakt. | Tutoren | Ø CMC | erkannt',
   );
   for (const b of [...nachBracket.keys()].sort()) {
     const l = nachBracket.get(b);
@@ -605,7 +633,8 @@ function zeigeUebersicht(zeilen, decks) {
       `      ${b} | ${String(l.length).padStart(5)} | ${mittel(l, 'median_siegzug').toFixed(1).padStart(7)} | ` +
         `${mittel(l, 'schaden_zug10').toFixed(1).padStart(9)} | ` +
         `${mittel(l, 'streuung').toFixed(1).padStart(8)} | ${mittel(l, 'leerlauf').toFixed(1).padStart(8)} | ` +
-        `${(mittel(l, 'siegquote') * 100).toFixed(0).padStart(8)}% | ${mittel(l, 'gewinn_combos').toFixed(1).padStart(6)} | ` +
+        `${(mittel(l, 'siegquote') * 100).toFixed(0).padStart(8)}% | ` +
+        `${mittel(l, 'gewinn_combos').toFixed(1).padStart(6)}/${mittel(l, 'sieg_combos').toFixed(1).padStart(5)} | ` +
         `${mittel(l, 'interaktion').toFixed(1).padStart(9)} | ` +
         `${mittel(l, 'tutoren').toFixed(1).padStart(7)} | ${mittel(l, 'avg_cmc').toFixed(2).padStart(5)} | ` +
         `${(mittel(l, 'karten_erkannt') * 100).toFixed(0).padStart(6)}%`,

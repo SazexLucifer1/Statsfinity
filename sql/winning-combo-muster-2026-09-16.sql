@@ -47,8 +47,29 @@ grant execute on function public.spellbook_winning_combo_muster() to anon, authe
 --    Abhängigkeitsmeldung, und wer dann "cascade" anhängt, verliert die Funktion still.
 -- =====================================================================================
 drop function if exists public.winning_combos_in_deck(text[], text[]);
-drop view if exists public.spellbook_winning_combos;
-drop materialized view if exists public.spellbook_winning_combos;
+-- Die Ansicht weg - EGAL IN WELCHER FORM sie gerade existiert.
+--
+-- "drop view if exists" reicht dafuer nicht: Das "if exists" unterdrueckt nur den Fall "gibt es
+-- gar nicht". Liegt das Objekt als MATERIALISIERTE Ansicht vor, bricht Postgres ab:
+--
+--   ERROR: 42809: "spellbook_winning_combos" is not a view
+--
+-- Und andersherum genauso ("drop materialized view" auf eine gewoehnliche Ansicht). Weil diese
+-- Datei auf beiden Staenden laufen koennen muss - auf einer frischen Datenbank ist es eine
+-- gewoehnliche Ansicht, auf der produktiven laengst eine materialisierte -, wird erst die Form
+-- nachgeschlagen und dann das passende Kommando ausgefuehrt.
+do $ausraeumen$
+declare
+  art "char";
+begin
+  select relkind into art from pg_class where oid = to_regclass('public.spellbook_winning_combos');
+  if art = 'm' then
+    execute 'drop materialized view public.spellbook_winning_combos';
+  elsif art = 'v' then
+    execute 'drop view public.spellbook_winning_combos';
+  end if;
+end
+$ausraeumen$;
 
 create materialized view public.spellbook_winning_combos as
 with gewinner as materialized (
