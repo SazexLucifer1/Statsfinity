@@ -3,7 +3,9 @@
 // Ausgelöst von .github/workflows/deck-sim.yml (nur von Hand, kein Nachtlauf).
 //
 // Kurz: Jedes Deck des Vorrats wird ein paar hundert Mal ohne Gegner ausgespielt, und es wird
-// notiert, in welchem Zug es hätte gewinnen können. Dazu kommen gezählte Kennzahlen (Rampe,
+// notiert, in welchem Zug es hätte gewinnen können - dazu seit Fassung 6 der aufaddierte Schaden
+// bis Zug 10 (die UNZENSIERTE Uhr: der Siegzug steht bei der Mehrzahl aller Decks am Anschlag und
+// kann dort nichts mehr trennen), die Streuung der Siegzüge und die Leerlaufzüge. Dazu kommen gezählte Kennzahlen (Rampe,
 // Kartenziehen, Interaktion, Tutoren, Manakosten). Damit lässt sich die Frage, um die es geht -
 // worin unterscheiden sich Bracket 2, 3 und 4 MESSBAR? - an 40.000 Decks beantworten statt an
 // Vermutungen. Die fertige Gegenüberstellung liefert die Ansicht deck_sim_by_bracket.
@@ -33,10 +35,21 @@ const { createClient } = require('@supabase/supabase-js');
  * still überschreibt. Ohne sie ließe sich hinterher nicht mehr sagen, ob ein verschobenes Ergebnis
  * am Deck liegt oder an einer Änderung hier.
  */
-const SIM_VERSION = '5';
+const SIM_VERSION = '7';
 
 /** Voreinstellung: so oft wird jedes Deck ausgespielt. */
 const SPIELE_JE_DECK = 200;
+
+/**
+ * Ab welcher Erkennungsquote eine Zeile in die AUSWERTUNG darf.
+ *
+ * Geschrieben werden weiterhin alle Zeilen - ein Deck stillschweigend verschwinden zu lassen wäre
+ * der schlechtere Fehler. Aber die Ansichten, die die Stufen vergleichen, filtern darauf (siehe
+ * sql/deck-sim-v6-2026-09-16.sql). Der Grund steht in der Spalte selbst: Bei 0,4 erkannten Karten
+ * sagt ein später Siegzug mehr über die Grenzen der Kartenauswertung als über das Deck. Die Zahl
+ * war von Anfang an da und hat nie etwas gefiltert.
+ */
+const MIN_ERKANNT = 0.6;
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? 'https://jkkelwpnrgzbvopszwrl.supabase.co';
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -191,6 +204,34 @@ async function ladeKartendaten() {
   return { karten, tutoren, kategorien, farbenNachKarte };
 }
 
+/**
+ * Prüft, dass die Datenbank dieselbe Sieg-Definition benutzt wie der Simulator.
+ *
+ * Dieser Abgleich existiert wegen eines echten Fehlers: Die Liste der spielbeendenden Ergebnisse
+ * stand zweimal - einmal in src/app/goldfish-sim.ts, einmal im SQL der Ansicht - mit einem
+ * Kommentar, beide müssten übereinstimmen. Sie taten es nicht (die eine zählte "You lose the game"
+ * als Sieg, die andere verpasste "All opponents lose the game"), und gemerkt hat es niemand, weil
+ * nichts es geprüft hat. Jetzt bricht der Lauf ab, statt Zahlen aus zwei Definitionen zu mischen.
+ */
+async function pruefeSiegDefinition(sim) {
+  const { data, error } = await supabase.rpc('spellbook_winning_combo_muster');
+  if (error) {
+    throw new Error(
+      `Sieg-Definition der Datenbank nicht lesbar: ${error.message}. ` +
+        'Migration sql/winning-combo-muster-2026-09-16.sql schon ausgefuehrt?',
+    );
+  }
+  if (data !== sim.SIEG_MUSTER) {
+    throw new Error(
+      'Die Sieg-Definition der Datenbank weicht vom Simulator ab.\n' +
+        `  Datenbank:  ${data}\n` +
+        `  Simulator:  ${sim.SIEG_MUSTER}\n` +
+        'Beide muessen woertlich gleich sein - sonst zaehlen Stapellauf und App verschiedene Combos.',
+    );
+  }
+  console.log('Sieg-Definition stimmt zwischen Datenbank und Simulator ueberein.');
+}
+
 async function ladeGewinnCombos() {
   console.log('Gewinnende Combos laden ...');
   // spellbook_winning_combos ist eine MATERIALISIERTE Ansicht - sie liefert fertige Zeilen. Als
@@ -328,7 +369,18 @@ function baueSteckbriefe(sim, kartendaten) {
   return steckbriefe;
 }
 
-/** Welche gewinnenden Combos liegen in diesem Deck vollständig? */
+/**
+ * Welche gewinnenden Combos liegen in diesem Deck vollständig?
+ *
+ * Liefert ZWEI Dinge, und der Unterschied ist wichtig:
+ *
+ *   ziele       Die Combos, die der Simulator aktiv verfolgt (tutort, Mana zurückhält). Gedeckelt,
+ *               weil comboSteht() in jedem Zug über diese Liste läuft - mehr als eine Handvoll
+ *               kostet Laufzeit und bringt nichts.
+ *   comboTeile  ALLE Karten ALLER gewinnenden Combos des Decks. Daran hängt die Schutzregel: Ein
+ *               Combo-Teil, das nach dem Wirken im Friedhof liegt, darf nie gewirkt werden. Hing
+ *               das Teil vorher an Combo Nummer elf, war es nicht geschützt und wurde verheizt.
+ */
 function findeZiele(kartenKeys, commanderKeys, gewinnCombos) {
   const treffer = new Map();
   for (const key of kartenKeys) {
@@ -345,11 +397,16 @@ function findeZiele(kartenKeys, commanderKeys, gewinnCombos) {
     if ((combo.commander_required ?? []).some((n) => !commanderKeys.has(n))) continue;
     ziele.push({ keys: combo.card_names, zusatzMana: combo.mana_value_needed ?? 0 });
   }
+  const comboTeile = new Set(ziele.flatMap((z) => z.keys));
+
   // Die billigsten zuerst - danach sucht der Simulator, und mehr als eine Handvoll Ziele
   // gleichzeitig zu verfolgen bringt nichts.
   ziele.sort((a, b) => a.keys.length - b.keys.length || a.zusatzMana - b.zusatzMana);
-  return ziele.slice(0, 10);
+  return { ziele: ziele.slice(0, VERFOLGTE_ZIELE), comboTeile };
 }
+
+/** So viele Combos verfolgt der Simulator gleichzeitig - siehe findeZiele(). */
+const VERFOLGTE_ZIELE = 10;
 
 function werteDeckAus(sim, deck, liste, umgebung) {
   const { nameNachId, steckbriefe, kartendaten, gewinnCombos } = umgebung;
@@ -399,7 +456,7 @@ function werteDeckAus(sim, deck, liste, umgebung) {
   for (const key of commanderKeys) {
     farben |= sim.farbmaske(kartendaten.farbenNachKarte.get(key) ?? []);
   }
-  const ziele = findeZiele(keys, commanderKeys, gewinnCombos);
+  const { ziele, comboTeile } = findeZiele(keys, commanderKeys, gewinnCombos);
 
   const simDeck = {
     karten,
@@ -408,6 +465,7 @@ function werteDeckAus(sim, deck, liste, umgebung) {
     // ein Deck an einer fehlenden Farbe scheitern zu lassen wäre der größere Fehler.
     farben: farben || sim.ALLE_FARBEN,
     ziele,
+    comboTeile,
   };
 
   const ergebnis = sim.simuliereDeck(simDeck, spiele, 1);
@@ -423,6 +481,15 @@ function werteDeckAus(sim, deck, liste, umgebung) {
     mana_zug3: Number(ergebnis.manaZug3.toFixed(2)),
     mana_zug5: Number(ergebnis.manaZug5.toFixed(2)),
     mana_zug7: Number(ergebnis.manaZug7.toFixed(2)),
+    // Fassung 6: die unzensierte Uhr und die Streuung - siehe SimSpiel.schadenBisZug10 und
+    // SimErgebnis.streuung in src/app/goldfish-sim.ts.
+    schaden_zug10: ergebnis.schadenZug10,
+    streuung: ergebnis.streuung,
+    p25_siegzug: ergebnis.p25,
+    p75_siegzug: ergebnis.p75,
+    mulligans: Number(ergebnis.mulliganSchnitt.toFixed(2)),
+    leerlauf: Number(ergebnis.leerlaufSchnitt.toFixed(2)),
+    abbruch_anteil: Number(ergebnis.abbruchAnteil.toFixed(3)),
     gewinn_combos: ziele.length,
     karten_erkannt: Number(sim.erkennungsquote([...karten, ...commander]).toFixed(3)),
     rampe: zaehler.ramp,
@@ -462,6 +529,8 @@ async function main() {
 
   const buendel = ladeSimulator();
   const sim = require(buendel);
+
+  await pruefeSiegDefinition(sim);
 
   const [kartendaten, gewinnCombos, deckdaten] = [
     await ladeKartendaten(),
@@ -528,20 +597,28 @@ function zeigeUebersicht(zeilen, decks) {
 
   const mittel = (liste, feld) => liste.reduce((s, z) => s + z[feld], 0) / liste.length;
   console.log(
-    '\nBracket | Decks | Siegzug | kumulativ | Siegquote | Combos | Rampe | Ziehen | Interakt. | Tutoren | Ø CMC | erkannt',
+    '\nBracket | Decks | Siegzug | Schaden10 | Streuung | Leerlauf | Siegquote | Combos | Interakt. | Tutoren | Ø CMC | erkannt',
   );
   for (const b of [...nachBracket.keys()].sort()) {
     const l = nachBracket.get(b);
     console.log(
       `      ${b} | ${String(l.length).padStart(5)} | ${mittel(l, 'median_siegzug').toFixed(1).padStart(7)} | ` +
-        `${mittel(l, 'kumulativ_median').toFixed(1).padStart(9)} | ` +
+        `${mittel(l, 'schaden_zug10').toFixed(1).padStart(9)} | ` +
+        `${mittel(l, 'streuung').toFixed(1).padStart(8)} | ${mittel(l, 'leerlauf').toFixed(1).padStart(8)} | ` +
         `${(mittel(l, 'siegquote') * 100).toFixed(0).padStart(8)}% | ${mittel(l, 'gewinn_combos').toFixed(1).padStart(6)} | ` +
-        `${mittel(l, 'rampe').toFixed(1).padStart(5)} | ` +
-        `${mittel(l, 'kartenziehen').toFixed(1).padStart(6)} | ${mittel(l, 'interaktion').toFixed(1).padStart(9)} | ` +
+        `${mittel(l, 'interaktion').toFixed(1).padStart(9)} | ` +
         `${mittel(l, 'tutoren').toFixed(1).padStart(7)} | ${mittel(l, 'avg_cmc').toFixed(2).padStart(5)} | ` +
         `${(mittel(l, 'karten_erkannt') * 100).toFixed(0).padStart(6)}%`,
     );
   }
+
+  // Wie viele Zeilen die Auswertung überhaupt benutzen darf - die Zahl gehört ins Protokoll, weil
+  // eine niedrige Erkennungsquote sonst als Deck-Eigenschaft durchgeht.
+  const brauchbar = zeilen.filter((z) => z.karten_erkannt >= MIN_ERKANNT).length;
+  console.log(
+    `\n${brauchbar} von ${zeilen.length} Zeilen erreichen die Erkennungsquote ${MIN_ERKANNT} ` +
+      'und gehen in die Auswertung ein (deck_sim_by_bracket filtert darauf).',
+  );
   console.log('');
 }
 

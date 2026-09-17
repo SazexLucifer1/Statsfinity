@@ -139,6 +139,14 @@ export interface SimCardData {
   tutor: boolean;
 }
 
+/**
+ * Was ein Tutor aus der Bibliothek holen darf - so weit sich das dem Text entnehmen lässt.
+ *
+ * "beliebig" ist die Voreinstellung für alles, was die kuratierte Tutorenliste als Tutor führt,
+ * ohne dass der Text eine Einschränkung nennt.
+ */
+export type TutorZiel = 'land' | 'kreatur' | 'beliebig';
+
 /** Eine Manaquelle, die kein Land ist (Stein, Manakreatur). */
 export interface SimManaquelle {
   farben: Farbmaske;
@@ -193,6 +201,13 @@ export interface SimCard {
   landAufRueckseite: boolean;
   land: SimLand | null;
   manaquelle: SimManaquelle | null;
+  /**
+   * Die Typzeile in Kleinbuchstaben ("legendary creature — human wizard").
+   *
+   * Gebraucht für Kostensenker mit Typbeschränkung: "Artifact spells you cast cost {1} less" darf
+   * nur Artefakte billiger machen. Ohne den Typ der ZU ZAHLENDEN Karte lässt sich das nicht prüfen.
+   */
+  typen: string;
   /** Wiederholbare Fähigkeit, einmal je Zug nutzbar. null heißt "keine". */
   faehigkeit: SimFaehigkeit | null;
   /** Netto-Mana eines Rituals (Dark Ritual: +2). 0 heißt "kein Ritual". */
@@ -201,7 +216,34 @@ export interface SimCard {
   laenderInDieHand: number;
   ziehen: number;
   tutor: boolean;
+  /**
+   * Was dieser Tutor überhaupt holen darf.
+   *
+   * Vorher fand JEDER Tutor sofort das fehlende Combo-Teil - auch ein Landsuch-Zauber und auch
+   * einer, der nur Kreaturen holen darf. Umgekehrt war ein Tutor in einem Deck ohne Combo eine
+   * vollkommen tote Karte. Beide Enden waren falsch, und sie trafen ausgerechnet die Achse, an der
+   * die Bracket-Frage hängt.
+   */
+  tutorZiel: TutorZiel;
   kostenrabatt: number;
+  /**
+   * Auf welchen Kartentyp der Kostensenker beschränkt ist; null heißt "auf alle Zauber".
+   *
+   * Das frühere Muster hat die Beschränkung verschluckt: "Artifact spells you cast cost {1} less"
+   * enthält als Teilzeichenkette "spells you cast cost {1} less" - und der Rabatt galt dann für
+   * jeden Zauber im Deck.
+   */
+  kostenrabattTyp: string | null;
+  /**
+   * Ein bleibender Baustein, der auf das eigene Spiel reagiert ("Whenever you cast an instant,
+   * draw a card").
+   *
+   * Der Simulator rechnet den Effekt NICHT aus - wie oft so ein Auslöser zündet, hängt am Rest des
+   * Decks, und eine geratene Zahl wäre hier besonders teuer. Was die Markierung tut: Sie bringt
+   * solche Karten in der Spielweise nach vorn, direkt hinter das Mana. Genau so baut ein Mensch
+   * sein Spiel auf - erst die Grundlage, dann die Maschine, dann die Bedrohung.
+   */
+  synergie: boolean;
   istKreatur: boolean;
   staerke: number;
   /** Fliegend, Trampelschaden, Bedrohen, unblockbar - im Goldfish alles dasselbe: Schaden kommt durch. */
@@ -480,6 +522,64 @@ function kartenInDieHand(zeile: string): number {
 }
 
 /**
+ * Was darf dieser Tutor holen?
+ *
+ * Gelesen wird die Suchzeile selbst. "Search your library for a creature card" darf nur Kreaturen
+ * holen, "for a land card" nur Länder, "for a card" alles. Steht nichts Verwertbares da, bleibt es
+ * bei "beliebig" - die kuratierte Liste hat die Karte ja als Tutor geführt, also sucht sie etwas.
+ */
+function tutorZielAus(text: string): TutorZiel {
+  const suche = text.match(/search your library for [^.]*/i);
+  if (!suche) return 'beliebig';
+  const zeile = suche[0].toLowerCase();
+  // Reihenfolge: Ein "creature or land card" darf beides - dann ist die weitere Angabe die
+  // richtige, sonst faellt eine Karte durch, die der Tutor tatsaechlich holen koennte.
+  if (/\bcreature\b/.test(zeile) && !/\bland\b/.test(zeile)) return 'kreatur';
+  if (/\bland\b/.test(zeile) && !/\bcreature\b/.test(zeile)) return 'land';
+  return 'beliebig';
+}
+
+/**
+ * Reagiert diese bleibende Karte auf das eigene Spiel?
+ *
+ * Gemeint sind Auslöser der Form "Whenever you cast ...", "Whenever you play a land", "Whenever a
+ * creature enters" - die Bausteine, die ein Deck rund laufen lassen. Ausgeschlossen bleibt alles,
+ * was am GEGNER hängt: Rhystic Study zündet im Goldfish nie, weil dort niemand etwas wirkt.
+ */
+function istSynergie(text: string): boolean {
+  for (const zeile of text.split('\n')) {
+    if (!/\bwhenever\b/i.test(zeile)) continue;
+    if (/\bopponents?\b|\ban opponent\b/i.test(zeile)) continue;
+    if (
+      /whenever you (cast|play)|whenever (a|another|one or more) [^,]*(enters|you control)/i.test(
+        zeile,
+      )
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Ein Auslöser zu Beginn des eigenen Zuges, der Karten zieht.
+ *
+ * Der einzige Auslöser, der in einem Goldfish GARANTIERT zündet - es gibt keine Bedingung außer
+ * "es ist mein Zug". Deshalb darf er als echte Engine gelten, während ein Auslöser auf gewirkte
+ * Zauber nur die Spielweise sortiert (siehe synergie). Der Filter für bedingte Zeilen wirft "at
+ * the beginning" sonst weg, und damit fiele die halbe Kartenziehmaschinerie des Formats durch.
+ */
+function upkeepZiehen(text: string): number {
+  for (const zeile of text.split('\n')) {
+    if (!/at the beginning of (your|each) upkeep/i.test(zeile)) continue;
+    if (/\bopponents?\b|each player/i.test(zeile)) continue;
+    const zieht = zeile.match(/draw (\w+) cards?/i);
+    if (zieht) return zahl(zieht[1]);
+  }
+  return 0;
+}
+
+/**
  * Der Anthem-Betrag - alle eigenen Kreaturen bekommen dauerhaft dazu.
  *
  * Das frühere Muster verlangte wörtlich "creatures you control get". Obelisk of Urd sagt
@@ -527,6 +627,7 @@ export function tokenKarte(staerke: number): SimCard {
     istLand: false,
     bleibend: true,
     landAufRueckseite: false,
+    typen: 'creature token',
     land: null,
     manaquelle: null,
     faehigkeit: null,
@@ -535,7 +636,10 @@ export function tokenKarte(staerke: number): SimCard {
     laenderInDieHand: 0,
     ziehen: 0,
     tutor: false,
+    tutorZiel: 'beliebig',
     kostenrabatt: 0,
+    kostenrabattTyp: null,
+    synergie: false,
     istKreatur: true,
     staerke,
     unblockbar: false,
@@ -607,6 +711,7 @@ export function buildSimCard(data: SimCardData): SimCard {
     istLand,
     bleibend: BLEIBENDE_TYPEN.test(typeLine),
     landAufRueckseite: rueckseiteLand,
+    typen: typeLine.toLowerCase(),
     land: null,
     manaquelle: null,
     faehigkeit: null,
@@ -615,7 +720,10 @@ export function buildSimCard(data: SimCardData): SimCard {
     laenderInDieHand: 0,
     ziehen: 0,
     tutor: data.tutor,
+    tutorZiel: data.tutor ? tutorZielAus(text) : 'beliebig',
     kostenrabatt: 0,
+    kostenrabattTyp: null,
+    synergie: false,
     istKreatur,
     staerke: parsePower(data.power),
     unblockbar: false,
@@ -671,6 +779,24 @@ export function buildSimCard(data: SimCardData): SimCard {
   if (BLEIBENDE_TYPEN.test(typeLine)) {
     karte.faehigkeit = aktivierteFaehigkeit(text, istKreatur);
     if (karte.faehigkeit) merke('faehigkeit');
+
+    // Ein Zieh-Auslöser zum Zugbeginn ist die einzige Fähigkeit, die im Goldfish garantiert
+    // zündet - er hängt an nichts als am eigenen Zug. Als kostenlose wiederholbare Fähigkeit
+    // gerechnet ist er genau das, was er ist.
+    const upkeep = upkeepZiehen(text);
+    if (upkeep > 0 && !karte.faehigkeit) {
+      karte.faehigkeit = {
+        kosten: KOSTENLOS,
+        ziehen: upkeep,
+        laenderAufsFeld: 0,
+        brauchtBereitschaft: false,
+        brauchtKreatur: false,
+      };
+      merke('upkeep-ziehen');
+    }
+
+    karte.synergie = istSynergie(text);
+    if (karte.synergie) merke('synergie');
   }
 
   // --- Ritual: Mana ohne Tappen, einmalig -----------------------------------------------------
@@ -711,10 +837,18 @@ export function buildSimCard(data: SimCardData): SimCard {
   if (karte.ziehen > 0) merke('ziehen');
 
   // --- Kostenrabatt ---------------------------------------------------------------------------
-  const rabatt = text.match(/spells? you cast costs? \{(\d+)\} less to cast/i);
+  //
+  // Das Wort VOR "spells" entscheidet: "Artifact spells you cast cost {1} less" senkt nur
+  // Artefakte. Das frühere Muster hat diese Beschränkung verschluckt und den Rabatt auf jeden
+  // Zauber gegeben - bei zwei solchen Karten auf dem Feld wurde daraus ein Deck, das alles vier
+  // Mana billiger wirkt.
+  const rabatt = text.match(/(?:([A-Za-z]+) )?spells? you cast costs? \{(\d+)\} less to cast/i);
   if (rabatt) {
-    karte.kostenrabatt = Number(rabatt[1]);
-    merke('rabatt');
+    karte.kostenrabatt = Number(rabatt[2]);
+    const wort = (rabatt[1] ?? '').toLowerCase();
+    // "Your spells", "Spells" und "These spells" meinen alle Zauber; alles andere ist ein Typ.
+    karte.kostenrabattTyp = !wort || ['your', 'these', 'those', 'the'].includes(wort) ? null : wort;
+    merke(karte.kostenrabattTyp ? `rabatt-${karte.kostenrabattTyp}` : 'rabatt');
   }
 
   // --- Angriff --------------------------------------------------------------------------------
@@ -757,6 +891,10 @@ export function buildSimCard(data: SimCardData): SimCard {
     merke('token');
   }
 
+  // Massenpump und Extra-Kampf wirken nur in dem Zug, in dem die Karte gespielt wird - dafür sorgt
+  // die Spielschleife (siehe stand.pumpDiesenZug in goldfish-sim.ts). Vorher las der
+  // Angriffsschaden diese Felder bei JEDEM Permanent auf dem Feld in JEDEM Zug neu: Craterhoof
+  // Behemoth, eine Kreatur, blieb liegen und pumpte das ganze Spiel lang weiter.
   if (/additional combat phase/i.test(text)) {
     karte.extraKampf = true;
     merke('extrakampf');

@@ -795,3 +795,164 @@ describe('buildSimCard - Manabetrag', () => {
     expect(buildSimCard(karte({ typeLine: 'Creature', manaCost: '{15}', cmc: 15 })).cmc).toBe(15);
   });
 });
+
+describe('buildSimCard - Synergie, Tutorziele und Kostensenker', () => {
+  /**
+   * Alle Texte hier sind der echte Oracle-Text der genannten Karte. Ein Test gegen selbst
+   * erfundene Texte würde nur beweisen, dass die Muster zu sich selbst passen.
+   */
+  it('erkennt einen Synergie-Baustein, der auf das eigene Spiel reagiert', () => {
+    const emeritus = buildSimCard(
+      karte({
+        name: 'Archmage Emeritus',
+        key: 'archmage emeritus',
+        typeLine: 'Creature — Human Wizard',
+        oracleText: 'Whenever you cast or copy an instant or sorcery spell, draw a card.',
+        manaCost: '{2}{U}{U}',
+        cmc: 4,
+        power: '2',
+      }),
+    );
+    expect(emeritus.synergie).toBe(true);
+    expect(emeritus.regeln).toContain('synergie');
+  });
+
+  it('zählt einen Auslöser NICHT als Synergie, der am Gegner hängt', () => {
+    // Rhystic Study zündet im Goldfish nie - es gibt keinen Gegner, der etwas wirkt. Genau das
+    // ist der Grund, warum solche Zeilen sonst ausgefiltert werden.
+    const rhystic = buildSimCard(
+      karte({
+        name: 'Rhystic Study',
+        key: 'rhystic study',
+        typeLine: 'Enchantment',
+        oracleText:
+          'Whenever an opponent casts a spell, you may draw a card unless that player pays {1}.',
+        manaCost: '{2}{U}',
+        cmc: 3,
+      }),
+    );
+    expect(rhystic.synergie).toBe(false);
+  });
+
+  it('macht aus einem Zieh-Auslöser zum Zugbeginn eine echte Engine', () => {
+    // Der einzige Auslöser, der im Goldfish garantiert zündet: Er haengt an nichts als am eigenen
+    // Zug. Der Filter fuer bedingte Zeilen hat ihn vorher weggeworfen.
+    const howling = buildSimCard(
+      karte({
+        name: 'Howling Mine',
+        key: 'howling mine',
+        typeLine: 'Artifact',
+        oracleText: 'At the beginning of your upkeep, draw a card.',
+        manaCost: '{2}',
+        cmc: 2,
+      }),
+    );
+    expect(howling.faehigkeit?.ziehen).toBe(1);
+    expect(howling.faehigkeit?.kosten.gesamt).toBe(0);
+    expect(howling.regeln).toContain('upkeep-ziehen');
+  });
+
+  it('liest aus dem Text, was ein Tutor holen darf', () => {
+    const demonic = buildSimCard(
+      karte({
+        name: 'Demonic Tutor',
+        key: 'demonic tutor',
+        typeLine: 'Sorcery',
+        oracleText: 'Search your library for a card, then shuffle and put that card on top.',
+        manaCost: '{1}{B}',
+        cmc: 2,
+        tutor: true,
+      }),
+    );
+    const worldly = buildSimCard(
+      karte({
+        name: 'Worldly Tutor',
+        key: 'worldly tutor',
+        typeLine: 'Instant',
+        oracleText:
+          'Search your library for a creature card, reveal it, then shuffle and put that card on top.',
+        manaCost: '{G}',
+        cmc: 1,
+        tutor: true,
+      }),
+    );
+    const rampant = buildSimCard(
+      karte({
+        name: 'Rampant Growth',
+        key: 'rampant growth',
+        typeLine: 'Sorcery',
+        oracleText:
+          'Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.',
+        manaCost: '{1}{G}',
+        cmc: 2,
+        tutor: true,
+      }),
+    );
+
+    expect(demonic.tutorZiel).toBe('beliebig');
+    expect(worldly.tutorZiel).toBe('kreatur');
+    expect(rampant.tutorZiel).toBe('land');
+  });
+
+  /**
+   * Der Fehler, den dieser Test festnagelt: Das frühere Muster hat die Typbeschränkung
+   * verschluckt, weil "Dragon spells you cast cost {2} less to cast" die Zeichenkette "spells you
+   * cast cost {2} less to cast" enthält. Der Rabatt galt damit für JEDEN Zauber des Decks - und
+   * zwei solche Karten nebeneinander machten alles vier Mana billiger.
+   */
+  it('merkt sich, auf welchen Typ ein Kostensenker beschränkt ist', () => {
+    const shaman = buildSimCard(
+      karte({
+        name: 'Dragonspeaker Shaman',
+        key: 'dragonspeaker shaman',
+        typeLine: 'Creature — Human Shaman',
+        oracleText: 'Dragon spells you cast cost {2} less to cast.',
+        manaCost: '{1}{R}{R}',
+        cmc: 3,
+        power: '2',
+      }),
+    );
+    expect(shaman.kostenrabatt).toBe(2);
+    expect(shaman.kostenrabattTyp).toBe('dragon');
+    expect(shaman.regeln).toContain('rabatt-dragon');
+  });
+
+  it('lässt einen Kostensenker ohne Typwort für alle Zauber gelten', () => {
+    const generisch = buildSimCard(
+      karte({
+        name: 'Testsenker',
+        key: 'testsenker',
+        typeLine: 'Artifact',
+        // Kein echter Kartentext: Die schlichte Form ohne Typwort ist selten, die Regel dahinter
+        // muss trotzdem festgenagelt sein - sonst faellt beim naechsten Umbau niemandem auf, wenn
+        // ein unbeschraenkter Rabatt ploetzlich als Typ-Rabatt gilt und nirgends mehr greift.
+        oracleText: 'Spells you cast cost {1} less to cast.',
+        manaCost: '{3}',
+        cmc: 3,
+      }),
+    );
+    expect(generisch.kostenrabatt).toBe(1);
+    expect(generisch.kostenrabattTyp).toBe(null);
+  });
+
+  /**
+   * Was das Muster NICHT kann, hier festgehalten statt verschwiegen: Steht die Beschraenkung
+   * HINTER "you cast" ("Creature spells of the chosen type you cast cost {2} less"), greift es gar
+   * nicht. Der Rabatt faellt dann weg - untertrieben statt ueberschaetzt, also die richtige
+   * Richtung.
+   */
+  it('verpasst eine Beschränkung, die hinter "you cast" steht - und rechnet dann gar keinen Rabatt', () => {
+    const incubator = buildSimCard(
+      karte({
+        name: "Urza's Incubator",
+        key: 'urzas incubator',
+        typeLine: 'Artifact',
+        oracleText:
+          'As Urza\u2019s Incubator enters, choose a creature type.\nCreature spells of the chosen type you cast cost {2} less to cast.',
+        manaCost: '{3}',
+        cmc: 3,
+      }),
+    );
+    expect(incubator.kostenrabatt).toBe(0);
+  });
+});
