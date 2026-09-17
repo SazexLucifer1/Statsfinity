@@ -19,6 +19,12 @@
 -- "wie viel Interaktion" die Stufen besser als jeder Siegzug. Beides nebeneinander zu haben ist
 -- der einzige Weg, das herauszufinden.
 --
+-- NACHTRAG 17.09.2026, erste vollstaendige Messung: Die gezaehlten Spalten haben gewonnen, aber
+-- anders als vermutet. Game Changer (AUC 0,898) und Tutoren (0,771) trennen mit Abstand am besten,
+-- die Interaktion ueberhaupt nicht (0,509). Von allem, was die SIMULATION liefert, taugt genau
+-- eine Zahl etwas: das verfuegbare Mana in Zug 3 (0,660). Jede Zahl ueber das Gewinnen - Siegzug,
+-- Siegquote, Schaden - liegt im Rauschen. Siehe sql/deck-sim-feature-strength-2026-09-16.sql.
+--
 -- Diese Tabelle enthält keine Nutzerdaten - nur Rechenergebnisse über fremde, öffentliche
 -- Decklisten. Sichtbarkeit wie der Vorrat selbst: ausschließlich Developer.
 
@@ -75,7 +81,7 @@ comment on column public.deck_sim_results.karten_erkannt is
 comment on column public.deck_sim_results.gewinn_combos is
   'Wie viele Commander-Spellbook-Combos vollstaendig im Deck liegen UND ein spielbeendendes Ergebnis haben. Unendlich Mana zaehlt nicht mit - davon stirbt niemand.';
 comment on column public.deck_sim_results.interaktion is
-  'Removal + Konterzauber + Boardwipes aus scryfall_card_effects. Die Achse, fuer die ein Goldfish per Definition blind ist - und womoeglich die, die die Stufen wirklich trennt.';
+  'Removal + Konterzauber + Boardwipes aus scryfall_card_effects. Die Achse, fuer die ein Goldfish per Definition blind ist. Die Vermutung, sie koennte die Stufen trennen, ist am 17.09.2026 widerlegt worden: AUC 0,509 zwischen Stufe 2 und 4 - das schwaechste Merkmal der ganzen Auswertung.';
 
 create index if not exists deck_sim_results_version_idx on public.deck_sim_results (sim_version);
 

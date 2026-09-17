@@ -28,6 +28,60 @@
 -- Schwelle, die vorher gesetzt werden muesste, und damit auch keine, die man sich passend
 -- zurechtlegen kann.
 --
+-- ==============================================================================================
+-- DAS ERGEBNIS DER ERSTEN MESSUNG (17.09.2026, Fassung 7, 48.638 Decks, 35.829 davon mit
+-- Erkennungsquote >= 0,6). Hier festgehalten, damit die Vermutungen in dieser Datei und in
+-- deck-sim-results nicht weiter herumstehen, als waeren sie offen.
+--
+--   Merkmal            2 gegen 4   Staerke   Einordnung
+--   game_changer          0,898     0,398    mit Abstand das staerkste - steht laengst in bracket.ts
+--   tutoren               0,771     0,271    zweitstaerkstes - steht ebenfalls schon drin (Urteil F)
+--   mana_zug3             0,660     0,160    DAS EINZIGE SIMULIERTE MERKMAL, DAS ETWAS TAUGT
+--   combo_anteil          0,634     0,134
+--   laender               0,366     0,134    umgekehrt: weniger Laender = hoehere Stufe
+--   gewinn_combos         0,633     0,133
+--   rampe                 0,622     0,122    schwach, aber vorhanden - siehe unten
+--   ----------------------------------------- Rauschgrenze, siehe karten_erkannt ---------------
+--   karten_erkannt        0,404     0,096
+--   mana_zug5             0,592     0,092
+--   schnellste10          0,415     0,085
+--   schaden_zug10         0,420     0,080
+--   leerlauf              0,423     0,077
+--   streuung              0,561     0,061
+--   median_siegzug        0,465     0,035
+--   siegquote             0,529     0,029
+--   interaktion           0,509     0,009    trennt GAR NICHT
+--
+-- DREI BEFUNDE, DIE UNBEQUEM SIND:
+--
+-- 1. ALLES, WAS MIT GEWINNEN ZU TUN HAT, IST WERTLOS. Median-Siegzug 0,035, Siegquote 0,029,
+--    kumulativer Siegzug 0,032. Die Frage, fuer die dieser Simulator gebaut wurde - "in welchem
+--    Zug koennte dieses Deck gewinnen" - trennt die Bracket-Stufen nicht. Der Schaden bis Zug 10,
+--    von dem sich diese Datei am meisten versprochen hat, liegt bei 0,080 und zeigt in die
+--    FALSCHE Richtung: Hoehere Stufen machen weniger Kampfschaden, weil sie ueber Combos gewinnen.
+--
+-- 2. DIE RAUSCHGRENZE HEISST karten_erkannt UND LIEGT BEI 0,096. Die Ehrlichkeitsspalte - wie viel
+--    von einem Deck die Kartenauswertung ueberhaupt versteht - trennt die Stufen BESSER als jede
+--    einzelne Zahl aus der Simulation ausser mana_zug3. Hoehere Stufen spielen Karten, die der
+--    Steckbrief schlechter liest (69 % bei Bracket 1, 62 % bei Bracket 5). Bei jedem Merkmal
+--    unterhalb dieser Marke laesst sich Signal und eigene blinde Stelle nicht mehr trennen.
+--
+-- 3. DIE INTERAKTION IST TOT. Der Kommentar in deck-sim-results nannte sie "womoeglich die, die
+--    die Stufen wirklich trennt". Sie ist mit 0,009 das schwaechste Merkmal der ganzen Tabelle -
+--    schwaecher als der Zufall es im Mittel waere.
+--
+-- WAS DAFUER TAUGT: mana_zug3 (0,660), und die Reihenfolge mana_zug3 > mana_zug5 (0,092) >
+-- mana_zug7 (0,070) sagt, warum: Der Unterschied zwischen den Stufen liegt in den ERSTEN DREI
+-- ZUEGEN, nicht im spaeteren Spiel. Und die Rampe, die nach dem Mittelwertvergleich als erledigt
+-- galt, ist mit 0,622 schwach, aber vorhanden - der Mittelwert hat sie unterschaetzt, nicht
+-- ueberschaetzt.
+--
+-- ZUR VORSICHT BEI DEN BEIDEN STAERKSTEN: game_changer und tutoren sind teilweise ZIRKULAER. Die
+-- Bracket-Stufen im Vorrat sind Selbstauskuenfte, und wer sein Deck einstuft, liest dieselbe
+-- Game-Changer-Liste, die hier gezaehlt wird. Ein Teil der 0,898 misst also, wie gut Deckbauer das
+-- Regelwerk anwenden, nicht wie stark ihr Deck ist.
+-- ==============================================================================================
+
 -- LAUFZEIT: Die Ansicht rechnet 51 Raenge-Sortierungen ueber je rund 20.000 Zeilen, zusammen etwa
 -- fuenf bis zehn Sekunden. Im SQL-Editor ist das kein Problem; ueber die REST-Schnittstelle liefe
 -- sie in die Zeitueberschreitung. Sie ist als Werkzeug zum Nachsehen gedacht, nicht fuer die App.

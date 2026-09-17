@@ -8,7 +8,11 @@
 --                  Drittel aller Zeilen denselben Wert tragen, kann nichts mehr trennen, egal wie
 --                  gut die Simulation darunter ist. Der Schaden bis Zug 10 unterscheidet auch
 --                  zwischen zwei Decks, die beide nie gewinnen, aber 12 und 34 Schaden aufbauen.
---                  Wenn irgendeine der neuen Spalten Trennschärfe zeigt, dann vermutlich diese.
+--                  NACHGEMESSEN AM 17.09.2026: Die Erwartung war falsch. AUC 0,420 zwischen
+--                  Stufe 2 und 4, also Trennschärfe 0,080 - und in die FALSCHE Richtung: Höhere
+--                  Stufen machen WENIGER Kampfschaden, weil sie über Combos gewinnen und kaum
+--                  Bretter bauen. Die Spalte misst, wie kreaturenlastig ein Deck ist, nicht wie
+--                  stark. Volle Tabelle in sql/deck-sim-feature-strength-2026-09-16.sql.
 --   streuung       p75 - p25 der Siegzüge, also die VERLÄSSLICHKEIT. Zwei Decks können beide im
 --                  Median in Zug 8 gewinnen - das eine immer, das andere in der Hälfte der Spiele
 --                  in Zug 5 und sonst gar nicht. Am Tisch sind das zwei verschiedene Decks, und in
@@ -50,7 +54,7 @@ alter table public.deck_sim_results
   add column if not exists abbruch_anteil real not null default 0;
 
 comment on column public.deck_sim_results.schaden_zug10 is
-  'Median des bis Zug 10 aufaddierten Schadens. Die unzensierte Uhr: anders als median_siegzug steht sie nicht bei zwei Dritteln aller Decks am Anschlag.';
+  'Median des bis Zug 10 aufaddierten Schadens. Unzensiert, aber gemessen wertlos: AUC 0,420 zwischen Stufe 2 und 4, und umgekehrt gerichtet - hoehere Stufen machen weniger Kampfschaden.';
 comment on column public.deck_sim_results.streuung is
   'p75 - p25 der Siegzuege. Verlaesslichkeit als eigene Achse - ein Deck, das mal in Zug 5 und mal gar nicht gewinnt, ist ein anderes als eines, das immer in Zug 8 gewinnt.';
 comment on column public.deck_sim_results.leerlauf is
