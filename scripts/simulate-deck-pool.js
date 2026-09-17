@@ -35,7 +35,7 @@ const { createClient } = require('@supabase/supabase-js');
  * still überschreibt. Ohne sie ließe sich hinterher nicht mehr sagen, ob ein verschobenes Ergebnis
  * am Deck liegt oder an einer Änderung hier.
  */
-const SIM_VERSION = '6';
+const SIM_VERSION = '7';
 
 /** Voreinstellung: so oft wird jedes Deck ausgespielt. */
 const SPIELE_JE_DECK = 200;
@@ -369,7 +369,18 @@ function baueSteckbriefe(sim, kartendaten) {
   return steckbriefe;
 }
 
-/** Welche gewinnenden Combos liegen in diesem Deck vollständig? */
+/**
+ * Welche gewinnenden Combos liegen in diesem Deck vollständig?
+ *
+ * Liefert ZWEI Dinge, und der Unterschied ist wichtig:
+ *
+ *   ziele       Die Combos, die der Simulator aktiv verfolgt (tutort, Mana zurückhält). Gedeckelt,
+ *               weil comboSteht() in jedem Zug über diese Liste läuft - mehr als eine Handvoll
+ *               kostet Laufzeit und bringt nichts.
+ *   comboTeile  ALLE Karten ALLER gewinnenden Combos des Decks. Daran hängt die Schutzregel: Ein
+ *               Combo-Teil, das nach dem Wirken im Friedhof liegt, darf nie gewirkt werden. Hing
+ *               das Teil vorher an Combo Nummer elf, war es nicht geschützt und wurde verheizt.
+ */
 function findeZiele(kartenKeys, commanderKeys, gewinnCombos) {
   const treffer = new Map();
   for (const key of kartenKeys) {
@@ -386,11 +397,16 @@ function findeZiele(kartenKeys, commanderKeys, gewinnCombos) {
     if ((combo.commander_required ?? []).some((n) => !commanderKeys.has(n))) continue;
     ziele.push({ keys: combo.card_names, zusatzMana: combo.mana_value_needed ?? 0 });
   }
+  const comboTeile = new Set(ziele.flatMap((z) => z.keys));
+
   // Die billigsten zuerst - danach sucht der Simulator, und mehr als eine Handvoll Ziele
   // gleichzeitig zu verfolgen bringt nichts.
   ziele.sort((a, b) => a.keys.length - b.keys.length || a.zusatzMana - b.zusatzMana);
-  return ziele.slice(0, 10);
+  return { ziele: ziele.slice(0, VERFOLGTE_ZIELE), comboTeile };
 }
+
+/** So viele Combos verfolgt der Simulator gleichzeitig - siehe findeZiele(). */
+const VERFOLGTE_ZIELE = 10;
 
 function werteDeckAus(sim, deck, liste, umgebung) {
   const { nameNachId, steckbriefe, kartendaten, gewinnCombos } = umgebung;
@@ -440,7 +456,7 @@ function werteDeckAus(sim, deck, liste, umgebung) {
   for (const key of commanderKeys) {
     farben |= sim.farbmaske(kartendaten.farbenNachKarte.get(key) ?? []);
   }
-  const ziele = findeZiele(keys, commanderKeys, gewinnCombos);
+  const { ziele, comboTeile } = findeZiele(keys, commanderKeys, gewinnCombos);
 
   const simDeck = {
     karten,
@@ -449,6 +465,7 @@ function werteDeckAus(sim, deck, liste, umgebung) {
     // ein Deck an einer fehlenden Farbe scheitern zu lassen wäre der größere Fehler.
     farben: farben || sim.ALLE_FARBEN,
     ziele,
+    comboTeile,
   };
 
   const ergebnis = sim.simuliereDeck(simDeck, spiele, 1);

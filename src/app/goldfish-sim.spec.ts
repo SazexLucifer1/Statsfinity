@@ -83,6 +83,9 @@ const deckAus = (karten: SimCard[], ziele: SimDeck['ziele'] = []): SimDeck => ({
   commander: [],
   farben: FARB_BIT.G,
   ziele,
+  // Die geschuetzten Combo-Teile: im Test dieselben Karten wie die verfolgten Ziele. Im Stapellauf
+  // ist die Menge groesser als die Zielliste, weil die aus Laufzeitgruenden gedeckelt ist.
+  comboTeile: new Set(ziele.flatMap((z) => z.keys)),
 });
 
 const quelle = (farben: number, menge = 1): Quelle => ({ farben, menge });
@@ -284,12 +287,19 @@ describe('simuliereSpiel', () => {
       }),
     );
     const grundstock = [...vervielfache(wald(), 38), ...vervielfache(kreatur('Dicker', 5, 6), 51)];
-    const mitEngine = simuliereDeck(deckAus([...grundstock, ...vervielfache(engine, 10)]), 100);
+    const mitEngine = simuliereDeck(deckAus([...grundstock, ...vervielfache(engine, 10)]), 200);
     const ohneEngine = simuliereDeck(
       deckAus([...grundstock, ...vervielfache(kreatur('Blindgaenger', 3, 0), 10)]),
-      100,
+      200,
     );
-    expect(mitEngine.median).toBeLessThan(ohneEngine.median);
+
+    // Gemessen wird die VERLAESSLICHKEIT, nicht der Siegzug - und das ist seit der neuen
+    // Rangfolge die ehrlichere Zusage: Kartenziehen steht jetzt VOR Bedrohungen, die Engine
+    // konkurriert also um dasselbe Mana wie die Kreaturen. Sie macht das Deck damit nicht
+    // schneller, sondern gleichmaessiger: weniger Zuege, in denen gar nichts geht, und praktisch
+    // kein Spiel mehr, in dem das Deck stecken bleibt.
+    expect(mitEngine.leerlaufSchnitt).toBeLessThan(ohneEngine.leerlaufSchnitt);
+    expect(mitEngine.siegquote).toBeGreaterThanOrEqual(ohneEngine.siegquote);
   });
 
   it('macht ein Deck mit Manasteinen schneller als dasselbe Deck ohne', () => {
@@ -397,5 +407,263 @@ describe('simuliereDeck - die neuen Kennzahlen', () => {
     expect(ergebnis.mulliganSchnitt).toBeGreaterThan(0);
     expect(ergebnis.abbruchAnteil).toBe(0);
     expect(ergebnis.median).toBe(KEIN_SIEG);
+  });
+});
+
+describe('rangFuer - die Reihenfolge, in der ein Deck sein Spiel aufbaut', () => {
+  const zug = { zug: 3 };
+  const leer = deckAus([]);
+
+  const manastein = buildSimCard(
+    daten({
+      name: 'Arcane Signet',
+      key: 'arcane signet',
+      typeLine: 'Artifact',
+      oracleText: '{T}: Add one mana of any color in your commander’s color identity.',
+      manaCost: '{2}',
+      cmc: 2,
+    }),
+  );
+  const synergie = buildSimCard(
+    daten({
+      name: 'Archmage Emeritus',
+      key: 'archmage emeritus',
+      typeLine: 'Creature — Human Wizard',
+      oracleText: 'Whenever you cast or copy an instant or sorcery spell, draw a card.',
+      manaCost: '{2}{U}{U}',
+      cmc: 4,
+      power: '2',
+    }),
+  );
+  const zieher = buildSimCard(
+    daten({
+      name: 'Divination',
+      key: 'divination',
+      typeLine: 'Sorcery',
+      oracleText: 'Draw two cards.',
+      manaCost: '{2}{U}',
+      cmc: 3,
+    }),
+  );
+  const comboTeil = buildSimCard(
+    daten({ name: 'Teil A', key: 'teil a', typeLine: 'Artifact', manaCost: '{2}', cmc: 2 }),
+  );
+  const baer = kreatur('Baer', 3, 5);
+
+  it('stellt Mana vor Synergie vor Ziehen vor Combo-Teil vor den Rest', () => {
+    const mitCombo = deckAus([], [{ keys: ['teil a', 'teil b'], zusatzMana: 0 }]);
+    const raenge = [
+      rangFuer(manastein, leer, zug),
+      rangFuer(synergie, leer, zug),
+      rangFuer(zieher, leer, zug),
+      rangFuer(comboTeil, mitCombo, zug),
+      rangFuer(baer, leer, zug),
+    ];
+    // Streng absteigend - genau die Reihenfolge, die ein Mensch spielt.
+    for (let i = 1; i < raenge.length; i++) {
+      expect(raenge[i - 1]).toBeGreaterThan(raenge[i]);
+    }
+  });
+
+  /**
+   * Die wichtigste Zusage der Datei: Ein Combo-Teil, das nach dem Wirken im Friedhof liegt, wird
+   * NIE gewirkt. Sie galt bisher nur fuer die Combos, die der Simulator aktiv verfolgt - und die
+   * Liste ist aus Laufzeitgruenden gedeckelt. Haengt das Teil an Combo Nummer elf, wurde es
+   * verheizt. Jetzt zaehlt die vollstaendige Menge aller Combo-Karten des Decks.
+   */
+  it('schützt ein Combo-Teil auch dann, wenn seine Combo gar nicht verfolgt wird', () => {
+    const hexerei = buildSimCard(
+      daten({ name: 'Teil Z', key: 'teil z', typeLine: 'Sorcery', manaCost: '{2}', cmc: 2 }),
+    );
+    const deck: SimDeck = {
+      karten: [],
+      commander: [],
+      farben: FARB_BIT.G,
+      // Verfolgt wird eine ganz andere Combo ...
+      ziele: [{ keys: ['teil a', 'teil b'], zusatzMana: 0 }],
+      // ... geschuetzt ist trotzdem jedes Teil jeder gewinnenden Combo des Decks.
+      comboTeile: new Set(['teil a', 'teil b', 'teil z']),
+    };
+    expect(rangFuer(hexerei, deck, zug)).toBeLessThan(0);
+  });
+});
+
+describe('simuliereSpiel - die Regeln, die 2026-09-17 dazukamen', () => {
+  const doppelkarte = () =>
+    buildSimCard(
+      daten({
+        name: 'Agadeem’s Awakening',
+        key: 'agadeems awakening',
+        typeLine: 'Sorcery',
+        oracleText:
+          'Return from your graveyard to the battlefield any number of target creature cards.',
+        backTypeLine: 'Land',
+        backOracleText:
+          'As Agadeem, the Undercrypt enters, you may pay 3 life. If you don’t, it enters tapped.\n{T}: Add {B}.',
+        manaCost: '{3}{B}',
+        cmc: 4,
+      }),
+    );
+
+  it('darf eine modale Doppelkarte auch als Zauber wirken', () => {
+    // Vorher war sie ausschliesslich ein Land: Die Hauptphase uebersprang alles, bei dem eine
+    // Landseite erkannt war - und das ist bei einer Doppelkarte immer der Fall.
+    const karte = doppelkarte();
+    expect(karte.land).not.toBe(null);
+    expect(karte.istLand).toBe(false);
+
+    // Sumpf statt Wald: Die Karte kostet {3}{B}, gruenes Mana kann sie nicht bezahlen.
+    const sumpf = buildSimCard(
+      daten({
+        name: 'Swamp',
+        key: 'swamp',
+        typeLine: 'Land',
+        oracleText: '{T}: Add {B}.',
+        producedMana: ['B'],
+      }),
+    );
+    const deck: SimDeck = {
+      karten: [...vervielfache(sumpf, 50), ...vervielfache(karte, 49)],
+      commander: [],
+      farben: FARB_BIT.B,
+      ziele: [],
+      comboTeile: new Set<string>(),
+    };
+    const ergebnis = simuliereDeck(deck, 40);
+    // Gewirkt werden kann sie nur, wenn ueberhaupt Zauber gewirkt werden - sonst waeren alle
+    // zwanzig Zuege Leerlauf.
+    expect(ergebnis.leerlaufSchnitt).toBeLessThan(MAX_ZUEGE);
+  });
+
+  it('pumpt nur in dem Zug, in dem der Pump gespielt wurde', () => {
+    const feld = [
+      { karte: kreatur('A', 2, 2), seitZug: 1 },
+      { karte: kreatur('B', 2, 2), seitZug: 1 },
+    ];
+    // Mit Pump in diesem Zug: (2+2) + 2 Kreaturen x 2 = 8.
+    expect(angriffsschaden({ feld, zug: 5, pumpDiesenZug: 2 })).toBe(8);
+    // Im Zug darauf ist der Pump weg - vorher las der Angriffsschaden ihn vom Feld und ein
+    // Craterhoof Behemoth pumpte das ganze Spiel lang weiter.
+    expect(angriffsschaden({ feld, zug: 6 })).toBe(4);
+  });
+
+  it('rechnet "+X/+X, X = Kreaturenzahl" als Quadrat der Kreaturenzahl', () => {
+    const feld = [
+      { karte: kreatur('A', 2, 1), seitZug: 1 },
+      { karte: kreatur('B', 2, 1), seitZug: 1 },
+      { karte: kreatur('C', 2, 1), seitZug: 1 },
+    ];
+    // 3 Kreaturen a 1 Staerke, jede bekommt +3: 3 + 9 = 12.
+    expect(angriffsschaden({ feld, zug: 5, pumpDiesenZug: -1 })).toBe(12);
+  });
+
+  it('stellt eine Combo nicht auf, deren Farben das Deck nicht bezahlen kann', () => {
+    // Zwei blaue Combo-Teile in einem Deck aus lauter Waeldern. Vorher verglich comboSteht nur
+    // Manabetraege - und ein gruenes Deck "gewann" mit einer blauen Combo.
+    const blau = (name: string) =>
+      buildSimCard(
+        daten({
+          name,
+          key: name.toLowerCase(),
+          typeLine: 'Creature — Merfolk',
+          manaCost: '{U}{U}',
+          cmc: 2,
+          power: '1',
+        }),
+      );
+    const deck = deckAus(
+      [
+        ...vervielfache(wald(), 60),
+        ...vervielfache(blau('Teil A'), 20),
+        ...vervielfache(blau('Teil B'), 19),
+      ],
+      [{ keys: ['teil a', 'teil b'], zusatzMana: 0 }],
+    );
+    const ergebnis = simuliereDeck(deck, 60);
+    expect(ergebnis.comboAnteil).toBe(0);
+  });
+});
+
+describe('Tutoren - weder allmächtig noch wirkungslos', () => {
+  const tutorKarte = (name: string, text: string): SimCard =>
+    buildSimCard(
+      daten({
+        name,
+        key: name.toLowerCase(),
+        typeLine: 'Sorcery',
+        oracleText: text,
+        manaCost: '{2}',
+        cmc: 2,
+        tutor: true,
+      }),
+    );
+
+  const allesTutor = () =>
+    tutorKarte(
+      'Demonic Tutor',
+      'Search your library for a card, then shuffle and put that card on top.',
+    );
+  const landTutor = () =>
+    tutorKarte(
+      'Rampant Growth',
+      'Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.',
+    );
+
+  /**
+   * Der eine Fehler: Ein Tutor in einem Deck OHNE Combo war eine vollkommen tote Karte -
+   * sucheZielteil() kannte nur Combo-Teile und lieferte null. Jetzt holt er die beste Karte, die
+   * er holen darf, gemessen an derselben Rangfolge, nach der auch gewirkt wird.
+   */
+  it('holt auch ohne Combo etwas - und zwar die beste Karte, die es gibt', () => {
+    const bombe = kreatur('Bombe', 3, 40);
+    const fueller = kreatur('Fueller', 2, 1);
+    const grundstock = [...vervielfache(wald(), 40), bombe, ...vervielfache(fueller, 48)];
+
+    const mitTutoren = simuliereDeck(
+      deckAus([...grundstock, ...vervielfache(allesTutor(), 10)]),
+      200,
+    );
+    const ohneTutoren = simuliereDeck(deckAus([...grundstock, ...vervielfache(fueller, 10)]), 200);
+
+    // Eine einzige Bombe im Deck: Wer sie suchen kann, findet sie deutlich frueher.
+    expect(mitTutoren.median).toBeLessThan(ohneTutoren.median);
+  });
+
+  /**
+   * Der andere Fehler, das genaue Gegenteil: JEDER Tutor fand sofort das fehlende Combo-Teil -
+   * auch ein Landsuch-Zauber, der gar keine Nicht-Land-Karte holen darf.
+   */
+  it('lässt einen Landsuch-Zauber das Combo-Teil NICHT holen', () => {
+    const teil = (name: string) =>
+      buildSimCard(
+        daten({
+          name,
+          key: name.toLowerCase(),
+          typeLine: 'Artifact',
+          manaCost: '{2}',
+          cmc: 2,
+        }),
+      );
+    const bauteile = [teil('Teil A'), teil('Teil B')];
+    const ziel = [{ keys: ['teil a', 'teil b'], zusatzMana: 0 }];
+    const grundstock = [
+      ...vervielfache(wald(), 45),
+      ...bauteile,
+      ...vervielfache(kreatur('Fueller', 2, 1), 42),
+    ];
+
+    const mitLandTutoren = simuliereDeck(
+      deckAus([...grundstock, ...vervielfache(landTutor(), 10)], ziel),
+      200,
+    );
+    const mitAllesTutoren = simuliereDeck(
+      deckAus([...grundstock, ...vervielfache(allesTutor(), 10)], ziel),
+      200,
+    );
+
+    // Verglichen wird die SIEGQUOTE, nicht der Combo-Anteil: Beide Decks gewinnen ausschliesslich
+    // ueber die Combo (die Fueller kommen nie auf 40 Schaden), der Combo-Anteil steht also bei
+    // beiden auf 1. Die Frage ist, wie oft sie die Combo ueberhaupt zusammenbekommen.
+    expect(mitAllesTutoren.siegquote).toBeGreaterThan(mitLandTutoren.siegquote);
   });
 });
