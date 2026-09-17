@@ -79,7 +79,17 @@ grant execute on function public.deck_sim_neueste_fassung() to authenticated, se
 -- =====================================================================================
 -- 3. Der Stufenvergleich - mit Erkennungsfilter und mit Quartilen.
 -- =====================================================================================
-create or replace view public.deck_sim_by_bracket
+-- ERST LOESCHEN, DANN NEU ANLEGEN, und das ist kein Schoenheitsfehler: "create or replace view"
+-- darf in Postgres nur Spalten HINTEN anhaengen. Hier kommen die Schaden-Quartile mitten in die
+-- Spaltenliste, dorthin, wo vorher siegquote stand - und Postgres lehnt das ab:
+--
+--   ERROR: 42P16: cannot change name of view column "siegquote" to "schaden10_p25"
+--
+-- Bewusst ohne "cascade": Haengt wider Erwarten doch etwas an der Ansicht, soll der Fehler
+-- sichtbar werden, statt dass die Migration still etwas mitreisst.
+drop view if exists public.deck_sim_by_bracket;
+
+create view public.deck_sim_by_bracket
 with (security_invoker = true) as
 select
   d.creator_bracket,
