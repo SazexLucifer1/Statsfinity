@@ -1,6 +1,6 @@
 import { Component, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { DatePipe, DecimalPipe } from '@angular/common';
+import { DatePipe, DecimalPipe, NgTemplateOutlet } from '@angular/common';
 import QRCode from 'qrcode';
 import { ArchidektPoolService } from '../archidekt-pool.service';
 import { ProfileService } from '../profile.service';
@@ -49,7 +49,7 @@ const COLOR_RADAR_AXES: readonly string[] = [...FILTER_COLORS, COLORLESS];
 
 @Component({
   selector: 'app-profile-tab',
-  imports: [FormsModule, DatePipe, DecimalPipe, DeckList, CardImage, CommanderStatList, FavoriteCommanderEditor, BarChart, RadarChart, Meter, ManaSymbol, Podium],
+  imports: [FormsModule, DatePipe, DecimalPipe, NgTemplateOutlet, DeckList, CardImage, CommanderStatList, FavoriteCommanderEditor, BarChart, RadarChart, Meter, ManaSymbol, Podium],
   templateUrl: './profile-tab.html',
   styleUrl: './profile-tab.scss',
 })
@@ -80,10 +80,7 @@ export class ProfileTab {
    * eingeloggten Viewer in der Sichtbarkeits-Matrix alle Modi gesperrt hat - der Host selbst ist
    * davon ausgenommen. */
   readonly othersStatsHidden = computed(
-    () =>
-      (!!this.profileService.viewingUserId() || !!this.profileService.viewingPlayerId()) &&
-      this.mtg.allModesHiddenForMe() &&
-      !this.groupService.isOwner()
+    () => this.isViewingOther() && this.mtg.allModesHiddenForMe() && !this.groupService.isOwner()
   );
 
   /** Als computed() statt eines Inline-Objektliterals im Template gehalten - sonst würde bei jedem
@@ -105,6 +102,54 @@ export class ProfileTab {
     const playerId = this.profileService.viewingPlayerId();
     return playerId ? { kind: 'player', playerId } : null;
   });
+
+  // --- Developer-Vollansicht eines fremden Profils ---
+
+  /** Ob überhaupt ein fremdes Profil angesehen wird (Account oder NPC) statt des eigenen. */
+  readonly isViewingOther = computed(
+    () => !!this.profileService.viewingUserId() || !!this.profileService.viewingPlayerId()
+  );
+
+  /** Ob der Umschalter auf die Vollansicht angeboten wird: nur Developer, nur im fremden Profil. */
+  readonly canDevFullView = computed(() => !!this.profileService.profile()?.isDeveloper && this.isViewingOther());
+
+  private readonly devFullViewChoice = signal(false);
+
+  /**
+   * Developer-Vollansicht: zeigt beim Ansehen eines fremden Profils exakt denselben Statistik- und
+   * Deck-Bereich, den der Spieler in seinem eigenen Profil sieht - alle Kacheln, der Jahres-Filter
+   * und alle drei "kein eigenes Deck"-Listen inklusive der ausgeliehenen Decks. Gedacht zum
+   * Nachvollziehen von Fehlern, deshalb rein lesend: die Bearbeiten-Knöpfe hängen weiter an der
+   * Berechtigung deck.editOthers, und die Sichtbarkeits-Matrix (othersStatsHidden) greift hier
+   * nicht, weil dieser Bereich sie gar nicht abfragt.
+   *
+   * Bewusst ein Umschalter und nicht automatisch an: ein Developer muss auch sehen können, was ein
+   * normales Mitglied an dieser Stelle sieht - sonst lässt sich genau der Fehlerbericht nicht
+   * nachstellen, um den es meistens geht.
+   */
+  readonly devFullView = computed(() => this.canDevFullView() && this.devFullViewChoice());
+
+  toggleDevFullView(): void {
+    this.devFullViewChoice.update((on) => !on);
+  }
+
+  /**
+   * Der Besitzer, auf den sich der Haupt-Bereich (Statistiken + Decks) bezieht: normalerweise der
+   * eigene Account, in der Developer-Vollansicht das angesehene fremde Profil. Alle Ladevorgänge
+   * dieses Bereichs hängen daran, damit derselbe Block ohne Kopie für beide Fälle gilt.
+   */
+  readonly statsOwner = computed<DeckOwner | null>(() =>
+    this.devFullView() ? this.viewingDeckOwner() ?? this.viewingNpcDeckOwner() : this.ownDeckOwner()
+  );
+
+  /**
+   * Account-ID für die gruppenübergreifende Gesamt-Statistik. Anders als statsOwner kann das null
+   * sein, obwohl ein Profil angezeigt wird: ein NPC-Profil gehört keinem Account, und ohne Account
+   * gibt es keine Partien in anderen Gruppen, die man zusammenzählen könnte.
+   */
+  readonly statsUserId = computed<string | null>(() =>
+    this.devFullView() ? this.profileService.viewingUserId() : this.profileService.profile()?.id ?? null
+  );
 
   /** Lieblingscommander des gerade angesehenen NPC-Profils (players.favorite_commanders, vom Host
    * gepflegt) - kommt direkt aus MtgService statt aus einem eigenen Ladevorgang, siehe
@@ -434,32 +479,50 @@ export class ProfileTab {
   }
 
   private async refreshUnassignedAndDecks(): Promise<void> {
-    const userId = this.profileService.profile()?.id;
-    if (!userId) return;
+    const owner = this.statsOwner();
+    if (!owner) return;
     this.unassignedCommanderStats.set(
-      await this.deckService.getUnassignedCommanderStats({ kind: 'user', userId }, { linkBorrowed: true })
+      await this.deckService.getUnassignedCommanderStats(owner, { linkBorrowed: !this.devFullView() })
     );
     await this.deckListRef()?.refreshDecks();
   }
 
+  /**
+   * Lädt die "kein eigenes Deck"-Liste nach einem Reparieren oder Verlinken neu. Welches Signal
+   * dabei zu füllen ist, hängt davon ab, welcher Block gerade sichtbar ist: der gemeinsame
+   * Haupt-Bereich (eigenes Profil oder Developer-Vollansicht) liest unassignedCommanderStats, die
+   * reduzierte Fremdansicht dagegen die viewing*-Signale.
+   */
+  private async reloadUnassignedFor(owner: DeckOwner): Promise<void> {
+    if (this.devFullView() || !this.isViewingOther()) {
+      await this.refreshUnassignedAndDecks();
+      return;
+    }
+    const stats = await this.deckService.getUnassignedCommanderStats(owner);
+    if (owner.kind === 'player') this.viewingNpcUnassignedCommanderStats.set(stats);
+    else this.viewingUnassignedCommanderStats.set(stats);
+  }
+
   constructor() {
     effect(() => {
-      const userId = this.profileService.profile()?.id;
-      if (!userId) {
+      const owner = this.statsOwner();
+      if (!owner) {
         this.unassignedCommanderStats.set([]);
         return;
       }
-      // linkBorrowed nur hier: das ist das EIGENE Profil. Ein per Namen erkanntes geliehenes Deck
-      // wird dabei auch in der Datenbank verknüpft, damit die Partie wirklich am Deck hängt und
-      // von hier aus geöffnet werden kann.
-      this.deckService.getUnassignedCommanderStats({ kind: 'user', userId }, { linkBorrowed: true }).then((stats) => {
+      // linkBorrowed nur im EIGENEN Profil. Ein per Namen erkanntes geliehenes Deck wird dabei auch
+      // in der Datenbank verknüpft, damit die Partie wirklich am Deck hängt und von hier aus
+      // geöffnet werden kann. In der Developer-Vollansicht bleibt der Aufruf rein lesend - das
+      // bloße Ansehen eines fremden Profils darf keine Daten verändern.
+      const linkBorrowed = !this.devFullView();
+      this.deckService.getUnassignedCommanderStats(owner, { linkBorrowed }).then((stats) => {
         this.unassignedCommanderStats.set(stats);
         this.ownCommanderListRef()?.reset();
       });
     });
 
     effect(() => {
-      const userId = this.profileService.profile()?.id;
+      const userId = this.statsUserId();
       if (!userId) {
         this.crossGroupStats.set(null);
         return;
@@ -471,20 +534,22 @@ export class ProfileTab {
     });
 
     effect(() => {
-      const userId = this.profileService.profile()?.id;
-      if (!userId) {
+      const owner = this.statsOwner();
+      if (!owner) {
         this.cardAndColorStats.set(null);
         return;
       }
       const year = this.statsYear();
       this.deckService
-        .getCardAndColorStats({ kind: 'user', userId }, year === 'Alle' ? undefined : year)
+        .getCardAndColorStats(owner, year === 'Alle' ? undefined : year)
         .then((stats) => this.cardAndColorStats.set(stats));
     });
 
     effect(() => {
       const userId = this.profileService.viewingUserId();
-      if (!userId) {
+      // In der Developer-Vollansicht zeigt der gemeinsame Haupt-Bereich die Liste - dieselbe
+      // Abfrage hier ein zweites Mal zu stellen, lädt nur unsichtbare Daten nach.
+      if (!userId || this.devFullView()) {
         this.viewingUnassignedCommanderStats.set([]);
         return;
       }
@@ -496,7 +561,7 @@ export class ProfileTab {
 
     effect(() => {
       const playerId = this.profileService.viewingPlayerId();
-      if (!playerId) {
+      if (!playerId || this.devFullView()) {
         this.viewingNpcUnassignedCommanderStats.set([]);
         return;
       }
@@ -887,13 +952,7 @@ export class ProfileTab {
     }
     this.repairMessage.set(messages.join(' '));
 
-    if (viewingPlayerId) {
-      this.viewingNpcUnassignedCommanderStats.set(await this.deckService.getUnassignedCommanderStats(owner));
-    } else if (viewingUserId) {
-      this.viewingUnassignedCommanderStats.set(await this.deckService.getUnassignedCommanderStats(owner));
-    } else {
-      await this.refreshUnassignedAndDecks();
-    }
+    await this.reloadUnassignedFor(owner);
   }
 
   /** null nur, wenn weder ein fremder Account angesehen wird noch überhaupt ein Account eingeloggt ist (sollte im Profil-Tab praktisch nie vorkommen). */
@@ -904,10 +963,11 @@ export class ProfileTab {
 
   // --- Manuell Commander <-> Deck verlinken/entlinken (Dialog + Logik in ManualDeckLinkService) ---
 
-  async openManualLinkDialog(): Promise<void> {
-    const userId = this.profileService.profile()?.id;
-    if (!userId) return;
-    await this.manualDeckLink.open({ kind: 'user', userId }, () => this.refreshUnassignedAndDecks());
+  /** Der Knopf im gemeinsamen Haupt-Bereich - gilt fürs eigene Profil wie für die Developer-Vollansicht. */
+  async openManualLinkDialogForCurrent(): Promise<void> {
+    const owner = this.statsOwner();
+    if (!owner) return;
+    await this.manualDeckLink.open(owner, () => this.reloadUnassignedFor(owner));
   }
 
   /** Für den Admin, der beim Ansehen eines FREMDEN Profils Alt-Spiele dieser Person nachträglich verlinkt. */
