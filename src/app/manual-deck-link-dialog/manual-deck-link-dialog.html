@@ -17,7 +17,7 @@
         >
           <option value="">{{ i18n.t('profile.chooseCommanderPlaceholder') }}</option>
           @for (c of linkService.unassignedCommanderStats(); track c.commander) {
-            <option [value]="c.commander">{{ c.commander }} {{ i18n.t('profile.gamesCountParen', { count: c.games }) }}</option>
+            <option [value]="c.commander">{{ c.borrowedDeck ? '🤝 ' : '' }}{{ c.commander }} {{ i18n.t('profile.gamesCountParen', { count: c.games }) }}</option>
           }
         </select>
         <select
