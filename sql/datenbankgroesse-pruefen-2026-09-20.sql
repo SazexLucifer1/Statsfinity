@@ -1,43 +1,54 @@
--- Wo die 432 von 500 MB liegen - und ob es mehr wird.
+-- Wo die 398 von 500 MB liegen - und ob es mehr wird. MIT ERGEBNIS, siehe unten.
 -- Im Supabase-SQL-Editor ausführen. Reine Abfragen, ändert nichts (Abschnitt 5 legt auf Wunsch
 -- eine kleine Messtabelle an, Abschnitt 6 ist auskommentiert).
 --
+-- ACHTUNG BEIM KOPIEREN: Der Supabase-SQL-Editor zeigt nur das Ergebnis der LETZTEN Abfrage.
+-- Die Abschnitte einzeln ausführen, sonst sieht man von fünf Auswertungen genau eine.
+--
 -- ANLASS: Die Datenbank stand am 15.09. bei 494 MB, kurz vor dem Umschalten auf read-only. Die
 -- Umstellung der Kartenlisten auf Arrays (sql/archidekt-pool-card-arrays-2026-09-15.sql) hat rund
--- 154 MB zurückgegeben. Jetzt sind es wieder 432 MB. Die Frage ist also nicht nur "was ist groß",
--- sondern "was wächst".
+-- 154 MB zurückgegeben, danach war sie wieder bei 432 MB laut Dashboard.
 --
--- WAS OHNE DATENBANKZUGANG SCHON FESTSTEHT (gemessen über die REST-API, Stand 20.09.2026):
+-- =====================================================================================
+-- DAS ERGEBNIS DER ERSTEN MESSUNG (20.09.2026, pg_database_size meldet 398 MB; das Dashboard
+-- zählt mit 432 MB zusätzlich WAL und Systemkataloge)
+-- =====================================================================================
 --
---   spellbook_combos            105.025 Zeilen, ~790 B je Zeile   ~83 MB nur an Daten
---   spellbook_combo_cards       372.994 Zeilen, ~142 B je Zeile   ~53 MB plus Zeilenköpfe/Index
---   scryfall_cards               35.572 Zeilen, ~836 B je Zeile   ~30 MB
---   scryfall_card_effects        26.122 Zeilen,  ~69 B je Zeile    ~2 MB
---   spellbook_two_card_combos     3.996 Zeilen, ~259 B je Zeile    ~1 MB
+--   Spellbook-Cache (combos, combo_cards, winning_combos, ...)   ~193 MB   48 %
+--   Archidekt-Deckvorrat (pool, cardlists, names)                ~110 MB   28 %
+--   Scryfall-Cache (cards, effects)                               ~48 MB   12 %
+--   deck_sim_results                                               25 MB    6 %
+--   ALLE echten App-Daten (decks, matches, players, Turniere)      ~7 MB    2 %
 --
--- Der Spellbook-Cache ist damit der mit Abstand größte Posten - er allein liegt bei rund 140 MB
--- roher Daten, vor Indizes. Was von hier aus NICHT messbar ist, steht in den Developer-Tabellen
--- (archidekt_deck_pool*, deck_sim_results) und in der Aufblähung. Genau dafür ist diese Datei da.
+-- DIE ZAHL, AUF DIE ES ANKOMMT: Die Nutzerdaten dieser App sind SIEBEN MEGABYTE. Alles andere
+-- sind eingekaufte Fremddaten. Wer hier Platz sucht, sucht ihn nicht bei den Matches.
 --
--- ZWEI VERDACHTSMOMENTE, die die Abfragen unten bestätigen oder entkräften sollen:
+-- WAS SICH GEGENÜBER DER VERMUTUNG GEÄNDERT HAT - zwei Irrtümer, beide lehrreich:
 --
---   A) Aufblähung durch die nächtlichen Abgleiche. scripts/sync-scryfall-bulk.js und
---      scripts/sync-spellbook-bracket.js schreiben JEDE Nacht JEDE Zeile neu (upsert über den
---      kompletten Bestand). In Postgres ist ein update kein Überschreiben: Die alte Zeilenfassung
---      bleibt als tote Zeile liegen, bis autovacuum sie freigibt - und der freigegebene Platz
---      bleibt danach in der Datei, er geht nicht an die Festplatte zurück. Das sind rund 540.000
---      neu geschriebene Zeilen pro Nacht (35.572 + 26.122 + 105.025 + 372.994). Eine Datenbank,
---      in die niemand etwas Neues einträgt, kann davon trotzdem wachsen. Abschnitt 2 misst das.
+--   1) "Die nächtlichen Abgleiche blähen die Datenbank auf." Stimmt so NICHT. Das Neuschreiben
+--      findet statt und ist messbar (spellbook_combos hat 1.377.393 updates bei 105.025 Zeilen,
+--      also exakt 13 volle Durchläufe), aber autovacuum kommt hinterher: 5,2 % bzw. 1,4 % tote
+--      Zeilen, letzter Lauf jeweils am Messtag. Das Wachstum kam nicht aus den Nächten, sondern
+--      aus dem Import - 51.000 Decks statt der 48.638 aus der Auswertung.
 --
---   B) deck_sim_results sammelt Fassungen. Der Primärschlüssel ist (deck_id, sim_version), und
---      das ist Absicht - zwei Läufe verschiedener Simulator-Fassungen sind nicht vergleichbar.
---      Die Folge ist aber, dass nichts je gelöscht wird: Bei 48.638 Decks kostet jede Fassung
---      einen vollen Satz Zeilen, und der Simulator steht inzwischen bei Fassung 8. Abschnitt 3
---      zeigt, welche Fassungen noch liegen und was sie kosten.
+--   2) "Die Indizes sind aufgebläht." Auch nicht. spellbook_combo_cards_pkey ist 33 MB groß und
+--      damit fast so groß wie die Tabelle selbst (35 MB) - aber rechnerisch korrekt: Der
+--      Primärschlüssel ist (combo_id text, name_normalized text), bei 383.229 Zeilen sind das
+--      ~29 MB an reinen Schlüsseldaten. Der Index ist nicht kaputt, er ist teuer ENTWORFEN.
 --
--- Der Deckvorrat selbst ist nach dem Array-Umbau NICHT mehr der Hauptverdächtige: 48.638 Decks
--- kosten dort nach der Messung in der Umbau-Migration rund 45 MB.
-
+-- DAMIT IST ES DERSELBE FEHLER WIE BEI archidekt_deck_pool_cards, wo der Primärschlüssel allein
+-- 72 MB gekostet hat: eine Zeile je Karte, Textschlüssel in jeder davon. Die Lösung war dort ein
+-- Zahlen-Array je Deck; dieselbe Umstellung auf spellbook_combo_cards (ein Array je Combo statt
+-- 3,6 Zeilen je Combo) würde die 82 MB dieser Tabelle auf etwa 15 MB drücken. Das ist der
+-- größte strukturelle Hebel, der hier noch liegt - und er ist schon einmal gebaut worden.
+--
+-- WAS SOFORT GEHT, ohne irgendetwas umzubauen (Abschnitt 6):
+--   deck_sim_results hält die Fassungen 3, 5 und 7. Fassung 8 hat nie einen Lauf gesehen. Die
+--   Fassungen 3 und 5 sind 98.637 Zeilen (~17 MB) und durch Fassung 7 ersetzt.
+--
+-- WAS OHNE DATENBANKZUGANG MESSBAR WAR (REST-API, zum Vergleich der Schätzgüte): die
+-- Zeilenzahlen stimmten, die Größen lagen 10-25 % zu niedrig, weil Zeilenköpfe, Ausrichtung und
+-- freier Platz in den Seiten von außen unsichtbar sind.
 -- =====================================================================================
 -- 1. Der Überblick: Gesamtgröße und die größten Tabellen.
 --
@@ -66,6 +77,31 @@ where n.nspname = 'public'
   and c.relkind in ('r', 'm')
 order by pg_total_relation_size(c.oid) desc
 limit 25;
+
+-- Und dieselbe Frage eine Ebene tiefer: WELCHER Index kostet das.
+--
+-- Diese Abfrage hat den eigentlichen Befund geliefert und gehört deshalb dazu. Wenn eine Tabelle
+-- mehr Index als Inhalt hat, ist das fast nie Aufblähung, sondern ein teurer Schlüssel - und ein
+-- Schlüssel lässt sich ändern, Aufblähung nicht. Gemessen am 20.09.:
+--
+--   spellbook_combo_cards_pkey      33 MB   btree (combo_id text, name_normalized text)
+--   archidekt_deck_pool_search_idx  14 MB   gin (search_text gin_trgm_ops)
+--   spellbook_combo_cards_synced_at 8,3 MB  braucht der nächtliche Abgleich zum Aufräumen
+--
+-- Der erste ist der Fall: 383.229 Zeilen mal zwei Textspalten sind rechnerisch ~29 MB, der Index
+-- ist also gesund und trotzdem das Problem.
+select
+  t.relname                                as tabelle,
+  i.relname                                as index_name,
+  pg_size_pretty(pg_relation_size(i.oid))  as groesse,
+  pg_get_indexdef(i.oid)                   as definition
+from pg_class t
+join pg_index x on x.indrelid = t.oid
+join pg_class i on i.oid = x.indexrelid
+join pg_namespace n on n.oid = t.relnamespace
+where n.nspname = 'public'
+order by pg_relation_size(i.oid) desc
+limit 20;
 
 -- =====================================================================================
 -- 2. Verdacht A: Aufblähung durch die nächtlichen Abgleiche.
@@ -209,19 +245,37 @@ order by zuletzt - zuerst desc;
 --    frei und kosten im Fall von "vacuum full" die Erreichbarkeit der Tabelle.
 --
 --    a) Alte Simulator-Fassungen. Gibt echten Platz frei, wenn Abschnitt 3 mehrere Fassungen
---       zeigt. Die aktuelle Fassung steht als SIM_VERSION in scripts/simulate-deck-pool.js.
+--       zeigt - gemessen am 20.09. waren das 3, 5 und 7, zusammen 25 MB.
 --
--- delete from public.deck_sim_results where sim_version <> '8';
+--       NICHT "where sim_version <> '<aktuelle>'" schreiben. SIM_VERSION steht in
+--       scripts/simulate-deck-pool.js inzwischen auf '8', aber ein Lauf dieser Fassung hat nie
+--       stattgefunden - ein delete auf alles außer '8' hätte die Tabelle GELEERT, samt der
+--       Fassung 7, auf der die Trennschärfe-Messung vom 17.09. beruht (Game Changer 0,898,
+--       Tutoren 0,771, dokumentiert in CLAUDE.md und im Kopf von
+--       sql/deck-sim-feature-strength-2026-09-16.sql). Die zu löschenden Fassungen deshalb
+--       IMMER aus Abschnitt 3 ablesen und einzeln aufzählen, statt sie auszurechnen.
+--
+-- delete from public.deck_sim_results where sim_version in ('3', '5');
+-- vacuum full public.deck_sim_results;
 --
 --    b) Aufblähung zurückgeben. "vacuum full" ist das Einzige, was die Datei wirklich
 --       schrumpfen lässt - es schreibt die Tabelle neu. Zwei Warnungen, beide ernst:
 --       Die Tabelle ist währenddessen GESPERRT (die App sieht sie nicht), und Postgres braucht
---       kurzzeitig Platz für die alte UND die neue Fassung. Deshalb einzeln und mit der
---       größten Tabelle beginnen, nicht alles auf einmal.
+--       kurzzeitig Platz für die alte UND die neue Fassung.
 --
--- vacuum full public.spellbook_combo_cards;
--- vacuum full public.spellbook_combos;
+--       DESHALB MIT DER KLEINSTEN BEGINNEN, nicht mit der größten: spellbook_combos ist 102 MB,
+--       ein "vacuum full" darauf stünde bei 398 MB Bestand kurzzeitig bei rund 500 MB - genau
+--       die Grenze, ab der Supabase auf read-only schaltet. Erst a) ausführen, damit Luft da
+--       ist, dann nach jedem Schritt Abschnitt 1 wiederholen.
+--
+--       Ob sich das überhaupt lohnt, sagt pgstattuple (free_percent ist der Anteil, den ein
+--       "vacuum full" zurückgäbe) - messen statt vermuten:
+--
+-- create extension if not exists pgstattuple with schema extensions;
+-- select * from extensions.pgstattuple('public.spellbook_combos');
+--
 -- vacuum full public.scryfall_cards;
+-- vacuum full public.spellbook_combos;
 --
 --    c) Die Messtabelle aus Abschnitt 5 wieder los werden, wenn die Frage beantwortet ist.
 --
