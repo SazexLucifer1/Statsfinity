@@ -1,5 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { DeckService, Deck, DeckOwner } from './deck.service';
+import { DeckService, Deck, DeckCard, DeckOwner } from './deck.service';
 import { PreconService, PreconSummary } from './precon.service';
 import { ScryfallService, ScryfallCard } from './scryfall.service';
 import { EdhrecService, EdhrecTag } from './edhrec.service';
@@ -94,7 +94,7 @@ export class DeckImportService {
     this.selectedFormat.set(deck.format ?? 'Commander');
     this.importMessage.set('');
     const cards = await this.deckService.loadDeckCards(deck.id);
-    this.deckText.set(cards.map((c) => `${c.quantity} ${c.cardName}`).join('\n'));
+    this.deckText.set(DeckImportService.decklistText(cards));
     this.lastTagsCommander = null;
     const commander = cards.find((c) => c.isCommander)?.cardName ?? null;
     await this.loadTagsForCommander(commander, deck.edhrecTag);
@@ -103,6 +103,25 @@ export class DeckImportService {
 
   closeImportDialog(): void {
     this.showImportDialog.set(false);
+  }
+
+  /**
+   * Baut aus den gespeicherten Karten wieder eine Decklist, die parseDecklistText() genauso
+   * zurückliest - MIT den Überschriften für Commander und Maybeboard. Ohne sie verlöre jedes
+   * Speichern aus diesem Dialog die Commander-Markierung und schöbe die engere Auswahl mit ins
+   * Deck, weil der Dialog seinen Textinhalt beim Speichern komplett neu einliest.
+   */
+  private static decklistText(cards: DeckCard[]): string {
+    const zeilen = (liste: DeckCard[]) => liste.map((c) => `${c.quantity} ${c.cardName}`).join('\n');
+    const commander = cards.filter((c) => c.isCommander);
+    const main = cards.filter((c) => !c.isCommander && !c.isMaybeboard);
+    const maybeboard = cards.filter((c) => !c.isCommander && c.isMaybeboard);
+
+    const teile: string[] = [];
+    if (commander.length > 0) teile.push(`Commander:\n${zeilen(commander)}`);
+    teile.push(`Deck:\n${zeilen(main)}`);
+    if (maybeboard.length > 0) teile.push(`Maybeboard:\n${zeilen(maybeboard)}`);
+    return teile.join('\n\n');
   }
 
   /** Erkennt den Commander live aus der eingefügten Kartenliste (Abschnitt "Commander:"), um die passenden EDHREC-Tags anzubieten. */
