@@ -222,7 +222,7 @@ async function mitWiederholung(was, aufruf) {
  * Wie viele veraltete Zeilen ein Löschblock höchstens umfasst.
  *
  * Nicht alles in EINEM delete: Ein einziges Statement über zehntausende Zeilen - bei
- * spellbook_combos samt der Kaskade auf spellbook_combo_cards - reißt das statement_timeout von
+ * spellbook_combos samt der Kaskade auf spellbook_combo_cardlists - reißt das statement_timeout von
  * PostgREST, und dann ist nicht ein Block verloren, sondern das ganze Aufräumen. In Blöcken
  * kostet ein Fehlschlag höchstens den laufenden Block.
  */
@@ -272,7 +272,8 @@ function aufraeumFehler(tabelle, fehler) {
 /**
  * Entfernt, was in der Quelle nicht mehr vorkommt: alle Zeilen mit einem Zeitstempel VOR diesem
  * Lauf. Blockweise über blockSpalte - das ist die (erste) Schlüsselspalte der Tabelle; bei
- * spellbook_combo_cards reicht combo_id, weil der Zeitstempelfilter im delete stehen bleibt und
+ * spellbook_combo_cardlists ist combo_id ohnehin der ganze Schlüssel - eine Zeile je Combo. Bei
+ * spellbook_combos reicht id, weil der Zeitstempelfilter im delete stehen bleibt und
  * frische Zeilen derselben Combo deshalb unangetastet bleiben.
  */
 async function raeumeAuf(tabelle, blockSpalte, laufBegonnen) {
@@ -447,6 +448,78 @@ async function hatManaSpalte() {
   return false;
 }
 
+/**
+ * Hält die Zuordnung Kartenname -> Zahl, die spellbook_card_names festlegt.
+ *
+ * Einmal je Lauf geladen und danach im Speicher fortgeschrieben: Bei 105.000 Combos kämen sonst
+ * Hunderttausende Nachschlag-Abfragen zusammen. Die Tabelle wächst nur, wenn eine Combo eine
+ * Karte enthält, die noch nie vorkam - nach den ersten paar hundert Combos ist das die Ausnahme.
+ *
+ * Gleiche Bauart wie Kartennamen in scripts/import-archidekt-decks.js, aber bewusst eine eigene
+ * Tabelle: Die beiden Läufe sind voneinander unabhängig (Spellbook nächtlich, Archidekt von
+ * Hand), und eine gemeinsame Namenstabelle würde sie aneinanderketten.
+ */
+class Kartennamen {
+  constructor() {
+    this.idZuName = new Map();
+  }
+
+  /** Lädt den Bestand seitenweise - Supabase deckelt eine Antwort ohne range auf 1.000 Zeilen. */
+  async laden() {
+    const SEITE = 1000;
+    for (let von = 0; ; von += SEITE) {
+      const { data, error } = await mitWiederholung('Kartennamen laden', () =>
+        supabase
+          .from('spellbook_card_names')
+          .select('id, name_normalized')
+          .range(von, von + SEITE - 1),
+      );
+      if (error) throw new Error(`Kartennamen konnten nicht geladen werden: ${error.message}`);
+      for (const zeile of data) this.idZuName.set(zeile.name_normalized, zeile.id);
+      if (data.length < SEITE) break;
+    }
+  }
+
+  /**
+   * Legt unbekannte Namen an und stellt danach sicher, dass zu jedem Namen eine Zahl bekannt ist.
+   *
+   * ignoreDuplicates fängt den Fall ab, dass ein paralleler Lauf denselben Namen zuerst anlegt.
+   * Das Zurücklesen läuft blockweise aus demselben Grund wie die Löschblöcke weiter oben:
+   * supabase-js baut aus .in() eine Liste IM URL, und die darf nicht beliebig lang werden.
+   */
+  async ids(namen) {
+    const neu = [...new Set(namen)].filter((n) => !this.idZuName.has(n));
+    if (neu.length === 0) return;
+
+    const { error } = await mitWiederholung('Kartennamen anlegen', () =>
+      supabase.from('spellbook_card_names').upsert(
+        neu.map((name_normalized) => ({ name_normalized })),
+        { onConflict: 'name_normalized', ignoreDuplicates: true },
+      ),
+    );
+    if (error) throw new Error(`Kartennamen konnten nicht angelegt werden: ${error.message}`);
+
+    for (const block of inBloecke(neu)) {
+      const { data, error: leseFehler } = await mitWiederholung('Kartennamen lesen', () =>
+        supabase
+          .from('spellbook_card_names')
+          .select('id, name_normalized')
+          .in('name_normalized', block),
+      );
+      if (leseFehler)
+        throw new Error(`Kartennamen konnten nicht gelesen werden: ${leseFehler.message}`);
+      for (const zeile of data) this.idZuName.set(zeile.name_normalized, zeile.id);
+    }
+
+    const fehlend = namen.find((n) => !this.idZuName.has(n));
+    if (fehlend !== undefined) {
+      // Kann nur eintreten, wenn das Anlegen still nichts getan hat - dann lieber abbrechen, als
+      // eine Kartenliste mit undefined-Einträgen zu schreiben.
+      throw new Error(`Kartenname "${fehlend}" konnte keiner Zahl zugeordnet werden.`);
+    }
+  }
+}
+
 async function syncCombos(laufBegonnen) {
   console.log(`--- Teil 2: Combos bis ${MAX_KARTEN_JE_COMBO} Karten ---`);
   const manaSpalte = await hatManaSpalte();
@@ -461,17 +534,39 @@ async function syncCombos(laufBegonnen) {
   let zweier = 0;
 
   let comboPuffer = [];
-  let kartenPuffer = [];
+  let listenPuffer = [];
   let zweierPuffer = [];
 
-  // Die Combos MÜSSEN vor ihren Kartenzeilen stehen: spellbook_combo_cards zeigt per Fremdschlüssel
-  // auf spellbook_combos, ein Kartenblock ohne seine Combo würde abgewiesen.
+  const kartennamen = new Kartennamen();
+  await kartennamen.laden();
+  console.log(`  ${kartennamen.idZuName.size} Kartennamen bereits bekannt.`);
+
+  // Die Combos MÜSSEN vor ihren Kartenlisten stehen: spellbook_combo_cardlists zeigt per
+  // Fremdschlüssel auf spellbook_combos, eine Kartenliste ohne ihre Combo würde abgewiesen.
   const leerePuffer = async () => {
     await schreibeBlock('spellbook_combos', 'id', comboPuffer);
-    await schreibeBlock('spellbook_combo_cards', 'combo_id,name_normalized', kartenPuffer);
+
+    if (listenPuffer.length > 0) {
+      // Namen erst hier in Zahlen übersetzen: So geht das für den ganzen Block in einem Aufruf
+      // statt für jede Combo einzeln.
+      await kartennamen.ids(listenPuffer.flatMap((l) => l.namen));
+      const zuZahl = (namen) =>
+        [...new Set(namen.map((n) => kartennamen.idZuName.get(n)))].sort((a, b) => a - b);
+      await schreibeBlock(
+        'spellbook_combo_cardlists',
+        'combo_id',
+        listenPuffer.map((l) => ({
+          combo_id: l.combo_id,
+          card_ids: zuZahl(l.namen),
+          commander_ids: zuZahl(l.commanderNamen),
+          synced_at: l.synced_at,
+        })),
+      );
+    }
+
     await schreibeBlock('spellbook_two_card_combos', 'id', zweierPuffer);
     comboPuffer = [];
-    kartenPuffer = [];
+    listenPuffer = [];
     zweierPuffer = [];
   };
 
@@ -510,13 +605,7 @@ async function syncCombos(laufBegonnen) {
         const name = u?.card?.name;
         if (!name) continue;
         const key = normalizedFrontName(name);
-        const bisher = karten.get(key);
-        karten.set(key, {
-          combo_id: variant.id,
-          name_normalized: key,
-          must_be_commander: (bisher?.must_be_commander ?? false) || (u.mustBeCommander ?? false),
-          synced_at: laufBegonnen,
-        });
+        karten.set(key, (karten.get(key) ?? false) || (u.mustBeCommander ?? false));
       }
       if (karten.size !== uses.length) {
         // Namen konnten nicht aufgelöst werden oder doppelten sich - dann stimmt card_count nicht
@@ -535,7 +624,12 @@ async function syncCombos(laufBegonnen) {
         popularity: variant.popularity ?? null,
         synced_at: laufBegonnen,
       });
-      for (const zeile of karten.values()) kartenPuffer.push(zeile);
+      listenPuffer.push({
+        combo_id: variant.id,
+        namen: [...karten.keys()],
+        commanderNamen: [...karten.entries()].filter(([, cmd]) => cmd).map(([name]) => name),
+        synced_at: laufBegonnen,
+      });
       combos++;
       kartenzeilen += karten.size;
 
@@ -587,10 +681,14 @@ async function syncCombos(laufBegonnen) {
     );
   }
 
-  // Erst die Kartenzeilen, dann die Combos: eine gelöschte Combo nimmt ihre Karten per
-  // "on delete cascade" ohnehin mit, andersherum blieben Kartenzeilen zu noch existierenden
-  // Combos stehen, die dort inzwischen nicht mehr mitspielen.
-  await raeumeAuf('spellbook_combo_cards', 'combo_id', laufBegonnen);
+  // Erst die Kartenlisten, dann die Combos: eine gelöschte Combo nimmt ihre Kartenliste per
+  // "on delete cascade" ohnehin mit, andersherum bliebe eine Kartenliste zu einer noch
+  // existierenden Combo stehen, die dort inzwischen nicht mehr mitspielt.
+  //
+  // spellbook_card_names wird bewusst NICHT aufgeräumt: Ein Name, den gerade keine Combo mehr
+  // benutzt, kostet rund 30 Byte und ist morgen womöglich wieder dabei. Ihn zu löschen hiesse,
+  // bei jedem Lauf gegen alle Kartenlisten zu prüfen - viel Aufwand für nichts.
+  await raeumeAuf('spellbook_combo_cardlists', 'combo_id', laufBegonnen);
   await raeumeAuf('spellbook_combos', 'id', laufBegonnen);
   await raeumeAuf('spellbook_two_card_combos', 'id', laufBegonnen);
 

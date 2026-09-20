@@ -1,3 +1,13 @@
+-- TEILWEISE ÜBERHOLT AM 20.09.2026 durch sql/spellbook-combo-card-arrays-2026-09-20.sql:
+-- Die materialisierte Ansicht spellbook_winning_combos wird dort aus spellbook_combo_cardlists
+-- neu gebaut (gleiche Spalten, gleicher Inhalt) - der Abschnitt hier liest noch die inzwischen
+-- gelöschte Tabelle spellbook_combo_cards.
+-- WEITERHIN MASSGEBLICH sind die drei Muster-Funktionen am Anfang dieser Datei
+-- (spellbook_winning_combo_muster, spellbook_sofort_sieg_muster, spellbook_sieg_ausnahme).
+-- scripts/simulate-deck-pool.js vergleicht sie vor jedem Lauf gegen src/app/goldfish-sim.ts.
+-- Auf der PRODUKTIVEN Datenbank diese Datei nicht mehr am Stück ausführen; bei einem
+-- NEUAUFBAU in Datumsreihenfolge laufen lassen, die Array-Migration räumt danach auf.
+--
 -- Zwei Sieg-Definitionen statt einer. Im Supabase-SQL-Editor ausführen. Idempotent.
 --
 -- DER ANLASS, an einem gemessenen Fall: Ein Urza-cEDH-Deck aus der Praxis enthält 22 vollständige
