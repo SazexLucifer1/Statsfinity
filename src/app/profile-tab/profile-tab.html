@@ -17,7 +17,14 @@
           </div>
           <span class="profile-name">{{ viewed.displayName }}</span>
         </div>
-        <button class="glass-button small" (click)="profileService.stopViewingProfile()">{{ i18n.t('profile.backToMyProfile') }}</button>
+        <div class="chip-row">
+          @if (canDevFullView()) {
+            <button class="glass-button small" (click)="toggleDevFullView()">
+              {{ i18n.t(devFullView() ? 'profile.devFullViewOff' : 'profile.devFullViewOn') }}
+            </button>
+          }
+          <button class="glass-button small" (click)="profileService.stopViewingProfile()">{{ i18n.t('profile.backToMyProfile') }}</button>
+        </div>
       </div>
 
       @if (viewed.favoriteCommanders.length > 0) {
@@ -49,53 +56,60 @@
     }
   </section>
 
-  @if (profileService.viewingUserId(); as userId) {
-    <section class="glass-card span-full">
-      <div class="section-header-row">
-        <h2>{{ i18n.t('profile.decks') }}</h2>
-        @if (groupService.hasPermission('deck.editOthers')) {
-          <div class="chip-row">
-            <button class="icon-button" (click)="openRepairInfoDialog()" [attr.aria-label]="i18n.t('profile.autoRepairAria')" [title]="i18n.t('profile.autoRepairAria')">🔧</button>
-            <button class="icon-button" (click)="openManualLinkDialogFor(userId)" [attr.aria-label]="i18n.t('profile.manualLinkAria')" [title]="i18n.t('profile.manualLinkAria')">🔗</button>
-          </div>
+  <!-- Die reduzierte Fremdansicht. In der Developer-Vollansicht tritt an ihre Stelle der
+       vollständige Block aus dem eigenen Profil (ng-template #profileBody am Dateiende). -->
+  @if (!devFullView()) {
+    @if (profileService.viewingUserId(); as userId) {
+      <section class="glass-card span-full">
+        <div class="section-header-row">
+          <h2>{{ i18n.t('profile.decks') }}</h2>
+          @if (groupService.hasPermission('deck.editOthers')) {
+            <div class="chip-row">
+              <button class="icon-button" (click)="openRepairInfoDialog()" [attr.aria-label]="i18n.t('profile.autoRepairAria')" [title]="i18n.t('profile.autoRepairAria')">🔧</button>
+              <button class="icon-button" (click)="openManualLinkDialogFor(userId)" [attr.aria-label]="i18n.t('profile.manualLinkAria')" [title]="i18n.t('profile.manualLinkAria')">🔗</button>
+            </div>
+          }
+        </div>
+        @if (viewingDeckOwner(); as owner) {
+          <app-deck-list [owner]="owner" [readonlyMode]="!groupService.hasPermission('deck.editOthers')" [hideStats]="othersStatsHidden()" />
         }
-      </div>
-      @if (viewingDeckOwner(); as owner) {
-        <app-deck-list [owner]="owner" [readonlyMode]="!groupService.hasPermission('deck.editOthers')" [hideStats]="othersStatsHidden()" />
-      }
-    </section>
-  }
+      </section>
+    }
 
-  @if (othersStatsHidden()) {
-    <section class="glass-card">
-      <p class="hint">{{ i18n.t('profile.statsLockedHint') }}</p>
-    </section>
-  }
+    @if (othersStatsHidden()) {
+      <section class="glass-card">
+        <p class="hint">{{ i18n.t('profile.statsLockedHint') }}</p>
+      </section>
+    }
 
-  @if (!othersStatsHidden() && viewingCommanderStatsWithoutDeck().length > 0) {
-    <section class="glass-card span-full">
-      <h2>{{ i18n.t('profile.commanderStats') }}</h2>
-      <p class="hint">
-        {{ i18n.t('profile.commanderStatsHint') }}
-      </p>
+    @if (!othersStatsHidden() && viewingCommanderStatsWithoutDeck().length > 0) {
+      <section class="glass-card span-full">
+        <h2>{{ i18n.t('profile.commanderStats') }}</h2>
+        <p class="hint">
+          {{ i18n.t('profile.commanderStatsHint') }}
+        </p>
 
-      <app-commander-stat-list
-        #viewingCommanderListRef
-        [stats]="viewingCommanderStatsWithoutDeck()"
-        [commanderImage]="commanderImage"
-        [commanderBackImage]="commanderBackImage"
-      />
-    </section>
-  }
+        <app-commander-stat-list
+          #viewingCommanderListRef
+          [stats]="viewingCommanderStatsWithoutDeck()"
+          [commanderImage]="commanderImage"
+          [commanderBackImage]="commanderBackImage"
+        />
+      </section>
+    }
 
-  @if (!othersStatsHidden() && placementDistribution().length > 0) {
-    <section class="glass-card">
-      <h2>{{ i18n.t('profile.placementDistribution') }}</h2>
-      <p class="hint">{{ i18n.t('profile.placementDistributionHint') }}</p>
-      <app-bar-chart [data]="placementChart()" orientation="vertical" />
-    </section>
+    @if (!othersStatsHidden() && placementDistribution().length > 0) {
+      <section class="glass-card">
+        <h2>{{ i18n.t('profile.placementDistribution') }}</h2>
+        <p class="hint">{{ i18n.t('profile.placementDistributionHint') }}</p>
+        <app-bar-chart [data]="placementChart()" orientation="vertical" />
+      </section>
+    }
   }
 </div>
+@if (devFullView()) {
+  <ng-container [ngTemplateOutlet]="profileBody" />
+}
 } @else if (profileService.viewingPlayerId(); as npcPlayerId) {
 
 <div class="profile-grid">
@@ -108,7 +122,14 @@
       <span class="profile-name">{{ profileService.viewingPlayerName() }}</span>
       <span class="glass-chip small">{{ i18n.t('profile.npcBadge') }}</span>
     </div>
-    <button class="glass-button small" (click)="profileService.stopViewingProfile()">{{ i18n.t('profile.backToMyProfile') }}</button>
+    <div class="chip-row">
+      @if (canDevFullView()) {
+        <button class="glass-button small" (click)="toggleDevFullView()">
+          {{ i18n.t(devFullView() ? 'profile.devFullViewOff' : 'profile.devFullViewOn') }}
+        </button>
+      }
+      <button class="glass-button small" (click)="profileService.stopViewingProfile()">{{ i18n.t('profile.backToMyProfile') }}</button>
+    </div>
   </div>
 
   @if (viewingNpcFavoriteCommanders().length > 0 || groupService.hasPermission('npc.favoriteCommanders')) {
@@ -145,51 +166,57 @@
   }
 </section>
 
-<section class="glass-card span-full">
-  <div class="section-header-row">
-    <h2>{{ i18n.t('profile.decks') }}</h2>
-    @if (groupService.hasPermission('deck.editOthers')) {
-      <div class="chip-row">
-        <button class="icon-button" (click)="openRepairInfoDialog()" [attr.aria-label]="i18n.t('profile.autoRepairAria')" [title]="i18n.t('profile.autoRepairAria')">🔧</button>
-        <button class="icon-button" (click)="openManualLinkDialogForNpc(npcPlayerId)" [attr.aria-label]="i18n.t('profile.manualLinkAria')" [title]="i18n.t('profile.manualLinkAria')">🔗</button>
-      </div>
-    }
-  </div>
-  @if (viewingNpcDeckOwner(); as owner) {
-    <app-deck-list [owner]="owner" [readonlyMode]="!groupService.hasPermission('deck.editOthers')" [hideStats]="othersStatsHidden()" />
-  }
-</section>
-
-@if (othersStatsHidden()) {
-  <section class="glass-card">
-    <p class="hint">{{ i18n.t('profile.statsLockedHint') }}</p>
-  </section>
-}
-
-@if (!othersStatsHidden() && viewingNpcCommanderStatsWithoutDeck().length > 0) {
+<!-- Die reduzierte Fremdansicht, siehe den Account-Zweig oben. -->
+@if (!devFullView()) {
   <section class="glass-card span-full">
-    <h2>{{ i18n.t('profile.commanderStats') }}</h2>
-    <p class="hint">
-      {{ i18n.t('profile.commanderStatsHint') }}
-    </p>
-
-    <app-commander-stat-list
-      #viewingNpcCommanderListRef
-      [stats]="viewingNpcCommanderStatsWithoutDeck()"
-      [commanderImage]="commanderImage"
-      [commanderBackImage]="commanderBackImage"
-    />
+    <div class="section-header-row">
+      <h2>{{ i18n.t('profile.decks') }}</h2>
+      @if (groupService.hasPermission('deck.editOthers')) {
+        <div class="chip-row">
+          <button class="icon-button" (click)="openRepairInfoDialog()" [attr.aria-label]="i18n.t('profile.autoRepairAria')" [title]="i18n.t('profile.autoRepairAria')">🔧</button>
+          <button class="icon-button" (click)="openManualLinkDialogForNpc(npcPlayerId)" [attr.aria-label]="i18n.t('profile.manualLinkAria')" [title]="i18n.t('profile.manualLinkAria')">🔗</button>
+        </div>
+      }
+    </div>
+    @if (viewingNpcDeckOwner(); as owner) {
+      <app-deck-list [owner]="owner" [readonlyMode]="!groupService.hasPermission('deck.editOthers')" [hideStats]="othersStatsHidden()" />
+    }
   </section>
-}
 
-@if (!othersStatsHidden() && placementDistribution().length > 0) {
-  <section class="glass-card">
-    <h2>{{ i18n.t('profile.placementDistribution') }}</h2>
-    <p class="hint">{{ i18n.t('profile.placementDistributionHint') }}</p>
-    <app-bar-chart [data]="placementChart()" orientation="vertical" />
-  </section>
+  @if (othersStatsHidden()) {
+    <section class="glass-card">
+      <p class="hint">{{ i18n.t('profile.statsLockedHint') }}</p>
+    </section>
+  }
+
+  @if (!othersStatsHidden() && viewingNpcCommanderStatsWithoutDeck().length > 0) {
+    <section class="glass-card span-full">
+      <h2>{{ i18n.t('profile.commanderStats') }}</h2>
+      <p class="hint">
+        {{ i18n.t('profile.commanderStatsHint') }}
+      </p>
+
+      <app-commander-stat-list
+        #viewingNpcCommanderListRef
+        [stats]="viewingNpcCommanderStatsWithoutDeck()"
+        [commanderImage]="commanderImage"
+        [commanderBackImage]="commanderBackImage"
+      />
+    </section>
+  }
+
+  @if (!othersStatsHidden() && placementDistribution().length > 0) {
+    <section class="glass-card">
+      <h2>{{ i18n.t('profile.placementDistribution') }}</h2>
+      <p class="hint">{{ i18n.t('profile.placementDistributionHint') }}</p>
+      <app-bar-chart [data]="placementChart()" orientation="vertical" />
+    </section>
+  }
 }
 </div>
+@if (devFullView()) {
+  <ng-container [ngTemplateOutlet]="profileBody" />
+}
 } @else {
 
 <section class="glass-card span-full">
@@ -314,204 +341,15 @@
     </div>
   </section>
 
+  <!-- Statistik- und Deck-Bereich. Steht als ng-template auf oberster Ebene, weil ihn die
+       Developer-Vollansicht eines FREMDEN Profils unverändert mitbenutzt - eine zweite, von Hand
+       nachgepflegte Kopie desselben Markups wäre schon nach der ersten Änderung eine andere
+       Ansicht. Worauf sie sich bezieht, steckt in statsOwner() (siehe profile-tab.ts). -->
+  <ng-container [ngTemplateOutlet]="profileBody" />
+
+  <!-- Dieselbe Bedingung wie im herausgezogenen Block: sie umschloss dort auch noch die beiden
+       Hintergrund-Dialoge weiter unten. -->
   @if (profileService.profile()) {
-    <!-- Reiter sind Navigation, deshalb .segmented und nicht zwei Aktions-Knöpfe mit .active. -->
-    <div class="segmented block profile-view-toggle">
-      <button [class.active]="profileViewTab() === 'stats'" (click)="setProfileViewTab('stats')">
-        {{ i18n.t('profile.viewTabStats') }}
-      </button>
-      <button [class.active]="profileViewTab() === 'decks'" (click)="setProfileViewTab('decks')">
-        {{ i18n.t('profile.viewTabDecks') }}
-      </button>
-    </div>
-  }
-
-  @if (profileViewTab() === 'stats') {
-  <!-- Zeitraum ganz oben, weil er ALLE Kacheln darunter betrifft - dieselbe Rolle wie der
-       Jahr-Filter im Statistik-Tab. [ngModel]/[ngValue] statt [value]/(change): sonst setzt Angular
-       die Vorauswahl, bevor die @for-Optionen im DOM stehen, und das Feld zeigt sichtbar "Alle
-       Zeiten", obwohl intern das laufende Jahr gefiltert wird. -->
-  <section class="glass-card stats-year-filter">
-    <h2>{{ i18n.t('profile.statsPeriod') }}</h2>
-    <select
-      class="glass-input"
-      [attr.aria-label]="i18n.t('profile.statsPeriod')"
-      [ngModel]="statsYear()"
-      (ngModelChange)="setStatsYear($event)"
-    >
-      <option [ngValue]="'Alle'">{{ i18n.t('stats.allTime') }}</option>
-      @for (year of availableStatsYears(); track year) {
-        <option [ngValue]="year">{{ year }}</option>
-      }
-    </select>
-  </section>
-<div class="profile-grid stats-grid">
-    @if (ownPlacementDistribution().length > 0) {
-      <section class="glass-card">
-        <h2>{{ i18n.t('profile.placementDistribution') }}</h2>
-        <p class="hint">{{ i18n.t('profile.placementDistributionHint') }}</p>
-        <app-bar-chart [data]="ownPlacementChart()" orientation="vertical" />
-      </section>
-    }
-
-    @if (crossGroupStats(); as overall) {
-      @if (overall.totalGames > 0) {
-        <section class="glass-card">
-          <h2>{{ i18n.t('profile.crossGroupStatsTitle') }}</h2>
-          <p class="hint">{{ i18n.t('profile.crossGroupStatsHint', { groups: overall.groupCount }) }}</p>
-          <ul class="player-list compact-list">
-            <li>
-              <span class="player-name">{{ i18n.t('profile.crossGroupGames') }}</span>
-              <span class="hint">{{ overall.totalWins }} / {{ overall.totalGames }} {{ i18n.t('stats.wins') }} · {{ overall.winRate | number: '1.0-0' }}%</span>
-            </li>
-            @if (overall.topCommander; as top) {
-              <li>
-                <span class="player-name">{{ i18n.t('profile.crossGroupTopCommander') }}</span>
-                <span class="hint">{{ top.commander }} ({{ top.wins }} / {{ top.games }} · {{ top.winRate | number: '1.0-0' }}%)</span>
-              </li>
-            }
-          </ul>
-        </section>
-      }
-    }
-
-    @if (cardAndColorStats(); as stats) {
-      @if (stats.mostUsedCards.length > 0 || stats.colorRanking.length > 0 || stats.colorComboRanking.length > 0) {
-        <!-- Ansichtswechsel, kein Filter - dieselbe Rolle wie die Sortier-Umschalter im
-             Statistik-Tab. -->
-        <div class="segmented sort-toggle">
-          <button [class.active]="statsWeightMode() === 'games'" (click)="setStatsWeightMode('games')">
-            {{ i18n.t('profile.statsWeightByGames') }}
-          </button>
-          <button [class.active]="statsWeightMode() === 'decks'" (click)="setStatsWeightMode('decks')">
-            {{ i18n.t('profile.statsWeightByDecks') }}
-          </button>
-        </div>
-      }
-
-      @if (stats.mostUsedCards.length > 0) {
-        <section class="glass-card">
-          <h2>{{ i18n.t('profile.mostUsedCardsTitle') }}</h2>
-          <p class="hint">{{ i18n.t('profile.mostUsedCardsHint') }}</p>
-          <!-- Bewusst Liste statt Balkendiagramm: Kartennamen wie "An Offer You Can't Refuse"
-               würden in der Beschriftungsspalte eines Diagramms abgeschnitten. Der Balken kommt
-               stattdessen unter die Zeile. -->
-          <app-podium [entries]="mostUsedCardsPodium()" (entrySelect)="openPodiumCard($event)" />
-          <ul class="player-list compact-list ranked-list">
-            @for (card of mostUsedCardsRest(); track card.cardName; let i = $index) {
-              <li>
-                <span class="player-name card-name-cell">
-                  @if (mostUsedCardImage(card); as img) {
-                    <button
-                      type="button"
-                      class="card-thumb small"
-                      (click)="cardPreview.open(img, commanderBackImage(card.cardName), card.cardName)"
-                    >
-                      <app-card-image
-                        [compact]="true"
-                        [imageUrl]="img"
-                        [backImageUrl]="commanderBackImage(card.cardName)"
-                        [alt]="card.cardName"
-                      />
-                    </button>
-                  }
-                  <span class="card-name-text">{{ podiumSize + i + 1 }}. {{ card.cardName }}</span>
-                </span>
-                <span class="hint">{{ countFor(card) }}×</span>
-                <app-meter [value]="countFor(card)" [max]="maxMostUsedCardCount()" />
-              </li>
-            }
-          </ul>
-        </section>
-      }
-
-      @if (stats.colorRanking.length > 0) {
-        <section class="glass-card">
-          <h2>{{ i18n.t('profile.colorRankingTitle') }}</h2>
-          <p class="hint">{{ i18n.t('profile.colorRankingHint') }}</p>
-          <app-radar-chart [data]="colorRadarChart()" />
-        </section>
-      }
-
-      @if (stats.colorComboRanking.length > 0) {
-        <section class="glass-card span-full">
-          <h2>{{ i18n.t('profile.colorComboRankingTitle') }}</h2>
-          <p class="hint">{{ i18n.t('profile.colorComboRankingHint') }}</p>
-          <!-- Bleibt eine Liste: eine Zeile trägt mehrere Farben, das kann ein einfarbiger
-               Balken nicht ausdrücken. Die Manasymbole übernehmen die Identität, der Balken
-               darunter die Häufigkeit. -->
-          <app-podium [entries]="colorComboPodium()" shape="symbols" [interactive]="false" />
-          <ul class="player-list compact-list ranked-list combo-grid">
-            @for (combo of colorComboRest(); track combo.colors.join('')) {
-              <li>
-                <span class="player-name combo-name">
-                  @if (combo.colors.length === 0) {
-                    <app-mana-symbol symbol="C" />
-                  } @else {
-                    @for (c of comboColors(combo.colors); track c) {
-                      <app-mana-symbol [symbol]="c" />
-                    }
-                  }
-                  {{ colorComboLabel(combo.colors) }}
-                </span>
-                <span class="hint">{{ countFor(combo) }}×</span>
-                <app-meter [value]="countFor(combo)" [max]="maxColorComboCount()" />
-              </li>
-            }
-          </ul>
-        </section>
-      }
-    }
-</div>
-  }
-
-  @if (profileService.profile()) {
-  @if (profileViewTab() === 'decks') {
-  <section class="glass-card">
-    <div class="section-header-row">
-      <h2>{{ i18n.t('profile.myDecks') }}</h2>
-      <div class="chip-row">
-        <button class="icon-button" (click)="openRepairInfoDialog()" [attr.aria-label]="i18n.t('profile.autoRepairAria')" [title]="i18n.t('profile.autoRepairAria')">🔧</button>
-        <button class="icon-button" (click)="openManualLinkDialog()" [attr.aria-label]="i18n.t('profile.manualLinkAria')" [title]="i18n.t('profile.manualLinkAria')">🔗</button>
-      </div>
-    </div>
-    @if (ownDeckOwner(); as owner) {
-      <app-deck-list #deckListRef [owner]="owner" />
-    }
-  </section>
-
-  @if (commanderListModes().length > 0) {
-    <section class="glass-card">
-      <h2>{{ i18n.t(commanderListTitleKey(commanderListMode())) }}</h2>
-      <!-- Ein Umschalter statt drei Kästen untereinander: die drei Listen beantworten dieselbe
-           Frage ("wozu habe ich kein eigenes Deck?"), nur mit unterschiedlicher Konsequenz.
-           .segmented, weil genau eine Liste gilt (siehe styles.scss). Die kurzen Beschriftungen
-           halten die drei Segmente auf dem Handy in einer Zeile - die volle Bezeichnung steht
-           ohnehin direkt darüber in der Überschrift. Bei nur einer gefüllten Liste entfällt der
-           Umschalter. -->
-      @if (commanderListModes().length > 1) {
-        <div class="segmented block">
-          @for (mode of commanderListModes(); track mode) {
-            <button [class.active]="commanderListMode() === mode" (click)="setCommanderListMode(mode)">
-              {{ i18n.t(commanderListShortKey(mode)) }} ({{ commanderListCount(mode) }})
-            </button>
-          }
-        </div>
-      }
-      <p class="hint">
-        {{ i18n.t(commanderListHintKey(commanderListMode())) }}
-      </p>
-
-      <app-commander-stat-list
-        #ownCommanderListRef
-        [stats]="shownUnassignedCommanderStats()"
-        [commanderImage]="commanderImage"
-        [commanderBackImage]="commanderBackImage"
-        (borrowedDeckClick)="openBorrowedDeck($event)"
-      />
-    </section>
-  }
-  }
 
   @if (showBackgroundsDialog()) {
   <div class="options-menu-overlay" (click)="closeBackgroundsDialog()">
@@ -754,3 +592,214 @@
   </div>
 </div>
 }
+
+<ng-template #profileBody>
+  @if (devFullView()) {
+    <section class="glass-card span-full">
+      <p class="hint">{{ i18n.t('profile.devFullViewHint') }}</p>
+    </section>
+  }
+  @if (profileService.profile()) {
+    <!-- Reiter sind Navigation, deshalb .segmented und nicht zwei Aktions-Knöpfe mit .active. -->
+    <div class="segmented block profile-view-toggle">
+      <button [class.active]="profileViewTab() === 'stats'" (click)="setProfileViewTab('stats')">
+        {{ i18n.t('profile.viewTabStats') }}
+      </button>
+      <button [class.active]="profileViewTab() === 'decks'" (click)="setProfileViewTab('decks')">
+        {{ i18n.t('profile.viewTabDecks') }}
+      </button>
+    </div>
+  }
+
+  @if (profileViewTab() === 'stats') {
+  <!-- Zeitraum ganz oben, weil er ALLE Kacheln darunter betrifft - dieselbe Rolle wie der
+       Jahr-Filter im Statistik-Tab. [ngModel]/[ngValue] statt [value]/(change): sonst setzt Angular
+       die Vorauswahl, bevor die @for-Optionen im DOM stehen, und das Feld zeigt sichtbar "Alle
+       Zeiten", obwohl intern das laufende Jahr gefiltert wird. -->
+  <section class="glass-card stats-year-filter">
+    <h2>{{ i18n.t('profile.statsPeriod') }}</h2>
+    <select
+      class="glass-input"
+      [attr.aria-label]="i18n.t('profile.statsPeriod')"
+      [ngModel]="statsYear()"
+      (ngModelChange)="setStatsYear($event)"
+    >
+      <option [ngValue]="'Alle'">{{ i18n.t('stats.allTime') }}</option>
+      @for (year of availableStatsYears(); track year) {
+        <option [ngValue]="year">{{ year }}</option>
+      }
+    </select>
+  </section>
+<div class="profile-grid stats-grid">
+    @if (ownPlacementDistribution().length > 0) {
+      <section class="glass-card">
+        <h2>{{ i18n.t('profile.placementDistribution') }}</h2>
+        <p class="hint">{{ i18n.t('profile.placementDistributionHint') }}</p>
+        <app-bar-chart [data]="ownPlacementChart()" orientation="vertical" />
+      </section>
+    }
+
+    @if (crossGroupStats(); as overall) {
+      @if (overall.totalGames > 0) {
+        <section class="glass-card">
+          <h2>{{ i18n.t('profile.crossGroupStatsTitle') }}</h2>
+          <p class="hint">{{ i18n.t('profile.crossGroupStatsHint', { groups: overall.groupCount }) }}</p>
+          <ul class="player-list compact-list">
+            <li>
+              <span class="player-name">{{ i18n.t('profile.crossGroupGames') }}</span>
+              <span class="hint">{{ overall.totalWins }} / {{ overall.totalGames }} {{ i18n.t('stats.wins') }} · {{ overall.winRate | number: '1.0-0' }}%</span>
+            </li>
+            @if (overall.topCommander; as top) {
+              <li>
+                <span class="player-name">{{ i18n.t('profile.crossGroupTopCommander') }}</span>
+                <span class="hint">{{ top.commander }} ({{ top.wins }} / {{ top.games }} · {{ top.winRate | number: '1.0-0' }}%)</span>
+              </li>
+            }
+          </ul>
+        </section>
+      }
+    }
+
+    @if (cardAndColorStats(); as stats) {
+      @if (stats.mostUsedCards.length > 0 || stats.colorRanking.length > 0 || stats.colorComboRanking.length > 0) {
+        <!-- Ansichtswechsel, kein Filter - dieselbe Rolle wie die Sortier-Umschalter im
+             Statistik-Tab. -->
+        <div class="segmented sort-toggle">
+          <button [class.active]="statsWeightMode() === 'games'" (click)="setStatsWeightMode('games')">
+            {{ i18n.t('profile.statsWeightByGames') }}
+          </button>
+          <button [class.active]="statsWeightMode() === 'decks'" (click)="setStatsWeightMode('decks')">
+            {{ i18n.t('profile.statsWeightByDecks') }}
+          </button>
+        </div>
+      }
+
+      @if (stats.mostUsedCards.length > 0) {
+        <section class="glass-card">
+          <h2>{{ i18n.t('profile.mostUsedCardsTitle') }}</h2>
+          <p class="hint">{{ i18n.t('profile.mostUsedCardsHint') }}</p>
+          <!-- Bewusst Liste statt Balkendiagramm: Kartennamen wie "An Offer You Can't Refuse"
+               würden in der Beschriftungsspalte eines Diagramms abgeschnitten. Der Balken kommt
+               stattdessen unter die Zeile. -->
+          <app-podium [entries]="mostUsedCardsPodium()" (entrySelect)="openPodiumCard($event)" />
+          <ul class="player-list compact-list ranked-list">
+            @for (card of mostUsedCardsRest(); track card.cardName; let i = $index) {
+              <li>
+                <span class="player-name card-name-cell">
+                  @if (mostUsedCardImage(card); as img) {
+                    <button
+                      type="button"
+                      class="card-thumb small"
+                      (click)="cardPreview.open(img, commanderBackImage(card.cardName), card.cardName)"
+                    >
+                      <app-card-image
+                        [compact]="true"
+                        [imageUrl]="img"
+                        [backImageUrl]="commanderBackImage(card.cardName)"
+                        [alt]="card.cardName"
+                      />
+                    </button>
+                  }
+                  <span class="card-name-text">{{ podiumSize + i + 1 }}. {{ card.cardName }}</span>
+                </span>
+                <span class="hint">{{ countFor(card) }}×</span>
+                <app-meter [value]="countFor(card)" [max]="maxMostUsedCardCount()" />
+              </li>
+            }
+          </ul>
+        </section>
+      }
+
+      @if (stats.colorRanking.length > 0) {
+        <section class="glass-card">
+          <h2>{{ i18n.t('profile.colorRankingTitle') }}</h2>
+          <p class="hint">{{ i18n.t('profile.colorRankingHint') }}</p>
+          <app-radar-chart [data]="colorRadarChart()" />
+        </section>
+      }
+
+      @if (stats.colorComboRanking.length > 0) {
+        <section class="glass-card span-full">
+          <h2>{{ i18n.t('profile.colorComboRankingTitle') }}</h2>
+          <p class="hint">{{ i18n.t('profile.colorComboRankingHint') }}</p>
+          <!-- Bleibt eine Liste: eine Zeile trägt mehrere Farben, das kann ein einfarbiger
+               Balken nicht ausdrücken. Die Manasymbole übernehmen die Identität, der Balken
+               darunter die Häufigkeit. -->
+          <app-podium [entries]="colorComboPodium()" shape="symbols" [interactive]="false" />
+          <ul class="player-list compact-list ranked-list combo-grid">
+            @for (combo of colorComboRest(); track combo.colors.join('')) {
+              <li>
+                <span class="player-name combo-name">
+                  @if (combo.colors.length === 0) {
+                    <app-mana-symbol symbol="C" />
+                  } @else {
+                    @for (c of comboColors(combo.colors); track c) {
+                      <app-mana-symbol [symbol]="c" />
+                    }
+                  }
+                  {{ colorComboLabel(combo.colors) }}
+                </span>
+                <span class="hint">{{ countFor(combo) }}×</span>
+                <app-meter [value]="countFor(combo)" [max]="maxColorComboCount()" />
+              </li>
+            }
+          </ul>
+        </section>
+      }
+    }
+</div>
+  }
+
+  @if (profileService.profile()) {
+  @if (profileViewTab() === 'decks') {
+  <section class="glass-card">
+    <div class="section-header-row">
+      <h2>{{ i18n.t(devFullView() ? 'profile.decks' : 'profile.myDecks') }}</h2>
+      <!-- In der Developer-Vollansicht sind das fremde Decks: die beiden Eingriffe hängen deshalb
+           an derselben Berechtigung wie in der reduzierten Fremdansicht, das Ansehen selbst nicht. -->
+      @if (!devFullView() || groupService.hasPermission('deck.editOthers')) {
+        <div class="chip-row">
+          <button class="icon-button" (click)="openRepairInfoDialog()" [attr.aria-label]="i18n.t('profile.autoRepairAria')" [title]="i18n.t('profile.autoRepairAria')">🔧</button>
+          <button class="icon-button" (click)="openManualLinkDialogForCurrent()" [attr.aria-label]="i18n.t('profile.manualLinkAria')" [title]="i18n.t('profile.manualLinkAria')">🔗</button>
+        </div>
+      }
+    </div>
+    @if (statsOwner(); as owner) {
+      <app-deck-list #deckListRef [owner]="owner" [readonlyMode]="devFullView() && !groupService.hasPermission('deck.editOthers')" />
+    }
+  </section>
+
+  @if (commanderListModes().length > 0) {
+    <section class="glass-card">
+      <h2>{{ i18n.t(commanderListTitleKey(commanderListMode())) }}</h2>
+      <!-- Ein Umschalter statt drei Kästen untereinander: die drei Listen beantworten dieselbe
+           Frage ("wozu habe ich kein eigenes Deck?"), nur mit unterschiedlicher Konsequenz.
+           .segmented, weil genau eine Liste gilt (siehe styles.scss). Die kurzen Beschriftungen
+           halten die drei Segmente auf dem Handy in einer Zeile - die volle Bezeichnung steht
+           ohnehin direkt darüber in der Überschrift. Bei nur einer gefüllten Liste entfällt der
+           Umschalter. -->
+      @if (commanderListModes().length > 1) {
+        <div class="segmented block">
+          @for (mode of commanderListModes(); track mode) {
+            <button [class.active]="commanderListMode() === mode" (click)="setCommanderListMode(mode)">
+              {{ i18n.t(commanderListShortKey(mode)) }} ({{ commanderListCount(mode) }})
+            </button>
+          }
+        </div>
+      }
+      <p class="hint">
+        {{ i18n.t(commanderListHintKey(commanderListMode())) }}
+      </p>
+
+      <app-commander-stat-list
+        #ownCommanderListRef
+        [stats]="shownUnassignedCommanderStats()"
+        [commanderImage]="commanderImage"
+        [commanderBackImage]="commanderBackImage"
+        (borrowedDeckClick)="openBorrowedDeck($event)"
+      />
+    </section>
+  }
+  }
+  }
+</ng-template>

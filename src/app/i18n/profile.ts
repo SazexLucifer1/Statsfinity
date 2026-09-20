@@ -5,6 +5,10 @@ export const profile = {
     'profile.loadingProfile': 'Lade Profil …',
     'profile.backToMyProfile': '← Zurück zu meinem Profil',
     'profile.developerBadge': '🛠️ Developer',
+    'profile.devFullViewOn': '🛠️ Vollansicht',
+    'profile.devFullViewOff': '👁️ Normale Ansicht',
+    'profile.devFullViewHint':
+      '🛠️ Developer-Vollansicht: alle Statistiken und Decks dieses Profils, genau so, wie der Spieler sie selbst sieht – nur zum Ansehen.',
     'profile.npcBadge': '🤖 NPC',
     'profile.couldNotLoad': 'Profil konnte nicht geladen werden.',
     'profile.retry': 'Erneut versuchen',
@@ -175,6 +179,10 @@ export const profile = {
     'profile.loadingProfile': 'Loading profile …',
     'profile.backToMyProfile': '← Back to my profile',
     'profile.developerBadge': '🛠️ Developer',
+    'profile.devFullViewOn': '🛠️ Full view',
+    'profile.devFullViewOff': '👁️ Normal view',
+    'profile.devFullViewHint':
+      '🛠️ Developer full view: every statistic and deck of this profile, exactly as the player sees them – read-only.',
     'profile.npcBadge': '🤖 NPC',
     'profile.couldNotLoad': 'Profile could not be loaded.',
     'profile.retry': 'Try again',
