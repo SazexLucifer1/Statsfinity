@@ -75,7 +75,7 @@ export const profile = {
     'profile.manualLinkTitle': '🔗 Manuell verlinken',
     'profile.linkCommanderSectionTitle': 'Commander mit Deck verlinken',
     'profile.linkCommanderHint':
-      'Wähle einen noch nicht zugeordneten Commander und das passende Deck, falls die automatische Erkennung nichts gefunden hat.',
+      'Wähle einen noch nicht zugeordneten Commander und das passende Deck, falls die automatische Erkennung nichts gefunden hat. Mit 🤝 markierte Commander hängen an einem fremden Deck – wählst du hier ein eigenes Deck, werden diese Spiele übernommen.',
     'profile.noUnassignedCommander': 'Aktuell kein Commander ohne Deck vorhanden.',
     'profile.chooseCommanderPlaceholder': '-- Commander wählen --',
     'profile.gamesCountParen': '({{count}} Spiele)',
@@ -247,7 +247,7 @@ export const profile = {
     'profile.manualLinkTitle': '🔗 Link manually',
     'profile.linkCommanderSectionTitle': 'Link commander to deck',
     'profile.linkCommanderHint':
-      "Choose a not-yet-assigned commander and the matching deck, in case automatic detection didn't find anything.",
+      "Choose a not-yet-assigned commander and the matching deck, in case automatic detection didn't find anything. Commanders marked 🤝 are linked to someone else's deck – picking one of your own decks here moves those games over.",
     'profile.noUnassignedCommander': 'Currently no commander without a deck.',
     'profile.chooseCommanderPlaceholder': '-- Choose commander --',
     'profile.gamesCountParen': '({{count}} games)',

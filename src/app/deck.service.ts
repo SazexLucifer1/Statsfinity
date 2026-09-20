@@ -2028,20 +2028,44 @@ export class DeckService {
   }
 
   /**
-   * Verlinkt manuell alle noch unverlinkten Matches eines Commanders (nur eigene Spieler-Einträge)
-   * mit einem konkreten Deck - für Fälle, wo die automatische Erkennung (findDeckIdByCommander)
-   * nichts findet oder der falsche Commander-Name erkannt wurde.
+   * Verlinkt manuell die Matches eines Commanders (nur eigene Spieler-Einträge) mit einem konkreten
+   * Deck - für Fälle, wo die automatische Erkennung (findDeckIdByCommander) nichts findet oder der
+   * falsche Commander-Name erkannt wurde.
+   *
+   * Übernommen werden neben den unverlinkten Partien auch die, die an einem FREMDEN Deck hängen -
+   * also als Leihe erkannt oder beim Erfassen über den Ausleih-Picker gewählt wurden. Ohne das käme
+   * man aus einer einmal gesetzten 🤝-Zuordnung nie wieder heraus: Wer sich dasselbe Precon später
+   * selbst anlegt, dessen Altpartien bleiben am fremden Deck hängen, weil backfillDeckLinks()
+   * ausschließlich unverlinkte Zeilen anfasst. Genau dafür stehen die geliehenen Commander im
+   * 🔗-Dialog zur Auswahl - das Verlinken lief dort bis hierher ins Leere.
+   *
+   * Partien an einem ANDEREN EIGENEN Deck bleiben unangetastet: Dort steht bereits eine bewusste
+   * Zuordnung, und zwei eigene Decks mit demselben Commander sind kein Fehler, den dieser Dialog
+   * aufzulösen hätte.
    */
   async linkCommanderToDeck(owner: DeckOwner, commander: string, deckId: string): Promise<boolean> {
     const playerIds = await this.resolvePlayerIds(owner);
     if (playerIds.length === 0) return false;
 
-    const { error } = await supabase
+    const ownDeckIds = await this.ownDeckIds(owner);
+
+    const { data: rows, error: readError } = await supabase
       .from('match_players')
-      .update({ deck_id: deckId })
+      .select('id, deck_id')
       .in('player_id', playerIds)
-      .eq('commander_name', commander)
-      .is('deck_id', null);
+      .eq('commander_name', commander);
+
+    if (readError) {
+      console.error('Konnte Partien zum Commander nicht laden:', readError);
+      return false;
+    }
+
+    const rowIds = (rows ?? [])
+      .filter((row) => !row.deck_id || !ownDeckIds.has(row.deck_id as string))
+      .map((row) => row.id as string);
+    if (rowIds.length === 0) return true;
+
+    const { error } = await supabase.from('match_players').update({ deck_id: deckId }).in('id', rowIds);
 
     if (error) {
       console.error('Konnte Commander nicht mit Deck verlinken:', error);
