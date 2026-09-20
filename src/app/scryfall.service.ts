@@ -409,6 +409,62 @@ export class ScryfallService {
 
   // NEU
   /**
+   * Lädt genau die Druckvarianten, die eine Decklist über Set-Kürzel + Sammelnummer benennt
+   * ("Sol Ring (SOC) 128"). Nötig fürs Artwork: findCardsBulk() sucht nur über den Namen und
+   * liefert damit immer Scryfalls Standarddruck, nie das Bild, das der Nutzer auf seiner
+   * Deck-Seite ausgesucht hat.
+   *
+   * Zugeordnet wird über den zurückgegebenen KARTENNAMEN, nicht über das angefragte Set-Kürzel:
+   * Scryfall kennt Alias-Kürzel und antwortet immer mit dem kanonischen Set, sodass ein Abgleich
+   * über "Set + Nummer" gerade bei älteren Drucken ins Leere liefe. Kommt zu einer Zeile ein
+   * fremder Kartenname zurück (falsche Sammelnummer in der Liste), fehlt sie einfach im Ergebnis
+   * und der Aufrufer bleibt beim Standarddruck. Schlüssel ist - wie bei findCardsBulk() - der
+   * übergebene Name in Kleinbuchstaben.
+   */
+  async findPrintingsBySetAndNumber(
+    requests: { name: string; setCode: string; collectorNumber: string }[]
+  ): Promise<Map<string, ScryfallCard>> {
+    const result = new Map<string, ScryfallCard>();
+    const frontFaceName = (name: string) => name.split(' // ')[0].trim();
+
+    const searchNameToOriginal = new Map<string, string>();
+    const identifiers = new Map<string, { set: string; collector_number: string }>();
+    for (const { name, setCode, collectorNumber } of requests) {
+      const set = setCode.trim().toLowerCase();
+      const collector_number = collectorNumber.trim().toLowerCase();
+      if (!name.trim() || !set || !collector_number) continue;
+      searchNameToOriginal.set(normalizeCardName(frontFaceName(name)), name);
+      identifiers.set(`${set}|${collector_number}`, { set, collector_number });
+    }
+
+    const alle = [...identifiers.values()];
+    const chunks: { set: string; collector_number: string }[][] = [];
+    for (let i = 0; i < alle.length; i += 75) chunks.push(alle.slice(i, i + 75));
+
+    await Promise.all(
+      chunks.map(async (chunk) => {
+        const res = await this.fetchWithRetry(`${API}/cards/collection`, 2, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identifiers: chunk }),
+        });
+        // Fehlgeschlagen oder unbekannter Druck: kein Fehler, der Aufrufer nimmt dann das Bild
+        // aus der Namenssuche.
+        if (!res?.ok) return;
+        const data = await res.json();
+        for (const card of (data.data as any[]) ?? []) {
+          const original = searchNameToOriginal.get(normalizeCardName(frontFaceName(card.name as string)));
+          if (!original) continue;
+          result.set(original.toLowerCase(), this.toCard(card));
+        }
+      })
+    );
+
+    return result;
+  }
+
+  // NEU
+  /**
    * Lädt Kartendaten für viele Scryfall-IDs auf einmal (z.B. Marken aus all_parts) - Namenssuche
    * wäre hier mehrdeutig (mehrere Karten teilen sich oft denselben Markennamen wie "Zombie"),
    * die ID identifiziert dagegen eindeutig genau diesen einen Marken-Druck. Gleiches

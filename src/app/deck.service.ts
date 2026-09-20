@@ -230,8 +230,25 @@ export interface DeckChangeEntry {
 const SECTION_HEADER =
   /^(deck|decklist|main|mainboard|main deck|sideboard|maybeboard|commander|companion)\s*:?\s*$/i;
 const QUANTITY_LINE = /^(\d+)\s*x?\s+(.+)$/i;
-/** Set-Kürzel + Sammelnummer, wie sie z.B. deckstats.net anhängt: "Sol Ring (SOC) 128" -> "Sol Ring". */
-const SET_AND_COLLECTOR_NUMBER_SUFFIX = /\s*\([A-Za-z0-9]{2,6}\)\s*[A-Za-z0-9★]*\s*$/;
+/**
+ * Set-Kürzel + Sammelnummer, wie sie z.B. deckstats.net anhängt: "Sol Ring (SOC) 128" -> "Sol Ring".
+ * Beides wird zusätzlich ausgelesen (Gruppe 1/2), weil es genau EINEN Druck benennt - und damit das
+ * Artwork, das der Nutzer auf der Deck-Seite ausgesucht hat (siehe saveDeck()).
+ */
+const SET_AND_COLLECTOR_NUMBER_SUFFIX = /\s*\(([A-Za-z0-9]{2,6})\)\s*([A-Za-z0-9★]*)\s*$/;
+
+/** Eine geparste Decklist-Zeile (siehe DeckService.parseDecklistText()). */
+export interface ParsedDecklistEntry {
+  name: string;
+  quantity: number;
+  isCommander: boolean;
+  /** Stand unter einer "Maybeboard"-Überschrift - gehört in die engere Auswahl, nicht ins Deck. */
+  isMaybeboard: boolean;
+  /** Set-Kürzel aus der Zeile, falls das Exportformat eines mitliefert ("Sol Ring (SOC) 128" -> "SOC"). */
+  setCode: string | null;
+  /** Sammelnummer zum Set-Kürzel ("Sol Ring (SOC) 128" -> "128") - nur zusammen mit setCode brauchbar. */
+  collectorNumber: string | null;
+}
 
 function parseSubtypes(typeLine: string | undefined): string[] {
   const parts = (typeLine ?? '').split('—');
@@ -447,14 +464,14 @@ export class DeckService {
 
   /**
    * Parst eine eingefügte Decklist (ein Eintrag pro Zeile, z.B. "1 Sol Ring" oder "1x Sol Ring").
-   * Ignoriert Kommentarzeilen (//, #), merkt sich aber, ob eine Zeile unter einer
-   * "Commander"-Überschrift steht (z.B. "//Commander" im deckstats.net-Export), um diese Karte(n)
-   * separat markieren zu können. Mehrfach vorkommende Kartennamen werden zu einer Zeile mit
-   * summierter Anzahl zusammengeführt.
+   * Ignoriert Kommentarzeilen (//, #), merkt sich aber, unter welcher Überschrift eine Zeile steht
+   * (z.B. "//Commander" und "//Maybeboard" im deckstats.net-Export), um Commander separat zu
+   * markieren und die engere Auswahl NICHT ins Deck zu schieben. Mehrfach vorkommende Kartennamen
+   * werden zu einer Zeile mit summierter Anzahl zusammengeführt.
    */
-  parseDecklistText(text: string): { name: string; quantity: number; isCommander: boolean }[] {
-    const merged = new Map<string, { name: string; quantity: number; isCommander: boolean }>();
-    let inCommanderSection = false;
+  parseDecklistText(text: string): ParsedDecklistEntry[] {
+    const merged = new Map<string, ParsedDecklistEntry>();
+    let section: 'main' | 'commander' | 'maybeboard' = 'main';
 
     for (const rawLine of text.split('\n')) {
       const line = rawLine.trim();
@@ -462,30 +479,64 @@ export class DeckService {
         // Eine Leerzeile trennt bei den meisten Export-Formaten (deckstats.net, Moxfield,
         // Archidekt, ...) die Commander-Sektion vom Rest der Liste, OHNE dass danach nochmal ein
         // eigener "Deck:"/"Mainboard:"-Header folgt - ohne dieses Zurücksetzen bliebe sonst jede
-        // nachfolgende Karte fälschlich als Commander markiert.
-        inCommanderSection = false;
+        // nachfolgende Karte fälschlich als Commander markiert. Das Maybeboard steht dagegen
+        // immer am Ende und unter einer eigenen Überschrift, und seine Unterkategorien sind durch
+        // Leerzeilen getrennt - es bleibt deshalb bis zur nächsten Überschrift bestehen.
+        if (section === 'commander') section = 'main';
         continue;
       }
 
       const headerMatch = line.replace(/^\/\/\s*/, '').match(SECTION_HEADER);
       if (headerMatch || line.startsWith('//') || line.startsWith('#')) {
-        if (headerMatch) inCommanderSection = headerMatch[1].toLowerCase() === 'commander';
+        if (headerMatch) {
+          const header = headerMatch[1].toLowerCase();
+          section = header === 'commander' ? 'commander' : header === 'maybeboard' ? 'maybeboard' : 'main';
+        }
         continue;
       }
 
       const match = line.match(QUANTITY_LINE);
       const rawName = (match ? match[2] : line).trim();
+      const printing = rawName.match(SET_AND_COLLECTOR_NUMBER_SUFFIX);
       const name = rawName.replace(SET_AND_COLLECTOR_NUMBER_SUFFIX, '').trim();
       const quantity = match ? parseInt(match[1], 10) : 1;
       if (!name) continue;
 
+      const setCode = printing?.[1] ?? null;
+      const collectorNumber = printing?.[2] || null;
+      const isMaybeboard = section === 'maybeboard';
+
       const key = name.toLowerCase();
       const existing = merged.get(key);
-      if (existing) {
+      if (!existing) {
+        merged.set(key, {
+          name,
+          quantity,
+          isCommander: section === 'commander',
+          isMaybeboard,
+          setCode,
+          collectorNumber,
+        });
+        continue;
+      }
+
+      if (existing.isMaybeboard === isMaybeboard) {
         existing.quantity += quantity;
-        existing.isCommander = existing.isCommander || inCommanderSection;
-      } else {
-        merged.set(key, { name, quantity, isCommander: inCommanderSection });
+      } else if (existing.isMaybeboard) {
+        // Dieselbe Karte steht in der engeren Auswahl UND im Deck: das Deck gewinnt, und die
+        // Maybeboard-Zeile zählt nicht mit - sonst stünde "1 Sol Ring" im Deck plus "1 Sol Ring"
+        // im Maybeboard am Ende als 2x Sol Ring in der Liste.
+        existing.quantity = quantity;
+        existing.isMaybeboard = false;
+        if (setCode) {
+          existing.setCode = setCode;
+          existing.collectorNumber = collectorNumber;
+        }
+      }
+      if (section === 'commander') existing.isCommander = true;
+      if (!existing.setCode && setCode) {
+        existing.setCode = setCode;
+        existing.collectorNumber = collectorNumber;
       }
     }
 
@@ -513,6 +564,14 @@ export class DeckService {
     if (parsed.length === 0) return null;
 
     const cardMap = await this.cardData.findCardsBulk(parsed.map((p) => p.name));
+    // Nennt die Liste zu einer Karte Set-Kürzel und Sammelnummer (deckstats.net, Moxfield,
+    // Archidekt), genau diesen Druck nachschlagen - sonst landet Scryfalls Standardbild im Deck
+    // statt des Artworks, das der Nutzer dort ausgesucht hat.
+    const printings = await this.scryfall.findPrintingsBySetAndNumber(
+      parsed
+        .filter((p) => p.setCode && p.collectorNumber)
+        .map((p) => ({ name: p.name, setCode: p.setCode!, collectorNumber: p.collectorNumber! }))
+    );
     // Farb-/Typal-Metadaten für den öffentlichen Decks-Suchreiter (siehe
     // sql/public-deck-browse-2026-08-26.sql) direkt beim Import/Neuanlegen mitschreiben - vorher
     // wurden sie erst befüllt, sobald später im Deck-Editor die Commander-Markierung geändert
@@ -522,11 +581,13 @@ export class DeckService {
     const { colorIdentity, commanderTypes } = commanderMetadataFrom(parsed, cardMap);
 
     let deckId = existingDeckId;
+    /** Kartenname (klein) -> bisher gespeichertes Bild, damit ein von Hand gewähltes Artwork eine Deck-Aktualisierung übersteht (siehe cardRows unten). */
+    const previousImages = new Map<string, string | null>();
 
     if (deckId) {
       const { data: oldRows, error: oldError } = await supabase
         .from('deck_cards')
-        .select('card_name, quantity')
+        .select('card_name, quantity, image_url')
         .eq('deck_id', deckId);
 
       if (oldError) {
@@ -535,6 +596,7 @@ export class DeckService {
       }
 
       const oldByKey = new Map((oldRows ?? []).map((r) => [r.card_name.toLowerCase(), r]));
+      for (const row of oldRows ?? []) previousImages.set(row.card_name.toLowerCase(), row.image_url ?? null);
       const newByKey = new Map(parsed.map((p) => [p.name.toLowerCase(), p]));
 
       const changeRows: {
@@ -618,15 +680,22 @@ export class DeckService {
     }
 
     const cardRows = parsed.map((p) => {
-      const card = cardMap.get(p.name.toLowerCase());
+      const key = p.name.toLowerCase();
+      const card = cardMap.get(key);
       return {
         deck_id: deckId,
         card_name: p.name,
         quantity: p.quantity,
-        image_url: card?.imageUrl ?? null,
+        // Reihenfolge ist Absicht: der in der Liste benannte Druck schlägt alles, danach kommt das
+        // bisher gespeicherte Bild (dort steckt u.U. ein von Hand gewähltes Artwork, siehe
+        // DeckViewerService.selectArtwork() - ohne diesen Schritt würde jedes erneute Speichern der
+        // Kartenliste die Auswahl auf Scryfalls Standarddruck zurücksetzen), und erst zuletzt
+        // eben dieser Standarddruck.
+        image_url: printings.get(key)?.imageUrl ?? previousImages.get(key) ?? card?.imageUrl ?? null,
         type_line: card?.typeLine ?? null,
         cmc: card?.cmc ?? 0,
         is_commander: p.isCommander,
+        is_maybeboard: p.isMaybeboard,
       };
     });
 
