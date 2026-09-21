@@ -655,14 +655,6 @@
       </section>
     }
 
-    <!-- Der eigene Match-Verlauf. Anders als in der Fremdansicht mit Jahresfilter, weil der
-         Zeitraum-Umschalter über dieser Kachel steht und alle Kacheln darunter betrifft. -->
-    <section class="glass-card span-full">
-      <h2>{{ i18n.t('profile.matchHistory') }}</h2>
-      <p class="hint">{{ i18n.t(devFullView() ? 'profile.matchHistoryHint' : 'profile.matchHistoryOwnHint') }}</p>
-      <app-player-match-history [playerName]="profileHistoryName()" [year]="statsYear()" />
-    </section>
-
     @if (crossGroupStats(); as overall) {
       @if (overall.totalGames > 0) {
         <section class="glass-card">
@@ -771,6 +763,18 @@
         </section>
       }
     }
+
+    <!-- Der eigene Match-Verlauf steht bewusst ganz unten: er ist die einzige Kachel hier, die
+         nicht zusammenfasst, sondern Spiel für Spiel auflistet, und als span-full hätte er
+         zwischen den Auswertungen jedes Nebeneinander aufgetrennt (Platzierung und
+         gruppenübergreifende Bilanz sollen nebeneinander stehen).
+         Anders als in der Fremdansicht mit Jahresfilter, weil der Zeitraum-Umschalter über
+         allen Kacheln steht und auch diese betrifft. -->
+    <section class="glass-card span-full">
+      <h2>{{ i18n.t('profile.matchHistory') }}</h2>
+      <p class="hint">{{ i18n.t(devFullView() ? 'profile.matchHistoryHint' : 'profile.matchHistoryOwnHint') }}</p>
+      <app-player-match-history [playerName]="profileHistoryName()" [year]="statsYear()" />
+    </section>
 </div>
   }
 
