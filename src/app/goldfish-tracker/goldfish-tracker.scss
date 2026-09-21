@@ -244,8 +244,12 @@
   padding: 0;
   border: none;
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.65);
-  font-size: 0.6rem;
+  background: rgba(0, 0, 0, 0.72);
+  // color explizit: das Piktogramm (ui/icon) zeichnet in currentColor, und ein <button> ohne eigene
+  // color nimmt die dunkle Browser-Standardfarbe - auf dem dunklen Kreis unsichtbar. 0.85rem statt
+  // 0.6rem, weil ein Strich-Piktogramm bei 11px nur noch Matsch ist.
+  color: #fff;
+  font-size: 0.85rem;
   line-height: 1;
   cursor: pointer;
   touch-action: manipulation;
@@ -266,8 +270,12 @@
   padding: 0;
   border: none;
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.65);
-  font-size: 0.6rem;
+  background: rgba(0, 0, 0, 0.72);
+  // color explizit: das Piktogramm (ui/icon) zeichnet in currentColor, und ein <button> ohne eigene
+  // color nimmt die dunkle Browser-Standardfarbe - auf dem dunklen Kreis unsichtbar. 0.85rem statt
+  // 0.6rem, weil ein Strich-Piktogramm bei 11px nur noch Matsch ist.
+  color: #fff;
+  font-size: 0.85rem;
   line-height: 1;
   cursor: pointer;
   touch-action: manipulation;

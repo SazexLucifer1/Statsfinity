@@ -16,6 +16,12 @@ import { Component, computed, input } from '@angular/core';
  *
  * Die Größe kommt aus der Umgebung (`font-size`), nicht aus einem Attribut: so wächst ein Icon
  * in einer Überschrift automatisch mit, genau wie ein Emoji es getan hat.
+ *
+ * **Ein `<button>` um ein Icon herum muss eine eigene `color` setzen.** Ein Emoji bringt seine
+ * Farbe selbst mit, ein Piktogramm zeichnet in `currentColor` - und ein Knopf erbt die Textfarbe
+ * NICHT vom Elternteil, sondern nimmt die dunkle Browser-Standardfarbe. Auf den runden Knöpfen
+ * über dem Kartenbild war davon genau nichts mehr zu sehen; bei `<span>` tritt das nicht auf,
+ * weil Spans die Farbe erben.
  */
 @Component({
   selector: 'app-icon',
