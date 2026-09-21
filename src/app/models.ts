@@ -159,4 +159,6 @@ export interface DeckStats {
   commander?: string;
   /** Im Deck selbst hinterlegtes Commander-Bild (deck_cards.image_url), falls vorhanden - hat Vorrang vor der generischen Scryfall-Suche nach dem Namen. */
   commanderImageUrl?: string | null;
+  /** true = das Deck wurde gelöscht und steht nur noch als Grabstein in der Datenbank (siehe DeckService.deleteDeck()). Die Zahlen hier bleiben davon unberührt, nur ansehen lässt sich das Deck nicht mehr. */
+  isDeleted?: boolean;
 }

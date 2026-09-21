@@ -332,6 +332,7 @@ export class DeckImportService {
         edhrecTag: tag,
         isPrivate: false,
         isOutdated: false,
+        deletedAt: null,
         creatureType: null,
         // Ein frisch angelegtes leeres Deck hat noch keine Karten - es gibt also weder etwas
         // festzulegen noch etwas zu berechnen. Beides füllt sich, sobald das Deck geöffnet wird.

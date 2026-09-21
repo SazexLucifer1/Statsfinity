@@ -311,10 +311,46 @@ export class DeckList {
     this.importService.openPreconDialog(this.owner(), () => this.refreshDecks());
   }
 
+  /**
+   * Löschen mit Ausweg: Hängen Partien an diesem Deck, ist "Outdated" fast immer die bessere Wahl -
+   * das Deck verschwindet dann genauso aus der Liste, behält aber Kartenliste und Verlauf. Deshalb
+   * steht diese Alternative im Dialog gleichberechtigt neben dem Löschen, zusammen mit der Zahl der
+   * betroffenen Partien. Ohne eine einzige Partie bleibt es bei der schlichten Rückfrage.
+   */
   async deleteDeck(deck: Deck): Promise<void> {
     if (this.readonlyMode()) return;
-    if (!(await this.dialog.confirm(this.i18n.t('deck.msg.confirmDelete', { name: deck.name })))) return;
-    await this.deckService.deleteDeck(deck.id);
+
+    const games = await this.deckService.matchCountForDeck(deck.id);
+
+    if (games === 0) {
+      if (!(await this.dialog.confirm(this.i18n.t('deck.msg.confirmDelete', { name: deck.name })))) return;
+    } else {
+      const choice = await this.dialog.choose(this.i18n.t('deck.msg.confirmDeleteWithGames', { name: deck.name, games }), [
+        { key: 'outdated', label: this.i18n.t('deck.msg.deleteOutdatedInstead'), variant: 'primary' },
+        { key: 'delete', label: this.i18n.t('deck.msg.deleteAnyway'), variant: 'danger' },
+      ]);
+
+      if (choice === 'outdated') {
+        if (await this.deckService.setDeckOutdated(deck.id, true)) {
+          await this.refreshDecks();
+          await this.dialog.alert(this.i18n.t('deck.msg.nowOutdated', { name: deck.name }));
+        }
+        return;
+      }
+      if (choice !== 'delete') return;
+    }
+
+    const result = await this.deckService.deleteDeck(deck.id);
+
+    if (result === 'migration-fehlt') {
+      await this.dialog.alert(this.i18n.t('deck.msg.deleteMigrationMissing'));
+      return;
+    }
+    if (result === 'fehler') {
+      await this.dialog.alert(this.i18n.t('deck.msg.deleteFailed'));
+      return;
+    }
+
     if (this.viewer.viewingDeck()?.id === deck.id) this.viewer.close();
     await this.refreshDecks();
   }

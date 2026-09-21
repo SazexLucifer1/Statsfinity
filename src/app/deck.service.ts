@@ -32,6 +32,14 @@ export interface Deck {
   /** Als "Outdated" markierte Decks sind standardmäßig in der Deck-Liste ausgeblendet (z.B. für Decks, die nicht mehr gespielt werden, aber nicht gelöscht werden sollen). */
   isOutdated: boolean;
   /**
+   * Gesetzt = vom Besitzer gelöschtes Deck ("Grabstein", siehe deleteDeck()). Kartenliste und
+   * Änderungsverlauf sind dann weg, die Zeile steht nur noch da, damit die Partien in
+   * match_players ihren Deck-Namen, Besitzer und ihre Farbidentität behalten. Deck-Liste,
+   * Deck-Auswahl und öffentliche Suche blenden solche Decks aus - in den Statistiken zählen sie
+   * unverändert weiter.
+   */
+  deletedAt: string | null;
+  /**
    * Vom Spieler selbst gewählter Kreaturtyp (z.B. "Elf") für Typal-/Stammes-Decks, gespeichert in
    * decks.commander_types (siehe updateDeckArchetype()) - beim Import wird die Spalte zwar einmalig
    * mit dem Typ des markierten Commanders vorbefüllt (siehe DeckService.saveDeck()), da aber nicht
@@ -299,14 +307,33 @@ export class DeckService {
    */
   private static bracketSpaltenVerfuegbar = true;
 
+  /**
+   * Dasselbe Spiel für die Grabstein-Spalte aus sql/deck-grabstein-loeschen-2026-09-21.sql: Steht
+   * die Migration noch aus, darf weder die Spalte in der Select-Liste noch der Filter darauf die
+   * Deck-Liste leer laufen lassen. Beides hängt deshalb an diesem Schalter, der beim ersten 42703
+   * umgelegt wird - die Abfragen bauen ihre Query in einer Closure und greifen ihn beim zweiten
+   * Versuch automatisch ab.
+   */
+  private static grabsteinSpalteVerfuegbar = true;
+
   private static readonly BASIS_SPALTEN =
     'id, user_id, player_id, name, format, updated_at, created_at, is_precon, precon_release_year, edhrec_tag, is_private, is_outdated, commander_types, players ( group_id )';
   private static readonly BRACKET_SPALTEN = 'bracket, bracket_auto, bracket_auto_at';
 
   private static deckColumns(): string {
-    return DeckService.bracketSpaltenVerfuegbar
+    const mitBracket = DeckService.bracketSpaltenVerfuegbar
       ? `${DeckService.BASIS_SPALTEN}, ${DeckService.BRACKET_SPALTEN}`
       : DeckService.BASIS_SPALTEN;
+    return DeckService.grabsteinSpalteVerfuegbar ? `${mitBracket}, deleted_at` : mitBracket;
+  }
+
+  /**
+   * Blendet gelöschte Decks (Grabsteine) aus - solange die Migration fehlt, gibt es keine, und der
+   * Filter entfällt. Öffentlich, weil PublicDeckService dieselbe Regel für die öffentliche
+   * Deck-Suche braucht und der Schalter nur einmal an einer Stelle stehen darf.
+   */
+  static nurLebende<T extends { is(column: string, value: null): T }>(query: T): T {
+    return DeckService.grabsteinSpalteVerfuegbar ? query.is('deleted_at', null) : query;
   }
 
   /**
@@ -315,12 +342,42 @@ export class DeckService {
    */
   private static istFehlendeBracketSpalte(error: { code?: string; message?: string } | null): boolean {
     if (!error || !DeckService.bracketSpaltenVerfuegbar) return false;
-    if (error.code !== '42703' && !(error.message ?? '').includes('bracket')) return false;
+    // Seit es eine zweite abschaltbare Spalte gibt (deleted_at), reicht "irgendein 42703" nicht
+    // mehr: Postgres nennt die fehlende Spalte in der Meldung, und wer hier zu grob prüft, schaltet
+    // die Bracket-Abzeichen wegen einer ganz anderen fehlenden Migration ab.
+    if (error.code !== '42703') return false;
+    const message = error.message ?? '';
+    if (message && !message.includes('bracket')) return false;
     console.warn(
       'Bracket-Spalten fehlen noch - sql/deck-bracket-2026-09-06.sql im Supabase-SQL-Editor ausführen. Decks werden solange ohne Bracket geladen.'
     );
     DeckService.bracketSpaltenVerfuegbar = false;
     return true;
+  }
+
+  /**
+   * true = der Fehler kam von der noch fehlenden Grabstein-Spalte und der Aufrufer soll es ohne sie
+   * erneut versuchen (siehe grabsteinSpalteVerfuegbar).
+   */
+  private static istFehlendeGrabsteinSpalte(error: { code?: string; message?: string } | null): boolean {
+    if (!error || !DeckService.grabsteinSpalteVerfuegbar) return false;
+    if (error.code !== '42703') return false;
+    const message = error.message ?? '';
+    if (message && !message.includes('deleted')) return false;
+    console.warn(
+      'Spalte deleted_at fehlt noch - sql/deck-grabstein-loeschen-2026-09-21.sql im Supabase-SQL-Editor ausführen. Bis dahin gibt es keine Grabsteine, und Decks mit Partien lassen sich nicht löschen.'
+    );
+    DeckService.grabsteinSpalteVerfuegbar = false;
+    return true;
+  }
+
+  /**
+   * true = eine noch fehlende Spalte wurde soeben abgeschaltet, die Abfrage lohnt einen zweiten
+   * Versuch. Fehlen beide Migrationen, fällt je Versuch ein Schalter - die Aufrufer wiederholen
+   * deshalb bis zu zweimal. Öffentlich aus demselben Grund wie nurLebende().
+   */
+  static fehlendeSpalteAbgeschaltet(error: { code?: string; message?: string } | null): boolean {
+    return DeckService.istFehlendeBracketSpalte(error) || DeckService.istFehlendeGrabsteinSpalte(error);
   }
 
   /**
@@ -337,19 +394,22 @@ export class DeckService {
 
   async loadDecksForOwner(owner: DeckOwner): Promise<Deck[]> {
     const abfrage = () => {
-      const query = supabase
-        .from('decks')
-        .select(DeckService.deckColumns())
-        .order('updated_at', { ascending: false });
+      const query = DeckService.nurLebende(
+        supabase
+          .from('decks')
+          .select(DeckService.deckColumns())
+          .order('updated_at', { ascending: false })
+      );
       return owner.kind === 'user'
         ? query.eq('user_id', owner.userId)
         : query.eq('player_id', owner.playerId);
     };
 
     let { data, error } = await abfrage();
-    // Migration noch nicht ausgeführt - ohne die Bracket-Spalten erneut versuchen, statt die
-    // Deck-Liste leer zu lassen (siehe deckColumns()).
-    if (DeckService.istFehlendeBracketSpalte(error)) ({ data, error } = await abfrage());
+    // Migration noch nicht ausgeführt - ohne die Bracket-/Grabstein-Spalten erneut versuchen, statt
+    // die Deck-Liste leer zu lassen (siehe deckColumns()).
+    for (let versuch = 0; versuch < 2 && DeckService.fehlendeSpalteAbgeschaltet(error); versuch++)
+      ({ data, error } = await abfrage());
 
     if (error) {
       console.error('Konnte Decks nicht laden:', error);
@@ -371,20 +431,26 @@ export class DeckService {
       isPrivate: row.is_private ?? false,
       isOutdated: row.is_outdated ?? false,
       creatureType: row.commander_types?.[0] ?? null,
+      deletedAt: row.deleted_at ?? null,
       bracket: row.bracket ?? null,
       bracketAuto: row.bracket_auto ?? null,
       bracketAutoAt: row.bracket_auto_at ?? null,
     }));
   }
 
-  /** Lädt ein einzelnes Deck per ID, unabhängig vom Besitzer - z.B. für den Direkt-Sprung aus der Stats-Rangliste. */
+  /**
+   * Lädt ein einzelnes Deck per ID, unabhängig vom Besitzer - z.B. für den Direkt-Sprung aus der
+   * Stats-Rangliste. Liefert bewusst AUCH gelöschte Decks (Grabsteine, deletedAt gesetzt): Der
+   * Aufrufer soll erkennen können, dass es das Deck nicht mehr gibt, statt ein leeres zu öffnen.
+   */
   async getDeckById(deckId: string): Promise<Deck | null> {
     const abfrage = () =>
       supabase.from('decks').select(DeckService.deckColumns()).eq('id', deckId).maybeSingle();
 
     let { data, error } = await abfrage();
-    // Siehe loadDecksForOwner(): ohne Bracket-Spalten erneut versuchen, statt gar kein Deck zu liefern.
-    if (DeckService.istFehlendeBracketSpalte(error)) ({ data, error } = await abfrage());
+    // Siehe loadDecksForOwner(): ohne die fehlenden Spalten erneut versuchen, statt gar kein Deck zu liefern.
+    for (let versuch = 0; versuch < 2 && DeckService.fehlendeSpalteAbgeschaltet(error); versuch++)
+      ({ data, error } = await abfrage());
 
     if (error || !data) {
       console.error('Konnte Deck nicht laden:', error);
@@ -407,6 +473,7 @@ export class DeckService {
       isPrivate: row.is_private ?? false,
       isOutdated: row.is_outdated ?? false,
       creatureType: row.commander_types?.[0] ?? null,
+      deletedAt: row.deleted_at ?? null,
       bracket: row.bracket ?? null,
       bracketAuto: row.bracket_auto ?? null,
       bracketAutoAt: row.bracket_auto_at ?? null,
@@ -782,7 +849,9 @@ export class DeckService {
    * oder importiert) angelegt wird, ohne dass der Nutzer explizit ein Deck ausgewählt hat.
    */
   async findDeckIdByCommander(owner: DeckOwner, commanderName: string): Promise<string | null> {
-    let deckQuery = supabase.from('decks').select('id');
+    // Gelöschte Decks (Grabsteine) bleiben hier außen vor - sie haben keine Kartenliste mehr, und
+    // ein neues Match soll sich nie an ein Deck hängen, das es nicht mehr gibt.
+    let deckQuery = DeckService.nurLebende(supabase.from('decks').select('id'));
     deckQuery = owner.kind === 'user' ? deckQuery.eq('user_id', owner.userId) : deckQuery.eq('player_id', owner.playerId);
     const { data: deckRows, error: deckError } = await deckQuery;
 
@@ -1008,11 +1077,78 @@ export class DeckService {
     return { checked: list.length, fixed };
   }
 
-  async deleteDeck(deckId: string): Promise<void> {
-    const { error } = await supabase.from('decks').delete().eq('id', deckId);
+  /**
+   * Zahl der gespeicherten Partien, in denen dieses Deck verlinkt ist. Entscheidet, ob beim Löschen
+   * ein Grabstein nötig ist - und steht im Löschdialog, damit niemand blind ein Deck wegwirft, an
+   * dem vierzig Partien hängen.
+   */
+  async matchCountForDeck(deckId: string): Promise<number> {
+    const { count, error } = await supabase
+      .from('match_players')
+      .select('id', { count: 'exact', head: true })
+      .eq('deck_id', deckId);
+
     if (error) {
-      console.error('Konnte Deck nicht löschen:', error);
+      console.error('Konnte die Partien des Decks nicht zählen:', error);
+      return 0;
     }
+    return count ?? 0;
+  }
+
+  /**
+   * Löscht ein Deck - je nachdem, ob Statistik daran hängt, auf zwei Arten:
+   *
+   *   'hart'  - das Deck war in keiner Partie verlinkt, es verschwindet vollständig.
+   *   'weich' - es hängen Partien daran: Kartenliste und Änderungsverlauf werden gelöscht (das ist
+   *             der Teil, der Platz kostet), die decks-Zeile bleibt als "Grabstein" stehen und
+   *             bekommt deleted_at plus den geretteten Commander. Damit ändert sich KEINE Zahl in
+   *             den Gruppen-Statistiken: match_players.deck_id bleibt gültig, Deck-Name, Besitzer
+   *             und color_identity hängen weiter am Join (siehe sql/deck-grabstein-loeschen-2026-09-21.sql).
+   *
+   * 'migration-fehlt' = die Grabstein-Spalten gibt es noch nicht. Dann wird NICHTS gelöscht - ein
+   * hartes Löschen als Rückfallebene würde genau den Statistikverlust anrichten, den diese Methode
+   * verhindern soll.
+   */
+  async deleteDeck(deckId: string): Promise<'hart' | 'weich' | 'migration-fehlt' | 'fehler'> {
+    const games = await this.matchCountForDeck(deckId);
+
+    if (games === 0) {
+      const { error } = await supabase.from('decks').delete().eq('id', deckId);
+      if (error) {
+        console.error('Konnte Deck nicht löschen:', error);
+        return 'fehler';
+      }
+      return 'hart';
+    }
+
+    // Reihenfolge ist wichtig: erst den Grabstein setzen, dann die Karten löschen. Scheitert der
+    // erste Schritt (fehlende Migration), ist das Deck noch unversehrt.
+    const commander = (await this.getStoredCommanders([deckId])).get(deckId);
+    const { error: markError } = await supabase
+      .from('decks')
+      .update({
+        deleted_at: new Date().toISOString(),
+        deleted_commander_name: commander?.name ?? null,
+        deleted_commander_image_url: commander?.imageUrl ?? null,
+      })
+      .eq('id', deckId);
+
+    if (markError) {
+      if (markError.code === '42703') {
+        DeckService.istFehlendeGrabsteinSpalte(markError);
+        return 'migration-fehlt';
+      }
+      console.error('Konnte Deck nicht als gelöscht markieren:', markError);
+      return 'fehler';
+    }
+
+    const { error: cardsError } = await supabase.from('deck_cards').delete().eq('deck_id', deckId);
+    if (cardsError) console.error('Konnte die Kartenliste des gelöschten Decks nicht entfernen:', cardsError);
+
+    const { error: logError } = await supabase.from('deck_change_log').delete().eq('deck_id', deckId);
+    if (logError) console.error('Konnte den Änderungsverlauf des gelöschten Decks nicht entfernen:', logError);
+
+    return 'weich';
   }
 
   /**
@@ -1474,6 +1610,43 @@ export class DeckService {
 
     for (const row of data) {
       if (!result.has(row.deck_id)) result.set(row.deck_id, { name: row.card_name, imageUrl: row.image_url });
+    }
+
+    // Gelöschte Decks haben keine Kartenzeilen mehr - ihr Commander steht im Grabstein. Ohne
+    // diesen Nachschlag verlören Rangliste und Match-Verlauf beim Löschen ihr Kartenbild.
+    const ohneTreffer = deckIds.filter((id) => !result.has(id));
+    if (ohneTreffer.length > 0) {
+      for (const [deckId, info] of await this.getDeletedDeckInfos(ohneTreffer)) {
+        if (info.name) result.set(deckId, { name: info.name, imageUrl: info.imageUrl });
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Die beim Löschen geretteten Commander-Angaben der Grabsteine unter diesen IDs (siehe
+   * deleteDeck()). Lebende Decks stehen nicht in der Map - wer sie braucht, fragt damit zugleich
+   * ab, welche Decks es nicht mehr gibt.
+   */
+  async getDeletedDeckInfos(deckIds: string[]): Promise<Map<string, { name: string | null; imageUrl: string | null }>> {
+    const result = new Map<string, { name: string | null; imageUrl: string | null }>();
+    if (deckIds.length === 0 || !DeckService.grabsteinSpalteVerfuegbar) return result;
+
+    const { data, error } = await supabase
+      .from('decks')
+      .select('id, deleted_commander_name, deleted_commander_image_url')
+      .in('id', deckIds)
+      .not('deleted_at', 'is', null);
+
+    if (error) {
+      // Fehlt die Migration noch, gibt es auch keine Grabsteine - einmal warnen und ab dann still.
+      if (!DeckService.istFehlendeGrabsteinSpalte(error)) console.error('Konnte gelöschte Decks nicht laden:', error);
+      return result;
+    }
+
+    for (const row of (data ?? []) as any[]) {
+      result.set(row.id, { name: row.deleted_commander_name ?? null, imageUrl: row.deleted_commander_image_url ?? null });
     }
     return result;
   }

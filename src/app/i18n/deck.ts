@@ -29,6 +29,16 @@ export const deck = {
     'deck.outdatedBadge': 'Outdated - aus der normalen Ansicht ausgeblendet',
     'deck.showOutdated': 'Nur Outdated',
     'deck.msg.confirmDelete': 'Deck „{{name}}" wirklich löschen?',
+    'deck.msg.confirmDeleteWithGames':
+      'Deck „{{name}}" wirklich löschen?\n\nAn diesem Deck hängen {{games}} gespeicherte Partien. Sie bleiben vollständig in den Statistiken deiner Gruppen – die Kartenliste und der Änderungsverlauf sind danach aber endgültig weg, und das Deck lässt sich nicht mehr öffnen.',
+    'deck.msg.deleteOutdatedInstead': 'Stattdessen als Outdated markieren',
+    'deck.msg.deleteAnyway': 'Trotzdem löschen',
+    'deck.msg.nowOutdated':
+      'Deck „{{name}}" ist jetzt als Outdated markiert und aus der Liste ausgeblendet. Über „Nur Outdated" holst du es jederzeit zurück.',
+    'deck.msg.deleteMigrationMissing':
+      'Löschen ist gerade nicht möglich: In der Datenbank fehlt noch die Änderung, die die Statistiken beim Löschen erhält. Das Deck wurde nicht angetastet.',
+    'deck.msg.deleteFailed':
+      'Das Deck konnte nicht gelöscht werden. Bitte später noch einmal versuchen.',
 
     // --- Commander-Bracket (Abzeichen, siehe ui/bracket-badge) ---
     // Die Stufennamen sind die offiziellen englischen Begriffe und bleiben in beiden Sprachen
@@ -164,6 +174,15 @@ export const deck = {
     'deck.outdatedBadge': 'Outdated - hidden from the normal view',
     'deck.showOutdated': 'Only outdated',
     'deck.msg.confirmDelete': 'Really delete deck "{{name}}"?',
+    'deck.msg.confirmDeleteWithGames':
+      'Really delete deck "{{name}}"?\n\nThis deck is linked to {{games}} saved matches. They stay fully intact in your groups\' statistics – but the card list and the change log are gone for good, and the deck can no longer be opened.',
+    'deck.msg.deleteOutdatedInstead': 'Mark as outdated instead',
+    'deck.msg.deleteAnyway': 'Delete anyway',
+    'deck.msg.nowOutdated':
+      'Deck "{{name}}" is now marked as outdated and hidden from the list. Use "Only outdated" to bring it back any time.',
+    'deck.msg.deleteMigrationMissing':
+      'Deleting is not possible right now: the database is still missing the change that preserves statistics on delete. The deck was left untouched.',
+    'deck.msg.deleteFailed': 'The deck could not be deleted. Please try again later.',
 
     // --- Commander bracket (badge, see ui/bracket-badge) ---
     'deck.bracket.name1': 'Exhibition',
