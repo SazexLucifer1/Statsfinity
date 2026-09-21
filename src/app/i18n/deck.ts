@@ -17,6 +17,7 @@ export const deck = {
     'deck.view': 'Ansehen',
     'deck.goldfish': 'Goldfisch',
     'deck.goldfishAria': 'Dieses Deck solo testen (Goldfishing)',
+    'deck.duplicate': 'Kopie anlegen',
     'deck.makeVisibleAgain': 'Wieder sichtbar machen',
     'deck.makePrivate': 'Privat stellen',
     'deck.makePrivateHint':
@@ -28,6 +29,10 @@ export const deck = {
     'deck.fromImportedDeck': 'Aus importiertem Deck',
     'deck.outdatedBadge': 'Outdated - aus der normalen Ansicht ausgeblendet',
     'deck.showOutdated': 'Nur Outdated',
+    'deck.msg.confirmDuplicate':
+      'Kopie von „{{name}}" als „{{copy}}" anlegen?\n\nDie Kopie bekommt dieselbe Kartenliste, startet aber bei null Partien - Statistiken und Änderungsverlauf des Originals werden nicht übernommen.',
+    'deck.msg.duplicateFailed':
+      'Die Kopie konnte nicht angelegt werden. Bitte später noch einmal versuchen.',
     'deck.msg.confirmDelete': 'Deck „{{name}}" wirklich löschen?',
     'deck.msg.confirmDeleteWithGames':
       'Deck „{{name}}" wirklich löschen?\n\nAn diesem Deck hängen {{games}} gespeicherte Partien. Alle Statistiken bleiben vollständig erhalten – die deiner Gruppen ebenso wie deine meistgespielten Karten. Endgültig weg sind die Kartenliste und der Änderungsverlauf: Öffnen oder bearbeiten lässt sich das Deck danach nicht mehr.',
@@ -163,6 +168,7 @@ export const deck = {
     'deck.view': 'View',
     'deck.goldfish': 'Goldfish',
     'deck.goldfishAria': 'Test this deck solo (goldfishing)',
+    'deck.duplicate': 'Create copy',
     'deck.makeVisibleAgain': 'Make visible again',
     'deck.makePrivate': 'Make private',
     'deck.makePrivateHint': "Make private - others won't see this deck on your profile anymore",
@@ -173,6 +179,9 @@ export const deck = {
     'deck.fromImportedDeck': 'From an imported deck',
     'deck.outdatedBadge': 'Outdated - hidden from the normal view',
     'deck.showOutdated': 'Only outdated',
+    'deck.msg.confirmDuplicate':
+      'Create a copy of "{{name}}" named "{{copy}}"?\n\nThe copy gets the same card list but starts at zero matches - statistics and change log of the original are not carried over.',
+    'deck.msg.duplicateFailed': 'The copy could not be created. Please try again later.',
     'deck.msg.confirmDelete': 'Really delete deck "{{name}}"?',
     'deck.msg.confirmDeleteWithGames':
       'Really delete deck "{{name}}"?\n\nThis deck is linked to {{games}} saved matches. Every statistic stays intact – your groups\' rankings as well as your most played cards. Gone for good are the card list and the change log: the deck can no longer be opened or edited.',

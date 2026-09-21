@@ -1,7 +1,7 @@
 import { Component, ElementRef, computed, effect, inject, input, signal, viewChild } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { DeckService, Deck, DeckGameStats, DeckOwner } from '../deck.service';
+import { DeckService, Deck, DeckGameStats, DeckOwner, deckKopieName } from '../deck.service';
 import { DeckViewerService } from '../deck-viewer.service';
 import { DeckImportService } from '../deck-import.service';
 import { ScryfallCard, ScryfallService } from '../scryfall.service';
@@ -353,6 +353,34 @@ export class DeckList {
 
     if (this.viewer.viewingDeck()?.id === deck.id) this.viewer.close();
     await this.refreshDecks();
+  }
+
+  /**
+   * Zweite Version eines Decks: gleiche Kartenliste, eigenes Deck, null Partien. Der Name wird
+   * vorgeschlagen (siehe deckKopieName) und steht in der Rückfrage - umbenennen lässt er sich
+   * danach jederzeit in der Detailansicht, die direkt aufgeht.
+   */
+  async duplicateDeck(deck: Deck): Promise<void> {
+    if (this.readonlyMode()) return;
+
+    const kopieName = deckKopieName(
+      deck.name,
+      this.decks().map((d) => d.name),
+    );
+    const ok = await this.dialog.confirm(
+      this.i18n.t('deck.msg.confirmDuplicate', { name: deck.name, copy: kopieName }),
+    );
+    if (!ok) return;
+
+    const neueId = await this.deckService.duplicateDeck(deck.id, kopieName);
+    if (!neueId) {
+      await this.dialog.alert(this.i18n.t('deck.msg.duplicateFailed'));
+      return;
+    }
+
+    await this.refreshDecks();
+    const kopie = this.decks().find((d) => d.id === neueId);
+    if (kopie) await this.viewer.open(kopie);
   }
 
   async toggleDeckPrivate(deck: Deck): Promise<void> {
