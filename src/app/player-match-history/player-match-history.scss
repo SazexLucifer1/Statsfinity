@@ -69,4 +69,10 @@
     gap: 4px;
     opacity: 0.85;
   }
+
+  .player-match-other.is-winner {
+    color: var(--gold);
+    font-weight: 600;
+    opacity: 1;
+  }
 }

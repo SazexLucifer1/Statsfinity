@@ -15,8 +15,12 @@ export interface PlayerMatchRow {
   partnerCommander: string | null;
   deckName: string | null;
   placement: number | null;
-  /** Alle übrigen Teilnehmer des Spiels (bei Two-Headed Giant also auch der eigene Teampartner). */
-  others: string[];
+  /**
+   * Alle übrigen Teilnehmer des Spiels (bei Two-Headed Giant also auch der eigene Teampartner),
+   * jeweils mit der Angabe, ob sie das Spiel gewonnen haben - sonst wäre bei einer eigenen
+   * Niederlage nicht zu sehen, wer stattdessen gewonnen hat.
+   */
+  others: { name: string; isWinner: boolean }[];
 }
 
 /**
@@ -61,19 +65,27 @@ export class PlayerMatchHistory {
       const me = match.players.find((p) => p.name === name);
       if (!me) continue;
 
+      const isDraw = match.winner === DRAW;
       rows.push({
         match,
-        result:
-          match.winner === DRAW
-            ? 'draw'
-            : isPlayerWinner(match.mode, match.winner, me.name, me.team, me.isArchenemy)
-              ? 'win'
-              : 'loss',
+        result: isDraw
+          ? 'draw'
+          : isPlayerWinner(match.mode, match.winner, me.name, me.team, me.isArchenemy)
+            ? 'win'
+            : 'loss',
         commander: me.commander ?? null,
         partnerCommander: me.partnerCommander ?? null,
         deckName: me.deckName ?? null,
         placement: me.placement ?? null,
-        others: match.players.filter((p) => p.name !== name).map((p) => p.name),
+        others: match.players
+          .filter((p) => p.name !== name)
+          .map((p) => ({
+            name: p.name,
+            // Über isPlayerWinner, damit auch ein Sieg über das Team (Two-Headed Giant) oder über
+            // "alle außer dem Archenemy" bei allen Beteiligten die Krone zeigt.
+            isWinner:
+              !isDraw && isPlayerWinner(match.mode, match.winner, p.name, p.team, p.isArchenemy),
+          })),
       });
     }
     return rows;

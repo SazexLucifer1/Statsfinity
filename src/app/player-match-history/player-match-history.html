@@ -46,10 +46,13 @@
         @if (row.others.length > 0) {
           <div class="player-match-others">
             <span class="hint">{{ i18n.t('profile.matchHistoryOthers') }}</span>
-            @for (other of row.others; track other) {
-              <span class="player-match-other">
-                <app-player-avatar [url]="mtg.playerAvatars()[other] ?? null" />
-                {{ other }}
+            @for (other of row.others; track other.name) {
+              <span class="player-match-other" [class.is-winner]="other.isWinner">
+                <app-player-avatar [url]="mtg.playerAvatars()[other.name] ?? null" />
+                @if (other.isWinner) {
+                  🏆
+                }
+                {{ other.name }}
               </span>
             }
           </div>
