@@ -34,7 +34,7 @@
                (deck-list.html). -->
           @if (c.borrowedDeck; as borrowed) {
             <span class="borrowed-badge">
-              🤝 {{ borrowed.name }}
+              {{ i18n.t('profile.commanderListBorrowed') }} · {{ borrowed.name }}
               @if (borrowed.ownerName) {
                 <span class="borrowed-owner">· {{ i18n.t('stats.from', { name: borrowed.ownerName }) }}</span>
               }

@@ -50,9 +50,15 @@ export function barMax(
   return Math.max(1, ...list.map((e) => barValue(e, mode)));
 }
 
-/** Platzierungs-Symbol für die ersten drei Ränge, sonst die nummerierte Platzierung. */
+/**
+ * Nummerierte Platzierung einer Ranglisten-Zeile ("1.", "2.", …).
+ *
+ * Stand früher für die ersten drei Ränge auf Medaillen-Emojis um. Die sahen auf jedem System
+ * anders aus und waren neben einer sonst rein typografischen Liste der einzige bunte Fleck; die
+ * Zahl sagt dasselbe und passt sich der Textfarbe an.
+ */
 export function medal(index: number): string {
-  return ['🥇', '🥈', '🥉'][index] ?? `${index + 1}.`;
+  return `${index + 1}.`;
 }
 
 /**
@@ -67,7 +73,7 @@ export function splitPodium<T>(pageRows: readonly T[], page: number): { podium: 
 
 /**
  * Rang-Index der ersten Zeile UNTER dem Treppchen - Grundlage für medal() in der Liste, damit dort
- * auf der ersten Seite "4." statt "🥇" steht.
+ * auf der ersten Seite "4." statt "1." steht.
  */
 export function podiumRestOffset(page: number, pageSize: number): number {
   return page * pageSize + (page === 0 ? PODIUM_SIZE : 0);

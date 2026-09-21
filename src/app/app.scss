@@ -80,7 +80,11 @@
   transition: background 0.15s ease;
 
   .tab-icon {
+    // Das Piktogramm darin richtet sich nach der Schriftgröße (siehe ui/icon). display:flex +
+    // line-height:1 nimmt ihm die Grundlinien-Lücke, die es in der Spalte sonst nach unten schöbe.
+    display: flex;
     font-size: 1.35rem;
+    line-height: 1;
   }
 
   .tab-label {
@@ -150,4 +154,10 @@
 
 .lang-toggle {
   font-weight: 700;
+}
+
+.feedback-toggle {
+  // Das Piktogramm richtet sich nach der Schriftgröße; mit den 0.85rem der Nachbarknöpfe säße es
+  // als 15px-Fliegendreck in einem 44px-Knopf.
+  font-size: 1.15rem;
 }

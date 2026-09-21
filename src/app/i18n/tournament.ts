@@ -92,7 +92,7 @@ export const tournament = {
     'tournamentHistory.listHeading': 'Alle Turniere',
     'tournamentHistory.noneYet': 'Noch keine Turniere gespielt.',
     'tournamentHistory.deleteAria': 'Turnier löschen',
-    'tournamentHistory.deleteButton': '🗑️ Turnier löschen',
+    'tournamentHistory.deleteButton': 'Turnier löschen',
     'tournamentHistory.confirmDelete':
       'Turnier „{{name}}" wirklich unwiderruflich löschen? Auch alle seine Einzelspiele verschwinden aus der Statistik.',
     'tournamentHistory.deleteFailed': 'Konnte das Turnier nicht löschen. Bitte nochmal versuchen.',
@@ -205,7 +205,7 @@ export const tournament = {
     'tournamentHistory.listHeading': 'All tournaments',
     'tournamentHistory.noneYet': 'No tournaments played yet.',
     'tournamentHistory.deleteAria': 'Delete tournament',
-    'tournamentHistory.deleteButton': '🗑️ Delete tournament',
+    'tournamentHistory.deleteButton': 'Delete tournament',
     'tournamentHistory.confirmDelete':
       'Really permanently delete tournament "{{name}}"? All of its individual games will also disappear from stats.',
     'tournamentHistory.deleteFailed': 'Could not delete the tournament. Please try again.',

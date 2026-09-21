@@ -8,13 +8,13 @@ export const stats = {
     'stats.importYearLabel': 'Jahr für die importierten Spiele',
     'stats.importCubeLabel': 'Alle importierten Cube-Spiele zuordnen zu',
     'stats.importCubeNone': 'Kein Cube (allgemein, ohne Zuordnung)',
-    'stats.importChooseFile': '📥 Excel-Datei wählen',
+    'stats.importChooseFile': 'Excel-Datei wählen',
     'stats.importReading': 'Datei wird gelesen …',
     'stats.importCheckMapping': 'Zuordnung prüfen',
     'stats.importMappingHint':
       '"-- Überspringen --" für Tabs, die du nicht importieren willst (z.B. veraltete Duplikate). Bei "Neuer Spieler" bitte den Namen exakt eintragen.',
     'stats.importSkip': '-- Überspringen --',
-    'stats.importNewPlayer': '➕ Neuer Spieler',
+    'stats.importNewPlayer': 'Neuer Spieler',
     'stats.importNewPlayerNamePlaceholder': 'Name des neuen Spielers',
     'stats.importing': 'Importiere …',
     'stats.import': 'Importieren',
@@ -36,8 +36,8 @@ export const stats = {
 
     // --- Stats-Tab: Übersicht/Filter ---
     'stats.title': 'Statistiken',
-    'stats.viewStats': '📊 Statistik',
-    'stats.viewTournaments': '🏆 Turniere',
+    'stats.viewStats': 'Statistik',
+    'stats.viewTournaments': 'Turniere',
     'stats.noMatchesYet':
       'Noch keine Matches gespeichert. Trage im Tab „Match" dein erstes Ergebnis ein!',
     'stats.lockedHint':
@@ -124,36 +124,36 @@ export const stats = {
     // --- Stats-Tab: Gruppenweite Lieblingsfarben & Farbkombinationen ---
     'stats.colorStatsWeightByGames': 'Nach Partien',
     'stats.colorStatsWeightByDecks': 'Nach Decks',
-    'stats.colorRankingTitle': '🎨 Lieblingsfarben der Gruppe',
+    'stats.colorRankingTitle': 'Lieblingsfarben der Gruppe',
     'stats.colorRankingHint':
       'Je weiter außen, desto häufiger steckt die Farbe in den Decks der Gruppe. Farblose Decks zählen auf der sechsten Achse, nicht auf eine Farbe - Precons zählen gar nicht mit.',
-    'stats.colorComboRankingTitle': '🌈 Farbkombinationen der Gruppe',
+    'stats.colorComboRankingTitle': 'Farbkombinationen der Gruppe',
     'stats.colorComboRankingHint':
       'Wie oft welche Farbkombination in den Decks der Gruppe vorkommt - Precons zählen nicht mit.',
 
     // --- Stats-Tab: Global-Ansicht & lokaler Gruppen-Wechsler ---
-    'stats.viewScopeGroup': '👥 Gruppe',
-    'stats.viewScopeGlobal': '🌐 Global',
+    'stats.viewScopeGroup': 'Gruppe',
+    'stats.viewScopeGlobal': 'Global',
     'stats.groupSwitcherHint': 'Gruppe für diese Übersicht wählen.',
     'stats.globalDecksAndCommandersHint':
       'Über alle Spieler der gesamten Website hinweg - ohne Spielernamen (die würden sonst Personen aus fremden Gruppen offenlegen). In der Winrate-Rangliste zählen nur Decks/Commander ab 10 Partien mit, sonst würde ein einzelnes Spiel mit 100% die Liste anführen.',
     'stats.globalLoading': 'Lade weltweite Statistik …',
-    'stats.globalDecksTitle': '🃏 Decks (weltweit)',
-    'stats.globalCommandersTitle': '👑 Commander (weltweit)',
+    'stats.globalDecksTitle': 'Decks (weltweit)',
+    'stats.globalCommandersTitle': 'Commander (weltweit)',
     'stats.globalLoginHint':
       'Das hier ist die weltweite Statistik über alle Spieler von Statsfinity. Melde dich an, um auch deine eigenen Gruppen zu sehen.',
-    'stats.colorRankingTitleGlobal': '🎨 Lieblingsfarben (weltweit)',
+    'stats.colorRankingTitleGlobal': 'Lieblingsfarben (weltweit)',
     'stats.colorRankingHintGlobal':
       'Je weiter außen, desto häufiger steckt die Farbe in den Decks aller Spieler der Website. Farblose Decks zählen auf der sechsten Achse, nicht auf eine Farbe - private Decks und Precons zählen nicht mit.',
-    'stats.colorComboRankingTitleGlobal': '🌈 Farbkombinationen (weltweit)',
+    'stats.colorComboRankingTitleGlobal': 'Farbkombinationen (weltweit)',
     'stats.colorComboRankingHintGlobal':
       'Wie oft welche Farbkombination in den Decks aller Spieler der Website vorkommt - private Decks und Precons zählen nicht mit.',
 
     // --- Stats-Tab: Danger Zone ---
-    'stats.dangerZone': '⚠️ Danger Zone',
+    'stats.dangerZone': 'Danger Zone',
     'stats.dangerZoneHint':
       'Löscht unwiderruflich den kompletten Spielverlauf, alle Spieler und deren Hintergrundbilder. Cubes bleiben erhalten. Das kann nicht rückgängig gemacht werden!',
-    'stats.resetAll': '🗑️ Alle Statistiken zurücksetzen',
+    'stats.resetAll': 'Alle Statistiken zurücksetzen',
     'stats.reallyDeleteAll': 'Wirklich alles löschen?',
     'stats.deleteConfirmWord': 'LÖSCHEN',
     'stats.deleteConfirmHintPrefix': 'Tippe',
@@ -171,13 +171,13 @@ export const stats = {
     'stats.importYearLabel': 'Year for the imported games',
     'stats.importCubeLabel': 'Assign all imported cube games to',
     'stats.importCubeNone': 'No cube (general, unassigned)',
-    'stats.importChooseFile': '📥 Choose Excel file',
+    'stats.importChooseFile': 'Choose Excel file',
     'stats.importReading': 'Reading file …',
     'stats.importCheckMapping': 'Check mapping',
     'stats.importMappingHint':
       '"-- Skip --" for tabs you don\'t want to import (e.g. outdated duplicates). For "New player" please enter the name exactly.',
     'stats.importSkip': '-- Skip --',
-    'stats.importNewPlayer': '➕ New player',
+    'stats.importNewPlayer': 'New player',
     'stats.importNewPlayerNamePlaceholder': 'Name of the new player',
     'stats.importing': 'Importing …',
     'stats.import': 'Import',
@@ -196,8 +196,8 @@ export const stats = {
 
     // --- Stats tab: overview/filters ---
     'stats.title': 'Stats',
-    'stats.viewStats': '📊 Stats',
-    'stats.viewTournaments': '🏆 Tournaments',
+    'stats.viewStats': 'Stats',
+    'stats.viewTournaments': 'Tournaments',
     'stats.noMatchesYet': 'No matches saved yet. Enter your first result in the "Match" tab!',
     'stats.lockedHint':
       'The Stats tab is currently locked by the organizer (e.g. until the year-end reveal). Check back later!',
@@ -283,36 +283,36 @@ export const stats = {
     // --- Stats tab: group-wide favorite colors & color combinations ---
     'stats.colorStatsWeightByGames': 'By games',
     'stats.colorStatsWeightByDecks': 'By decks',
-    'stats.colorRankingTitle': '🎨 Favorite colors of the group',
+    'stats.colorRankingTitle': 'Favorite colors of the group',
     'stats.colorRankingHint':
       'The further out, the more often that color is in the group’s decks. Colorless decks count on the sixth axis, not towards a color - precons are excluded entirely.',
-    'stats.colorComboRankingTitle': '🌈 Color combinations of the group',
+    'stats.colorComboRankingTitle': 'Color combinations of the group',
     'stats.colorComboRankingHint':
       'How often each color combination appears in the group’s decks - precons are excluded.',
 
     // --- Stats tab: global view & local group switcher ---
-    'stats.viewScopeGroup': '👥 Group',
-    'stats.viewScopeGlobal': '🌐 Global',
+    'stats.viewScopeGroup': 'Group',
+    'stats.viewScopeGlobal': 'Global',
     'stats.groupSwitcherHint': 'Choose a group for this overview.',
     'stats.globalDecksAndCommandersHint':
       'Across every player on the whole website - no player names (those would otherwise expose people from groups you’re not in). The winrate ranking only counts decks/commanders with 10+ games, otherwise a single 100% game would top the list.',
     'stats.globalLoading': 'Loading global stats …',
-    'stats.globalDecksTitle': '🃏 Decks (worldwide)',
-    'stats.globalCommandersTitle': '👑 Commanders (worldwide)',
+    'stats.globalDecksTitle': 'Decks (worldwide)',
+    'stats.globalCommandersTitle': 'Commanders (worldwide)',
     'stats.globalLoginHint':
       'This is the worldwide stats across every Statsfinity player. Log in to also see your own groups.',
-    'stats.colorRankingTitleGlobal': '🎨 Favorite colors (worldwide)',
+    'stats.colorRankingTitleGlobal': 'Favorite colors (worldwide)',
     'stats.colorRankingHintGlobal':
       'The further out, the more often that color is in every player’s decks on the site. Colorless decks count on the sixth axis, not towards a color - private decks and precons are excluded.',
-    'stats.colorComboRankingTitleGlobal': '🌈 Color combinations (worldwide)',
+    'stats.colorComboRankingTitleGlobal': 'Color combinations (worldwide)',
     'stats.colorComboRankingHintGlobal':
       'How often each color combination appears across every player’s decks on the site - private decks and precons are excluded.',
 
     // --- Stats tab: danger zone ---
-    'stats.dangerZone': '⚠️ Danger Zone',
+    'stats.dangerZone': 'Danger Zone',
     'stats.dangerZoneHint':
       'Permanently deletes the entire match history, all players and their background images. Cubes are kept. This cannot be undone!',
-    'stats.resetAll': '🗑️ Reset all stats',
+    'stats.resetAll': 'Reset all stats',
     'stats.reallyDeleteAll': 'Really delete everything?',
     'stats.deleteConfirmWord': 'DELETE',
     'stats.deleteConfirmHintPrefix': 'Type',

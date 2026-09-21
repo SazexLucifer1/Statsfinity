@@ -2,6 +2,7 @@ import { Component, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ScryfallService } from '../scryfall.service';
 import { I18nService } from '../i18n.service';
+import { Icon } from '../ui/icon/icon';
 
 /**
  * Such-/Auswahl-UI für eine Lieblingscommander-Liste (max. 3) - rein präsentational, die
@@ -12,7 +13,7 @@ import { I18nService } from '../i18n.service';
  */
 @Component({
   selector: 'app-favorite-commander-editor',
-  imports: [FormsModule],
+  imports: [FormsModule, Icon],
   templateUrl: './favorite-commander-editor.html',
 })
 export class FavoriteCommanderEditor {

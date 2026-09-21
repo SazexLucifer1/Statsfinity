@@ -50,7 +50,9 @@ weil die Hauptdatei sonst über das harte Style-Budget von 12 kB liefe.
 
 ### Wiederverwendbare UI-Bausteine — hier zuerst nachsehen
 
-`src/app/ui/` enthält: `bar-chart`, `radar-chart`, `meter`, `split-bar`, `pager`, `podium`, `overflow-menu`, `multi-select`, `color-filter`, `cmc-filter`, `mana-symbol`, `bracket-badge` sowie `chart-scale.ts`.
+`src/app/ui/` enthält: `bar-chart`, `radar-chart`, `meter`, `split-bar`, `pager`, `podium`, `overflow-menu`, `multi-select`, `color-filter`, `cmc-filter`, `mana-symbol`, `bracket-badge`, `icon` sowie `chart-scale.ts`.
+
+`icon` ist der Piktogramm-Satz der App (`<app-icon name="trash" />`): ein gemeinsames 24er-Raster, eine Strichstärke, Farbe immer `currentColor`, Größe aus der `font-size` der Umgebung. **Er hat die Emojis abgelöst, die vorher überall in der Oberfläche standen** — die zeichnet jedes Betriebssystem anders, sie sind bunt und lassen sich weder einfärben noch in der Strichstärke angleichen. Ein neues Piktogramm gehört in `icon.html` (`@case`) **und** in die Union `IconName` in `icon.ts`; das eine ohne das andere kompiliert nicht bzw. zeichnet nichts.
 
 **Regel: bevor ein Diagramm, ein Filter, ein Menü oder eine Blätterfunktion neu gebaut wird, prüfen, ob es das hier schon gibt.**
 

@@ -66,7 +66,9 @@
               <div class="pool-entry-main">
                 <span class="pool-entry-name">
                   @if (deck.legal === false) {
-                    <span class="pool-illegal" [title]="i18n.t('profile.poolIllegalHint')">⚠</span>
+                    <span class="pool-illegal" [title]="i18n.t('profile.poolIllegalHint')"
+                      ><app-icon name="warning"
+                    /></span>
                   }
                   {{ deck.name }}
                 </span>

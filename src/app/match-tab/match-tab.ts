@@ -19,6 +19,7 @@ import { BracketBadge } from '../ui/bracket-badge/bracket-badge';
 import { Pager } from '../ui/pager/pager';
 import { DeckViewerService } from '../deck-viewer.service';
 import { storedDeckBracket } from '../bracket';
+import { Icon } from '../ui/icon/icon';
 
 /** Ein einzelnes Spiel oder eine zu einer Karte zusammengefasste BO3-Turnierpartie (2-3 Einzelspiele) im Verlauf. */
 export type HistoryRow =
@@ -36,7 +37,7 @@ export type HistoryRow =
 
 @Component({
   selector: 'app-match-tab',
-  imports: [FormsModule, DatePipe, NgTemplateOutlet, PlayerAvatar, CardImage, BracketBadge, Pager],
+  imports: [FormsModule, DatePipe, NgTemplateOutlet, PlayerAvatar, CardImage, BracketBadge, Pager, Icon],
   templateUrl: './match-tab.html',
   styleUrl: './match-tab.scss',
 })
@@ -891,7 +892,7 @@ export class MatchTab {
       if (archenemy) {
         options.push({
           value: archenemy.name,
-          label: `👹 ${archenemy.name}${this.i18n.t('match.archenemySuffix')}`,
+          label: `${archenemy.name}${this.i18n.t('match.archenemySuffix')}`,
         });
       }
       options.push({ value: ARCHENEMY_OTHERS, label: this.i18n.t('match.theOthers') });

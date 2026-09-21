@@ -1,6 +1,7 @@
 import { Component, computed, input, output } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { ManaSymbol } from '../mana-symbol/mana-symbol';
+import { Icon } from '../icon/icon';
 
 /** Anzahl Plätze auf dem Siegertreppchen. */
 export const PODIUM_SIZE = 3;
@@ -27,7 +28,12 @@ export interface PodiumEntry {
   symbols?: readonly string[];
 }
 
-const MEDALS = ['🥇', '🥈', '🥉'];
+/**
+ * Die Platznummer über jedem Treppchen-Platz. Waren früher Medaillen-Emojis - die zeichnet jedes
+ * Betriebssystem anders und in einer Oberfläche ohne sonstige Emojis stachen sie heraus, ohne mehr
+ * zu sagen als die Zahl.
+ */
+const MEDALS = ['1', '2', '3'];
 
 /**
  * Siegertreppchen für die ersten drei Plätze einer Rangliste - Zweiter links, Erster erhöht in der
@@ -40,7 +46,7 @@ const MEDALS = ['🥇', '🥈', '🥉'];
  */
 @Component({
   selector: 'app-podium',
-  imports: [NgTemplateOutlet, ManaSymbol],
+  imports: [NgTemplateOutlet, ManaSymbol, Icon],
   templateUrl: './podium.html',
   styleUrl: './podium.scss',
 })

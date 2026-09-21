@@ -12,7 +12,7 @@
             [style.background-image]="viewed.avatarUrl ? 'url(' + viewed.avatarUrl + ')' : null"
           >
             @if (!viewed.avatarUrl) {
-              <span class="avatar-placeholder">👤</span>
+              <span class="avatar-placeholder"><app-icon name="user" /></span>
             }
           </div>
           <span class="profile-name">{{ viewed.displayName }}</span>
@@ -65,8 +65,8 @@
           <h2>{{ i18n.t('profile.decks') }}</h2>
           @if (groupService.hasPermission('deck.editOthers')) {
             <div class="chip-row">
-              <button class="icon-button" (click)="openRepairInfoDialog()" [attr.aria-label]="i18n.t('profile.autoRepairAria')" [title]="i18n.t('profile.autoRepairAria')">🔧</button>
-              <button class="icon-button" (click)="openManualLinkDialogFor(userId)" [attr.aria-label]="i18n.t('profile.manualLinkAria')" [title]="i18n.t('profile.manualLinkAria')">🔗</button>
+              <button class="icon-button" (click)="openRepairInfoDialog()" [attr.aria-label]="i18n.t('profile.autoRepairAria')" [title]="i18n.t('profile.autoRepairAria')"><app-icon name="wrench" /></button>
+              <button class="icon-button" (click)="openManualLinkDialogFor(userId)" [attr.aria-label]="i18n.t('profile.manualLinkAria')" [title]="i18n.t('profile.manualLinkAria')"><app-icon name="link" /></button>
             </div>
           }
         </div>
@@ -125,7 +125,7 @@
   <div class="viewing-profile-header-row">
     <div class="avatar-row">
       <div class="avatar-circle">
-        <span class="avatar-placeholder">👤</span>
+        <span class="avatar-placeholder"><app-icon name="user" /></span>
       </div>
       <span class="profile-name">{{ profileService.viewingPlayerName() }}</span>
       <span class="glass-chip small">{{ i18n.t('profile.npcBadge') }}</span>
@@ -145,7 +145,7 @@
       <div class="section-header-row">
         <h3>{{ i18n.t('group.npcFavoriteCommandersTitle') }}</h3>
         @if (groupService.hasPermission('npc.favoriteCommanders')) {
-          <button class="icon-button" (click)="openFavoriteCommanderDialog()" [attr.aria-label]="i18n.t('profile.editFavoriteCommandersAria')" [title]="i18n.t('profile.editFavoriteCommandersAria')">✏️</button>
+          <button class="icon-button" (click)="openFavoriteCommanderDialog()" [attr.aria-label]="i18n.t('profile.editFavoriteCommandersAria')" [title]="i18n.t('profile.editFavoriteCommandersAria')"><app-icon name="pencil" /></button>
         }
       </div>
       @if (viewingNpcFavoriteCommanders().length > 0) {
@@ -181,8 +181,8 @@
       <h2>{{ i18n.t('profile.decks') }}</h2>
       @if (groupService.hasPermission('deck.editOthers')) {
         <div class="chip-row">
-          <button class="icon-button" (click)="openRepairInfoDialog()" [attr.aria-label]="i18n.t('profile.autoRepairAria')" [title]="i18n.t('profile.autoRepairAria')">🔧</button>
-          <button class="icon-button" (click)="openManualLinkDialogForNpc(npcPlayerId)" [attr.aria-label]="i18n.t('profile.manualLinkAria')" [title]="i18n.t('profile.manualLinkAria')">🔗</button>
+          <button class="icon-button" (click)="openRepairInfoDialog()" [attr.aria-label]="i18n.t('profile.autoRepairAria')" [title]="i18n.t('profile.autoRepairAria')"><app-icon name="wrench" /></button>
+          <button class="icon-button" (click)="openManualLinkDialogForNpc(npcPlayerId)" [attr.aria-label]="i18n.t('profile.manualLinkAria')" [title]="i18n.t('profile.manualLinkAria')"><app-icon name="link" /></button>
         </div>
       }
     </div>
@@ -259,7 +259,7 @@
               @if (avatarUploading()) {
                 <span class="spinner"></span>
               } @else if (!profileService.profile()?.avatarUrl) {
-                <span class="avatar-placeholder">👤</span>
+                <span class="avatar-placeholder"><app-icon name="user" /></span>
               }
               <input
                 type="file"
@@ -279,7 +279,7 @@
               @if (profileService.profile()?.isDeveloper) {
                 <span class="glass-chip small">{{ i18n.t('profile.developerBadge') }}</span>
               }
-              <button class="icon-button" (click)="startEdit()" [attr.aria-label]="i18n.t('profile.editNameAria')">✏️</button>
+              <button class="icon-button" (click)="startEdit()" [attr.aria-label]="i18n.t('profile.editNameAria')"><app-icon name="pencil" /></button>
             </div>
           } @else {
             <div class="add-row">
@@ -312,7 +312,7 @@
             @for (group of groupService.myGroups(); track group.id) {
               <li>
                 @if (group.role === 'owner') {
-                  <span title="Admin">👑</span>
+                  <span [title]="i18n.t('group.roleAdmin')"><app-icon name="crown" [label]="i18n.t('group.roleAdmin')" /></span>
                 }
                 <span class="player-name">{{ group.name }}</span>
               </li>
@@ -343,16 +343,16 @@
           }
           @if ((profileService.profile()?.favoriteCommanders ?? []).length < 3) {
             <button class="favorite-commander-card empty" (click)="openFavoriteCommanderDialog()" [attr.aria-label]="i18n.t('profile.addFavoriteCommanderAria')">
-              <span class="favorite-commander-placeholder">⭐<br />{{ i18n.t('profile.addLabel') }}</span>
+              <span class="favorite-commander-placeholder"><app-icon name="plus" /><br />{{ i18n.t('profile.addLabel') }}</span>
             </button>
           }
         </div>
       </div>
 
       <div class="header-icon-col" data-tutorial="profile-icons">
-        <button class="icon-button large" (click)="openBackgroundsDialog()" [attr.aria-label]="i18n.t('profile.myBackgroundsAria')" [title]="i18n.t('profile.myBackgroundsAria')">🖼️</button>
-        <button class="icon-button large" (click)="openShareDialog()" [attr.aria-label]="i18n.t('profile.shareAppAria')" [title]="i18n.t('profile.shareAppAria')">📤</button>
-        <button class="icon-button large" (click)="tutorial.openPicker()" [attr.aria-label]="i18n.t('profile.replayTutorialAria')" [title]="i18n.t('profile.replayTutorialAria')">❓</button>
+        <button class="icon-button large" (click)="openBackgroundsDialog()" [attr.aria-label]="i18n.t('profile.myBackgroundsAria')" [title]="i18n.t('profile.myBackgroundsAria')"><app-icon name="image" /></button>
+        <button class="icon-button large" (click)="openShareDialog()" [attr.aria-label]="i18n.t('profile.shareAppAria')" [title]="i18n.t('profile.shareAppAria')"><app-icon name="share" /></button>
+        <button class="icon-button large" (click)="tutorial.openPicker()" [attr.aria-label]="i18n.t('profile.replayTutorialAria')" [title]="i18n.t('profile.replayTutorialAria')"><app-icon name="help" /></button>
       </div>
     </div>
   </section>
@@ -398,8 +398,8 @@
         <div class="bg-thumb-grid">
           @for (bg of backgrounds.myBackgrounds(); track bg.id) {
             <div class="bg-thumb" [style.background-image]="'url(' + bg.url + ')'">
-              <button class="bg-thumb-delete" (click)="deleteBackground(bg.id)" [attr.aria-label]="i18n.t('profile.deleteAria')">🗑</button>
-              <button class="bg-thumb-share" (click)="openBackgroundShareDialog(bg.id)" [attr.aria-label]="i18n.t('profile.shareAria')">🔗</button>
+              <button class="bg-thumb-delete" (click)="deleteBackground(bg.id)" [attr.aria-label]="i18n.t('profile.deleteAria')"><app-icon name="trash" /></button>
+              <button class="bg-thumb-share" (click)="openBackgroundShareDialog(bg.id)" [attr.aria-label]="i18n.t('profile.shareAria')"><app-icon name="link" /></button>
             </div>
           }
         </div>
@@ -787,8 +787,8 @@
            an derselben Berechtigung wie in der reduzierten Fremdansicht, das Ansehen selbst nicht. -->
       @if (!devFullView() || groupService.hasPermission('deck.editOthers')) {
         <div class="chip-row">
-          <button class="icon-button" (click)="openRepairInfoDialog()" [attr.aria-label]="i18n.t('profile.autoRepairAria')" [title]="i18n.t('profile.autoRepairAria')">🔧</button>
-          <button class="icon-button" (click)="openManualLinkDialogForCurrent()" [attr.aria-label]="i18n.t('profile.manualLinkAria')" [title]="i18n.t('profile.manualLinkAria')">🔗</button>
+          <button class="icon-button" (click)="openRepairInfoDialog()" [attr.aria-label]="i18n.t('profile.autoRepairAria')" [title]="i18n.t('profile.autoRepairAria')"><app-icon name="wrench" /></button>
+          <button class="icon-button" (click)="openManualLinkDialogForCurrent()" [attr.aria-label]="i18n.t('profile.manualLinkAria')" [title]="i18n.t('profile.manualLinkAria')"><app-icon name="link" /></button>
         </div>
       }
     </div>

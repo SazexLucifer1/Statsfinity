@@ -64,9 +64,9 @@
         </div>
         <div class="deck-info">
           <span class="deck-name-text">
-            @if (deck.isPrecon) {<span [title]="i18n.t('deck.preconBadge')">📦</span>}
-            @if (deck.isPrivate) {<span [title]="i18n.t('deck.privateBadge')">🔒</span>}
-            @if (deck.isOutdated) {<span [title]="i18n.t('deck.outdatedBadge')">🗄️</span>}
+            @if (deck.isPrecon) {<span [title]="i18n.t('deck.preconBadge')"><app-icon name="package" [label]="i18n.t('deck.preconBadge')" /></span>}
+            @if (deck.isPrivate) {<span [title]="i18n.t('deck.privateBadge')"><app-icon name="lock" [label]="i18n.t('deck.privateBadge')" /></span>}
+            @if (deck.isOutdated) {<span [title]="i18n.t('deck.outdatedBadge')"><app-icon name="archive" [label]="i18n.t('deck.outdatedBadge')" /></span>}
             <!-- Nur die Stufe, ohne Namen: die Kachel ist auf 300px Mindestbreite ausgelegt und
                  der Deckname braucht den Platz. -->
             @if (bracketOf(deck); as bracket) {
@@ -88,12 +88,12 @@
             <button class="glass-button small primary" (click)="openDeckDetail(deck)">{{ i18n.t('deck.view') }}</button>
             @if (!readonlyMode()) {
               <app-overflow-menu [label]="i18n.t('deck.deckActionsAria', { name: deck.name })" [heading]="deck.name">
-                <button class="glass-button" (click)="openGoldfish(deck)">🐟 {{ i18n.t('deck.goldfish') }}</button>
+                <button class="glass-button" (click)="openGoldfish(deck)">{{ i18n.t('deck.goldfish') }}</button>
                 <button class="glass-button" (click)="toggleDeckPrivate(deck)">
-                  {{ deck.isPrivate ? '🔒' : '🔓' }}
+                  <app-icon [name]="deck.isPrivate ? 'lock' : 'unlock'" />
                   {{ deck.isPrivate ? i18n.t('deck.makeVisibleAgain') : i18n.t('deck.makePrivate') }}
                 </button>
-                <button class="glass-button danger" (click)="deleteDeck(deck)">🗑 {{ i18n.t('deck.deleteAria') }}</button>
+                <button class="glass-button danger" (click)="deleteDeck(deck)">{{ i18n.t('deck.deleteAria') }}</button>
               </app-overflow-menu>
             }
           </div>

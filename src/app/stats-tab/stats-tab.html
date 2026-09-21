@@ -193,8 +193,7 @@
     [value]="selectedModes()"
     (valueChange)="setSelectedModes($event)"
     [disabledOptions]="blockedModes()"
-    disabledMarker="🔒"
-    [allLabel]="i18n.t('stats.allModes')"
+      [allLabel]="i18n.t('stats.allModes')"
     [label]="i18n.t('stats.modes')"
   />
 </section>
@@ -202,7 +201,7 @@
 @if (blockedModes().length > 0) {
 <section class="glass-card">
   <p class="hint">
-    🔒 {{ blockedModes().join(', ') }}
+    {{ blockedModes().join(', ') }}
     {{ blockedModes().length === 1 ? i18n.t('stats.lockedModesSingular') : i18n.t('stats.lockedModesPlural') }}
     {{ i18n.t('stats.lockedModesSuffix') }}
   </p>
@@ -285,7 +284,7 @@
   <ul class="ranking">
     @for (m of playerModeStats(); track m.mode) {
     <li>
-      <span class="rank">🎲</span>
+      <span class="rank"><app-icon name="dice" /></span>
       <span class="name">{{ m.mode }}</span>
       <span class="detail">{{ m.wins }} / {{ m.games }} {{ i18n.t('stats.wins') }}</span>
       <span class="rate">{{ m.winRate | number: '1.0-0' }}%</span>
@@ -298,7 +297,7 @@
   <ul class="ranking">
     @for (f of playerFormatStats(); track f.format) {
     <li>
-      <span class="rank">🎴</span>
+      <span class="rank"><app-icon name="layers" /></span>
       <span class="name">{{ f.format }}</span>
       <span class="detail">{{ f.wins }} / {{ f.games }} {{ i18n.t('stats.wins') }}</span>
       <span class="rate">{{ f.winRate | number: '1.0-0' }}%</span>
@@ -334,9 +333,9 @@
           </button>
         }
         <span class="card-name-text">
-          @if (d.isPrecon) {<span title="Precon">📦</span>}
+          @if (d.isPrecon) {<span [title]="i18n.t('deck.preconBadge')"><app-icon name="package" [label]="i18n.t('deck.preconBadge')" /></span>}
           {{ d.deckName }}
-          @if (d.borrowed) {<span class="borrowed-badge">🤝 {{ i18n.t('stats.from', { name: d.ownerName ?? '' }) }}</span>}
+          @if (d.borrowed) {<span class="borrowed-badge">{{ i18n.t('stats.from', { name: d.ownerName ?? '' }) }}</span>}
         </span>
         @if (isSingleMode() === null) {
           <span class="chevron">{{ selectedDeckDetail() === d.deckId ? '▾' : '▸' }}</span>
@@ -651,7 +650,7 @@
             [class.borrowed-pilot]="pilot.borrowed"
             [class.clickable]="isPlayerLinked(pilot.name)"
             (click)="openPlayerProfile(pilot.name)"
-            >{{ pilot.name }}@if (pilot.borrowed) { 🤝 }</span
+            >{{ pilot.name }}@if (pilot.borrowed) {&nbsp;<app-icon name="exchange" [label]="i18n.t('profile.commanderListBorrowed')" />}</span
           >@if (!last) {, }
         }
       </span>

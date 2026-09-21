@@ -1,7 +1,7 @@
 @if (tournament.panelExpanded()) {
 <section class="glass-card tournament-sheet">
     <div class="tournament-header">
-      <h2>🏆 {{ showingResults() ? i18n.t('tournament.resultsHeading') : (tournament.activeTournament()?.name ?? i18n.t('tournament.newTitle')) }}</h2>
+      <h2>{{ showingResults() ? i18n.t('tournament.resultsHeading') : (tournament.activeTournament()?.name ?? i18n.t('tournament.newTitle')) }}</h2>
       @if (!showingResults()) {
         <button
           class="icon-button"
@@ -10,7 +10,7 @@
           [attr.aria-label]="i18n.t('tournament.refreshAria')"
           [title]="i18n.t('tournament.refreshAria')"
         >
-          🔄
+          <app-icon name="refresh" />
         </button>
       }
       <button class="icon-button" (click)="close()" [attr.aria-label]="i18n.t('tournament.minimizeAria')">✕</button>
@@ -20,7 +20,7 @@
       <div class="podium">
         @if (tournament.standings()[1]; as second) {
           <div class="podium-place place-2">
-            <span class="medal">🥈</span>
+            <span class="medal" aria-hidden="true">2</span>
             <span class="podium-name">{{ second.playerName }}</span>
             <span class="podium-stats">{{ i18n.t('tournament.pointsLabel', { points: second.points, wins: second.wins, losses: second.losses }) }}</span>
             <span class="podium-stats">{{ i18n.t('tournament.tiebreakerLabel', { omw: pct(second.omwPercent), gw: pct(second.gwPercent), ogw: pct(second.ogwPercent) }) }}</span>
@@ -28,7 +28,7 @@
         }
         @if (tournament.standings()[0]; as first) {
           <div class="podium-place place-1">
-            <span class="medal">🥇</span>
+            <span class="medal" aria-hidden="true">1</span>
             <span class="podium-name">{{ first.playerName }}</span>
             <span class="podium-stats">{{ i18n.t('tournament.pointsLabel', { points: first.points, wins: first.wins, losses: first.losses }) }}</span>
             <span class="podium-stats">{{ i18n.t('tournament.tiebreakerLabel', { omw: pct(first.omwPercent), gw: pct(first.gwPercent), ogw: pct(first.ogwPercent) }) }}</span>
@@ -36,7 +36,7 @@
         }
         @if (tournament.standings()[2]; as third) {
           <div class="podium-place place-3">
-            <span class="medal">🥉</span>
+            <span class="medal" aria-hidden="true">3</span>
             <span class="podium-name">{{ third.playerName }}</span>
             <span class="podium-stats">{{ i18n.t('tournament.pointsLabel', { points: third.points, wins: third.wins, losses: third.losses }) }}</span>
             <span class="podium-stats">{{ i18n.t('tournament.tiebreakerLabel', { omw: pct(third.omwPercent), gw: pct(third.gwPercent), ogw: pct(third.ogwPercent) }) }}</span>
@@ -121,7 +121,7 @@
                   <p class="hint">{{ i18n.t('tournament.timerStartsHint') }}</p>
                 }
               } @else {
-                <p class="success">🏆 {{ winnerNameFor(myMatch) }}</p>
+                <p class="success">{{ winnerNameFor(myMatch) }}</p>
               }
             }
           </div>
@@ -145,7 +145,7 @@
               @if (m.isDraw) {
                 <span class="hint">{{ i18n.t('tournament.drawResult') }}</span>
               } @else if (winnerNameFor(m)) {
-                <span class="hint">🏆 {{ winnerNameFor(m) }}</span>
+                <span class="hint">{{ winnerNameFor(m) }}</span>
               }
               @if (!m.isBye && canManageMatch(m)) {
                 @if (!winnerNameFor(m) && !m.isDraw) {
@@ -271,7 +271,7 @@
                 @if (c.isCommander) {
                   <span class="hint">{{ i18n.t('match.commander') }}</span>
                 }
-                <button class="icon-button" (click)="deleteCube(c.id, c.name)" [attr.aria-label]="i18n.t('match.deleteCube')">🗑</button>
+                <button class="icon-button" (click)="deleteCube(c.id, c.name)" [attr.aria-label]="i18n.t('match.deleteCube')"><app-icon name="trash" /></button>
               </li>
             }
           </ul>

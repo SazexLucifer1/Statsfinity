@@ -31,7 +31,7 @@
   <!-- Als .glass-chip stand das direkt unter der Spielmodus-Auswahl und sah aus wie eine
        weitere Modus-Option. Es ist aber eine Aktion, die den ganzen Tab wechselt. -->
   <button class="glass-button" (click)="openTournamentPanel()">
-    🏆 {{ tournament.activeTournament() ? i18n.t('tournament.openPanelButton') : i18n.t('tournament.createButton') }}
+    {{ tournament.activeTournament() ? i18n.t('tournament.openPanelButton') : i18n.t('tournament.createButton') }}
   </button>
 
   @if (session.otherGroupLiveSessions().length > 0) {
@@ -77,7 +77,7 @@
 
           @if (p.commander) {
             <span class="commander-name">
-              @if (p.deckId) {<span title="Aus importiertem Deck">📚</span>}
+              @if (p.deckId) {<span [title]="i18n.t('deck.fromImportedDeck')"><app-icon name="deck" [label]="i18n.t('deck.fromImportedDeck')" /></span>}
               {{ p.commander }}
             </span>
             <button class="icon-button" (click)="clearCommander(p.name)" [attr.aria-label]="i18n.t('match.removeCommander')">✕</button>
@@ -173,7 +173,7 @@
     <div class="chip-row">
       @for (p of session.selectedPlayers(); track p.name) {
         <button class="glass-chip" [class.active]="p.isArchenemy" (click)="toggleArchenemy(p.name)">
-          👹 {{ p.name }}
+          {{ p.name }}
         </button>
       }
     </div>
@@ -200,7 +200,7 @@
             @if (c.isCommander) {
               <span class="hint">{{ i18n.t('match.commander') }}</span>
             }
-            <button class="icon-button" (click)="deleteCube(c.id, c.name)" [attr.aria-label]="i18n.t('match.deleteCube')">🗑</button>
+            <button class="icon-button" (click)="deleteCube(c.id, c.name)" [attr.aria-label]="i18n.t('match.deleteCube')"><app-icon name="trash" /></button>
           </li>
         }
       </ul>
@@ -287,7 +287,7 @@
       <div class="chip-row">
         @for (p of session.selectedPlayers(); track p.name) {
           <button class="glass-chip" [class.active]="p.isArchenemy" (click)="toggleArchenemy(p.name)">
-            👹 {{ p.name }}
+            {{ p.name }}
           </button>
         }
       </div>
@@ -366,10 +366,10 @@
         groupService.hasPermission('match.editCommander') ||
         groupService.hasPermission('match.editCube')
       ) {
-        <button class="icon-button" (click)="startEditResult(match)" [attr.aria-label]="i18n.t('match.changeWinner')">✏️</button>
+        <button class="icon-button" (click)="startEditResult(match)" [attr.aria-label]="i18n.t('match.changeWinner')"><app-icon name="pencil" /></button>
       }
       @if (groupService.hasPermission('match.delete')) {
-        <button class="icon-button" (click)="deleteMatch(match.id)" [attr.aria-label]="i18n.t('match.deleteMatch')">🗑</button>
+        <button class="icon-button" (click)="deleteMatch(match.id)" [attr.aria-label]="i18n.t('match.deleteMatch')"><app-icon name="trash" /></button>
       }
     </div>
 
@@ -547,7 +547,7 @@
   <span class="match-log-player-main">
     <span class="match-log-name">
       @if (isWinner(match, p)) {
-        <span aria-hidden="true">🏆</span>
+        <app-icon name="trophy" />
       }
       <span class="match-log-name-text">{{ p.name }}</span>
       @if (p.placement) {
@@ -564,11 +564,11 @@
     @if (p.deckId || isBorrowedDeck(p)) {
       <span class="match-log-tags">
         @if (p.deckId) {
-          <span class="match-log-tag">📚 {{ p.deckName }}</span>
+          <span class="match-log-tag">{{ p.deckName }}</span>
         }
         @if (isBorrowedDeck(p)) {
           <span class="match-log-tag is-borrowed"
-            >🤝
+            >
             {{
               i18n.t('match.from', { name: deckOwnerName(p.deckOwnerId, p.deckOwnerPlayerId) ?? '' })
             }}</span
@@ -653,7 +653,7 @@
                   }
                 </div>
                 <span class="player-name">
-                  @if (option.isPrecon) {<span title="Precon">📦</span>}
+                  @if (option.isPrecon) {<span [title]="i18n.t('deck.preconBadge')"><app-icon name="package" [label]="i18n.t('deck.preconBadge')" /></span>}
                   <!-- Damit beim Zusammenstellen einer Runde sichtbar ist, ob die Decks überhaupt
                        zueinander passen, ohne jedes einzeln aufzumachen. -->
                   @if (deckPickerBracket(option); as bracket) {

@@ -33,7 +33,7 @@
         [style.background-image]="p.entry.imageUrl ? 'url(' + p.entry.imageUrl + ')' : null"
       >
         @if (!p.entry.imageUrl) {
-          <span class="frame-placeholder">👤</span>
+          <span class="frame-placeholder"><app-icon name="user" /></span>
         }
       </span>
     }
@@ -49,7 +49,7 @@
         @if (p.entry.imageUrl; as img) {
           <img [src]="img" [alt]="p.entry.name" loading="lazy" />
         } @else {
-          <span class="frame-placeholder">🃏</span>
+          <span class="frame-placeholder"><app-icon name="card" /></span>
         }
       </span>
     }

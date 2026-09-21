@@ -49,7 +49,7 @@ export class MultiSelect implements OnDestroy {
   readonly options = input.required<readonly string[]>();
   /** Werte, die nicht angehakt werden dürfen (z.B. für diesen Account gesperrte Spielmodi). */
   readonly disabledOptions = input<readonly string[]>([]);
-  /** Zeichen vor gesperrten Einträgen, z.B. "🔒". Leer = keine Markierung. */
+  /** Zeichen vor gesperrten Einträgen, z.B. "*". Leer = keine Markierung. */
   readonly disabledMarker = input('');
   /** Beschriftung des "alles auswählen"-Eintrags, z.B. "Alle Modi". */
   readonly allLabel = input('');

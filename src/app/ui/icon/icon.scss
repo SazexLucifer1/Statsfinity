@@ -1,0 +1,18 @@
+:host {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  // Die Größe folgt der Schriftgröße der Umgebung - dort, wo vorher ein Emoji im Textfluss stand,
+  // sitzt das Piktogramm jetzt genauso groß und genauso auf der Grundlinie.
+  width: 1.15em;
+  height: 1.15em;
+  flex: 0 0 auto;
+  vertical-align: -0.2em;
+}
+
+svg {
+  width: 100%;
+  height: 100%;
+  // Ohne das skaliert Safari die Striche beim Vergrößern nicht mit und dünne Icons franst es aus.
+  overflow: visible;
+}

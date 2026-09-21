@@ -145,7 +145,7 @@ export class ProfileService {
     return true;
   }
 
-  /** Merkt sich, dass der Nutzer eine bestimmte Einführungs-Tour gesehen (oder übersprungen) hat - danach startet genau diese Tour nicht mehr automatisch, ist aber jederzeit über den ❓-Button im Profil erneut wählbar. */
+  /** Merkt sich, dass der Nutzer eine bestimmte Einführungs-Tour gesehen (oder übersprungen) hat - danach startet genau diese Tour nicht mehr automatisch, ist aber jederzeit über den Hilfe-Knopf im Profil erneut wählbar. */
   async markTutorialSeen(tutorialId: string): Promise<boolean> {
     const current = this.profile();
     if (!current) return false;

@@ -10,6 +10,7 @@ import { Pager } from '../ui/pager/pager';
 import { ScryfallCard, ScryfallService } from '../scryfall.service';
 import { DeckService } from '../deck.service';
 import { DeckViewerService } from '../deck-viewer.service';
+import { Icon } from '../ui/icon/icon';
 
 /** Ein Teilnehmer eines Spiels, so wie ihn die Historie als Kachel zeigt. */
 export interface PlayerMatchEntry {
@@ -43,7 +44,7 @@ export interface PlayerMatchRow {
  */
 @Component({
   selector: 'app-player-match-history',
-  imports: [DatePipe, NgTemplateOutlet, PlayerAvatar, CardImage, Pager],
+  imports: [DatePipe, NgTemplateOutlet, PlayerAvatar, CardImage, Pager, Icon],
   templateUrl: './player-match-history.html',
   styleUrl: './player-match-history.scss',
 })

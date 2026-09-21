@@ -33,6 +33,7 @@ import { FeedbackService } from './feedback.service';
 import { TournamentService } from './tournament.service';
 import { LoginOverlayService } from './login-overlay.service';
 import { AppRecoveryService } from './app-recovery.service';
+import { Icon, IconName } from './ui/icon/icon';
 import { APP_VERSION, APP_COMMIT } from './version';
 
 @Component({
@@ -62,6 +63,7 @@ import { APP_VERSION, APP_COMMIT } from './version';
     SearchTab,
     LoginRequired,
     GlobalStats,
+    Icon,
   ],
   templateUrl: './app.html',
   styleUrl: './app.scss',
@@ -85,11 +87,11 @@ export class App {
   readonly appVersion = APP_VERSION;
   readonly appCommit = APP_COMMIT;
 
-  readonly tabs: { id: AppTab; labelKey: string; icon: string }[] = [
-    { id: 'match', labelKey: 'nav.match', icon: '⚔️' },
-    { id: 'search', labelKey: 'nav.search', icon: '🔍' },
-    { id: 'stats', labelKey: 'nav.stats', icon: '📊' },
-    { id: 'group', labelKey: 'nav.group', icon: '🎉' },
-    { id: 'profile', labelKey: 'nav.profile', icon: '👤' },
+  readonly tabs: { id: AppTab; labelKey: string; icon: IconName }[] = [
+    { id: 'match', labelKey: 'nav.match', icon: 'swords' },
+    { id: 'search', labelKey: 'nav.search', icon: 'search' },
+    { id: 'stats', labelKey: 'nav.stats', icon: 'chart' },
+    { id: 'group', labelKey: 'nav.group', icon: 'users' },
+    { id: 'profile', labelKey: 'nav.profile', icon: 'user' },
   ];
 }

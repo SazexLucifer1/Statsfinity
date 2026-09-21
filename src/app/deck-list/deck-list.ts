@@ -14,6 +14,7 @@ import { Pager } from '../ui/pager/pager';
 import { BracketBadge } from '../ui/bracket-badge/bracket-badge';
 import { storedDeckBracket } from '../bracket';
 import { DECK_FORMATS, DeckFormat } from '../models';
+import { Icon } from '../ui/icon/icon';
 
 export type DeckSortMode = 'alpha' | 'winRate' | 'games';
 
@@ -47,7 +48,7 @@ function gridBreakpointPx(): number {
 
 @Component({
   selector: 'app-deck-list',
-  imports: [DecimalPipe, FormsModule, CardImage, OverflowMenu, Pager, BracketBadge],
+  imports: [DecimalPipe, FormsModule, CardImage, OverflowMenu, Pager, BracketBadge, Icon],
   templateUrl: './deck-list.html',
   styleUrl: './deck-list.scss',
 })
