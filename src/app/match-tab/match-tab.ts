@@ -1,5 +1,5 @@
 // NEU (komplette Datei)
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MtgService } from '../mtg.service';
@@ -12,10 +12,12 @@ import { DeckService, DeckOwner } from '../deck.service';
 import { I18nService } from '../i18n.service';
 import { TournamentService } from '../tournament.service';
 import { DialogService } from '../dialog.service';
-import { GAME_MODES, TEAM_OPTIONS, Match, LIVE_TRACKING_START_DATE, DECK_FORMATS, DeckFormat } from '../models';
-import { ARCHENEMY_OTHERS, DRAW, teamMemberLabel, gameModeLabel } from '../match-utils';
+import { GAME_MODES, TEAM_OPTIONS, Match, MatchPlayer, LIVE_TRACKING_START_DATE, DECK_FORMATS, DeckFormat } from '../models';
+import { ARCHENEMY_OTHERS, DRAW, isPlayerWinner, teamMemberLabel, gameModeLabel } from '../match-utils';
 import { CardImage } from '../card-image/card-image';
 import { BracketBadge } from '../ui/bracket-badge/bracket-badge';
+import { Pager } from '../ui/pager/pager';
+import { DeckViewerService } from '../deck-viewer.service';
 import { storedDeckBracket } from '../bracket';
 
 /** Ein einzelnes Spiel oder eine zu einer Karte zusammengefasste BO3-Turnierpartie (2-3 Einzelspiele) im Verlauf. */
@@ -34,7 +36,7 @@ export type HistoryRow =
 
 @Component({
   selector: 'app-match-tab',
-  imports: [FormsModule, DatePipe, NgTemplateOutlet, PlayerAvatar, CardImage, BracketBadge],
+  imports: [FormsModule, DatePipe, NgTemplateOutlet, PlayerAvatar, CardImage, BracketBadge, Pager],
   templateUrl: './match-tab.html',
   styleUrl: './match-tab.scss',
 })
@@ -48,6 +50,7 @@ export class MatchTab {
   readonly i18n = inject(I18nService);
   readonly tournament = inject(TournamentService);
   private readonly dialog = inject(DialogService);
+  private readonly deckViewer = inject(DeckViewerService);
 
   openTournamentPanel(): void {
     this.tournament.openPanel();
@@ -586,18 +589,125 @@ export class MatchTab {
     this.expandedGroupId.update((id) => (id === tournamentMatchId ? null : tournamentMatchId));
   }
 
-  readonly historyTotalPages = computed(() =>
-    Math.max(1, Math.ceil(this.historyRows().length / this.historyPageSize))
+  /** Gegen eine Seitenzahl, die nach dem Löschen eines Matches hinter dem Ende liegt. */
+  readonly effectiveHistoryPage = computed(() =>
+    Math.min(this.historyPage(), Math.max(0, Math.ceil(this.historyRows().length / this.historyPageSize) - 1))
   );
 
   readonly pagedHistory = computed(() => {
-    const start = this.historyPage() * this.historyPageSize;
+    const start = this.effectiveHistoryPage() * this.historyPageSize;
     return this.historyRows().slice(start, start + this.historyPageSize);
   });
 
-  readonly historyRangeEnd = computed(() =>
-    Math.min((this.historyPage() + 1) * this.historyPageSize, this.historyRows().length)
+  // --- Commander-Vorschaubilder im Verlauf ---
+  //
+  // Dieselben zwei Quellen und dieselbe Rangfolge wie im Deck-Picker darüber und in der
+  // Profil-Historie: erst das im Deck hinterlegte Artwork (deck_cards.image_url), damit das Bild
+  // zu dem in der Deck-Ansicht passt, dann die Namenssuche, die auch Commander ohne hinterlegtes
+  // Deck abdeckt. Geladen wird nur, was auf der gerade sichtbaren Seite steht.
+
+  /** Alle Spiele der aktuellen Verlaufsseite - eine BO3-Karte bringt ihre Einzelspiele mit. */
+  private readonly pagedMatches = computed(() =>
+    this.pagedHistory().flatMap((row) => (row.kind === 'group' ? row.games : [row.match]))
   );
+
+  private readonly historyCommanderCards = signal<Record<string, ScryfallCard | null>>({});
+  private readonly historyStoredCommanders = signal<Map<string, { name: string; imageUrl: string | null }>>(
+    new Map()
+  );
+  /** Bereits abgefragte Deck-IDs - ein Deck ohne hinterlegten Commander steht in keiner Antwort und würde sonst bei jedem Lauf erneut abgefragt. */
+  private readonly requestedHistoryDeckIds = new Set<string>();
+
+  constructor() {
+    effect(() => {
+      const names = new Set<string>();
+      for (const match of this.pagedMatches()) {
+        for (const p of match.players) {
+          if (p.commander) names.add(p.commander);
+          if (p.partnerCommander) names.add(p.partnerCommander);
+        }
+      }
+      const cache = this.historyCommanderCards();
+      const missing = [...names].filter((n) => !(n.toLowerCase() in cache));
+      if (missing.length === 0) return;
+
+      void this.scryfall.findCardsBulk(missing).then((found) => {
+        this.historyCommanderCards.update((current) => {
+          const next = { ...current };
+          for (const name of missing) {
+            next[name.toLowerCase()] = found.get(name.toLowerCase()) ?? null;
+          }
+          return next;
+        });
+      });
+    });
+
+    effect(() => {
+      const missing: string[] = [];
+      for (const match of this.pagedMatches()) {
+        for (const p of match.players) {
+          if (p.deckId && !this.requestedHistoryDeckIds.has(p.deckId)) missing.push(p.deckId);
+        }
+      }
+      if (missing.length === 0) return;
+      for (const id of missing) this.requestedHistoryDeckIds.add(id);
+
+      void this.deckService.getStoredCommanders(missing).then((found) => {
+        if (found.size === 0) return;
+        this.historyStoredCommanders.update((current) => new Map([...current, ...found]));
+      });
+    });
+  }
+
+  /** Vorderseite des Commander-Bilds einer Verlaufs-Kachel, oder null, solange (oder falls) es keines gibt. */
+  historyThumb(player: MatchPlayer): string | null {
+    const stored = player.deckId ? this.historyStoredCommanders().get(player.deckId) : undefined;
+    if (stored?.imageUrl) return stored.imageUrl;
+    if (!player.commander) return null;
+    return this.historyCommanderCards()[player.commander.toLowerCase()]?.imageUrl ?? null;
+  }
+
+  /** Rückseite bei Doppelkarten - kommt immer aus der Namenssuche, nie aus einem im Deck hinterlegten Bild (das speichert nie eine Rückseite). */
+  historyThumbBack(player: MatchPlayer): string | null {
+    if (!player.commander) return null;
+    return this.historyCommanderCards()[player.commander.toLowerCase()]?.backImageUrl ?? null;
+  }
+
+  /**
+   * Klick auf eine Verlaufs-Kachel mit hinterlegtem Deck: öffnet die Deck-Detailansicht wie aus der
+   * Deck-Liste heraus. Fremde und geliehene Decks schaltet die Detailansicht selbst
+   * schreibgeschützt (DeckViewerService.canEditViewingDeck).
+   */
+  async openPlayerDeck(deckId: string): Promise<void> {
+    const deck = await this.deckService.getDeckById(deckId);
+    if (deck) await this.deckViewer.open(deck);
+  }
+
+  /**
+   * Sieger-Kennzeichnung im Verlauf. Über isPlayerWinner statt über einen Namensvergleich im
+   * Template: bei Two-Headed Giant steht im Feld winner der Team-Name, ein Vergleich mit dem
+   * Spielernamen traf dort also nie zu und die Runde sah im Verlauf unentschieden aus.
+   */
+  isWinner(match: Match, player: MatchPlayer): boolean {
+    return isPlayerWinner(match.mode, match.winner, player.name, player.team, player.isArchenemy);
+  }
+
+  /**
+   * Zweite Zeile einer Verlaufszeile: Rolle, Team und Commander. Stand vorher als "– Archenemy
+   * – Kommandeur" hinter dem Namen in derselben Zeile und schob sie auf dem Handy über den Rand.
+   */
+  playerSubline(match: Match, player: MatchPlayer): string {
+    const parts: string[] = [];
+    if (match.mode === 'Archenemy' && player.isArchenemy) parts.push('Archenemy');
+    // player.team ist bereits 'Team 2' (TEAM_OPTIONS), kein weiteres 'Team ' davor.
+    if (match.mode === 'Two-Headed Giant' && player.team) parts.push(player.team);
+    if (player.commander) {
+      parts.push(
+        player.partnerCommander ? `${player.commander} + ${player.partnerCommander}` : player.commander
+      );
+    }
+    return parts.join(' · ');
+  }
 
   /** Findet zu einer Account-User-ID/players.id den Spielernamen in der aktuellen Gruppe (für "ausgeliehen von X" im Verlauf). */
   deckOwnerName(ownerId: string | undefined, ownerPlayerId?: string): string | null {
@@ -613,14 +723,6 @@ export class MatchTab {
 
   toggleHistory(): void {
     this.historyExpanded.update((v) => !v);
-  }
-
-  prevHistoryPage(): void {
-    this.historyPage.update((p) => Math.max(0, p - 1));
-  }
-
-  nextHistoryPage(): void {
-    this.historyPage.update((p) => Math.min(this.historyTotalPages() - 1, p + 1));
   }
 
   async deleteMatch(id: string): Promise<void> {

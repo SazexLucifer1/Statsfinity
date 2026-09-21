@@ -496,6 +496,273 @@ h3 {
   }
 }
 
+/* --- Match-Verlauf ---
+   Gemeinsames Aussehen der Spielliste im Match-Tab und in der Profil-Historie. Global, weil beide
+   Listen dasselbe zeigen und vorher zwei fast identische Kopien derselben Regeln hatten, die
+   auseinandergelaufen sind (Abstände, Badge-Größen, Gold-Ton des Siegers).
+
+   Leitgedanke: Ein Spiel ist eine eigene Kachel, kein Absatz zwischen zwei Haarlinien, und jede
+   Angabe darin hat eine eigene Form - Modus als Pille, Datum klein und zurückgenommen, jeder
+   Mitspieler eine Zeile mit Avatar, Zusatzangaben (Deck, geliehen, Platz) als Etiketten. Vorher
+   stand all das als Fließtext mit "–" dazwischen in einer einzigen Zeile. */
+
+.match-log {
+  list-style: none;
+  margin: var(--sp-4) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.match-log-card {
+  position: relative;
+  padding: var(--sp-4) var(--sp-5);
+  border-radius: var(--r-lg);
+  background: var(--surface-tile);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  // Damit der Ergebnisstreifen unten der Rundung der Kachel folgt.
+  overflow: hidden;
+}
+
+/* Farbstreifen am linken Rand: das Ergebnis aus Sicht EINER Person - nur in der Profil-Historie,
+   die genau diese Sicht hat. Im Match-Tab gibt es sie nicht, dort bleibt die Kachel neutral. */
+.match-log-card.is-win::before,
+.match-log-card.is-draw::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
+}
+
+.match-log-card.is-win::before {
+  background: var(--gold);
+}
+
+.match-log-card.is-draw::before {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.match-log-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+}
+
+.match-log-mode {
+  flex-shrink: 0;
+  padding: 3px var(--sp-3);
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--glass-border);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.match-log-date {
+  flex: 1;
+  // Ohne nowrap bricht bei langen Modusnamen ("Two-Headed Giant · Commander") das Datum
+  // mitten im Jahr um; so rutscht es als Ganzes in die zweite Zeile.
+  white-space: nowrap;
+  font-size: 0.78rem;
+  opacity: 0.6;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Platz und Ergebnis gehören zusammen: als ein Block bleiben sie beim Umbruch in einer Zeile und
+   rutschen über margin-left:auto an den rechten Rand, statt einzeln nach links zu fallen. */
+.match-log-verdict {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.match-log-result {
+  flex-shrink: 0;
+  padding: 3px var(--sp-3);
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  opacity: 0.75;
+
+  &.is-win {
+    background: rgba(255, 209, 102, 0.18);
+    border-color: rgba(255, 209, 102, 0.45);
+    color: var(--gold);
+    opacity: 1;
+  }
+}
+
+/* Raster statt Liste: eine Runde mit vier Leuten war untereinander vier Zeilen hoch, obwohl die
+   halbe Breite leer blieb. Bei 132px Mindestbreite stehen auf einem iPhone zwei Kacheln
+   nebeneinander, auf dem Desktop so viele, wie hineinpassen - die Kachelbreite bleibt dabei
+   gleich, statt bei zwei Spielern auf halbe Bildschirmbreite auseinanderzulaufen. */
+.match-log-players {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: var(--sp-2);
+}
+
+.match-log-player {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+  padding: var(--sp-2);
+  border-radius: var(--r-md);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid transparent;
+
+  // Reset für die Kacheln, die als <button> ein Deck öffnen.
+  font: inherit;
+  color: inherit;
+  text-align: left;
+
+  > app-player-avatar {
+    flex-shrink: 0;
+  }
+
+  &.is-clickable {
+    cursor: pointer;
+
+    &:active {
+      background: rgba(255, 255, 255, 0.12);
+    }
+  }
+}
+
+/* Das Kartenbild des gespielten Commanders. Bewusst die kleine Stufe von .card-thumb: in einer
+   Kachel dieser Breite muss daneben noch Name, Commander und Deckname Platz haben. */
+.match-log-thumb {
+  cursor: inherit;
+}
+
+/* "Du" neben dem eigenen Namen. Die eigene Person steht mit in der Liste - ohne Markierung sieht
+   eine Runde auf den ersten Blick so aus, als hätte jemand Fremdes mitgespielt. */
+.match-log-self {
+  padding: 1px var(--sp-2);
+  border-radius: var(--r-pill);
+  background: rgba(138, 180, 255, 0.25);
+  border: 1px solid rgba(138, 180, 255, 0.5);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* Der Sieger wird als Fläche hervorgehoben, nicht nur durch goldene Schrift: in einer Runde mit
+   vier Zeilen war die Farbe allein zu leicht zu übersehen. */
+.match-log-player.is-winner {
+  background: rgba(255, 209, 102, 0.14);
+  border-color: rgba(255, 209, 102, 0.4);
+}
+
+.match-log-player-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* Flex statt Fliesstext, damit Pokal, "Du" und Platzziffer neben dem Namen stehen können, ohne
+   mitgekürzt zu werden - gekürzt wird allein der Name in .match-log-name-text. */
+.match-log-name {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  min-width: 0;
+  font-size: 0.88rem;
+  font-weight: 600;
+
+  > :not(.match-log-name-text) {
+    flex-shrink: 0;
+  }
+
+  .is-winner & {
+    color: var(--gold);
+  }
+}
+
+.match-log-name-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Zweite Zeile: Commander, Team, Archenemy - alles, was vorher als "– Text" hinter dem Namen
+   stand und die Zeile bei drei Angaben über den Rand schob. */
+.match-log-sub {
+  font-size: 0.76rem;
+  opacity: 0.7;
+  // Umbrechend statt abgeschnitten, aber nach zwei Zeilen Schluss: "Tymna the Weaver + Thrasios,
+  // Triton Hero" passt in einer Kachel nie in eine Zeile, dürfte darin aber auch nicht fünf
+  // belegen. Der vollständige Name steht im title-Attribut.
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+.match-log-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-1);
+  margin-top: 2px;
+  min-width: 0;
+}
+
+.match-log-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  max-width: 100%;
+  padding: 2px var(--sp-2);
+  border-radius: var(--r-xs);
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 0.72rem;
+  opacity: 0.85;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  &.is-borrowed {
+    background: rgba(255, 209, 102, 0.14);
+    color: var(--gold);
+    opacity: 1;
+  }
+}
+
+/* Platzierung rechts und als eigene Marke: so lässt sich die Rangfolge einer Runde von oben nach
+   unten ablesen, ohne jede Zeile bis zum Ende zu lesen. */
+.match-log-place {
+  flex-shrink: 0;
+  min-width: 26px;
+  padding: 2px var(--sp-2);
+  border-radius: var(--r-sm);
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
 /* --- Status-Texte --- */
 
 .hint {
