@@ -1,0 +1,70 @@
+@if (rows().length === 0) {
+  <p class="hint">{{ i18n.t('profile.matchHistoryEmpty') }}</p>
+} @else {
+  <p class="hint">
+    {{
+      i18n.t('profile.matchHistorySummary', { games: rows().length, wins: wins(), rate: winRate() })
+    }}
+  </p>
+
+  <ul class="player-match-list">
+    @for (row of pagedRows(); track row.match.id) {
+      <li class="player-match-item">
+        <div class="player-match-head">
+          @if (row.match.mode === 'Cube' && row.match.cube) {
+            <span class="player-match-mode"
+              >{{ modeLabel(row.match) }} – {{ row.match.cube.name }}</span
+            >
+          } @else {
+            <span class="player-match-mode">{{ modeLabel(row.match) }}</span>
+          }
+          <span class="player-match-date">{{ row.match.date | date: 'dd.MM.yyyy, HH:mm' }}</span>
+          <span class="player-match-result" [class.is-win]="row.result === 'win'">{{
+            resultLabel(row.result)
+          }}</span>
+        </div>
+
+        <div class="player-match-details">
+          @if (row.commander) {
+            <span class="player-match-commander">
+              🧙 {{ row.commander }}
+              @if (row.partnerCommander) {
+                <span> + {{ row.partnerCommander }}</span>
+              }
+            </span>
+          }
+          @if (row.deckName) {
+            <span class="deck-badge">📚 {{ row.deckName }}</span>
+          }
+          @if (row.placement) {
+            <span class="placement-badge">{{
+              i18n.t('placement.badge', { placement: row.placement })
+            }}</span>
+          }
+        </div>
+
+        @if (row.others.length > 0) {
+          <div class="player-match-others">
+            <span class="hint">{{ i18n.t('profile.matchHistoryOthers') }}</span>
+            @for (other of row.others; track other.name) {
+              <span class="player-match-other" [class.is-winner]="other.isWinner">
+                <app-player-avatar [url]="mtg.playerAvatars()[other.name] ?? null" />
+                @if (other.isWinner) {
+                  🏆
+                }
+                {{ other.name }}
+              </span>
+            }
+          </div>
+        }
+      </li>
+    }
+  </ul>
+
+  <app-pager
+    [page]="effectivePage()"
+    [totalItems]="rows().length"
+    [pageSize]="pageSize"
+    (pageChange)="page.set($event)"
+  />
+}

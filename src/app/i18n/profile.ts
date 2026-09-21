@@ -62,6 +62,17 @@ export const profile = {
     'profile.placementDistribution': '🏁 Platzierungen',
     'profile.placementDistributionHint':
       'Wie oft welcher Platz erreicht wurde - nur Matches mit eingetragener Platzierung zählen mit.',
+    'profile.matchHistory': '🎲 Gespielte Matches',
+    'profile.matchHistoryHint':
+      'Nur Spiele, an denen diese Person selbst teilgenommen hat - der vollständige Verlauf der Gruppe steht im Match-Tab, dort wird auch bearbeitet.',
+    'profile.matchHistoryOwnHint':
+      'Nur Spiele, an denen du selbst teilgenommen hast - der vollständige Verlauf der Gruppe steht im Match-Tab, dort wird auch bearbeitet.',
+    'profile.matchHistoryEmpty': 'Noch keine Spiele erfasst.',
+    'profile.matchHistorySummary': '{{games}} Spiele · {{wins}} Siege · {{rate}} % Siegquote',
+    'profile.matchHistoryWin': '🏆 Sieg',
+    'profile.matchHistoryLoss': 'Niederlage',
+    'profile.matchHistoryDraw': 'Unentschieden',
+    'profile.matchHistoryOthers': 'Mitspieler:',
     'profile.statsLockedHint':
       '🔒 Die Statistiken sind gerade von der veranstaltenden Person gesperrt.',
     'profile.myDecks': 'Meine Decks',
@@ -235,6 +246,17 @@ export const profile = {
     'profile.placementDistribution': '🏁 Placements',
     'profile.placementDistributionHint':
       'How often each place was reached - only matches with a recorded placement count.',
+    'profile.matchHistory': '🎲 Matches played',
+    'profile.matchHistoryHint':
+      'Only games this person took part in - the full group history lives in the match tab, and that is where matches are edited.',
+    'profile.matchHistoryOwnHint':
+      'Only games you took part in yourself - the full group history lives in the match tab, and that is where matches are edited.',
+    'profile.matchHistoryEmpty': 'No matches recorded yet.',
+    'profile.matchHistorySummary': '{{games}} games · {{wins}} wins · {{rate}} % win rate',
+    'profile.matchHistoryWin': '🏆 Win',
+    'profile.matchHistoryLoss': 'Loss',
+    'profile.matchHistoryDraw': 'Draw',
+    'profile.matchHistoryOthers': 'Other players:',
     'profile.statsLockedHint': '🔒 Stats are currently locked by the organizer.',
     'profile.myDecks': 'My Decks',
     'profile.autoRepairAria': 'Automatically check commanders and link them to decks',

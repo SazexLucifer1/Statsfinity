@@ -105,6 +105,14 @@
         <app-bar-chart [data]="placementChart()" orientation="vertical" />
       </section>
     }
+
+    @if (!othersStatsHidden()) {
+      <section class="glass-card span-full">
+        <h2>{{ i18n.t('profile.matchHistory') }}</h2>
+        <p class="hint">{{ i18n.t('profile.matchHistoryHint') }}</p>
+        <app-player-match-history [playerName]="profileHistoryName()" />
+      </section>
+    }
   }
 </div>
 @if (devFullView()) {
@@ -210,6 +218,14 @@
       <h2>{{ i18n.t('profile.placementDistribution') }}</h2>
       <p class="hint">{{ i18n.t('profile.placementDistributionHint') }}</p>
       <app-bar-chart [data]="placementChart()" orientation="vertical" />
+    </section>
+  }
+
+  @if (!othersStatsHidden()) {
+    <section class="glass-card span-full">
+      <h2>{{ i18n.t('profile.matchHistory') }}</h2>
+      <p class="hint">{{ i18n.t('profile.matchHistoryHint') }}</p>
+      <app-player-match-history [playerName]="profileHistoryName()" />
     </section>
   }
 }
@@ -638,6 +654,14 @@
         <app-bar-chart [data]="ownPlacementChart()" orientation="vertical" />
       </section>
     }
+
+    <!-- Der eigene Match-Verlauf. Anders als in der Fremdansicht mit Jahresfilter, weil der
+         Zeitraum-Umschalter über dieser Kachel steht und alle Kacheln darunter betrifft. -->
+    <section class="glass-card span-full">
+      <h2>{{ i18n.t('profile.matchHistory') }}</h2>
+      <p class="hint">{{ i18n.t(devFullView() ? 'profile.matchHistoryHint' : 'profile.matchHistoryOwnHint') }}</p>
+      <app-player-match-history [playerName]="profileHistoryName()" [year]="statsYear()" />
+    </section>
 
     @if (crossGroupStats(); as overall) {
       @if (overall.totalGames > 0) {
