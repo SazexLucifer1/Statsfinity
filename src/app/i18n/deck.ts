@@ -83,7 +83,7 @@ export const deck = {
     'importDialog.updateDeckTitle': 'Deck aktualisieren',
     'importDialog.importDeckTitle': 'Deck importieren',
     'importDialog.importHint':
-      'Kopiere deine Decklist von deckstats.net, Moxfield, Archidekt o.ä. hierhin – ein Kartenname pro Zeile, z.B. "1 Sol Ring" oder "1x Sol Ring". Beim erneuten Speichern wird automatisch erkannt, was sich seit dem letzten Import geändert hat.',
+      'Kopiere deine Decklist von deckstats.net, Moxfield, Archidekt, MTGGoldfish, TappedOut o.ä. hierhin – ein Kartenname pro Zeile, z.B. "1 Sol Ring" oder "1x Sol Ring". Set-Kürzel, Kategorien, Commander und Sideboard werden dabei mitgelesen. Beim erneuten Speichern wird automatisch erkannt, was sich seit dem letzten Import geändert hat.',
     'importDialog.deckNameLabel': 'Deckname',
     'importDialog.deckNamePlaceholder': 'z.B. Atraxa Superfriends',
     'importDialog.formatLabel': 'Spielformat',
@@ -225,7 +225,7 @@ export const deck = {
     'importDialog.updateDeckTitle': 'Update deck',
     'importDialog.importDeckTitle': 'Import deck',
     'importDialog.importHint':
-      'Paste your decklist from deckstats.net, Moxfield, Archidekt or similar here – one card name per line, e.g. "1 Sol Ring" or "1x Sol Ring". Saving again automatically detects what changed since the last import.',
+      'Paste your decklist from deckstats.net, Moxfield, Archidekt, MTGGoldfish, TappedOut or similar here – one card name per line, e.g. "1 Sol Ring" or "1x Sol Ring". Set codes, categories, commander and sideboard are picked up automatically. Saving again automatically detects what changed since the last import.',
     'importDialog.deckNameLabel': 'Deck name',
     'importDialog.deckNamePlaceholder': 'e.g. Atraxa Superfriends',
     'importDialog.formatLabel': 'Game format',
