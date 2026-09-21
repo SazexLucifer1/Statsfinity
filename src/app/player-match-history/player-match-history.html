@@ -1,56 +1,77 @@
 @if (rows().length === 0) {
   <p class="hint">{{ i18n.t('profile.matchHistoryEmpty') }}</p>
 } @else {
-  <p class="hint">
-    {{
-      i18n.t('profile.matchHistorySummary', { games: rows().length, wins: wins(), rate: winRate() })
-    }}
-  </p>
+  <div class="stat-tiles history-summary">
+    <div class="stat-tile">
+      <span class="stat-value">{{ rows().length }}</span>
+      <span class="stat-label">{{ i18n.t('profile.matchHistoryGames') }}</span>
+    </div>
+    <div class="stat-tile">
+      <span class="stat-value">{{ wins() }}</span>
+      <span class="stat-label">{{ i18n.t('profile.matchHistoryWins') }}</span>
+    </div>
+    <div class="stat-tile">
+      <span class="stat-value">{{ winRate() }} %</span>
+      <span class="stat-label">{{ i18n.t('profile.matchHistoryRate') }}</span>
+    </div>
+  </div>
 
-  <ul class="player-match-list">
+  <ul class="match-log">
     @for (row of pagedRows(); track row.match.id) {
-      <li class="player-match-item">
-        <div class="player-match-head">
+      <li
+        class="match-log-card"
+        [class.is-win]="row.result === 'win'"
+        [class.is-draw]="row.result === 'draw'"
+      >
+        <div class="match-log-head">
           @if (row.match.mode === 'Cube' && row.match.cube) {
-            <span class="player-match-mode"
-              >{{ modeLabel(row.match) }} – {{ row.match.cube.name }}</span
+            <span class="match-log-mode"
+              >{{ modeLabel(row.match) }} · {{ row.match.cube.name }}</span
             >
           } @else {
-            <span class="player-match-mode">{{ modeLabel(row.match) }}</span>
+            <span class="match-log-mode">{{ modeLabel(row.match) }}</span>
           }
-          <span class="player-match-date">{{ row.match.date | date: 'dd.MM.yyyy, HH:mm' }}</span>
-          <span class="player-match-result" [class.is-win]="row.result === 'win'">{{
+          <span class="match-log-date">{{ row.match.date | date: 'dd.MM.yyyy, HH:mm' }}</span>
+          <span class="match-log-result" [class.is-win]="row.result === 'win'">{{
             resultLabel(row.result)
           }}</span>
         </div>
 
-        <div class="player-match-details">
-          @if (row.commander) {
-            <span class="player-match-commander">
-              🧙 {{ row.commander }}
-              @if (row.partnerCommander) {
-                <span> + {{ row.partnerCommander }}</span>
+        @if (row.commander || row.deckName || row.placement) {
+          <div class="match-log-player own-entry">
+            <span class="match-log-player-main">
+              @if (row.commander) {
+                <span class="match-log-name">
+                  {{ row.commander }}
+                  @if (row.partnerCommander) {
+                    <span class="partner-commander">+ {{ row.partnerCommander }}</span>
+                  }
+                </span>
+              }
+              @if (row.deckName) {
+                <span class="match-log-tags">
+                  <span class="match-log-tag">📚 {{ row.deckName }}</span>
+                </span>
               }
             </span>
-          }
-          @if (row.deckName) {
-            <span class="deck-badge">📚 {{ row.deckName }}</span>
-          }
-          @if (row.placement) {
-            <span class="placement-badge">{{
-              i18n.t('placement.badge', { placement: row.placement })
-            }}</span>
-          }
-        </div>
+            @if (row.placement) {
+              <span
+                class="match-log-place"
+                [title]="i18n.t('placement.badge', { placement: row.placement })"
+                >{{ row.placement }}.</span
+              >
+            }
+          </div>
+        }
 
         @if (row.others.length > 0) {
-          <div class="player-match-others">
-            <span class="hint">{{ i18n.t('profile.matchHistoryOthers') }}</span>
+          <div class="others">
+            <span class="others-label">{{ i18n.t('profile.matchHistoryOthers') }}</span>
             @for (other of row.others; track other.name) {
-              <span class="player-match-other" [class.is-winner]="other.isWinner">
+              <span class="other-player" [class.is-winner]="other.isWinner">
                 <app-player-avatar [url]="mtg.playerAvatars()[other.name] ?? null" />
                 @if (other.isWinner) {
-                  🏆
+                  <span aria-hidden="true">🏆</span>
                 }
                 {{ other.name }}
               </span>

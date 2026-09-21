@@ -12,10 +12,11 @@ import { DeckService, DeckOwner } from '../deck.service';
 import { I18nService } from '../i18n.service';
 import { TournamentService } from '../tournament.service';
 import { DialogService } from '../dialog.service';
-import { GAME_MODES, TEAM_OPTIONS, Match, LIVE_TRACKING_START_DATE, DECK_FORMATS, DeckFormat } from '../models';
-import { ARCHENEMY_OTHERS, DRAW, teamMemberLabel, gameModeLabel } from '../match-utils';
+import { GAME_MODES, TEAM_OPTIONS, Match, MatchPlayer, LIVE_TRACKING_START_DATE, DECK_FORMATS, DeckFormat } from '../models';
+import { ARCHENEMY_OTHERS, DRAW, isPlayerWinner, teamMemberLabel, gameModeLabel } from '../match-utils';
 import { CardImage } from '../card-image/card-image';
 import { BracketBadge } from '../ui/bracket-badge/bracket-badge';
+import { Pager } from '../ui/pager/pager';
 import { storedDeckBracket } from '../bracket';
 
 /** Ein einzelnes Spiel oder eine zu einer Karte zusammengefasste BO3-Turnierpartie (2-3 Einzelspiele) im Verlauf. */
@@ -34,7 +35,7 @@ export type HistoryRow =
 
 @Component({
   selector: 'app-match-tab',
-  imports: [FormsModule, DatePipe, NgTemplateOutlet, PlayerAvatar, CardImage, BracketBadge],
+  imports: [FormsModule, DatePipe, NgTemplateOutlet, PlayerAvatar, CardImage, BracketBadge, Pager],
   templateUrl: './match-tab.html',
   styleUrl: './match-tab.scss',
 })
@@ -586,18 +587,40 @@ export class MatchTab {
     this.expandedGroupId.update((id) => (id === tournamentMatchId ? null : tournamentMatchId));
   }
 
-  readonly historyTotalPages = computed(() =>
-    Math.max(1, Math.ceil(this.historyRows().length / this.historyPageSize))
+  /** Gegen eine Seitenzahl, die nach dem Löschen eines Matches hinter dem Ende liegt. */
+  readonly effectiveHistoryPage = computed(() =>
+    Math.min(this.historyPage(), Math.max(0, Math.ceil(this.historyRows().length / this.historyPageSize) - 1))
   );
 
   readonly pagedHistory = computed(() => {
-    const start = this.historyPage() * this.historyPageSize;
+    const start = this.effectiveHistoryPage() * this.historyPageSize;
     return this.historyRows().slice(start, start + this.historyPageSize);
   });
 
-  readonly historyRangeEnd = computed(() =>
-    Math.min((this.historyPage() + 1) * this.historyPageSize, this.historyRows().length)
-  );
+  /**
+   * Sieger-Kennzeichnung im Verlauf. Über isPlayerWinner statt über einen Namensvergleich im
+   * Template: bei Two-Headed Giant steht im Feld winner der Team-Name, ein Vergleich mit dem
+   * Spielernamen traf dort also nie zu und die Runde sah im Verlauf unentschieden aus.
+   */
+  isWinner(match: Match, player: MatchPlayer): boolean {
+    return isPlayerWinner(match.mode, match.winner, player.name, player.team, player.isArchenemy);
+  }
+
+  /**
+   * Zweite Zeile einer Verlaufszeile: Rolle, Team und Commander. Stand vorher als "– Archenemy
+   * – Kommandeur" hinter dem Namen in derselben Zeile und schob sie auf dem Handy über den Rand.
+   */
+  playerSubline(match: Match, player: MatchPlayer): string {
+    const parts: string[] = [];
+    if (match.mode === 'Archenemy' && player.isArchenemy) parts.push('Archenemy');
+    if (match.mode === 'Two-Headed Giant' && player.team) parts.push(`Team ${player.team}`);
+    if (player.commander) {
+      parts.push(
+        player.partnerCommander ? `${player.commander} + ${player.partnerCommander}` : player.commander
+      );
+    }
+    return parts.join(' · ');
+  }
 
   /** Findet zu einer Account-User-ID/players.id den Spielernamen in der aktuellen Gruppe (für "ausgeliehen von X" im Verlauf). */
   deckOwnerName(ownerId: string | undefined, ownerPlayerId?: string): string | null {
@@ -613,14 +636,6 @@ export class MatchTab {
 
   toggleHistory(): void {
     this.historyExpanded.update((v) => !v);
-  }
-
-  prevHistoryPage(): void {
-    this.historyPage.update((p) => Math.max(0, p - 1));
-  }
-
-  nextHistoryPage(): void {
-    this.historyPage.update((p) => Math.min(this.historyTotalPages() - 1, p + 1));
   }
 
   async deleteMatch(id: string): Promise<void> {

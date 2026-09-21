@@ -316,49 +316,22 @@
     </button>
   }
   @if (historyExpanded()) {
-    @if (historyTotalPages() > 1) {
-      <div class="chip-row history-pager">
-        <button
-          class="icon-button"
-          (click)="prevHistoryPage()"
-          [disabled]="historyPage() === 0"
-          [attr.aria-label]="i18n.t('match.newerGames')"
-        >
-          ◀
-        </button>
-        <span class="hint">{{
-          i18n.t('match.gamesRange', {
-            start: historyPage() * historyPageSize + 1,
-            end: historyRangeEnd(),
-            total: historyRows().length
-          })
-        }}</span>
-        <button
-          class="icon-button"
-          (click)="nextHistoryPage()"
-          [disabled]="historyPage() >= historyTotalPages() - 1"
-          [attr.aria-label]="i18n.t('match.olderGames')"
-        >
-          ▶
-        </button>
-      </div>
-    }
-    <ul class="history-list">
+    <ul class="match-log">
       @for (row of pagedHistory(); track row.kind === 'single' ? row.match.id : row.tournamentMatchId) {
         @if (row.kind === 'group') {
-          <li class="history-item history-group">
-            <div class="history-head" (click)="toggleGroup(row.tournamentMatchId)">
-              <span class="history-mode">{{ modeLabel(row.mode, row.format) }}</span>
-              <span class="history-date">{{ row.date | date: 'dd.MM.yyyy, HH:mm' }}</span>
-              <span class="hint">
-                {{ i18n.t('match.bo3Summary', { p1: row.players[0], s1: row.scores[0], s2: row.scores[1], p2: row.players[1] }) }}
-              </span>
+          <li class="match-log-card match-log-group">
+            <div class="match-log-head" (click)="toggleGroup(row.tournamentMatchId)">
+              <span class="match-log-mode">{{ modeLabel(row.mode, row.format) }}</span>
+              <span class="match-log-date">{{ row.date | date: 'dd.MM.yyyy, HH:mm' }}</span>
               <button class="icon-button" [attr.aria-label]="i18n.t('match.toggleGroup')">
                 {{ expandedGroupId() === row.tournamentMatchId ? '▲' : '▼' }}
               </button>
             </div>
+            <p class="match-log-series">
+              {{ i18n.t('match.bo3Summary', { p1: row.players[0], s1: row.scores[0], s2: row.scores[1], p2: row.players[1] }) }}
+            </p>
             @if (expandedGroupId() === row.tournamentMatchId) {
-              <ul class="history-list nested">
+              <ul class="match-log nested">
                 @for (game of row.games; track game.id) {
                   <ng-container *ngTemplateOutlet="matchRow; context: { match: game }" />
                 }
@@ -370,55 +343,69 @@
         }
       }
     </ul>
+    <app-pager
+      [page]="historyPage()"
+      [totalItems]="historyRows().length"
+      [pageSize]="historyPageSize"
+      (pageChange)="historyPage.set($event)"
+    />
   }
 </section>
 
 <ng-template #matchRow let-match="match">
-  <li class="history-item">
-    <div class="history-head">
-    @if (match.mode === 'Cube' && match.cube) {
-      <span class="history-mode">{{ modeLabel(match.mode, match.format) }} – {{ match.cube.name }}</span>
-    } @else {
-      <span class="history-mode">{{ modeLabel(match.mode, match.format) }}</span>
-    }
-    <span class="history-date">{{ match.date | date: 'dd.MM.yyyy, HH:mm' }}</span>
-    @if (
-      groupService.hasPermission('match.editResult') ||
-      groupService.hasPermission('match.editCommander') ||
-      groupService.hasPermission('match.editCube')
-    ) {
-      <button class="icon-button" (click)="startEditResult(match)" [attr.aria-label]="i18n.t('match.changeWinner')">✏️</button>
-    }
-    @if (groupService.hasPermission('match.delete')) {
-      <button class="icon-button" (click)="deleteMatch(match.id)" [attr.aria-label]="i18n.t('match.deleteMatch')">🗑</button>
-    }
-  </div>
-  <div class="history-players">
-  @for (p of match.players; track p.name) {
-    @if (match.mode === 'Archenemy') {
-      <span class="history-player" [class.is-winner]="(match.winner === '__OTHERS__' ? !p.isArchenemy : p.name === match.winner)">
-        <app-player-avatar [url]="mtg.playerAvatars()[p.name] ?? null" />
-        {{ (match.winner === '__OTHERS__' ? (!p.isArchenemy ? '🏆 ' : '') : (p.name === match.winner ? '🏆 ' : '')) }}{{ p.name }}
-        @if (p.isArchenemy) {<em> – Archenemy</em>}
-        @if (p.commander) {<em> – {{ p.commander }}</em>}
-        @if (p.deckId) {<span class="deck-badge" title="Aus importiertem Deck">📚 {{ p.deckName }}</span>}
-        @if (isBorrowedDeck(p)) {<span class="borrowed-badge">🤝 {{ i18n.t('match.from', { name: deckOwnerName(p.deckOwnerId, p.deckOwnerPlayerId) ?? '' }) }}</span>}
-      </span>
-    } @else {
-      <span class="history-player" [class.is-winner]="p.name === match.winner">
-        <app-player-avatar [url]="mtg.playerAvatars()[p.name] ?? null" />
-        @if (p.name === match.winner) {🏆 }{{ p.name }}
-        @if (match.mode === 'Two-Headed Giant' && p.team) {<em> – Team {{ p.team }}</em>}
-        @if (p.commander) {<em> – {{ p.commander }}</em>}
-        @if (p.deckId) {<span class="deck-badge" title="Aus importiertem Deck">📚 {{ p.deckName }}</span>}
-        @if (isBorrowedDeck(p)) {<span class="borrowed-badge">🤝 {{ i18n.t('match.from', { name: deckOwnerName(p.deckOwnerId, p.deckOwnerPlayerId) ?? '' }) }}</span>}
-        @if (p.placement) {<em class="placement-badge"> · {{ i18n.t('placement.badge', { placement: p.placement }) }}</em>}
-      </span>
-    }
-  }
-</div>
+  <li class="match-log-card">
+    <div class="match-log-head">
+      @if (match.mode === 'Cube' && match.cube) {
+        <span class="match-log-mode">{{ modeLabel(match.mode, match.format) }} · {{ match.cube.name }}</span>
+      } @else {
+        <span class="match-log-mode">{{ modeLabel(match.mode, match.format) }}</span>
+      }
+      <span class="match-log-date">{{ match.date | date: 'dd.MM.yyyy, HH:mm' }}</span>
+      @if (
+        groupService.hasPermission('match.editResult') ||
+        groupService.hasPermission('match.editCommander') ||
+        groupService.hasPermission('match.editCube')
+      ) {
+        <button class="icon-button" (click)="startEditResult(match)" [attr.aria-label]="i18n.t('match.changeWinner')">✏️</button>
+      }
+      @if (groupService.hasPermission('match.delete')) {
+        <button class="icon-button" (click)="deleteMatch(match.id)" [attr.aria-label]="i18n.t('match.deleteMatch')">🗑</button>
+      }
+    </div>
 
-@if (editingResultMatchId() === match.id) {
+    <div class="match-log-players">
+      @for (p of match.players; track p.name) {
+        <div class="match-log-player" [class.is-winner]="isWinner(match, p)">
+          <app-player-avatar [url]="mtg.playerAvatars()[p.name] ?? null" />
+          <span class="match-log-player-main">
+            <span class="match-log-name">
+              @if (isWinner(match, p)) {🏆 }{{ p.name }}
+            </span>
+            @if (playerSubline(match, p); as sub) {
+              <span class="match-log-sub">{{ sub }}</span>
+            }
+            @if (p.deckId || isBorrowedDeck(p)) {
+              <span class="match-log-tags">
+                @if (p.deckId) {
+                  <span class="match-log-tag" [title]="i18n.t('match.fromImportedDeck')">📚 {{ p.deckName }}</span>
+                }
+                @if (isBorrowedDeck(p)) {
+                  <span class="match-log-tag is-borrowed">🤝 {{ i18n.t('match.from', { name: deckOwnerName(p.deckOwnerId, p.deckOwnerPlayerId) ?? '' }) }}</span>
+                }
+              </span>
+            }
+          </span>
+          @if (p.placement) {
+            <span
+              class="match-log-place"
+              [title]="i18n.t('placement.badge', { placement: p.placement })"
+            >{{ p.placement }}.</span>
+          }
+        </div>
+      }
+    </div>
+
+    @if (editingResultMatchId() === match.id) {
   <div class="winner-edit">
     @if (groupService.hasPermission('match.editResult')) {
       <p class="hint">{{ i18n.t('match.whoWon') }}</p>

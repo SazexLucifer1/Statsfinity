@@ -226,95 +226,33 @@
   margin-top: 16px;
 }
 
-.history-pager {
-  align-items: center;
-  margin: 10px 0;
-
-  .hint {
-    margin: 0;
-  }
-}
-
-.history-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.history-item {
-  padding: 12px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-
-  &:last-child {
-    border-bottom: none;
-  }
-}
-
-.history-group {
-  .history-head {
+/* Zusammengefasste BO3-Turnierpartie: Kopfzeile klappt die Einzelspiele auf. Die verschachtelte
+   Liste bekommt keine zweite Kachelfläche - eine Kachel in der Kachel wäre auf dem Handy nur
+   noch Rahmen. */
+.match-log-group {
+  .match-log-head {
     cursor: pointer;
-    margin-bottom: 0;
+    margin-bottom: var(--sp-2);
   }
 
-  .history-list.nested {
-    margin-top: 8px;
-    padding-left: 12px;
-    border-left: 2px solid rgba(255, 255, 255, 0.12);
-
-    .history-item {
-      padding: 10px 0;
-    }
-  }
-}
-
-.history-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 6px;
-
-  .history-mode {
-    font-weight: 700;
-  }
-
-  .history-date {
-    flex: 1;
+  .match-log-series {
+    margin: 0;
     font-size: 0.85rem;
-    opacity: 0.75;
-  }
-}
-
-.history-players {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 0.95rem;
-
-  .history-player {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .history-player.is-winner {
-    color: var(--gold);
-    font-weight: 600;
-  }
-
-  .deck-badge {
-    font-size: 0.78rem;
-    opacity: 0.75;
-  }
-
-  .borrowed-badge {
-    font-size: 0.78rem;
-    font-weight: 600;
-    color: var(--gold);
-  }
-
-  em {
-    font-style: normal;
     opacity: 0.8;
+  }
+
+  .match-log.nested {
+    margin-top: var(--sp-3);
+    padding-left: var(--sp-5);
+    border-left: 2px solid rgba(255, 255, 255, 0.12);
+    gap: var(--sp-2);
+
+    .match-log-card {
+      padding: var(--sp-2) 0;
+      background: none;
+      border: none;
+      border-radius: 0;
+    }
   }
 }
 
