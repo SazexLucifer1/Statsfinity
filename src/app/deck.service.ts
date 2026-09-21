@@ -1790,7 +1790,7 @@ export class DeckService {
    * Zwei Namen fallen bewusst durch:
    *
    * - Es gibt ein EIGENES Deck mit diesem Commander. Dann ist die Partie kein Leihfall, sondern
-   *   nur (noch) nicht verknüpft - und ohne diese Bedingung würde eine gerade im 🔗-Dialog gelöste
+   *   nur (noch) nicht verknüpft - und ohne diese Bedingung würde eine gerade im Verknüpfen-Dialog gelöste
    *   Verknüpfung sofort wieder als "geliehen" gesetzt.
    * - Mehrere fremde Decks passen. Dann steht nicht fest, welches gemeint war; wie in
    *   findDeckIdByCommander() wird lieber gar nichts geraten.
@@ -2103,10 +2103,10 @@ export class DeckService {
    *
    * Übernommen werden neben den unverlinkten Partien auch die, die an einem FREMDEN Deck hängen -
    * also als Leihe erkannt oder beim Erfassen über den Ausleih-Picker gewählt wurden. Ohne das käme
-   * man aus einer einmal gesetzten 🤝-Zuordnung nie wieder heraus: Wer sich dasselbe Precon später
+   * man aus einer einmal gesetzten Leih-Zuordnung nie wieder heraus: Wer sich dasselbe Precon später
    * selbst anlegt, dessen Altpartien bleiben am fremden Deck hängen, weil backfillDeckLinks()
    * ausschließlich unverlinkte Zeilen anfasst. Genau dafür stehen die geliehenen Commander im
-   * 🔗-Dialog zur Auswahl - das Verlinken lief dort bis hierher ins Leere.
+   * Verknüpfen-Dialog zur Auswahl - das Verlinken lief dort bis hierher ins Leere.
    *
    * Partien an einem ANDEREN EIGENEN Deck bleiben unangetastet: Dort steht bereits eine bewusste
    * Zuordnung, und zwei eigene Decks mit demselben Commander sind kein Fehler, den dieser Dialog

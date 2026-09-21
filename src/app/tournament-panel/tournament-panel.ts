@@ -9,6 +9,7 @@ import { I18nService } from '../i18n.service';
 import { DialogService } from '../dialog.service';
 import { TournamentMatch, TableSize } from '../tournament.models';
 import { GAME_MODES, GameMode, DeckFormat, DECK_FORMATS } from '../models';
+import { Icon } from '../ui/icon/icon';
 
 /** Two-Headed Giant ist teambasiert und passt nicht zu individuellem Swiss-Ranking - daher hier ausgeschlossen. */
 const TOURNAMENT_GAME_MODES: GameMode[] = GAME_MODES.filter((m) => m !== 'Two-Headed Giant');
@@ -22,7 +23,7 @@ const TOURNAMENT_GAME_MODES: GameMode[] = GAME_MODES.filter((m) => m !== 'Two-He
  */
 @Component({
   selector: 'app-tournament-panel',
-  imports: [FormsModule],
+  imports: [FormsModule, Icon],
   templateUrl: './tournament-panel.html',
   styleUrl: './tournament-panel.scss',
 })

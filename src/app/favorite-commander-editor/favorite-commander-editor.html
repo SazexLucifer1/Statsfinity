@@ -3,7 +3,7 @@
     @for (name of favorites(); track name) {
       <li>
         <span class="player-name">{{ name }}</span>
-        <button class="icon-button" [disabled]="busy()" (click)="remove(name)" [attr.aria-label]="i18n.t('profile.removeAria')">🗑</button>
+        <button class="icon-button" [disabled]="busy()" (click)="remove(name)" [attr.aria-label]="i18n.t('profile.removeAria')"><app-icon name="trash" /></button>
       </li>
     }
   </ul>

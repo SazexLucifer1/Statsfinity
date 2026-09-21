@@ -3,16 +3,16 @@
      Hintergrundbild. -->
 <div class="search-mode-toggle segmented block">
   <button [class.active]="subView() === 'cards'" (click)="subView.set('cards')">
-    🔍 {{ i18n.t('search.cardsTab') }}
+    {{ i18n.t('search.cardsTab') }}
   </button>
   <button [class.active]="subView() === 'commander'" (click)="subView.set('commander')">
-    👑 {{ i18n.t('search.commanderTab') }}
+    {{ i18n.t('search.commanderTab') }}
   </button>
   <button [class.active]="subView() === 'precons'" (click)="subView.set('precons')">
-    📦 {{ i18n.t('search.preconsTab') }}
+    {{ i18n.t('search.preconsTab') }}
   </button>
   <button [class.active]="subView() === 'decks'" (click)="subView.set('decks')">
-    🗂️ {{ i18n.t('search.decksTab') }}
+    {{ i18n.t('search.decksTab') }}
   </button>
 </div>
 

@@ -46,7 +46,7 @@
           (click)="goldfish.openZoneList('library')"
           [attr.aria-label]="zoneLabel('library')"
         >
-          <span class="goldfish-zone-icon-face">📚</span>
+          <span class="goldfish-zone-icon-face"><app-icon name="deck" /></span>
           <span class="deck-card-qty">{{ goldfish.library().length }}</span>
         </button>
         <button
@@ -58,7 +58,7 @@
           (click)="goldfish.openZoneList('graveyard')"
           [attr.aria-label]="zoneLabel('graveyard')"
         >
-          <span class="goldfish-zone-icon-face">🪦</span>
+          <span class="goldfish-zone-icon-face"><app-icon name="graveyard" /></span>
           <span class="deck-card-qty">{{ goldfish.graveyard().length }}</span>
         </button>
         <button
@@ -70,7 +70,7 @@
           (click)="goldfish.openZoneList('exile')"
           [attr.aria-label]="zoneLabel('exile')"
         >
-          <span class="goldfish-zone-icon-face">🌀</span>
+          <span class="goldfish-zone-icon-face"><app-icon name="exile" /></span>
           <span class="deck-card-qty">{{ goldfish.exile().length }}</span>
         </button>
       </div>
@@ -211,7 +211,7 @@
     (pointerdown)="$event.stopPropagation()"
     [attr.aria-label]="i18n.t('goldfish.previewAria')"
   >
-    🔍
+    <app-icon name="search" />
   </button>
   @if (card.backImageUrl) {
     <button
@@ -220,7 +220,7 @@
       (pointerdown)="$event.stopPropagation()"
       [attr.aria-label]="i18n.t('goldfish.flipAria')"
     >
-      🔄
+      <app-icon name="refresh" />
     </button>
   }
 </ng-template>
@@ -239,7 +239,7 @@
       <span class="goldfish-attach-count">{{ goldfish.attachmentCount(card.instanceId) }}</span>
     }
     @if (card.attachedTo) {
-      <span class="goldfish-attach-link">🔗</span>
+      <span class="goldfish-attach-link"><app-icon name="link" /></span>
     }
   </div>
 </ng-template>

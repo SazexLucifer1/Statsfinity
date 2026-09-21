@@ -134,7 +134,7 @@ export class TournamentService {
     // Ersatz für Supabase Realtime (im Repo bisher nirgends verwendet) - reicht für den
     // Sonntags-Event. Pollt bewusst, sobald überhaupt eine Gruppe aktiv ist (nicht erst, wenn
     // schon ein Turnier läuft) - sonst bekommt jemand, der die App schon offen hatte, BEVOR die
-    // veranstaltende Person ein neues Turnier erstellt hat, das nie mit (der 🏆-Nav-Button taucht
+    // veranstaltende Person ein neues Turnier erstellt hat, das nie mit (der Turnier-Knopf in der Tab-Leiste taucht
     // dann für diese Person nie auf, ohne dass sie die Seite manuell neu lädt).
     effect(() => {
       const groupId = this.groupService.groupId();

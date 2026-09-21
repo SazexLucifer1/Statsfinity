@@ -1,5 +1,6 @@
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { I18nService } from '../i18n.service';
+import { Icon } from '../ui/icon/icon';
 
 /**
  * Wiederverwendbares Kartenbild mit Umdreh-Button für Doppelkarten (Transform/Modal-DFC) - Ersatz
@@ -10,6 +11,7 @@ import { I18nService } from '../i18n.service';
  * sich von Ort zu Ort unterscheidet (Kartenname, Deckname, Commander-Name, …).
  */
 @Component({
+  imports: [Icon],
   selector: 'app-card-image',
   templateUrl: './card-image.html',
   styleUrl: './card-image.scss',

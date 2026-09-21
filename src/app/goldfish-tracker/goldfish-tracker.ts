@@ -4,10 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { CdkDropList, CdkDrag, CdkDragDrop } from '@angular/cdk/drag-drop';
 import { GoldfishService, GoldfishCardInstance, GoldfishZone, activeTypeLine, isEphemeralSpell, isAttachable } from '../goldfish.service';
 import { I18nService } from '../i18n.service';
+import { Icon } from '../ui/icon/icon';
 
 @Component({
   selector: 'app-goldfish-tracker',
-  imports: [FormsModule, NgTemplateOutlet, CdkDropList, CdkDrag],
+  imports: [FormsModule, NgTemplateOutlet, CdkDropList, CdkDrag, Icon],
   templateUrl: './goldfish-tracker.html',
   styleUrl: './goldfish-tracker.scss',
 })

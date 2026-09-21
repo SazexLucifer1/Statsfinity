@@ -2,6 +2,7 @@ import { Component, inject, input, output, signal } from '@angular/core';
 import { ScryfallCard } from '../scryfall.service';
 import { CardImage } from '../card-image/card-image';
 import { I18nService } from '../i18n.service';
+import { Icon } from '../ui/icon/icon';
 
 /**
  * Zeigt 1 Commander normal, bei einem Partner-Paar (2 Commander, siehe
@@ -21,7 +22,7 @@ import { I18nService } from '../i18n.service';
  */
 @Component({
   selector: 'app-partner-card-image',
-  imports: [CardImage],
+  imports: [CardImage, Icon],
   templateUrl: './partner-card-image.html',
   styleUrl: './partner-card-image.scss',
   host: {

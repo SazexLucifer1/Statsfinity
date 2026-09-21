@@ -140,7 +140,7 @@ const TUTORIALS: TutorialDef[] = [
  * TutorialOverlay (root-level Komponente analog IngameTracker/DeckDetailView). "intro" erklärt nur
  * die App-weite Grundstruktur (Sprache, Tab-Leiste); jeder Haupt-Tab sowie Deck-Detailansicht und
  * Ingame-Tracker haben je eine eigene, ausführliche Tour, die beim jeweils ERSTEN Besuch automatisch
- * startet (erst nachdem "intro" gesehen wurde) - und über den ❓-Picker im Profil jederzeit erneut
+ * startet (erst nachdem "intro" gesehen wurde) - und über den Hilfe-Knopf im Profil jederzeit erneut
  * wählbar ist.
  */
 @Injectable({ providedIn: 'root' })
@@ -206,7 +206,7 @@ export class TutorialService {
       this.start('deckDetail');
     });
 
-    // Deck bauen (Bearbeiten-Modus): startet beim ersten Aktivieren von "✏️ Bearbeiten" in der
+    // Deck bauen (Bearbeiten-Modus): startet beim ersten Aktivieren von "Bearbeiten" in der
     // Deck-Detailansicht - unabhängig von "deckDetail" oben, da es eine eigene, tiefere Tour ist.
     effect(() => {
       const editing = this.deckViewer.editMode();

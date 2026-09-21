@@ -19,12 +19,13 @@ import { TournamentService } from '../tournament.service';
 import { DialogService } from '../dialog.service';
 import { I18nService } from '../i18n.service';
 import { AuthService } from '../auth.service';
+import { Icon } from '../ui/icon/icon';
 
 const FIVE_MINUTES_MS = 5 * 60_000;
 
 @Component({
   selector: 'app-ingame-tracker',
-  imports: [CommonModule],
+  imports: [CommonModule, Icon],
   templateUrl: './ingame-tracker.html',
   styleUrl: './ingame-tracker.scss',
 })

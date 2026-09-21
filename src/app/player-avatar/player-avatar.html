@@ -4,6 +4,6 @@
   [style.background-image]="url() ? 'url(' + url() + ')' : null"
 >
   @if (!url()) {
-    <span class="player-avatar-placeholder">👤</span>
+    <span class="player-avatar-placeholder"><app-icon name="user" /></span>
   }
 </div>

@@ -7,6 +7,7 @@ import { I18nService } from '../i18n.service';
 import { PartnerCardImage } from '../partner-card-image/partner-card-image';
 import { ScryfallCard, ScryfallService } from '../scryfall.service';
 import { BracketBadge } from '../ui/bracket-badge/bracket-badge';
+import { Icon } from '../ui/icon/icon';
 
 /** Eine Karte der geöffneten Deckliste, angereichert um die Scryfall-Daten (vor allem das Bild). */
 interface PoolCardEntry {
@@ -33,7 +34,7 @@ const BRACKETS = [1, 2, 3, 4, 5] as const;
  */
 @Component({
   selector: 'app-archidekt-pool-browser',
-  imports: [FormsModule, CardImage, PartnerCardImage, BracketBadge],
+  imports: [FormsModule, CardImage, PartnerCardImage, BracketBadge, Icon],
   templateUrl: './archidekt-pool-browser.html',
   styleUrl: './archidekt-pool-browser.scss',
 })

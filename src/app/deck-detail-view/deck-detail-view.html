@@ -469,13 +469,13 @@
               <ul class="deck-change-log">
                 @for (entry of group.added; track entry.cardName) {
                   <li>
-                    <span class="change-icon">➕</span>
+                    <span class="change-icon"></span>
                     <span class="change-text">{{ entry.quantity }}× {{ entry.cardName }}</span>
                   </li>
                 }
                 @for (entry of group.removed; track entry.cardName) {
                   <li>
-                    <span class="change-icon">➖</span>
+                    <span class="change-icon"></span>
                     <span class="change-text">{{ entry.quantity }}× {{ entry.cardName }}</span>
                   </li>
                 }
@@ -504,7 +504,7 @@
       @if (viewer.editMode()) {
         <div class="edit-mode-bar">
           @if (viewer.commanderMarkError()) {
-            <p class="error">👑 {{ viewer.commanderMarkError() }}</p>
+            <p class="error">{{ viewer.commanderMarkError() }}</p>
           }
           @if (!viewer.hasPendingChanges()) {
             <p class="hint">{{ viewer.i18n.t('deckView.noChanges') }}</p>
@@ -512,16 +512,16 @@
             <p class="hint">{{ viewer.i18n.t('deckView.unsavedChanges') }}</p>
             <ul class="pending-change-list">
               @for (c of viewer.pendingChangeDetails().added; track c.cardName) {
-                <li class="added">➕ {{ c.quantity }}× {{ c.cardName }}</li>
+                <li class="added">{{ c.quantity }}× {{ c.cardName }}</li>
               }
               @for (c of viewer.pendingChangeDetails().removed; track c.cardName) {
-                <li class="removed">➖ {{ c.quantity }}× {{ c.cardName }}</li>
+                <li class="removed">{{ c.quantity }}× {{ c.cardName }}</li>
               }
               @for (c of viewer.pendingCommanderChangeDetails(); track c.cardName) {
-                <li class="added">👑 {{ c.cardName }} {{ c.isCommander ? viewer.i18n.t('deckView.becomesCommander') : viewer.i18n.t('deckView.noLongerCommander') }}</li>
+                <li class="added">{{ c.cardName }} {{ c.isCommander ? viewer.i18n.t('deckView.becomesCommander') : viewer.i18n.t('deckView.noLongerCommander') }}</li>
               }
               @for (c of viewer.pendingMaybeboardChangeDetails(); track c.cardName) {
-                <li class="added">{{ c.isMaybeboard ? '📥' : '📤' }} {{ c.cardName }} {{ c.isMaybeboard ? viewer.i18n.t('deckView.movedToMaybeboard') : viewer.i18n.t('deckView.movedToDeck') }}</li>
+                <li class="added">{{ c.cardName }} {{ c.isMaybeboard ? viewer.i18n.t('deckView.movedToMaybeboard') : viewer.i18n.t('deckView.movedToDeck') }}</li>
               }
             </ul>
           }
@@ -766,7 +766,7 @@
                         (click)="$event.stopPropagation(); viewer.toggleAddCardFlip(card.name)"
                         [attr.aria-label]="viewer.i18n.t('deckView.flipAria')"
                       >
-                        🔄
+                        <app-icon name="refresh" />
                       </button>
                     }
                     <button
@@ -777,7 +777,7 @@
                       (click)="viewer.addCard(card)"
                       [attr.aria-label]="viewer.isCardInDeck(card.name) ? viewer.i18n.t('deckView.alreadyInDeckAria') : viewer.i18n.t('deckView.addAria')"
                     >
-                      {{ viewer.isCardInDeck(card.name) ? '✓' : '➕' }}
+                      {{ viewer.isCardInDeck(card.name) ? '✓' : '' }}
                     </button>
                   </div>
                 </div>
@@ -842,7 +842,7 @@
                           (click)="viewer.addEdhrecCard(card.name)"
                           [attr.aria-label]="viewer.isCardInDeck(card.name) ? viewer.i18n.t('deckView.alreadyInDeckAria') : viewer.i18n.t('deckView.addAria')"
                         >
-                          {{ viewer.isCardInDeck(card.name) ? '✓' : '➕' }}
+                          {{ viewer.isCardInDeck(card.name) ? '✓' : '' }}
                         </button>
                       </div>
                       <span class="card-pick-stats">
@@ -869,7 +869,7 @@
               (click)="viewer.reanalyzeDeck()"
               [title]="viewer.i18n.t('deckView.reanalyzeHint')"
             >
-              🔄 {{ viewer.i18n.t('deckView.reanalyze') }}
+              {{ viewer.i18n.t('deckView.reanalyze') }}
             </button>
           }
           <button class="icon-button" (click)="viewer.toggleDeckAnalysisInfo()" [attr.aria-label]="viewer.i18n.t('deckView.analysisInfoAria')">
@@ -1234,7 +1234,7 @@
                     (click)="$event.stopPropagation(); viewer.toggleDeckCardFlip(card.cardName)"
                     [attr.aria-label]="viewer.i18n.t('deckView.flipAria')"
                   >
-                    🔄
+                    <app-icon name="refresh" />
                   </button>
                 }
                 @if (viewer.editMode() && viewer.showCommanderToggle() && (card.isCommander || viewer.isCommanderEligible(card))) {
@@ -1244,7 +1244,7 @@
                     (click)="viewer.toggleCommanderMark(card)"
                     [attr.aria-label]="card.isCommander ? viewer.i18n.t('deckView.removeAsCommander') : viewer.i18n.t('deckView.markAsCommander')"
                   >
-                    👑
+                    <app-icon name="crown" />
                   </button>
                 }
                 @if (viewer.editMode() && !card.isCommander) {
@@ -1274,15 +1274,15 @@
                     (click)="viewer.toggleCardMaybeboard(card)"
                     [attr.aria-label]="card.isMaybeboard ? viewer.i18n.t('deckView.moveToDeckAria') : viewer.i18n.t('deckView.moveToMaybeboardAria')"
                   >
-                    {{ card.isMaybeboard ? '📤' : '📥' }}
+                    {{ card.isMaybeboard ? '' : '' }}
                   </button>
                 }
                 @if (viewer.editMode()) {
                   <button class="deck-card-artwork-toggle" (click)="viewer.openArtworkPicker(card)" [attr.aria-label]="viewer.i18n.t('deckView.chooseOtherArtwork')">
-                    🎨
+                    <app-icon name="palette" />
                   </button>
                   <button class="deck-card-tag-toggle" (click)="viewer.openTagEditor(card)" [attr.aria-label]="viewer.i18n.t('deckView.editOwnTags')">
-                    🏷️
+                    <app-icon name="tag" />
                   </button>
                 }
               </div>
@@ -1305,7 +1305,7 @@
                     (click)="viewer.toggleCommanderMark(card)"
                     [attr.aria-label]="card.isCommander ? viewer.i18n.t('deckView.removeAsCommander') : viewer.i18n.t('deckView.markAsCommander')"
                   >
-                    👑
+                    <app-icon name="crown" />
                   </button>
                 }
                 @if (viewer.editMode() && !card.isCommander) {
@@ -1332,15 +1332,15 @@
                     (click)="viewer.toggleCardMaybeboard(card)"
                     [attr.aria-label]="card.isMaybeboard ? viewer.i18n.t('deckView.moveToDeckAria') : viewer.i18n.t('deckView.moveToMaybeboardAria')"
                   >
-                    {{ card.isMaybeboard ? '📤' : '📥' }}
+                    {{ card.isMaybeboard ? '' : '' }}
                   </button>
                 }
                 @if (viewer.editMode()) {
                   <button class="icon-button" (click)="viewer.openArtworkPicker(card)" [attr.aria-label]="viewer.i18n.t('deckView.chooseOtherArtwork')">
-                    🎨
+                    <app-icon name="palette" />
                   </button>
                   <button class="icon-button" (click)="viewer.openTagEditor(card)" [attr.aria-label]="viewer.i18n.t('deckView.editOwnTags')">
-                    🏷️
+                    <app-icon name="tag" />
                   </button>
                 }
               </li>

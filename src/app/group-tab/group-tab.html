@@ -62,13 +62,13 @@
                   <button class="glass-button" (click)="openQualificationDialog(group.id)">{{ i18n.t('group.qualification') }}</button>
                 }
                 @if (groupService.hasPermissionFor(group.id, 'group.rename')) {
-                  <button class="glass-button" (click)="startRenameGroup(group.id, group.name)">✏️ {{ i18n.t('group.renameGroupAria') }}</button>
+                  <button class="glass-button" (click)="startRenameGroup(group.id, group.name)">{{ i18n.t('group.renameGroupAria') }}</button>
                 }
                 @if (groupService.hasPermissionFor(group.id, 'group.delete')) {
-                  <button class="glass-button danger" (click)="openDeleteGroupConfirm(group.id, group.name)">🗑 {{ i18n.t('group.deleteGroupAria') }}</button>
+                  <button class="glass-button danger" (click)="openDeleteGroupConfirm(group.id, group.name)">{{ i18n.t('group.deleteGroupAria') }}</button>
                 }
                 @if (group.role !== 'owner') {
-                  <button class="glass-button danger" (click)="openLeaveGroupConfirm(group.id, group.name)">🚪 {{ i18n.t('group.leaveGroupAria') }}</button>
+                  <button class="glass-button danger" (click)="openLeaveGroupConfirm(group.id, group.name)">{{ i18n.t('group.leaveGroupAria') }}</button>
                 }
               </app-overflow-menu>
             </div>
@@ -267,10 +267,10 @@
     @if (groupService.hasPermission('player.merge') || groupService.hasPermission('player.repairNamesGroupwide')) {
       <div class="chip-row">
         @if (mtg.allPlayers().length > 1 && groupService.hasPermission('player.merge')) {
-          <button class="icon-button" (click)="openMergeDialog()" [attr.aria-label]="i18n.t('group.mergePlayersAria')" [title]="i18n.t('group.mergePlayersAria')">🔀</button>
+          <button class="icon-button" (click)="openMergeDialog()" [attr.aria-label]="i18n.t('group.mergePlayersAria')" [title]="i18n.t('group.mergePlayersAria')"><app-icon name="shuffle" /></button>
         }
         @if (groupService.hasPermission('player.repairNamesGroupwide')) {
-          <button class="icon-button" (click)="openRepairInfoDialog()" [attr.aria-label]="i18n.t('group.repairCommanderNamesAria')" [title]="i18n.t('group.repairCommanderNamesAria')">🔧</button>
+          <button class="icon-button" (click)="openRepairInfoDialog()" [attr.aria-label]="i18n.t('group.repairCommanderNamesAria')" [title]="i18n.t('group.repairCommanderNamesAria')"><app-icon name="wrench" /></button>
         }
       </div>
     }
@@ -319,7 +319,7 @@
               >{{ player }}</span
             >
             <!-- Unverknüpfte Spieler sind sonst nicht von echten Accounts zu unterscheiden. Bis eben
-                 war der 🪪-Knopf der einzige Hinweis, und der steckt jetzt im ⋮-Menü. Gleiches
+                 war der -Knopf der einzige Hinweis, und der steckt jetzt im ⋮-Menü. Gleiches
                  Abzeichen wie im NPC-Profil (profile.npcBadge). -->
             @if (!isPlayerLinked(player)) {
               <span class="role-badge npc">{{ i18n.t('profile.npcBadge') }}</span>
@@ -329,13 +329,13 @@
                  alle drei sind seltene Verwaltungsaktionen. -->
             <app-overflow-menu [label]="i18n.t('group.playerActionsAria', { name: player })" [heading]="player">
               @if (!isPlayerLinked(player) && groupService.hasPermission('player.link')) {
-                <button class="glass-button" (click)="openLinkDialog(player)">🪪 {{ i18n.t('group.linkWithMemberAria') }}</button>
+                <button class="glass-button" (click)="openLinkDialog(player)">{{ i18n.t('group.linkWithMemberAria') }}</button>
               }
               @if (groupService.hasPermission('player.renameOthers') || player === mtg.myPlayerName()) {
-                <button class="glass-button" (click)="startEditPlayer(player)">✏️ {{ i18n.t('group.renamePlayerAria') }}</button>
+                <button class="glass-button" (click)="startEditPlayer(player)">{{ i18n.t('group.renamePlayerAria') }}</button>
               }
               @if (groupService.hasPermission('player.delete')) {
-                <button class="glass-button danger" (click)="deletePlayer(player)">🗑 {{ i18n.t('group.deletePlayerAria') }}</button>
+                <button class="glass-button danger" (click)="deletePlayer(player)">{{ i18n.t('group.deletePlayerAria') }}</button>
               }
             </app-overflow-menu>
           }
@@ -525,8 +525,8 @@
             <div class="section-header-row">
               <span class="player-name">{{ role.name }}</span>
               <div class="chip-row">
-                <button class="icon-button" (click)="openRoleEditor(role)" [attr.aria-label]="i18n.t('group.editRoleAria')">✏️</button>
-                <button class="icon-button" (click)="deleteRole(role)" [attr.aria-label]="i18n.t('group.deleteRoleAria')">🗑</button>
+                <button class="icon-button" (click)="openRoleEditor(role)" [attr.aria-label]="i18n.t('group.editRoleAria')"><app-icon name="pencil" /></button>
+                <button class="icon-button" (click)="deleteRole(role)" [attr.aria-label]="i18n.t('group.deleteRoleAria')"><app-icon name="trash" /></button>
               </div>
             </div>
             <div class="chip-row">

@@ -11,7 +11,7 @@
         [attr.aria-label]="i18n.t('feedback.openAria')"
         [title]="i18n.t('feedback.openAria')"
       >
-        🐛
+        <app-icon name="bug" />
       </button>
       <button
         class="lang-toggle"
@@ -79,7 +79,7 @@
     [class.active]="navigation.activeTab() === tab.id && !tournament.panelExpanded()"
     (click)="tournament.closePanel(); navigation.goToTab(tab.id)"
   >
-    <span class="tab-icon">{{ tab.icon }}</span>
+    <span class="tab-icon"><app-icon [name]="tab.icon" /></span>
     <span class="tab-label">{{ i18n.t(tab.labelKey) }}</span>
   </button>
   } @if (session.phase() === 'ingame') {
@@ -88,7 +88,7 @@
     [class.active]="!session.minimized()"
     (click)="session.reopenGame()"
   >
-    <span class="tab-icon">🎮</span>
+    <span class="tab-icon"><app-icon name="play" /></span>
     <span class="tab-label">{{ i18n.t('nav.game') }}</span>
   </button>
   } @if (tournament.activeTournament()) {
@@ -97,7 +97,7 @@
     [class.active]="tournament.panelExpanded()"
     (click)="tournament.togglePanel()"
   >
-    <span class="tab-icon">🏆</span>
+    <span class="tab-icon"><app-icon name="trophy" /></span>
     <span class="tab-label">{{ i18n.t('nav.tournament') }}</span>
   </button>
   }

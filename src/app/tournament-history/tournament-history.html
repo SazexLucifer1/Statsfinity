@@ -1,5 +1,5 @@
 <section class="glass-card">
-  <h2>🏆 {{ i18n.t('tournamentHistory.title') }}</h2>
+  <h2>{{ i18n.t('tournamentHistory.title') }}</h2>
 
   @if (selectedTournament(); as t) {
     <button class="glass-button" (click)="closeTournament()">{{ i18n.t('tournament.back') }}</button>
@@ -59,7 +59,7 @@
             @if (m.isDraw) {
               <span class="hint">{{ i18n.t('tournament.drawResult') }}</span>
             } @else if (winnerNameFor(m)) {
-              <span class="hint">🏆 {{ winnerNameFor(m) }}</span>
+              <span class="hint">{{ winnerNameFor(m) }}</span>
             }
           </li>
         }
@@ -100,7 +100,7 @@
                 (click)="deleteTournament(t, $event)"
                 [attr.aria-label]="i18n.t('tournamentHistory.deleteAria')"
               >
-                🗑
+                <app-icon name="trash" />
               </button>
             }
           </li>

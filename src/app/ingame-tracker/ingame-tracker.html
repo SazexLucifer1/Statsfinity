@@ -18,7 +18,7 @@
   }
   @if (tournamentBo3Score(); as score) {
     <div class="tournament-score-banner">
-      🏆 {{ i18n.t('tournament.bo3ScoreLabel', { p1: score.p1, s1: score.s1, s2: score.s2, p2: score.p2 }) }}
+      {{ i18n.t('tournament.bo3ScoreLabel', { p1: score.p1, s1: score.s1, s2: score.s2, p2: score.p2 }) }}
     </div>
   }
   <div class="ingame-grid" [style.--columns]="session.ingameColumns()">
@@ -63,7 +63,7 @@
               [attr.aria-label]="i18n.t('ingame.changeBackground')"
               [title]="i18n.t('ingame.changeBackground')"
             >
-              🖌️
+              <app-icon name="brush" />
             </button>
             }
             <button
@@ -73,7 +73,7 @@
               [attr.aria-label]="i18n.t('ingame.markAsDead')"
               [title]="i18n.t('ingame.deadAliveTitle')"
             >
-              ☠️
+              <app-icon name="skull" />
             </button>
           </div>
 
@@ -182,7 +182,7 @@
               [attr.aria-label]="i18n.t('ingame.subtractPoison')"
             ></button>
             <span class="tap-hint minus">−</span>
-            <span class="life-value poison">☠ {{ session.poisonValue(p.key) }}</span>
+            <span class="life-value poison"><app-icon name="skull" /> {{ session.poisonValue(p.key) }}</span>
             @if (session.pendingPoisonDelta()[p.key]; as pending) {
               <span class="pending-delta" [class.negative]="pending < 0">{{ pending > 0 ? '+' : '' }}{{ pending }}</span>
             }
@@ -224,7 +224,7 @@
     (click)="reorderMode() ? closeReorderMode() : openOptionsMenu()"
     [attr.aria-label]="reorderMode() ? i18n.t('ingame.endReorder') : i18n.t('ingame.openMenu')"
   >
-    {{ reorderMode() ? '✅' : '⋮' }}
+    @if (reorderMode()) {<app-icon name="check" />} @else {⋮}
   </button>
 
   @if (showOptionsMenu()) {
@@ -304,7 +304,7 @@
           [class.active]="session.winner() === unit.key"
           (click)="session.winner.set(unit.key)"
         >
-          🏆 {{ unit.label }}
+          {{ unit.label }}
         </button>
         }
       </div>
@@ -316,7 +316,7 @@
           [class.active]="session.winner() === p.name"
           (click)="session.winner.set(p.name)"
         >
-          🏆 {{ p.name }}
+          {{ p.name }}
         </button>
         }
       </div>
@@ -381,9 +381,9 @@
           @if (!brokenBackgrounds().has(custom.url)) {
           <img [src]="custom.url" loading="lazy" alt="" (error)="markBackgroundBroken(custom.url)" />
           } @else {
-          <span class="bg-thumb-error">⚠️<br />{{ i18n.t('ingame.fileMissing') }}</span>
+          <span class="bg-thumb-error"><app-icon name="warning" /><br />{{ i18n.t('ingame.fileMissing') }}</span>
           }
-          <span class="bg-thumb-delete" (click)="deleteOwnBackground($event, custom.id)">🗑</span>
+          <span class="bg-thumb-delete" (click)="deleteOwnBackground($event, custom.id)"><app-icon name="trash" /></span>
         </button>
         }
         @for (shared of backgrounds.sharedWithMe(); track shared.id) {
@@ -396,9 +396,9 @@
           @if (!brokenBackgrounds().has(shared.url)) {
           <img [src]="shared.url" loading="lazy" alt="" (error)="markBackgroundBroken(shared.url)" />
           } @else {
-          <span class="bg-thumb-error">⚠️<br />{{ i18n.t('ingame.fileMissing') }}</span>
+          <span class="bg-thumb-error"><app-icon name="warning" /><br />{{ i18n.t('ingame.fileMissing') }}</span>
           }
-          <span class="bg-thumb-shared" [title]="i18n.t('ingame.sharedWithYouTitle')">🔗</span>
+          <span class="bg-thumb-shared" [title]="i18n.t('ingame.sharedWithYouTitle')"><app-icon name="link" /></span>
         </button>
         }
         @for (bg of backgrounds.list(); track bg) {
@@ -411,7 +411,7 @@
           @if (!brokenBackgrounds().has(bg)) {
           <img [src]="bg" loading="lazy" alt="" (error)="markBackgroundBroken(bg)" />
           } @else {
-          <span class="bg-thumb-error">⚠️<br />{{ i18n.t('ingame.fileMissing') }}<br /><small>{{ bg }}</small></span>
+          <span class="bg-thumb-error"><app-icon name="warning" /><br />{{ i18n.t('ingame.fileMissing') }}<br /><small>{{ bg }}</small></span>
           }
         </button>
         }

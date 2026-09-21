@@ -50,6 +50,7 @@ import {
 } from '../rank-sort';
 import { Podium, PodiumEntry } from '../ui/podium/podium';
 import { GlobalStats } from '../global-stats/global-stats';
+import { Icon } from '../ui/icon/icon';
 
 export type StatsViewMode = 'stats' | 'tournaments';
 export type ColorStatsWeightMode = 'games' | 'decks';
@@ -116,7 +117,7 @@ interface ImportMappingRow {
     MultiSelect,
     Podium,
     GlobalStats,
-  ],
+   Icon],
   templateUrl: './stats-tab.html',
   styleUrl: './stats-tab.scss',
 })

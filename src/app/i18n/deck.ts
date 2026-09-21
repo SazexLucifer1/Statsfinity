@@ -2,9 +2,9 @@
 export const deck = {
   de: {
     // --- Deck-Liste ---
-    'deck.importDeck': '➕ Deck importieren',
-    'deck.importPrecon': '📦 Precon importieren',
-    'deck.newDeck': '🆕 Neues Deck',
+    'deck.importDeck': 'Deck importieren',
+    'deck.importPrecon': 'Precon importieren',
+    'deck.newDeck': 'Neues Deck',
     'deck.searchPlaceholder': 'Deck suchen …',
     'deck.formatFilterAll': 'Alle Formate',
     'deck.formatFilterAria': 'Nach Format filtern',
@@ -14,7 +14,7 @@ export const deck = {
     'deck.noDecksImported': 'Noch keine Decks importiert.',
     'deck.noDeckFound': 'Kein Deck gefunden.',
     'deck.notPlayedYet': 'Noch nicht gespielt',
-    'deck.view': '👁️ Ansehen',
+    'deck.view': 'Ansehen',
     'deck.goldfish': 'Goldfisch',
     'deck.goldfishAria': 'Dieses Deck solo testen (Goldfishing)',
     'deck.makeVisibleAgain': 'Wieder sichtbar machen',
@@ -25,8 +25,9 @@ export const deck = {
     'deck.deleteAria': 'Deck löschen',
     'deck.privateBadge': 'Privat - nur für dich sichtbar',
     'deck.preconBadge': 'Precon',
+    'deck.fromImportedDeck': 'Aus importiertem Deck',
     'deck.outdatedBadge': 'Outdated - aus der normalen Ansicht ausgeblendet',
-    'deck.showOutdated': '🗄️ Nur Outdated',
+    'deck.showOutdated': 'Nur Outdated',
     'deck.msg.confirmDelete': 'Deck „{{name}}" wirklich löschen?',
 
     // --- Commander-Bracket (Abzeichen, siehe ui/bracket-badge) ---
@@ -86,9 +87,9 @@ export const deck = {
     'importDialog.save': 'Speichern',
     'importDialog.msg.saveFailed':
       'Deck konnte nicht gespeichert werden. Ein Kartenname pro Zeile, z.B. "1 Sol Ring".',
-    'importDialog.newEmptyDeckTitle': '🆕 Leeres Deck anlegen',
+    'importDialog.newEmptyDeckTitle': 'Leeres Deck anlegen',
     'importDialog.newEmptyDeckHint':
-      'Legt ein Deck ohne Kartenliste an - danach kannst du es in der Detailansicht über "✏️ Bearbeiten" Karte für Karte selbst aufbauen.',
+      'Legt ein Deck ohne Kartenliste an - danach kannst du es in der Detailansicht über "Bearbeiten" Karte für Karte selbst aufbauen.',
     'importDialog.commanderLabel': 'Commander',
     'importDialog.partnerLabel': 'Zweiter Commander (Partner, optional)',
     'importDialog.partnerHint':
@@ -101,7 +102,7 @@ export const deck = {
     'importDialog.creating': 'Lege an …',
     'importDialog.create': 'Anlegen',
     'importDialog.msg.createFailed': 'Deck konnte nicht angelegt werden.',
-    'importDialog.importPreconTitle': '📦 Precon importieren',
+    'importDialog.importPreconTitle': 'Precon importieren',
     'importDialog.preconHint':
       'Wähle ein Jahr, dann erscheinen alle in diesem Jahr erschienenen Commander-Precons. Mehrere auswählen und auf einmal importieren.',
     'importDialog.yearLabel': 'Jahr',
@@ -118,10 +119,10 @@ export const deck = {
       '{{success}} von {{total}} importiert, {{failed}} fehlgeschlagen.',
 
     // --- PDF-Export-Dialog ---
-    'pdfDialog.title': '🖨️ Als PDF exportieren',
+    'pdfDialog.title': 'Als PDF exportieren',
     'pdfDialog.hint':
       'Karten in echter Größe (63×88mm) mit Schnittlinien, 9 pro Seite. Einzelne Karten unten abwählen, um sie wegzulassen.',
-    'pdfDialog.fillCorners': '⬛ Ecken ausfüllen',
+    'pdfDialog.fillCorners': 'Ecken ausfüllen',
     'pdfDialog.fillCornersHint':
       'Füllt die abgerundeten Kartenecken mit der jeweiligen Rahmenfarbe der Karte auf, statt sie weiß zu lassen - vermeidet kleine weiße Lücken beim Ausschneiden.',
     'pdfDialog.copiesLabel': 'Bei mehreren Kopien (z.B. 7× Forest)',
@@ -131,15 +132,15 @@ export const deck = {
     'pdfDialog.deselectAll': 'Alle abwählen',
     'pdfDialog.loadingImages': 'Lade Kartenbilder {{done}} / {{total}} …',
     'pdfDialog.generating': 'Erzeuge PDF …',
-    'pdfDialog.generateCount': '🖨️ {{count}} Karten als PDF',
+    'pdfDialog.generateCount': '{{count}} Karten als PDF',
     'pdfDialog.msg.noCardsSelected': 'Keine Karten mit Bild ausgewählt.',
     'pdfDialog.msg.noImagesLoaded': 'Keine Kartenbilder konnten geladen werden.',
   },
   en: {
     // --- Deck list ---
-    'deck.importDeck': '➕ Import deck',
-    'deck.importPrecon': '📦 Import precon',
-    'deck.newDeck': '🆕 New deck',
+    'deck.importDeck': 'Import deck',
+    'deck.importPrecon': 'Import precon',
+    'deck.newDeck': 'New deck',
     'deck.searchPlaceholder': 'Search deck …',
     'deck.formatFilterAll': 'All formats',
     'deck.formatFilterAria': 'Filter by format',
@@ -149,7 +150,7 @@ export const deck = {
     'deck.noDecksImported': 'No decks imported yet.',
     'deck.noDeckFound': 'No deck found.',
     'deck.notPlayedYet': 'Not played yet',
-    'deck.view': '👁️ View',
+    'deck.view': 'View',
     'deck.goldfish': 'Goldfish',
     'deck.goldfishAria': 'Test this deck solo (goldfishing)',
     'deck.makeVisibleAgain': 'Make visible again',
@@ -159,8 +160,9 @@ export const deck = {
     'deck.deleteAria': 'Delete deck',
     'deck.privateBadge': 'Private - only visible to you',
     'deck.preconBadge': 'Precon',
+    'deck.fromImportedDeck': 'From an imported deck',
     'deck.outdatedBadge': 'Outdated - hidden from the normal view',
-    'deck.showOutdated': '🗄️ Only outdated',
+    'deck.showOutdated': 'Only outdated',
     'deck.msg.confirmDelete': 'Really delete deck "{{name}}"?',
 
     // --- Commander bracket (badge, see ui/bracket-badge) ---
@@ -218,9 +220,9 @@ export const deck = {
     'importDialog.save': 'Save',
     'importDialog.msg.saveFailed':
       'Deck could not be saved. One card name per line, e.g. "1 Sol Ring".',
-    'importDialog.newEmptyDeckTitle': '🆕 Create empty deck',
+    'importDialog.newEmptyDeckTitle': 'Create empty deck',
     'importDialog.newEmptyDeckHint':
-      'Creates a deck without a card list - afterwards you can build it up card by card in the detail view via "✏️ Edit".',
+      'Creates a deck without a card list - afterwards you can build it up card by card in the detail view via "Edit".',
     'importDialog.commanderLabel': 'Commander',
     'importDialog.partnerLabel': 'Second commander (partner, optional)',
     'importDialog.partnerHint':
@@ -233,7 +235,7 @@ export const deck = {
     'importDialog.creating': 'Creating …',
     'importDialog.create': 'Create',
     'importDialog.msg.createFailed': 'Deck could not be created.',
-    'importDialog.importPreconTitle': '📦 Import precon',
+    'importDialog.importPreconTitle': 'Import precon',
     'importDialog.preconHint':
       'Choose a year, then all commander precons released in that year appear. Select multiple and import them at once.',
     'importDialog.yearLabel': 'Year',
@@ -249,10 +251,10 @@ export const deck = {
     'importDialog.msg.partialImported': '{{success}} of {{total}} imported, {{failed}} failed.',
 
     // --- PDF export dialog ---
-    'pdfDialog.title': '🖨️ Export as PDF',
+    'pdfDialog.title': 'Export as PDF',
     'pdfDialog.hint':
       'Cards at true size (63×88mm) with cut guides, 9 per page. Deselect individual cards below to leave them out.',
-    'pdfDialog.fillCorners': '⬛ Fill corners',
+    'pdfDialog.fillCorners': 'Fill corners',
     'pdfDialog.fillCornersHint':
       "Fills the rounded card corners with the card's own border color instead of leaving them white - avoids small white gaps when cutting.",
     'pdfDialog.copiesLabel': 'For multiple copies (e.g. 7× Forest)',
@@ -262,7 +264,7 @@ export const deck = {
     'pdfDialog.deselectAll': 'Deselect all',
     'pdfDialog.loadingImages': 'Loading card images {{done}} / {{total}} …',
     'pdfDialog.generating': 'Generating PDF …',
-    'pdfDialog.generateCount': '🖨️ {{count}} cards as PDF',
+    'pdfDialog.generateCount': '{{count}} cards as PDF',
     'pdfDialog.msg.noCardsSelected': 'No cards with an image selected.',
     'pdfDialog.msg.noImagesLoaded': 'No card images could be loaded.',
   },

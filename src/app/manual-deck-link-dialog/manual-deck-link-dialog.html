@@ -17,7 +17,7 @@
         >
           <option value="">{{ i18n.t('profile.chooseCommanderPlaceholder') }}</option>
           @for (c of linkService.unassignedCommanderStats(); track c.commander) {
-            <option [value]="c.commander">{{ c.borrowedDeck ? '🤝 ' : '' }}{{ c.commander }} {{ i18n.t('profile.gamesCountParen', { count: c.games }) }}</option>
+            <option [value]="c.commander">{{ c.borrowedDeck ? i18n.t('profile.commanderListBorrowed') + ' · ' : '' }}{{ c.commander }} {{ i18n.t('profile.gamesCountParen', { count: c.games }) }}</option>
           }
         </select>
         <select
@@ -56,7 +56,7 @@
           <option [value]="d.id">{{ d.name }}</option>
         }
         @for (d of linkService.borrowedDecksForUnlinking(); track d.id) {
-          <option [value]="d.id">🤝 {{ d.name }}{{ d.ownerName ? ' (' + d.ownerName + ')' : '' }}</option>
+          <option [value]="d.id">{{ i18n.t('profile.commanderListBorrowed') }} · {{ d.name }}{{ d.ownerName ? ' (' + d.ownerName + ')' : '' }}</option>
         }
       </select>
       @if (linkService.unlinkMessage()) {

@@ -95,7 +95,7 @@
   <span class="match-log-player-main">
     <span class="match-log-name">
       @if (p.isWinner) {
-        <span aria-hidden="true">🏆</span>
+        <app-icon name="trophy" />
       }
       <span class="match-log-name-text">{{ p.name }}</span>
       @if (p.isSelf) {
@@ -107,7 +107,7 @@
     }
     @if (p.deckName) {
       <span class="match-log-tags">
-        <span class="match-log-tag">📚 {{ p.deckName }}</span>
+        <span class="match-log-tag">{{ p.deckName }}</span>
       </span>
     }
   </span>

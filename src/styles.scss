@@ -414,6 +414,12 @@ h3 {
   font-size: 1rem;
   cursor: pointer;
 
+  // Die Piktogramme (ui/icon) richten sich nach der Schriftgröße. Mit den 1rem des Knopfes säßen
+  // sie verloren in einer 44px-Fläche - vorher füllte das Emoji den Knopf optisch deutlich mehr.
+  app-icon {
+    font-size: 1.3rem;
+  }
+
   &:active {
     background: rgba(255, 255, 255, 0.18);
   }
