@@ -612,7 +612,11 @@ h3 {
    gleich, statt bei zwei Spielern auf halbe Bildschirmbreite auseinanderzulaufen. */
 .match-log-players {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  // Die Mindestbreite wächst mit dem Fenster: auf dem iPhone 132px (zwei Kacheln nebeneinander),
+  // auf dem Desktop bis 260px, damit dort Name, Commander und Deckname hineinpassen, statt dass
+  // nur die Spaltenzahl steigt und jede Kachel gleich schmal bleibt. min(100%, ...) ist die
+  // Bremse: ohne sie würde eine Spur breiter als ihr Behälter und das Raster liefe über.
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, clamp(132px, 20vw, 260px)), 1fr));
   gap: var(--sp-2);
 }
 
@@ -699,9 +703,9 @@ h3 {
 }
 
 .match-log-name-text {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  // Umbrechen statt kürzen: ein abgeschnittener Name ("Adr…") ist kein Name mehr.
+  min-width: 0;
+  overflow-wrap: break-word;
 }
 
 /* Zweite Zeile: Commander, Team, Archenemy - alles, was vorher als "– Text" hinter dem Namen
@@ -709,14 +713,9 @@ h3 {
 .match-log-sub {
   font-size: 0.76rem;
   opacity: 0.7;
-  // Umbrechend statt abgeschnitten, aber nach zwei Zeilen Schluss: "Tymna the Weaver + Thrasios,
-  // Triton Hero" passt in einer Kachel nie in eine Zeile, dürfte darin aber auch nicht fünf
-  // belegen. Der vollständige Name steht im title-Attribut.
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  overflow-wrap: anywhere;
+  // Vollständig und umbrechend. Eine Zeilenbegrenzung stand hier schon und hat genau das
+  // gemacht, was sie sollte - nur ist "Chatterfang, Squirrel…" als Commander wertlos.
+  overflow-wrap: break-word;
 }
 
 .match-log-tags {
@@ -738,9 +737,8 @@ h3 {
   background: rgba(255, 255, 255, 0.08);
   font-size: 0.72rem;
   opacity: 0.85;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  // Ein gekürzter Deckname ("SIMP 2…") sagt nichts - lieber eine Zeile mehr.
+  overflow-wrap: break-word;
 
   &.is-borrowed {
     background: rgba(255, 209, 102, 0.14);
