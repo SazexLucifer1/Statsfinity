@@ -1,0 +1,72 @@
+.player-match-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.player-match-item {
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.player-match-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: 4px;
+
+  .player-match-mode {
+    font-weight: 700;
+  }
+
+  .player-match-date {
+    flex: 1;
+    font-size: 0.85rem;
+    opacity: 0.75;
+  }
+
+  .player-match-result {
+    font-size: 0.85rem;
+    opacity: 0.8;
+    white-space: nowrap;
+  }
+
+  .player-match-result.is-win {
+    color: var(--gold);
+    font-weight: 600;
+    opacity: 1;
+  }
+}
+
+.player-match-details,
+.player-match-others {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  font-size: 0.95rem;
+}
+
+.player-match-details {
+  .deck-badge,
+  .placement-badge {
+    font-size: 0.78rem;
+    opacity: 0.75;
+  }
+}
+
+.player-match-others {
+  margin-top: 4px;
+  font-size: 0.85rem;
+
+  .player-match-other {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    opacity: 0.85;
+  }
+}

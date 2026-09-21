@@ -34,6 +34,7 @@ import { RadarChart, RadarChartDatum } from '../ui/radar-chart/radar-chart';
 import { Meter } from '../ui/meter/meter';
 import { ManaSymbol } from '../ui/mana-symbol/mana-symbol';
 import { Podium, PodiumEntry, PODIUM_SIZE } from '../ui/podium/podium';
+import { PlayerMatchHistory } from '../player-match-history/player-match-history';
 import { splitPodium } from '../rank-sort';
 import { colorComboName, sortColors } from '../color-combo-names';
 import { COLORLESS, FILTER_COLORS } from '../color-filter-match';
@@ -49,7 +50,7 @@ const COLOR_RADAR_AXES: readonly string[] = [...FILTER_COLORS, COLORLESS];
 
 @Component({
   selector: 'app-profile-tab',
-  imports: [FormsModule, DatePipe, DecimalPipe, NgTemplateOutlet, DeckList, CardImage, CommanderStatList, FavoriteCommanderEditor, BarChart, RadarChart, Meter, ManaSymbol, Podium],
+  imports: [FormsModule, DatePipe, DecimalPipe, NgTemplateOutlet, DeckList, CardImage, CommanderStatList, FavoriteCommanderEditor, BarChart, RadarChart, Meter, ManaSymbol, Podium, PlayerMatchHistory],
   templateUrl: './profile-tab.html',
   styleUrl: './profile-tab.scss',
 })
@@ -157,6 +158,18 @@ export class ProfileTab {
   readonly viewingNpcFavoriteCommanders = computed<string[]>(() => {
     const name = this.profileService.viewingPlayerName();
     return name ? this.mtg.playerFavoriteCommanders()[name] ?? [] : [];
+  });
+
+  /**
+   * Spielername des gerade angezeigten Profils (eigenes, ein fremder Account oder ein NPC) - die
+   * Eingabe der persönlichen Match-Historie. Dieselbe Auflösung wie in countPlacements: ein NPC hat
+   * nur einen Namen, ein Account wird über die players-Verknüpfung gefunden.
+   */
+  readonly profileHistoryName = computed(() => {
+    const npcName = this.profileService.viewingPlayerName();
+    if (npcName) return npcName;
+    const userId = this.profileService.viewingUserId() ?? this.profileService.profile()?.id ?? null;
+    return this.playerNameForUserId(userId);
   });
 
   /** Findet den Spielernamen (mtg.playerUserIds ist name-indiziert) zu einer Account-User-ID, oder null ohne Zuordnung. */
