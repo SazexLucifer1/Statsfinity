@@ -613,7 +613,8 @@ export class MatchTab {
   playerSubline(match: Match, player: MatchPlayer): string {
     const parts: string[] = [];
     if (match.mode === 'Archenemy' && player.isArchenemy) parts.push('Archenemy');
-    if (match.mode === 'Two-Headed Giant' && player.team) parts.push(`Team ${player.team}`);
+    // player.team ist bereits 'Team 2' (TEAM_OPTIONS), kein weiteres 'Team ' davor.
+    if (match.mode === 'Two-Headed Giant' && player.team) parts.push(player.team);
     if (player.commander) {
       parts.push(
         player.partnerCommander ? `${player.commander} + ${player.partnerCommander}` : player.commander

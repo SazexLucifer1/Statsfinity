@@ -5,14 +5,17 @@
   margin-bottom: var(--sp-5);
 }
 
-/* Die eigene Zeile hat keinen Avatar - wessen Profil offen ist, steht über der Kachel. Statt des
-   Namens trägt sie den Commander, damit die Kachel nicht mit einer leeren Fläche beginnt. */
+/* Die eigene Angabe hat keinen Avatar und keinen Namen - wessen Profil offen ist, steht über der
+   Kachel. Sie trägt deshalb den Commander als Überschrift der Kachel, das Deck als Etikett
+   darunter. Die Platzierung steht in der Kopfzeile neben dem Ergebnis, weil es hier immer die
+   eigene ist und eine Kachel ohne Commander sonst nur aus einer Zahl am rechten Rand bestünde. */
 .own-entry {
-  padding-left: 0;
-  padding-right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  min-width: 0;
 
   .match-log-name {
-    font-weight: 600;
     white-space: normal;
   }
 

@@ -567,10 +567,22 @@ h3 {
 
 .match-log-date {
   flex: 1;
-  min-width: 0;
+  // Ohne nowrap bricht bei langen Modusnamen ("Two-Headed Giant · Commander") das Datum
+  // mitten im Jahr um; so rutscht es als Ganzes in die zweite Zeile.
+  white-space: nowrap;
   font-size: 0.78rem;
   opacity: 0.6;
   font-variant-numeric: tabular-nums;
+}
+
+/* Platz und Ergebnis gehören zusammen: als ein Block bleiben sie beim Umbruch in einer Zeile und
+   rutschen über margin-left:auto an den rechten Rand, statt einzeln nach links zu fallen. */
+.match-log-verdict {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .match-log-result {
@@ -645,9 +657,9 @@ h3 {
 .match-log-sub {
   font-size: 0.8rem;
   opacity: 0.7;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  // Bewusst umbrechend statt abgeschnitten: "Tymna the Weaver + Thrasios, Triton Hero" passt auf
+  // einem iPhone nie in eine Zeile, und der Partner-Commander ist keine Nebensache.
+  overflow-wrap: anywhere;
 }
 
 .match-log-tags {

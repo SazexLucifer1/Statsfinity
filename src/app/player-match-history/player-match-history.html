@@ -32,34 +32,34 @@
             <span class="match-log-mode">{{ modeLabel(row.match) }}</span>
           }
           <span class="match-log-date">{{ row.match.date | date: 'dd.MM.yyyy, HH:mm' }}</span>
-          <span class="match-log-result" [class.is-win]="row.result === 'win'">{{
-            resultLabel(row.result)
-          }}</span>
-        </div>
-
-        @if (row.commander || row.deckName || row.placement) {
-          <div class="match-log-player own-entry">
-            <span class="match-log-player-main">
-              @if (row.commander) {
-                <span class="match-log-name">
-                  {{ row.commander }}
-                  @if (row.partnerCommander) {
-                    <span class="partner-commander">+ {{ row.partnerCommander }}</span>
-                  }
-                </span>
-              }
-              @if (row.deckName) {
-                <span class="match-log-tags">
-                  <span class="match-log-tag">📚 {{ row.deckName }}</span>
-                </span>
-              }
-            </span>
+          <span class="match-log-verdict">
             @if (row.placement) {
               <span
                 class="match-log-place"
                 [title]="i18n.t('placement.badge', { placement: row.placement })"
                 >{{ row.placement }}.</span
               >
+            }
+            <span class="match-log-result" [class.is-win]="row.result === 'win'">{{
+              resultLabel(row.result)
+            }}</span>
+          </span>
+        </div>
+
+        @if (row.commander || row.deckName) {
+          <div class="own-entry">
+            @if (row.commander) {
+              <span class="match-log-name">
+                {{ row.commander }}
+                @if (row.partnerCommander) {
+                  <span class="partner-commander">+ {{ row.partnerCommander }}</span>
+                }
+              </span>
+            }
+            @if (row.deckName) {
+              <span class="match-log-tags">
+                <span class="match-log-tag">📚 {{ row.deckName }}</span>
+              </span>
             }
           </div>
         }
