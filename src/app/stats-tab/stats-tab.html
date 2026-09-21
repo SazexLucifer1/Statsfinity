@@ -335,6 +335,7 @@
         <span class="card-name-text">
           @if (d.isPrecon) {<span [title]="i18n.t('deck.preconBadge')"><app-icon name="package" [label]="i18n.t('deck.preconBadge')" /></span>}
           {{ d.deckName }}
+          @if (d.isDeleted) {<span [title]="i18n.t('stats.deletedDeckBadge')"><app-icon name="trash" [label]="i18n.t('stats.deletedDeckBadge')" /></span>}
           @if (d.borrowed) {<span class="borrowed-badge">{{ i18n.t('stats.from', { name: d.ownerName ?? '' }) }}</span>}
         </span>
         @if (isSingleMode() === null) {
@@ -638,8 +639,11 @@
           <app-card-image [compact]="true" [imageUrl]="img" [backImageUrl]="commanderBackImage(e.cardName)" [alt]="e.cardName" />
         </button>
         }
-        <span class="card-name-text">{{ e.name }}</span>
-        @if (e.deckId) {
+        <span class="card-name-text">
+          {{ e.name }}
+          @if (e.isDeleted) {<span [title]="i18n.t('stats.deletedDeckBadge')"><app-icon name="trash" [label]="i18n.t('stats.deletedDeckBadge')" /></span>}
+        </span>
+        @if (e.deckId && !e.isDeleted) {
         <button type="button" class="glass-button small" (click)="openDeckFromRanking(e.deckId)">{{ i18n.t('deck.view') }}</button>
         }
       </span>

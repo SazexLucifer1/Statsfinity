@@ -116,6 +116,7 @@ export const stats = {
     'stats.decksAndCommandersHint':
       'Eigenständige (Nicht-Precon-)Decks bleiben einzeln, Precons und noch nicht verlinkte Commander sind pro Commander zusammengefasst.',
     'stats.playedBy': 'gespielt von',
+    'stats.deletedDeckBadge': 'Gelöschtes Deck - die Partien zählen weiter mit',
     'stats.playerQualificationToggle': '▸ Spieler anzeigen ({{count}})',
     'stats.playerQualificationToggleExpanded': '▾ Spieler anzeigen ({{count}})',
     'stats.qualificationToggle': '▸ Spiele bis zur Qualifikation ({{count}})',
@@ -275,6 +276,7 @@ export const stats = {
     'stats.decksAndCommandersHint':
       'Standalone (non-precon) decks stay separate; precons and not-yet-linked commanders are grouped per commander.',
     'stats.playedBy': 'played by',
+    'stats.deletedDeckBadge': 'Deleted deck - its matches still count',
     'stats.playerQualificationToggle': '▸ Show players ({{count}})',
     'stats.playerQualificationToggleExpanded': '▾ Show players ({{count}})',
     'stats.qualificationToggle': '▸ Games until qualification ({{count}})',

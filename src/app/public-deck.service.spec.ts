@@ -4,7 +4,7 @@ import { supabase } from './supabase.client';
 
 /**
  * Baut einen Fake-Query-Builder, der jede Filter-Methode (select/eq/ilike/contains/order/limit/
- * in/not) einfach an sich selbst zurückgibt (wie Supabase es tut) und am Ende mit der für die
+ * in/is/not) einfach an sich selbst zurückgibt (wie Supabase es tut) und am Ende mit der für die
  * jeweilige Tabelle vorgegebenen Antwort auflöst - reicht aus, um PublicDeckService's Mapping-/
  * Aggregationslogik zu testen, ohne die echte Supabase-Query-Builder-Kette nachzubauen. Stubbt
  * zusätzlich supabase.rpc() für deck_public_stats() (seit deck-public-stats-function-2026-08-30.sql
@@ -33,6 +33,7 @@ function mockSupabaseFrom(
       order: () => builder,
       limit: () => builder,
       in: () => builder,
+      is: () => builder,
       not: () => builder,
       then: (resolve: any, reject: any) => Promise.resolve(response).then(resolve, reject),
     };

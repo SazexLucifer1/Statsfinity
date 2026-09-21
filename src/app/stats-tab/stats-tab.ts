@@ -92,6 +92,8 @@ interface CombinedRankEntry {
   playedBy: { name: string; borrowed: boolean }[];
   /** Nur bei einem eigenständigen Deck gesetzt (nicht bei einer Commander-Sammelzeile aus Precons/unverlinkten Matches) - für den "Ansehen"-Sprung zum Deck. */
   deckId?: string;
+  /** true = das Deck gibt es nicht mehr (Grabstein) - zählt weiter mit, lässt sich aber nicht mehr öffnen. */
+  isDeleted?: boolean;
 }
 
 interface ImportMappingRow {
@@ -161,6 +163,13 @@ export class StatsTab {
    */
   private readonly storedDeckCommanders = signal<Map<string, { name: string; imageUrl: string | null }>>(new Map());
 
+  /**
+   * Deck-IDs, hinter denen nur noch ein Grabstein steht (der Besitzer hat das Deck gelöscht, siehe
+   * DeckService.deleteDeck()). Die Partien zählen unverändert weiter - die Rangliste kennzeichnet
+   * solche Einträge nur und bietet kein "Ansehen" mehr an, da es keine Kartenliste mehr gibt.
+   */
+  private readonly deletedDeckIds = signal<Set<string>>(new Set());
+
   /** Deck-ID -> Farbidentität, für die gruppenweite Lieblingsfarben-/Farbkombinations-Statistik
    * (siehe groupColorAndComboStats()) - nur für Nicht-Precon-Decks geladen, siehe Effect unten. */
   private readonly deckColorIdentities = signal<Map<string, string[]>>(new Map());
@@ -182,6 +191,7 @@ export class StatsTab {
       ];
       if (deckIds.length === 0) return;
       this.deckService.getStoredCommanders(deckIds).then((map) => this.storedDeckCommanders.set(map));
+      this.deckService.getDeletedDeckInfos(deckIds).then((map) => this.deletedDeckIds.set(new Set(map.keys())));
     });
 
     effect(() => {
@@ -667,6 +677,7 @@ export class StatsTab {
       }
     }
     const stored = this.storedDeckCommanders();
+    const geloescht = this.deletedDeckIds();
     return [...stats.entries()]
       .map(([deckId, s]) => {
         const ownerName = this.deckOwnerName(s.ownerId, s.ownerPlayerId);
@@ -675,6 +686,7 @@ export class StatsTab {
           deckId,
           deckName: s.deckName,
           isPrecon: s.isPrecon,
+          isDeleted: geloescht.has(deckId),
           games: s.games,
           wins: s.wins,
           winRate: s.games > 0 ? (s.wins / s.games) * 100 : 0,
@@ -727,6 +739,7 @@ export class StatsTab {
       winRate: d.winRate,
       playedBy: d.pilots,
       deckId: d.deckId,
+      isDeleted: d.isDeleted,
     })),
     ...this.commanderStats().map((c) => ({
       key: `c:${c.commander}`,
@@ -743,7 +756,9 @@ export class StatsTab {
   /** Öffnet ein Deck aus der Rangliste in der Deck-Detailansicht (root-level Overlay, funktioniert von jedem Tab aus). */
   async openDeckFromRanking(deckId: string): Promise<void> {
     const deck = await this.deckService.getDeckById(deckId);
-    if (deck) this.viewer.open(deck);
+    // Ein Grabstein hat keine Kartenliste mehr - die Ansicht bliebe leer. Der Knopf wird für solche
+    // Einträge gar nicht erst angezeigt, das hier ist die Absicherung gegen veraltete Daten.
+    if (deck && !deck.deletedAt) this.viewer.open(deck);
   }
 
   /**
@@ -1140,6 +1155,7 @@ export class StatsTab {
     }
 
     const stored = this.storedDeckCommanders();
+    const geloescht = this.deletedDeckIds();
     return [...stats.entries()]
       .map(([deckId, s]) => {
         const ownerName = this.deckOwnerName(s.ownerId, s.ownerPlayerId);
@@ -1148,6 +1164,7 @@ export class StatsTab {
           deckId,
           deckName: s.deckName,
           isPrecon: s.isPrecon,
+          isDeleted: geloescht.has(deckId),
           games: s.games,
           wins: s.wins,
           winRate: s.games > 0 ? (s.wins / s.games) * 100 : 0,

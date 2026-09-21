@@ -1,13 +1,29 @@
 @if (dialog.request(); as req) {
-<div class="options-menu-overlay" (click)="req.mode === 'alert' ? respond(true) : null">
-  <div class="options-menu-sheet" (click)="$event.stopPropagation()">
-    <p class="dialog-message">{{ req.message }}</p>
-    @if (req.mode === 'confirm') {
-      <button class="glass-button primary" (click)="respond(true)">{{ i18n.t('dialog.ok') }}</button>
-      <button class="glass-button" (click)="respond(false)">{{ i18n.t('dialog.cancel') }}</button>
-    } @else {
-      <button class="glass-button primary" (click)="respond(true)">{{ i18n.t('dialog.ok') }}</button>
-    }
+  <div class="options-menu-overlay" (click)="req.mode === 'alert' ? respond(true) : null">
+    <div class="options-menu-sheet" (click)="$event.stopPropagation()">
+      <p class="dialog-message">{{ req.message }}</p>
+      @if (req.mode === 'confirm') {
+        <button class="glass-button primary" (click)="respond(true)">
+          {{ i18n.t('dialog.ok') }}
+        </button>
+        <button class="glass-button" (click)="respond(false)">{{ i18n.t('dialog.cancel') }}</button>
+      } @else if (req.mode === 'choice') {
+        @for (choice of req.choices; track choice.key) {
+          <button
+            class="glass-button"
+            [class.primary]="choice.variant === 'primary'"
+            [class.danger]="choice.variant === 'danger'"
+            (click)="respond(choice.key)"
+          >
+            {{ choice.label }}
+          </button>
+        }
+        <button class="glass-button" (click)="respond(null)">{{ i18n.t('dialog.cancel') }}</button>
+      } @else {
+        <button class="glass-button primary" (click)="respond(true)">
+          {{ i18n.t('dialog.ok') }}
+        </button>
+      }
+    </div>
   </div>
-</div>
 }

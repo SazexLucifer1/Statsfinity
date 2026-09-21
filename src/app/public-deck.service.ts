@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { supabase } from './supabase.client';
+import { DeckService } from './deck.service';
 
 export interface PublicDeck {
   id: string;
@@ -50,27 +51,38 @@ export class PublicDeckService {
    * nachsortieren) nutzt bereits deck-list.ts für die eigene Deck-Liste.
    */
   async searchPublicDecks(filters: PublicDeckFilters): Promise<{ decks: PublicDeck[]; stats: Map<string, PublicDeckStats> }> {
-    let query = supabase
-      .from('decks')
-      .select('id, name, format, updated_at, edhrec_tag, color_identity, commander_types')
-      .eq('is_private', false)
-      .order('updated_at', { ascending: false })
-      .limit(MAX_RESULTS);
+    // Gelöschte Decks (Grabsteine, siehe DeckService.deleteDeck()) gehören nicht ins Stöbern: Sie
+    // zählen zwar in den Ranglisten weiter, haben aber keine Kartenliste mehr zum Ansehen.
+    const abfrage = () => {
+      let query = DeckService.nurLebende(
+        supabase
+          .from('decks')
+          .select('id, name, format, updated_at, edhrec_tag, color_identity, commander_types')
+          .eq('is_private', false)
+          .order('updated_at', { ascending: false })
+          .limit(MAX_RESULTS)
+      );
 
-    const name = filters.name?.trim();
-    if (name) query = query.ilike('name', `%${name}%`);
-    if (filters.colors && filters.colors.length > 0) {
-      // .eq() serialisiert ein JS-Array NICHT als Postgres-Array-Literal (nur String(array), also
-      // "B,G" ohne geschweifte Klammern) - das scheitert am text[]-Cast der Spalte und lässt die
-      // Query mit Fehler fehlschlagen, was searchPublicDecks() dann als leeres Ergebnis behandelt.
-      // Deshalb hier selbst das Literal-Format "{B,G}" bauen.
-      const sorted = [...filters.colors].sort();
-      query = query.eq('color_identity', `{${sorted.join(',')}}`);
-    }
-    if (filters.archetype) query = query.eq('edhrec_tag', filters.archetype);
-    if (filters.creatureType) query = query.contains('commander_types', [filters.creatureType]);
+      const name = filters.name?.trim();
+      if (name) query = query.ilike('name', `%${name}%`);
+      if (filters.colors && filters.colors.length > 0) {
+        // .eq() serialisiert ein JS-Array NICHT als Postgres-Array-Literal (nur String(array), also
+        // "B,G" ohne geschweifte Klammern) - das scheitert am text[]-Cast der Spalte und lässt die
+        // Query mit Fehler fehlschlagen, was searchPublicDecks() dann als leeres Ergebnis behandelt.
+        // Deshalb hier selbst das Literal-Format "{B,G}" bauen.
+        const sorted = [...filters.colors].sort();
+        query = query.eq('color_identity', `{${sorted.join(',')}}`);
+      }
+      if (filters.archetype) query = query.eq('edhrec_tag', filters.archetype);
+      if (filters.creatureType) query = query.contains('commander_types', [filters.creatureType]);
+      return query;
+    };
 
-    const { data, error } = await query;
+    let { data, error } = await abfrage();
+    // Steht die Grabstein-Migration noch aus, kennt Postgres deleted_at nicht - dann ohne den
+    // Filter erneut, statt die Suche leer zu lassen (dieselbe Mechanik wie in DeckService).
+    if (DeckService.fehlendeSpalteAbgeschaltet(error)) ({ data, error } = await abfrage());
+
     if (error || !data) {
       console.error('Konnte öffentliche Decks nicht laden:', error);
       return { decks: [], stats: new Map() };
@@ -174,11 +186,13 @@ export class PublicDeckService {
 
   /** Distinkte Archetyp-Werte (decks.edhrec_tag) unter allen öffentlichen Decks - für das Archetyp-Dropdown. */
   async archetypeOptions(): Promise<string[]> {
-    const { data, error } = await supabase
-      .from('decks')
-      .select('edhrec_tag')
-      .eq('is_private', false)
-      .not('edhrec_tag', 'is', null);
+    const abfrage = () =>
+      DeckService.nurLebende(supabase.from('decks').select('edhrec_tag'))
+        .eq('is_private', false)
+        .not('edhrec_tag', 'is', null);
+
+    let { data, error } = await abfrage();
+    if (DeckService.fehlendeSpalteAbgeschaltet(error)) ({ data, error } = await abfrage());
 
     if (error || !data) return [];
     return [...new Set((data as any[]).map((row) => row.edhrec_tag as string))].sort();
