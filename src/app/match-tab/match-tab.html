@@ -379,28 +379,41 @@
           <app-player-avatar [url]="mtg.playerAvatars()[p.name] ?? null" />
           <span class="match-log-player-main">
             <span class="match-log-name">
-              @if (isWinner(match, p)) {🏆 }{{ p.name }}
+              @if (isWinner(match, p)) {
+                <span aria-hidden="true">🏆</span>
+              }
+              <span class="match-log-name-text">{{ p.name }}</span>
+              @if (p.placement) {
+                <span
+                  class="match-log-place"
+                  [title]="i18n.t('placement.badge', { placement: p.placement })"
+                  >{{ p.placement }}.</span
+                >
+              }
             </span>
             @if (playerSubline(match, p); as sub) {
-              <span class="match-log-sub">{{ sub }}</span>
+              <span class="match-log-sub" [title]="sub">{{ sub }}</span>
             }
             @if (p.deckId || isBorrowedDeck(p)) {
               <span class="match-log-tags">
                 @if (p.deckId) {
-                  <span class="match-log-tag" [title]="i18n.t('match.fromImportedDeck')">📚 {{ p.deckName }}</span>
+                  <span class="match-log-tag" [title]="i18n.t('match.fromImportedDeck')"
+                    >📚 {{ p.deckName }}</span
+                  >
                 }
                 @if (isBorrowedDeck(p)) {
-                  <span class="match-log-tag is-borrowed">🤝 {{ i18n.t('match.from', { name: deckOwnerName(p.deckOwnerId, p.deckOwnerPlayerId) ?? '' }) }}</span>
+                  <span class="match-log-tag is-borrowed"
+                    >🤝
+                    {{
+                      i18n.t('match.from', {
+                        name: deckOwnerName(p.deckOwnerId, p.deckOwnerPlayerId) ?? ''
+                      })
+                    }}</span
+                  >
                 }
               </span>
             }
           </span>
-          @if (p.placement) {
-            <span
-              class="match-log-place"
-              [title]="i18n.t('placement.badge', { placement: p.placement })"
-            >{{ p.placement }}.</span>
-          }
         </div>
       }
     </div>

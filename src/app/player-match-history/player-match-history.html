@@ -46,38 +46,27 @@
           </span>
         </div>
 
-        @if (row.commander || row.deckName) {
-          <div class="own-entry">
-            @if (row.commander) {
-              <span class="match-log-name">
-                {{ row.commander }}
-                @if (row.partnerCommander) {
-                  <span class="partner-commander">+ {{ row.partnerCommander }}</span>
-                }
-              </span>
+        <div class="match-log-players">
+          @for (p of row.participants; track p.name) {
+            <!-- Nur mit hinterlegtem Deck ist die Kachel ein Knopf - ein bloßer Commander-Name
+                 lässt sich nicht öffnen, und ein Knopf, der nichts tut, sieht aus wie ein Fehler. -->
+            @if (p.deckId) {
+              <button
+                type="button"
+                class="match-log-player is-clickable"
+                [class.is-winner]="p.isWinner"
+                [title]="i18n.t('profile.matchHistoryOpenDeck', { name: p.deckName ?? '' })"
+                (click)="openDeck(p.deckId)"
+              >
+                <ng-container *ngTemplateOutlet="tile; context: { p: p }" />
+              </button>
+            } @else {
+              <div class="match-log-player" [class.is-winner]="p.isWinner">
+                <ng-container *ngTemplateOutlet="tile; context: { p: p }" />
+              </div>
             }
-            @if (row.deckName) {
-              <span class="match-log-tags">
-                <span class="match-log-tag">📚 {{ row.deckName }}</span>
-              </span>
-            }
-          </div>
-        }
-
-        @if (row.others.length > 0) {
-          <div class="others">
-            <span class="others-label">{{ i18n.t('profile.matchHistoryOthers') }}</span>
-            @for (other of row.others; track other.name) {
-              <span class="other-player" [class.is-winner]="other.isWinner">
-                <app-player-avatar [url]="mtg.playerAvatars()[other.name] ?? null" />
-                @if (other.isWinner) {
-                  <span aria-hidden="true">🏆</span>
-                }
-                {{ other.name }}
-              </span>
-            }
-          </div>
-        }
+          }
+        </div>
       </li>
     }
   </ul>
@@ -89,3 +78,37 @@
     (pageChange)="page.set($event)"
   />
 }
+
+<ng-template #tile let-p="p">
+  @if (thumbUrl(p); as img) {
+    <span class="card-thumb small match-log-thumb">
+      <app-card-image
+        [compact]="true"
+        [imageUrl]="img"
+        [backImageUrl]="thumbBackUrl(p)"
+        [alt]="p.commander ?? p.name"
+      />
+    </span>
+  } @else {
+    <app-player-avatar [url]="mtg.playerAvatars()[p.name] ?? null" />
+  }
+  <span class="match-log-player-main">
+    <span class="match-log-name">
+      @if (p.isWinner) {
+        <span aria-hidden="true">🏆</span>
+      }
+      <span class="match-log-name-text">{{ p.name }}</span>
+      @if (p.isSelf) {
+        <span class="match-log-self">{{ i18n.t('profile.matchHistorySelf') }}</span>
+      }
+    </span>
+    @if (commanderLabel(p); as commander) {
+      <span class="match-log-sub" [title]="commander">{{ commander }}</span>
+    }
+    @if (p.deckName) {
+      <span class="match-log-tags">
+        <span class="match-log-tag">📚 {{ p.deckName }}</span>
+      </span>
+    }
+  </span>
+</ng-template>

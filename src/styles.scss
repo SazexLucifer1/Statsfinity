@@ -606,30 +606,69 @@ h3 {
   }
 }
 
+/* Raster statt Liste: eine Runde mit vier Leuten war untereinander vier Zeilen hoch, obwohl die
+   halbe Breite leer blieb. Bei 132px Mindestbreite stehen auf einem iPhone zwei Kacheln
+   nebeneinander, auf dem Desktop so viele, wie hineinpassen - die Kachelbreite bleibt dabei
+   gleich, statt bei zwei Spielern auf halbe Bildschirmbreite auseinanderzulaufen. */
 .match-log-players {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: var(--sp-2);
 }
 
 .match-log-player {
   display: flex;
   align-items: center;
-  gap: var(--sp-3);
+  gap: var(--sp-2);
   min-width: 0;
   padding: var(--sp-2);
   border-radius: var(--r-md);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid transparent;
+
+  // Reset für die Kacheln, die als <button> ein Deck öffnen.
+  font: inherit;
+  color: inherit;
+  text-align: left;
 
   > app-player-avatar {
     flex-shrink: 0;
   }
+
+  &.is-clickable {
+    cursor: pointer;
+
+    &:active {
+      background: rgba(255, 255, 255, 0.12);
+    }
+  }
+}
+
+/* Das Kartenbild des gespielten Commanders. Bewusst die kleine Stufe von .card-thumb: in einer
+   Kachel dieser Breite muss daneben noch Name, Commander und Deckname Platz haben. */
+.match-log-thumb {
+  cursor: inherit;
+}
+
+/* "Du" neben dem eigenen Namen. Die eigene Person steht mit in der Liste - ohne Markierung sieht
+   eine Runde auf den ersten Blick so aus, als hätte jemand Fremdes mitgespielt. */
+.match-log-self {
+  padding: 1px var(--sp-2);
+  border-radius: var(--r-pill);
+  background: rgba(138, 180, 255, 0.25);
+  border: 1px solid rgba(138, 180, 255, 0.5);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 /* Der Sieger wird als Fläche hervorgehoben, nicht nur durch goldene Schrift: in einer Runde mit
    vier Zeilen war die Farbe allein zu leicht zu übersehen. */
 .match-log-player.is-winner {
-  background: rgba(255, 209, 102, 0.12);
-  box-shadow: inset 0 0 0 1px rgba(255, 209, 102, 0.3);
+  background: rgba(255, 209, 102, 0.14);
+  border-color: rgba(255, 209, 102, 0.4);
 }
 
 .match-log-player-main {
@@ -640,25 +679,43 @@ h3 {
   min-width: 0;
 }
 
+/* Flex statt Fliesstext, damit Pokal, "Du" und Platzziffer neben dem Namen stehen können, ohne
+   mitgekürzt zu werden - gekürzt wird allein der Name in .match-log-name-text. */
 .match-log-name {
-  font-size: 0.92rem;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  min-width: 0;
+  font-size: 0.88rem;
   font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+
+  > :not(.match-log-name-text) {
+    flex-shrink: 0;
+  }
 
   .is-winner & {
     color: var(--gold);
   }
 }
 
+.match-log-name-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Zweite Zeile: Commander, Team, Archenemy - alles, was vorher als "– Text" hinter dem Namen
    stand und die Zeile bei drei Angaben über den Rand schob. */
 .match-log-sub {
-  font-size: 0.8rem;
+  font-size: 0.76rem;
   opacity: 0.7;
-  // Bewusst umbrechend statt abgeschnitten: "Tymna the Weaver + Thrasios, Triton Hero" passt auf
-  // einem iPhone nie in eine Zeile, und der Partner-Commander ist keine Nebensache.
+  // Umbrechend statt abgeschnitten, aber nach zwei Zeilen Schluss: "Tymna the Weaver + Thrasios,
+  // Triton Hero" passt in einer Kachel nie in eine Zeile, dürfte darin aber auch nicht fünf
+  // belegen. Der vollständige Name steht im title-Attribut.
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
   overflow-wrap: anywhere;
 }
 
