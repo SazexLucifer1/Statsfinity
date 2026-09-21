@@ -1,3 +1,10 @@
+-- TEILWEISE ÜBERHOLT AM 20.09.2026 durch sql/spellbook-combo-card-arrays-2026-09-20.sql:
+-- Der Index auf spellbook_combo_cards (synced_at) betrifft eine Tabelle, die es nicht mehr
+-- gibt; sein Gegenstück heißt jetzt spellbook_combo_cardlists_synced_at_idx und wird dort
+-- angelegt. Die Begründung unten gilt unverändert weiter.
+-- Auf der PRODUKTIVEN Datenbank nicht mehr ausführen; bei einem NEUAUFBAU in
+-- Datumsreihenfolge laufen lassen.
+--
 -- Index auf synced_at fuer die vier Tabellen, die der naechtliche Spellbook-Abgleich aufraeumt.
 -- Im Supabase-Dashboard unter "SQL Editor" ausfuehren. Idempotent ("create index if not exists"),
 -- gefahrlos mehrfach ausfuehrbar, aendert keine Daten.

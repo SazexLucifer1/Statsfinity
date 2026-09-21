@@ -1,3 +1,10 @@
+-- TEILWEISE ÜBERHOLT AM 20.09.2026 durch sql/spellbook-combo-card-arrays-2026-09-20.sql:
+-- Die Kartenliste je Combo liegt jetzt als Zahlen-Array in spellbook_combo_cardlists, die
+-- Tabelle spellbook_combo_cards und die Suchfunktion aus Abschnitt 4 sind dort ersetzt.
+-- Auf der PRODUKTIVEN Datenbank diese Datei nicht mehr ausführen - sie legte die alte
+-- Kartentabelle wieder an. Bei einem NEUAUFBAU dagegen weiter in Datumsreihenfolge laufen
+-- lassen: Die Array-Migration setzt auf dem hier angelegten Stand auf und stellt ihn um.
+--
 -- Alle Combos von Commander Spellbook (bis fünf Karten) samt Ergebnis und Ablauf - Grundlage des
 -- Combo-Finders in der Deck-Analyse. Im Supabase-Dashboard unter "SQL Editor" ausführen.
 -- Komplett idempotent (alle "create table if not exists"/"create index if not exists"/
