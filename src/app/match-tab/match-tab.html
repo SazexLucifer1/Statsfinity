@@ -375,46 +375,23 @@
 
     <div class="match-log-players">
       @for (p of match.players; track p.name) {
-        <div class="match-log-player" [class.is-winner]="isWinner(match, p)">
-          <app-player-avatar [url]="mtg.playerAvatars()[p.name] ?? null" />
-          <span class="match-log-player-main">
-            <span class="match-log-name">
-              @if (isWinner(match, p)) {
-                <span aria-hidden="true">🏆</span>
-              }
-              <span class="match-log-name-text">{{ p.name }}</span>
-              @if (p.placement) {
-                <span
-                  class="match-log-place"
-                  [title]="i18n.t('placement.badge', { placement: p.placement })"
-                  >{{ p.placement }}.</span
-                >
-              }
-            </span>
-            @if (playerSubline(match, p); as sub) {
-              <span class="match-log-sub" [title]="sub">{{ sub }}</span>
-            }
-            @if (p.deckId || isBorrowedDeck(p)) {
-              <span class="match-log-tags">
-                @if (p.deckId) {
-                  <span class="match-log-tag" [title]="i18n.t('match.fromImportedDeck')"
-                    >📚 {{ p.deckName }}</span
-                  >
-                }
-                @if (isBorrowedDeck(p)) {
-                  <span class="match-log-tag is-borrowed"
-                    >🤝
-                    {{
-                      i18n.t('match.from', {
-                        name: deckOwnerName(p.deckOwnerId, p.deckOwnerPlayerId) ?? ''
-                      })
-                    }}</span
-                  >
-                }
-              </span>
-            }
-          </span>
-        </div>
+        <!-- Nur mit hinterlegtem Deck ist die Kachel ein Knopf - ein bloßer Commander-Name
+             lässt sich nicht öffnen, und ein Knopf, der nichts tut, sieht aus wie ein Fehler. -->
+        @if (p.deckId) {
+          <button
+            type="button"
+            class="match-log-player is-clickable"
+            [class.is-winner]="isWinner(match, p)"
+            [title]="i18n.t('match.openDeck', { name: p.deckName ?? '' })"
+            (click)="openPlayerDeck(p.deckId)"
+          >
+            <ng-container *ngTemplateOutlet="playerTile; context: { match: match, p: p }" />
+          </button>
+        } @else {
+          <div class="match-log-player" [class.is-winner]="isWinner(match, p)">
+            <ng-container *ngTemplateOutlet="playerTile; context: { match: match, p: p }" />
+          </div>
+        }
       }
     </div>
 
@@ -552,6 +529,55 @@
   </li>
 </ng-template>
 
+
+
+<ng-template #playerTile let-match="match" let-p="p">
+  @if (historyThumb(p); as img) {
+    <span class="card-thumb small match-log-thumb">
+      <app-card-image
+        [compact]="true"
+        [imageUrl]="img"
+        [backImageUrl]="historyThumbBack(p)"
+        [alt]="p.commander ?? p.name"
+      />
+    </span>
+  } @else {
+    <app-player-avatar [url]="mtg.playerAvatars()[p.name] ?? null" />
+  }
+  <span class="match-log-player-main">
+    <span class="match-log-name">
+      @if (isWinner(match, p)) {
+        <span aria-hidden="true">🏆</span>
+      }
+      <span class="match-log-name-text">{{ p.name }}</span>
+      @if (p.placement) {
+        <span
+          class="match-log-place"
+          [title]="i18n.t('placement.badge', { placement: p.placement })"
+          >{{ p.placement }}.</span
+        >
+      }
+    </span>
+    @if (playerSubline(match, p); as sub) {
+      <span class="match-log-sub" [title]="sub">{{ sub }}</span>
+    }
+    @if (p.deckId || isBorrowedDeck(p)) {
+      <span class="match-log-tags">
+        @if (p.deckId) {
+          <span class="match-log-tag">📚 {{ p.deckName }}</span>
+        }
+        @if (isBorrowedDeck(p)) {
+          <span class="match-log-tag is-borrowed"
+            >🤝
+            {{
+              i18n.t('match.from', { name: deckOwnerName(p.deckOwnerId, p.deckOwnerPlayerId) ?? '' })
+            }}</span
+          >
+        }
+      </span>
+    }
+  </span>
+</ng-template>
 
 <!-- Die Deck-Auswahl steht bewusst auf oberster Ebene statt in der <section class="glass-card">
      weiter oben, in der sie ursprünglich lag: .glass-card hat backdrop-filter, und das macht die
