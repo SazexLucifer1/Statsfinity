@@ -587,6 +587,21 @@
   }
 }
 
+// Die fünf runden Knöpfe auf dem Kartenbild tragen seit ui/icon ein Strich-Piktogramm statt eines
+// Emojis. Ein Emoji bringt seine Farbe selbst mit, ein Piktogramm zeichnet in currentColor - und ein
+// <button> ohne eigene color erbt nicht vom Elternteil, sondern nimmt die dunkle Browser-Standard-
+// farbe: auf dem dunklen Kreis war davon nichts mehr zu sehen. Die höhere Deckkraft kommt dazu,
+// weil ein 1,7px-Strich auf hellem Artwork weniger trägt als ein flächiges Emoji.
+.deck-card-flip-toggle,
+.deck-card-commander-toggle,
+.deck-card-artwork-toggle,
+.deck-card-tag-toggle,
+.deck-card-maybeboard-toggle {
+  color: #fff;
+  background: rgba(0, 0, 0, 0.72);
+  opacity: 0.92;
+}
+
 .deck-card-maybeboard-toggle {
   position: absolute;
   bottom: 4px;

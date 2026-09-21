@@ -469,13 +469,13 @@
               <ul class="deck-change-log">
                 @for (entry of group.added; track entry.cardName) {
                   <li>
-                    <span class="change-icon"></span>
+                    <span class="change-icon" aria-hidden="true">+</span>
                     <span class="change-text">{{ entry.quantity }}× {{ entry.cardName }}</span>
                   </li>
                 }
                 @for (entry of group.removed; track entry.cardName) {
                   <li>
-                    <span class="change-icon"></span>
+                    <span class="change-icon" aria-hidden="true">−</span>
                     <span class="change-text">{{ entry.quantity }}× {{ entry.cardName }}</span>
                   </li>
                 }
@@ -777,7 +777,7 @@
                       (click)="viewer.addCard(card)"
                       [attr.aria-label]="viewer.isCardInDeck(card.name) ? viewer.i18n.t('deckView.alreadyInDeckAria') : viewer.i18n.t('deckView.addAria')"
                     >
-                      {{ viewer.isCardInDeck(card.name) ? '✓' : '' }}
+                      <app-icon [name]="viewer.isCardInDeck(card.name) ? 'check' : 'plus'" />
                     </button>
                   </div>
                 </div>
@@ -842,7 +842,7 @@
                           (click)="viewer.addEdhrecCard(card.name)"
                           [attr.aria-label]="viewer.isCardInDeck(card.name) ? viewer.i18n.t('deckView.alreadyInDeckAria') : viewer.i18n.t('deckView.addAria')"
                         >
-                          {{ viewer.isCardInDeck(card.name) ? '✓' : '' }}
+                          <app-icon [name]="viewer.isCardInDeck(card.name) ? 'check' : 'plus'" />
                         </button>
                       </div>
                       <span class="card-pick-stats">
@@ -1274,7 +1274,7 @@
                     (click)="viewer.toggleCardMaybeboard(card)"
                     [attr.aria-label]="card.isMaybeboard ? viewer.i18n.t('deckView.moveToDeckAria') : viewer.i18n.t('deckView.moveToMaybeboardAria')"
                   >
-                    {{ card.isMaybeboard ? '' : '' }}
+                    <app-icon [name]="card.isMaybeboard ? 'outbox' : 'inbox'" />
                   </button>
                 }
                 @if (viewer.editMode()) {
@@ -1332,7 +1332,7 @@
                     (click)="viewer.toggleCardMaybeboard(card)"
                     [attr.aria-label]="card.isMaybeboard ? viewer.i18n.t('deckView.moveToDeckAria') : viewer.i18n.t('deckView.moveToMaybeboardAria')"
                   >
-                    {{ card.isMaybeboard ? '' : '' }}
+                    <app-icon [name]="card.isMaybeboard ? 'outbox' : 'inbox'" />
                   </button>
                 }
                 @if (viewer.editMode()) {
