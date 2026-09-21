@@ -129,7 +129,13 @@ export class DeckImportService {
     this.deckText.set(value);
     if (this.deckTextCommanderTimer) clearTimeout(this.deckTextCommanderTimer);
     this.deckTextCommanderTimer = setTimeout(() => {
-      const commander = this.deckService.parseDecklistText(value).find((p) => p.isCommander)?.name ?? null;
+      const parsed = this.deckService.parseDecklistText(value);
+      // Beschriftet die eingefügte Liste ihren Commander nicht (Moxfield stellt ihn nur als
+      // eigenen Block voran), reicht hier die Vermutung - für die Auswahl der EDHREC-Themen ist
+      // ein womöglich falscher Vorschlag folgenlos, im Gegensatz zum Speichern in saveDeck().
+      const commander =
+        (parsed.find((p) => p.isCommander) ?? parsed.find((p) => p.isCommanderCandidate))?.name ??
+        null;
       this.loadTagsForCommander(commander);
     }, 400);
   }

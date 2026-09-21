@@ -242,14 +242,88 @@ const QUANTITY_LINE = /^(\d+)\s*x?\s+(.+)$/i;
  * Set-Kürzel + Sammelnummer, wie sie z.B. deckstats.net anhängt: "Sol Ring (SOC) 128" -> "Sol Ring".
  * Beides wird zusätzlich ausgelesen (Gruppe 1/2), weil es genau EINEN Druck benennt - und damit das
  * Artwork, das der Nutzer auf der Deck-Seite ausgesucht hat (siehe saveDeck()).
+ *
+ * Die Sammelnummer darf Bindestrich und Schrägstrich enthalten: Moxfield exportiert die Karten aus
+ * "The List" als "Alhammarret's Archive (PLST) ORI-221", und genau so heißt die Nummer auch bei
+ * Scryfall. Ohne diese Zeichen scheitert der ganze Ausdruck (er ist auf das Zeilenende verankert),
+ * der Zusatz bleibt im Kartennamen stehen und die Karte ist nicht mehr auffindbar - kein Bild,
+ * keine Manakosten, kein Typ, dafür eine Geisterzeile in der Manakurve.
  */
-const SET_AND_COLLECTOR_NUMBER_SUFFIX = /\s*\(([A-Za-z0-9]{2,6})\)\s*([A-Za-z0-9★]*)\s*$/;
+const SET_AND_COLLECTOR_NUMBER_SUFFIX = /\s*\(([A-Za-z0-9]{2,6})\)\s*([A-Za-z0-9★†+/-]*)\s*$/;
+/** Archidekt hängt hinter die Kategorien noch seine Sammlungs-Markierung: "... [Removal] ^Have,#37d67a^". */
+const ARCHIDEKT_COLLECTION_SUFFIX = /\s*\^[^^]*\^\s*$/;
+/** Archidekt-Kategorie am Zeilenende: "[Removal]", "[Commander{top}]", "[Maybeboard{noDeck}{noPrice},Recursion]". */
+const ARCHIDEKT_CATEGORY_SUFFIX = /\s*\[([^\]]*)\]\s*$/;
+/** TappedOut/MTGO-Markierungen in der Zeile: "*CMDR*" (Commander), "*F*"/"*E*" (Foil/Etched). */
+const INLINE_MARKER = /\s*\*([A-Za-z]{1,9})\*/g;
+/** Cockatrice und Magic Workstation stellen jeder Sideboard-Zeile "SB:" voran. */
+const SIDEBOARD_PREFIX = /^SB:\s*/i;
+/** Moxfield trennt die Hälften einer geteilten Karte mit einem einfachen Schrägstrich ("Revival / Revenge"), Scryfall kennt nur den doppelten. */
+const SINGLE_SLASH_SPLIT = /\s+\/\s+/g;
+
+/**
+ * Erkennt die zwei Exporte, die gar nichts beschriften und sich allein auf Leerzeilen verlassen:
+ * Moxfield stellt den Commander als eigenen Block voran, MTGGoldfish hängt das Sideboard als
+ * eigenen Block an. Liefert je Zeilennummer die erkannte Rolle.
+ *
+ * Geraten wird nur, wenn die Liste NIRGENDS eine Überschrift mitbringt - sobald eine da ist, ist
+ * sie die verlässlichere Quelle und diese Analyse hält sich komplett heraus.
+ */
+function blockRoles(lines: string[]): Map<number, 'commander' | 'sideboard'> {
+  const roles = new Map<number, 'commander' | 'sideboard'>();
+  const blocks: { lineNumbers: number[]; cards: number }[] = [];
+  let current: { lineNumbers: number[]; cards: number } | null = null;
+
+  for (const [lineNumber, line] of lines.entries()) {
+    if (!line) {
+      current = null;
+      continue;
+    }
+    // Erst die Überschrift prüfen, dann den Kommentar überspringen - deckstats.net schreibt seine
+    // Abschnitte als "//Commander", die wäre sonst als bloßer Kommentar durchgerutscht.
+    if (SECTION_HEADER.test(line.replace(/^\/\/\s*/, ''))) return roles;
+    if (line.startsWith('//') || line.startsWith('#')) continue;
+    if (!current) {
+      current = { lineNumbers: [], cards: 0 };
+      blocks.push(current);
+    }
+    current.lineNumbers.push(lineNumber);
+    const match = line.match(QUANTITY_LINE);
+    current.cards += match ? parseInt(match[1], 10) : 1;
+  }
+
+  if (blocks.length < 2) return roles;
+  const first = blocks[0];
+  const last = blocks[blocks.length - 1];
+
+  // Moxfield: ein bis zwei Karten ganz vorn (Commander, optional Partner/Hintergrund).
+  if (first.lineNumbers.length <= 2) {
+    for (const lineNumber of first.lineNumbers) roles.set(lineNumber, 'commander');
+  }
+
+  // MTGGoldfish: genau zwei Blöcke, vorn ein vollständiges Deck, hinten höchstens 15 Karten.
+  // Beide Schranken sind Absicht - bei Moxfield ist der vordere Block eine einzelne Karte, und
+  // ein nach Kategorien zerlegter Export hat mehr als zwei Blöcke.
+  if (blocks.length === 2 && first.cards >= 40 && last.cards <= 15) {
+    for (const lineNumber of last.lineNumbers) roles.set(lineNumber, 'sideboard');
+  }
+
+  return roles;
+}
 
 /** Eine geparste Decklist-Zeile (siehe DeckService.parseDecklistText()). */
 export interface ParsedDecklistEntry {
   name: string;
   quantity: number;
   isCommander: boolean;
+  /**
+   * Die Zeile stand ganz vorn in einem eigenen, nur durch eine Leerzeile abgetrennten Block, ohne
+   * dass die Liste irgendeine Überschrift mitbringt - genau so exportiert Moxfield den Commander.
+   * Bewusst nur eine Vermutung: bestätigt wird sie erst in saveDeck() anhand der Kartendaten,
+   * damit eine versehentliche Leerzeile nach der ersten Zeile nicht irgendeine Karte zum
+   * Commander macht (samt Farbidentität und nachträglicher Match-Verknüpfung).
+   */
+  isCommanderCandidate: boolean;
   /** Stand unter einer "Maybeboard"-Überschrift - gehört in die engere Auswahl, nicht ins Deck. */
   isMaybeboard: boolean;
   /** Set-Kürzel aus der Zeile, falls das Exportformat eines mitliefert ("Sol Ring (SOC) 128" -> "SOC"). */
@@ -267,6 +341,19 @@ function parseSubtypes(typeLine: string | undefined): string[] {
 /** Für den Precon-Namensabgleich in backfillPreconReleaseYears - fängt zumindest Whitespace-Abweichungen zwischen gespeichertem Decknamen und MTGJSON-Katalogeintrag ab (echte Umbenennungen bleiben davon unberührt, dafür gibt es keine zuverlässige Heuristik). */
 function normalizePreconName(name: string): string {
   return name.trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+/**
+ * Kann diese Karte überhaupt ein Commander sein? Grundlage für die Bestätigung der
+ * Commander-Vermutung aus einem unbeschrifteten Export (siehe ParsedDecklistEntry.isCommanderCandidate).
+ * Neben legendären Kreaturen zählt alles, was es sich selbst im Regeltext erlaubt - Hintergründe,
+ * Commander-Planeswalker, "Doctor's companion".
+ */
+function canBeCommander(card: ScryfallCard | undefined): boolean {
+  if (!card) return false;
+  const typeLine = card.typeLine ?? '';
+  if (/legendary/i.test(typeLine) && /creature/i.test(typeLine)) return true;
+  return /can be your commander/i.test(card.oracleText ?? '');
 }
 
 /** Wie DeckViewerService.saveEdits() für nachträgliche Commander-Wechsel - hier für den Import-/Neuanlage-Pfad in saveDeck(). */
@@ -538,10 +625,11 @@ export class DeckService {
    */
   parseDecklistText(text: string): ParsedDecklistEntry[] {
     const merged = new Map<string, ParsedDecklistEntry>();
+    const lines = text.split('\n').map((line) => line.trim());
+    const roles = blockRoles(lines);
     let section: 'main' | 'commander' | 'maybeboard' = 'main';
 
-    for (const rawLine of text.split('\n')) {
-      const line = rawLine.trim();
+    for (const [lineNumber, line] of lines.entries()) {
       if (!line) {
         // Eine Leerzeile trennt bei den meisten Export-Formaten (deckstats.net, Moxfield,
         // Archidekt, ...) die Commander-Sektion vom Rest der Liste, OHNE dass danach nochmal ein
@@ -557,21 +645,67 @@ export class DeckService {
       if (headerMatch || line.startsWith('//') || line.startsWith('#')) {
         if (headerMatch) {
           const header = headerMatch[1].toLowerCase();
-          section = header === 'commander' ? 'commander' : header === 'maybeboard' ? 'maybeboard' : 'main';
+          // Sideboard und Companion sind keine Deckkarten - sie gehören in die engere Auswahl.
+          // Vorher fielen beide auf "main" zurück und landeten mitten in der Kartenliste.
+          section =
+            header === 'commander'
+              ? 'commander'
+              : header === 'maybeboard' || header === 'sideboard' || header === 'companion'
+                ? 'maybeboard'
+                : 'main';
         }
         continue;
       }
 
-      const match = line.match(QUANTITY_LINE);
-      const rawName = (match ? match[2] : line).trim();
+      // --- Zuerst die Zeilen-Markierungen der einzelnen Seiten abtrennen, bis nur noch
+      // "Anzahl + Name + Druck" übrig ist. Ohne diesen Schritt bleibt z.B. bei Archidekt die
+      // komplette Kategorie im Kartennamen stehen und keine einzige Karte wird gefunden. ---
+      let rest = line;
+      let isCommanderLine = section === 'commander';
+      let isMaybeboardLine = section === 'maybeboard' || roles.get(lineNumber) === 'sideboard';
+
+      if (SIDEBOARD_PREFIX.test(rest)) {
+        isMaybeboardLine = true;
+        rest = rest.replace(SIDEBOARD_PREFIX, '');
+      }
+
+      rest = rest.replace(ARCHIDEKT_COLLECTION_SUFFIX, '');
+
+      const category = rest.match(ARCHIDEKT_CATEGORY_SUFFIX);
+      if (category) {
+        rest = rest.replace(ARCHIDEKT_CATEGORY_SUFFIX, '');
+        // "[Maybeboard{noDeck}{noPrice},Recursion]" -> ["maybeboard", "recursion"]. Die geschweiften
+        // Zusätze sind Archidekt-Optionen, keine Kategorienamen.
+        const names = category[1].split(',').map((part) =>
+          part
+            .replace(/\{[^}]*\}/g, '')
+            .trim()
+            .toLowerCase(),
+        );
+        if (names.includes('commander')) isCommanderLine = true;
+        if (names.includes('maybeboard')) isMaybeboardLine = true;
+      }
+
+      const match = rest.match(QUANTITY_LINE);
+      const rawName = (match ? match[2] : rest)
+        .replace(INLINE_MARKER, (_full, marker: string) => {
+          if (/^(cmdr|commander)$/i.test(marker)) isCommanderLine = true;
+          return '';
+        })
+        .trim();
       const printing = rawName.match(SET_AND_COLLECTOR_NUMBER_SUFFIX);
-      const name = rawName.replace(SET_AND_COLLECTOR_NUMBER_SUFFIX, '').trim();
+      const name = rawName
+        .replace(SET_AND_COLLECTOR_NUMBER_SUFFIX, '')
+        .replace(SINGLE_SLASH_SPLIT, ' // ')
+        .trim();
       const quantity = match ? parseInt(match[1], 10) : 1;
       if (!name) continue;
 
       const setCode = printing?.[1] ?? null;
       const collectorNumber = printing?.[2] || null;
-      const isMaybeboard = section === 'maybeboard';
+      const isMaybeboard = isMaybeboardLine;
+      // Nur eine Vermutung, solange die Zeile nicht ohnehin schon als Commander markiert ist.
+      const isCommanderCandidate = !isCommanderLine && roles.get(lineNumber) === 'commander';
 
       const key = name.toLowerCase();
       const existing = merged.get(key);
@@ -579,7 +713,8 @@ export class DeckService {
         merged.set(key, {
           name,
           quantity,
-          isCommander: section === 'commander',
+          isCommander: isCommanderLine,
+          isCommanderCandidate,
           isMaybeboard,
           setCode,
           collectorNumber,
@@ -600,7 +735,8 @@ export class DeckService {
           existing.collectorNumber = collectorNumber;
         }
       }
-      if (section === 'commander') existing.isCommander = true;
+      if (isCommanderLine) existing.isCommander = true;
+      if (isCommanderCandidate) existing.isCommanderCandidate = true;
       if (!existing.setCode && setCode) {
         existing.setCode = setCode;
         existing.collectorNumber = collectorNumber;
@@ -645,6 +781,18 @@ export class DeckService {
     // wurde (DeckViewerService.saveEdits()), wodurch frisch importierte Decks mit bereits im Text
     // markiertem Commander auf unbestimmte Zeit ungefiltert blieben (color_identity/commander_types
     // blieben beim Spalten-Default '{}').
+    // Moxfield (und wer sein Textformat nachbaut) beschriftet den Commander nicht, sondern stellt
+    // ihn nur als eigenen Block voran. Die daraus abgeleitete Vermutung wird erst hier übernommen,
+    // wo die Kartendaten vorliegen und sie sich prüfen lässt - und nur, wenn die Liste sonst gar
+    // keinen Commander benennt.
+    if (!parsed.some((p) => p.isCommander)) {
+      for (const entry of parsed) {
+        if (entry.isCommanderCandidate && canBeCommander(cardMap.get(entry.name.toLowerCase()))) {
+          entry.isCommander = true;
+        }
+      }
+    }
+
     const { colorIdentity, commanderTypes } = commanderMetadataFrom(parsed, cardMap);
 
     let deckId = existingDeckId;
