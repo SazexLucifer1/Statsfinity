@@ -1130,6 +1130,7 @@ export class DeckService {
         deleted_at: new Date().toISOString(),
         deleted_commander_name: commander?.name ?? null,
         deleted_commander_image_url: commander?.imageUrl ?? null,
+        deleted_card_names: await this.zaehlbareKartennamen(deckId),
       })
       .eq('id', deckId);
 
@@ -1621,6 +1622,64 @@ export class DeckService {
       }
     }
 
+    return result;
+  }
+
+  /**
+   * Die Kartennamen eines Decks, die in "Meistgespielte Karten" (getCardAndColorStats()) zählen -
+   * exakt dieselbe Auswahl wie dort: ohne Länder, Marken und Maybeboard, jeder Name nur einmal.
+   * Beim Löschen wird genau diese Liste in decks.deleted_card_names gerettet, damit die
+   * Kartenstatistik im Profil ein gelöschtes Deck nicht vergisst.
+   *
+   * Bewusst nur die Namen: Mengen zählt die Statistik ohnehin nicht (je Deck 1x), und die Bild-URLs
+   * sind der Platzfresser - das Bild holt das Profil sonst über den Namen von Scryfall.
+   */
+  private async zaehlbareKartennamen(deckId: string): Promise<string[]> {
+    const { data, error } = await supabase
+      .from('deck_cards')
+      .select('card_name, type_line, is_maybeboard, is_token')
+      .eq('deck_id', deckId);
+
+    if (error || !data) {
+      console.error('Konnte die Kartennamen des Decks nicht sichern:', error);
+      return [];
+    }
+
+    const namen = new Set<string>();
+    for (const row of data as any[]) {
+      if ((row.is_maybeboard ?? false) || (row.is_token ?? false)) continue;
+      if (((row.type_line as string | null) ?? '').includes('Land')) continue;
+      namen.add(row.card_name as string);
+    }
+    return [...namen];
+  }
+
+  /**
+   * Die beim Löschen geretteten Kartennamen der Grabsteine unter diesen IDs, geschlüsselt nach
+   * Deck (siehe zaehlbareKartennamen()). Lebende Decks stehen nicht in der Map - ihre Karten kommen
+   * wie bisher aus deck_cards.
+   */
+  private async geretteteKartennamen(deckIds: string[]): Promise<Map<string, string[]>> {
+    const result = new Map<string, string[]>();
+    if (deckIds.length === 0 || !DeckService.grabsteinSpalteVerfuegbar) return result;
+
+    const { data, error } = await supabase
+      .from('decks')
+      .select('id, deleted_card_names')
+      .in('id', deckIds)
+      .not('deleted_at', 'is', null);
+
+    if (error) {
+      if (!DeckService.istFehlendeGrabsteinSpalte(error)) {
+        console.error('Konnte die geretteten Kartennamen nicht laden:', error);
+      }
+      return result;
+    }
+
+    for (const row of (data ?? []) as any[]) {
+      const namen = (row.deleted_card_names ?? []) as string[];
+      if (namen.length > 0) result.set(row.id, namen);
+    }
     return result;
   }
 
@@ -2202,6 +2261,11 @@ export class DeckService {
 
     if (cardError) console.error('Konnte Deckkarten für die Kartenstatistik nicht laden:', cardError);
 
+    // Gelöschte Decks haben keine deck_cards mehr - ihre zählenden Kartennamen stehen im Grabstein
+    // (siehe deleteDeck()). Ohne diesen Nachschlag verschwände ausgerechnet das meistgespielte Deck
+    // aus der Kartenstatistik, sobald jemand es löscht, obwohl seine Partien weiter zählen.
+    const geretteteKarten = await this.geretteteKartennamen(deckIds);
+
     /**
      * Achsen der Farbstatistik. 'C' ist keine sechste Manafarbe, sondern der Gegenfall: Decks ganz
      * OHNE Farbidentität. Mehrfarbige Decks zählen weiterhin auf mehreren Achsen, die sechs Werte
@@ -2249,6 +2313,21 @@ export class DeckService {
       entry.deckCount += 1;
       if (!entry.imageUrl && row.image_url) entry.imageUrl = row.image_url;
       cardCounts.set(row.card_name, entry);
+    }
+
+    // Dieselbe Zählung für die Grabsteine. Die Auswahl (ohne Länder/Marken/Maybeboard, jeder Name
+    // einmal) ist beim Löschen schon passiert, hier bleibt nur das Gewichten mit den Partien. Ein
+    // Bild steht bewusst nicht dabei - das Profil holt es über den Namen von Scryfall.
+    for (const [grabsteinId, namen] of geretteteKarten) {
+      const games = gamesPerDeck.get(grabsteinId) ?? 0;
+      if (games === 0) continue;
+
+      for (const cardName of namen) {
+        const entry = cardCounts.get(cardName) ?? { gameCount: 0, deckCount: 0, imageUrl: null };
+        entry.gameCount += games;
+        entry.deckCount += 1;
+        cardCounts.set(cardName, entry);
+      }
     }
 
     // Immer alle sechs Achsen, auch die mit 0 - das Netzdiagramm im Profil braucht eine feste

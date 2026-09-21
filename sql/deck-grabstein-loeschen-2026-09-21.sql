@@ -1,6 +1,8 @@
 -- Deck-Löschen, ohne dass Gruppen-Statistiken sich ändern ("Grabstein"). MIT BEGRÜNDUNG, siehe unten.
 -- Im Supabase-SQL-Editor ausführen. Ohne dieses Skript läuft die App weiter, das Löschen bleibt
 -- dann aber beim alten Verhalten stehen und meldet das auch (siehe DeckService.deleteDeck()).
+-- Das Skript ist idempotent (add column if not exists / create or replace) - ein zweiter Lauf
+-- schadet nicht und ist nötig, falls die erste Fassung ohne deleted_card_names schon lief.
 --
 -- =====================================================================================
 -- ANLASS
@@ -18,9 +20,9 @@
 --   * "Ausgeliehen von X", das Deck-Abzeichen im Match-Verlauf und die öffentlichen Ranglisten
 --     (die decks per Join anhängen) verloren das Deck ebenfalls.
 --
--- Gewollt ist: Wer sein Deck löscht, ändert damit KEINE Zahl in den Statistiken seiner Gruppen.
--- Was sich ändern darf, sind die deckbezogenen Auswertungen im eigenen Profil (meistgespielte
--- Karten, Lieblingsfarben je Deck) - die rechnen über deck_cards, und die Kartenliste ist weg.
+-- Gewollt ist: Wer sein Deck löscht, ändert damit KEINE Zahl in den Statistiken seiner Gruppen -
+-- und auch nicht in der eigenen Profil-Statistik. Was nach dem Löschen fehlt, ist das Deck selbst:
+-- Kartenliste zum Ansehen, Änderungsverlauf, Bracket-Berechnung, Bearbeiten.
 --
 -- =====================================================================================
 -- DER ANSATZ - und warum das den Speicher NICHT vollaufen lässt
@@ -37,8 +39,17 @@
 -- die den Namen, den Besitzer, is_precon und color_identity tragen, also alles, was die
 -- Statistiken per Join brauchen.
 --
--- Zwei Spalten retten zusätzlich, was sonst nur in deck_cards stand: Name und Bild des Commanders,
--- damit die Rangliste ihr Kartenbild behält.
+-- Drei Spalten retten zusätzlich, was sonst nur in deck_cards stand: Name und Bild des Commanders,
+-- damit die Rangliste ihr Kartenbild behält - und die Namen der Karten, die in die Auswertung
+-- "Meistgespielte Karten" im eigenen Profil eingehen.
+--
+-- DIESE KARTENLISTE IST EIN ARRAY JE DECK, KEINE ZEILE JE KARTE. Das ist hier keine Stilfrage: Die
+-- Form "eine Zeile je Karte" hat diese Datenbank schon zweimal an die 500-MB-Grenze gebracht
+-- (archidekt_deck_pool_cards: 72 MB allein für den Primärschlüssel; spellbook_combo_cards: 33 MB).
+-- Gerettet werden nur die Namen der Karten, die die Statistik auch zählt - ohne Länder, Marken und
+-- Maybeboard, ohne Mengen (getCardAndColorStats() zählt je Deck 1x, unabhängig von quantity) und
+-- ohne Bild-URL (die ist der Platzfresser; das Profil holt das Bild sonst über den Namen von
+-- Scryfall). Aus rund 99 Kartenzeilen mit ~21 kB werden so etwa 62 Namen mit ~1 kB je Deck.
 --
 -- Decks OHNE eine einzige Partie werden weiterhin ganz gelöscht (siehe DeckService.deleteDeck()) -
 -- es gibt dort nichts zu bewahren, und so entstehen Grabsteine nur da, wo sie Statistik tragen.
@@ -50,12 +61,13 @@
 -- =====================================================================================
 
 -- =====================================================================================
--- 1. Die drei Spalten
+-- 1. Die vier Spalten
 -- =====================================================================================
 alter table public.decks
   add column if not exists deleted_at timestamptz,
   add column if not exists deleted_commander_name text,
-  add column if not exists deleted_commander_image_url text;
+  add column if not exists deleted_commander_image_url text,
+  add column if not exists deleted_card_names text[];
 
 comment on column public.decks.deleted_at is
   'Gesetzt = der Besitzer hat das Deck gelöscht ("Grabstein"): Kartenliste und Änderungsverlauf sind weg, die Zeile bleibt nur noch stehen, damit die Partien in match_players ihren Deck-Namen, Besitzer und ihre Farbidentität behalten. Solche Decks werden in Deck-Liste, Deck-Auswahl und öffentlicher Suche ausgeblendet, zählen in den Statistiken aber unverändert weiter.';
@@ -63,6 +75,11 @@ comment on column public.decks.deleted_commander_name is
   'Beim Löschen aus deck_cards gerettet - ohne diese Spalte hätte die Rangliste nach dem Löschen keinen Commander mehr zum Anzeigen.';
 comment on column public.decks.deleted_commander_image_url is
   'Wie deleted_commander_name, für das Kartenbild in der Rangliste.';
+comment on column public.decks.deleted_card_names is
+  'Beim Löschen aus deck_cards gerettete Kartennamen - nur die, die in "Meistgespielte Karten" zählen (ohne Länder, Marken, Maybeboard). Bewusst ein Array je Deck statt einer Zeile je Karte und bewusst ohne Mengen und Bild-URLs: So kostet ein gelöschtes Deck rund 1 kB statt 21 kB, und die Kartenstatistik im Profil bleibt trotzdem vollständig.';
+
+-- BEWUSST KEIN Index auf deleted_card_names: Gesucht wird darin nie, gelesen nur über die schon
+-- bekannte Deck-ID. Ein GIN-Index würde hier mehr kosten als die Daten selbst.
 
 -- =====================================================================================
 -- 2. Die globale Deck-Rangliste holt das Commander-Bild aus deck_cards - für ein gelöschtes Deck
@@ -181,6 +198,8 @@ grant execute on function public.global_deck_commander_stats(text[], text[]) to 
 -- select
 --   count(*) as grabsteine,
 --   count(*) filter (where exists (select 1 from public.match_players mp where mp.deck_id = d.id)) as davon_mit_partien,
---   count(*) filter (where exists (select 1 from public.deck_cards dc where dc.deck_id = d.id)) as davon_mit_restkarten
+--   count(*) filter (where exists (select 1 from public.deck_cards dc where dc.deck_id = d.id)) as davon_mit_restkarten,
+--   pg_size_pretty(coalesce(sum(pg_column_size(d.deleted_card_names)), 0)) as platz_kartennamen,
+--   round(avg(cardinality(d.deleted_card_names))) as namen_je_deck
 -- from public.decks d
 -- where d.deleted_at is not null;
