@@ -1250,10 +1250,10 @@
 
                 @if (viewer.editMode()) {
                   <!-- Umdrehen und Commander stehen mit in der Mengenleiste - links vom − und
-                       rechts vom +. Damit bleiben drei Werkzeuge für den Kasten darunter übrig,
-                       und der braucht keine zweite Zeile mehr. Die Leiste steht auch beim
-                       Commander (dort ohne − und +), damit die Kacheln einer Zeile gleich hoch
-                       bleiben. -->
+                       rechts vom +, jeweils am Rand. Damit bleiben drei Werkzeuge für den Kasten
+                       darunter übrig, und der braucht keine zweite Zeile mehr. Die Leiste steht
+                       auch beim Commander (dort ohne − und +), damit die Kacheln einer Zeile
+                       gleich hoch bleiben. -->
                   <div class="deck-card-qtybar">
                     @if (viewer.resolvedCardBackImage(card)) {
                       <button
@@ -1264,25 +1264,27 @@
                         <app-icon name="refresh" />
                       </button>
                     }
-                    @if (card.isCommander) {
-                      <span>{{ card.quantity }}×</span>
-                    } @else {
-                      <button
-                        [class.flash-remove]="viewer.isFlashing(card.cardName, 'remove')"
-                        (click)="viewer.decrementCard(card)"
-                        [attr.aria-label]="viewer.i18n.t('deckView.oneLess')"
-                      >
-                        −
-                      </button>
-                      <span>{{ card.quantity }}</span>
-                      <button
-                        [class.flash-add]="viewer.isFlashing(card.cardName, 'add')"
-                        (click)="viewer.incrementCard(card)"
-                        [attr.aria-label]="viewer.i18n.t('deckView.oneMore')"
-                      >
-                        +
-                      </button>
-                    }
+                    <div class="deck-card-qty-group">
+                      @if (card.isCommander) {
+                        <span>{{ card.quantity }}×</span>
+                      } @else {
+                        <button
+                          [class.flash-remove]="viewer.isFlashing(card.cardName, 'remove')"
+                          (click)="viewer.decrementCard(card)"
+                          [attr.aria-label]="viewer.i18n.t('deckView.oneLess')"
+                        >
+                          −
+                        </button>
+                        <span>{{ card.quantity }}</span>
+                        <button
+                          [class.flash-add]="viewer.isFlashing(card.cardName, 'add')"
+                          (click)="viewer.incrementCard(card)"
+                          [attr.aria-label]="viewer.i18n.t('deckView.oneMore')"
+                        >
+                          +
+                        </button>
+                      }
+                    </div>
                     @if (viewer.showCommanderToggle() && (card.isCommander || viewer.isCommanderEligible(card))) {
                       <button
                         class="deck-card-commander-toggle"

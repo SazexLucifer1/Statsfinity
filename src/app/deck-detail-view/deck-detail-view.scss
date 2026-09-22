@@ -815,11 +815,15 @@
 }
 
 .deck-card-qtybar {
-  display: flex;
+  // Drei feste Spalten statt einer Reihe: links Umdrehen, rechts Commander, in der Mitte − Zahl +.
+  // Die Randspalten stehen auf JEDER Karte, auch wenn kein Knopf darin liegt - sonst rutscht die
+  // Mitte bei einer Karte, die nur einen der beiden Knöpfe hat, aus der Mitte heraus, und die
+  // Zahlen stehen in keiner Rasterzeile mehr untereinander.
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) 24px;
   align-items: center;
-  justify-content: center;
-  gap: 3px;
-  padding: 3px;
+  gap: 2px;
+  padding: 2px;
   border: 1px solid var(--glass-border);
   border-top: none;
   border-radius: 0 0 8px 8px;
@@ -827,9 +831,22 @@
   font-size: 0.78rem;
   font-weight: 700;
 
+  // Ohne feste Spaltenzuweisung fiele der Mengenblock in Spalte 1, sobald der Umdreh-Knopf fehlt.
+  > .deck-card-flip-toggle {
+    grid-column: 1;
+  }
+
+  > .deck-card-qty-group {
+    grid-column: 2;
+  }
+
+  > .deck-card-commander-toggle {
+    grid-column: 3;
+  }
+
   span {
     flex: 0 0 auto;
-    min-width: 14px;
+    min-width: 12px;
     text-align: center;
   }
 
@@ -837,12 +854,8 @@
     // position: static setzt den Umschalt-Knopf zurück, der außerhalb des Bearbeiten-Modus
     // absolut auf dem Kartenbild sitzt.
     position: static;
-    // Alle Knöpfe teilen sich die Breite gleichmäßig. Umdrehen und Commander stehen nur bei den
-    // wenigsten Karten in der Leiste - bei allen anderen wachsen − und + auf die volle Breite,
-    // statt dass überall Platz für Knöpfe freigehalten wird, die es meistens gar nicht gibt.
-    flex: 1 1 0;
+    width: 100%;
     min-width: 0;
-    max-width: 40px;
     height: 29px;
     padding: 0;
     border-radius: 8px;
@@ -876,6 +889,20 @@
     &:active {
       background: rgba(255, 255, 255, 0.3);
     }
+  }
+}
+
+.deck-card-qty-group {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+
+  button {
+    // max-width, damit − und + auf breiten Kacheln nicht zu Balken auseinanderlaufen; die Gruppe
+    // bleibt dann trotzdem mittig, weil sie mittig ausgerichtet ist.
+    flex: 1 1 0;
+    max-width: 40px;
   }
 }
 
