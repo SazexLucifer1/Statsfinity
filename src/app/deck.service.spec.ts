@@ -208,6 +208,101 @@ describe('DeckService.parseDecklistText', () => {
   });
 });
 
+describe('DeckService.parseDecklistText - aus der Deck-Ansicht kopiert', () => {
+  let service: DeckService;
+
+  beforeEach(() => {
+    service = TestBed.inject(DeckService);
+  });
+
+  /**
+   * So kopiert der Browser die eigene Deck-Ansicht: Überschrift mit Kartenzahl, darunter je Karte
+   * die Anzahl in einer eigenen Zeile und erst dann der Name. Gekürzter, aber formattreuer
+   * Ausschnitt einer echten Meldung.
+   */
+  const AUS_DER_ANSICHT = `Commander (1)
+
+    1×
+    Gandalf, Party Guest
+
+Kreatur (2)
+
+    1×
+    Baral, Chief of Compliance
+    1×
+    Jace, Vryn's Prodigy // Jace, Telepath Unbound
+
+Land (33 + 5 MDFC)
+
+    3×
+    Island
+    1×
+    Command Tower
+
+Tokens (2)
+
+    1×
+    Bird
+    1×
+    Wizard
+`;
+
+  it('nimmt die Anzahl aus der eigenen Zeile und macht aus Überschriften keine Karten', () => {
+    const parsed = service.parseDecklistText(AUS_DER_ANSICHT);
+    const byName = new Map(parsed.map((p) => [p.name, p]));
+
+    expect(parsed.map((p) => p.name)).toEqual([
+      'Gandalf, Party Guest',
+      'Baral, Chief of Compliance',
+      "Jace, Vryn's Prodigy // Jace, Telepath Unbound",
+      'Island',
+      'Command Tower',
+    ]);
+    expect(byName.get('Island')?.quantity).toBe(3);
+    // "Kreatur (2)" sah für den alten Parser wie eine Karte mit dem Set-Kürzel "2" aus.
+    expect(byName.get('Kreatur')).toBeUndefined();
+    expect(byName.get('Land (33 + 5 MDFC)')).toBeUndefined();
+  });
+
+  it('markiert den Commander und laesst die Tokens komplett draussen', () => {
+    const parsed = service.parseDecklistText(AUS_DER_ANSICHT);
+
+    expect(parsed.filter((p) => p.isCommander).map((p) => p.name)).toEqual([
+      'Gandalf, Party Guest',
+    ]);
+    expect(parsed.some((p) => p.name === 'Bird' || p.name === 'Wizard')).toBe(false);
+  });
+
+  it('schiebt einen Maybeboard-Abschnitt in die engere Auswahl', () => {
+    const parsed = service.parseDecklistText(
+      'Kreatur (1)\n1×\nBaral, Chief of Compliance\n\nMaybeboard (1)\n1×\nMana Drain',
+    );
+    const byName = new Map(parsed.map((p) => [p.name, p]));
+
+    expect(byName.get('Baral, Chief of Compliance')?.isMaybeboard).toBe(false);
+    expect(byName.get('Mana Drain')?.isMaybeboard).toBe(true);
+  });
+
+  it('versteht das Mal-Zeichen auch in einer einzigen Zeile', () => {
+    const parsed = service.parseDecklistText('3× Island\n1× Sol Ring');
+    const byName = new Map(parsed.map((p) => [p.name, p]));
+
+    expect(byName.get('Island')?.quantity).toBe(3);
+    expect(byName.get('Sol Ring')?.quantity).toBe(1);
+  });
+
+  it('laesst eine gewoehnliche Decklist unangetastet', () => {
+    const parsed = service.parseDecklistText(
+      'Commander:\n1 Kwain, Itinerant Meddler\n\nDeck:\n3 Island\n1 Sol Ring (SOC) 127',
+    );
+    const byName = new Map(parsed.map((p) => [p.name, p]));
+
+    expect(byName.get('Kwain, Itinerant Meddler')?.isCommander).toBe(true);
+    expect(byName.get('Island')?.quantity).toBe(3);
+    expect(byName.get('Sol Ring')?.setCode).toBe('SOC');
+  });
+});
+
 describe('deckKopieName', () => {
   it('haengt (2) an und zaehlt eine bereits nummerierte Fassung weiter', () => {
     expect(deckKopieName('Atraxa', [])).toBe('Atraxa (2)');
