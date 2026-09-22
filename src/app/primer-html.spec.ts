@@ -3,6 +3,7 @@ import {
   primerAlsBearbeitbaresHtml,
   primerIstLeer,
   primerKartenNamen,
+  primerKartenbilderAlsNamen,
   primerText,
 } from './primer-html';
 
@@ -186,6 +187,30 @@ describe('primer-html', () => {
       const bild =
         '<img src="https://cards.scryfall.io/normal/front/a/b.jpg" class="primer-image" alt="Sol Ring">';
       expect(primerAlsBearbeitbaresHtml(bild)).toBe(bild);
+    });
+  });
+
+  describe('Kartenbilder auf schmalem Bildschirm', () => {
+    it('macht aus dem Kartenbild den anklickbaren Namen', () => {
+      const html =
+        '<p><img src="https://cards.scryfall.io/normal/front/a/b.jpg" class="primer-image" alt="Sol Ring"></p>';
+      expect(primerKartenbilderAlsNamen(html)).toBe(
+        '<p><a class="primer-card" role="button" tabindex="0">Sol Ring</a></p>',
+      );
+    });
+
+    it('lässt eigene Uploads Bilder bleiben', () => {
+      // Ein eigenes Bild hat keinen Kartennamen, durch den man es ersetzen könnte - und es ist
+      // ja gerade als Bild gemeint.
+      const eigenes =
+        '<img src="https://jkkelwpnrgzbvopszwrl.supabase.co/storage/v1/object/public/primer-images/a/1.png" class="primer-image" alt="">';
+      expect(primerKartenbilderAlsNamen(eigenes)).toBe(eigenes);
+    });
+
+    it('ändert nur die Anzeige - der umgewandelte Name übersteht die Bereinigung', () => {
+      const html =
+        '<p><img src="https://cards.scryfall.io/normal/front/a/b.jpg" class="primer-image" alt="Sol Ring"></p>';
+      expect(primerKartenNamen(primerKartenbilderAlsNamen(html))).toEqual(['Sol Ring']);
     });
   });
 

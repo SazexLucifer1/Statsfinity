@@ -265,7 +265,7 @@
   } @else {
     @if (primerService.loading()) {
       <p class="hint">{{ i18n.t('deckPrimer.loading') }}</p>
-    } @else if (primerService.primer(); as html) {
+    } @else if (angezeigterPrimer(); as html) {
       <!-- innerHTML statt eigener Darstellung: Der gespeicherte Text IST Markup. Bereinigt wurde
            er beim Speichern (primer-html.ts), und Angular bereinigt hier ein zweites Mal.
            Der Klick-Zuhörer sitzt am ganzen Text, weil es in eingefügtem HTML keine einzelnen

@@ -17,6 +17,7 @@ import {
   bereinigePrimerHtml,
   primerAlsBearbeitbaresHtml,
   primerKartenNamen,
+  primerKartenbilderAlsNamen,
   primerText,
 } from '../primer-html';
 import { PRIMER_CARD_CLASS } from '../primer-html';
@@ -115,6 +116,20 @@ export class DeckPrimer implements OnDestroy {
   /** Kartenname (klein) -> Scryfall-Karte, für die Vorschau beim Klick auf einen Kartennamen. */
   private readonly kartenBilder = signal<Map<string, ScryfallCard>>(new Map());
 
+  /** Schmaler als der sm-Breakpoint, also Handy hochkant. */
+  private readonly schmalerBildschirm = signal(false);
+
+  /**
+   * Der Primer, wie er angezeigt wird. Auf dem Handy werden Kartenbilder zum Kartennamen - ein
+   * 260px-Bild lässt daneben kaum Text übrig, und mehrere hintereinander machen aus dem Primer
+   * eine Bildergalerie. Gespeichert bleibt das Bild; am größeren Bildschirm ist es wieder da.
+   */
+  readonly angezeigterPrimer = computed(() => {
+    const html = this.primerService.primer();
+    if (!html) return null;
+    return this.schmalerBildschirm() ? primerKartenbilderAlsNamen(html) : html;
+  });
+
   /**
    * Die Markierung im Eingabefeld, bevor ein Zusatzfeld den Fokus übernimmt. Ohne sie wäre beim
    * Einfügen nichts mehr markiert und das Eingefügte landete am Anfang des Textes.
@@ -151,7 +166,7 @@ export class DeckPrimer implements OnDestroy {
     // Kartenbilder für alle [[Kartennamen]] im Primer einmal gebündelt nachladen - beim ersten
     // Klick stünde man sonst spürbar vor einem leeren Vorschaufenster.
     effect(() => {
-      const namen = primerKartenNamen(this.primerService.primer());
+      const namen = primerKartenNamen(this.angezeigterPrimer());
       if (namen.length === 0) {
         untracked(() => this.kartenBilder.set(new Map()));
         return;
@@ -160,6 +175,22 @@ export class DeckPrimer implements OnDestroy {
     });
 
     document.addEventListener('selectionchange', this.aufAuswahlWechsel);
+    this.bildschirmbreiteBeobachten();
+  }
+
+  /**
+   * Der Schwellwert kommt aus derselben Quelle wie die SCSS-Breakpoints (--bp-sm), damit hier
+   * nicht wieder eine zweite Zahl gepflegt werden muss - gleiches Vorgehen wie im Ingame-Tracker
+   * (siehe watchViewportWidth() in game-session.service.ts).
+   */
+  private bildschirmbreiteBeobachten(): void {
+    if (typeof window === 'undefined') return;
+    const px = Number.parseFloat(
+      getComputedStyle(document.documentElement).getPropertyValue('--bp-sm'),
+    );
+    const abfrage = window.matchMedia(`(max-width: ${(px || 480) - 1}px)`);
+    this.schmalerBildschirm.set(abfrage.matches);
+    abfrage.addEventListener('change', (e) => this.schmalerBildschirm.set(e.matches));
   }
 
   ngOnDestroy(): void {

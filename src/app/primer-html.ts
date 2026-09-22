@@ -425,3 +425,37 @@ function symbolAusKuerzel(kuerzel: string): string {
   // zweite Hälfte.
   return `${kuerzel.slice(0, -1).toUpperCase()}/${kuerzel.slice(-1).toUpperCase()}`;
 }
+
+/**
+ * Ersetzt Kartenbilder durch den anklickbaren Kartennamen - für schmale Bildschirme.
+ *
+ * Ein Kartenbild ist 260 px breit. Auf einem iPhone bleibt daneben kaum Text übrig, und mehrere
+ * Bilder hintereinander machen aus einem gelesenen Primer eine Bildergalerie, durch die man
+ * scrollt. Der Name mit einem Klick auf die Vorschau sagt dasselbe und kostet eine Zeile.
+ *
+ * Möglich ist das nur, weil beim Einfügen der Kartenname im alt-Attribut landet - das Bild weiß
+ * also, welche Karte es zeigt. **Eigene Uploads bleiben deshalb Bilder:** Sie haben keinen Namen,
+ * durch den man sie ersetzen könnte, und sie sind ja gerade als Bild gemeint.
+ *
+ * Geändert wird nur die ANZEIGE. In der Datenbank steht weiter das Bild - wer denselben Primer am
+ * Rechner öffnet, sieht es.
+ */
+export function primerKartenbilderAlsNamen(html: string | null | undefined): string {
+  const eingabe = html ?? '';
+  if (!eingabe) return '';
+
+  const doc = new DOMParser().parseFromString(`<body>${eingabe}</body>`, 'text/html');
+  for (const bild of Array.from(doc.querySelectorAll(`img.${PRIMER_IMAGE_CLASS}`))) {
+    const name = (bild.getAttribute('alt') ?? '').trim();
+    const src = bild.getAttribute('src') ?? '';
+    if (!name || !src.startsWith('https://cards.scryfall.io/')) continue;
+
+    const link = doc.createElement('a');
+    link.setAttribute('class', PRIMER_CARD_CLASS);
+    link.setAttribute('role', 'button');
+    link.setAttribute('tabindex', '0');
+    link.appendChild(doc.createTextNode(name));
+    bild.replaceWith(link);
+  }
+  return doc.body.innerHTML;
+}
