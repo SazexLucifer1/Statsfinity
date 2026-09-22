@@ -36,7 +36,10 @@ const MODULES = {
       'partnerCardImage',
     ],
   },
-  deck: { table: deck, prefixes: ['deck', 'deckViewer', 'importDialog', 'pdfDialog'] },
+  deck: {
+    table: deck,
+    prefixes: ['deck', 'deckComment', 'deckViewer', 'importDialog', 'pdfDialog'],
+  },
   deckView: { table: deckView, prefixes: ['deckView'] },
   feedback: { table: feedback, prefixes: ['feedback'] },
   group: { table: group, prefixes: ['group', 'permission'] },

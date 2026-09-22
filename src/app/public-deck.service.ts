@@ -4,6 +4,8 @@ import { DeckService } from './deck.service';
 
 export interface PublicDeck {
   id: string;
+  /** Account des Besitzers - null bei Decks accountloser Spieler. Nur dafür da, dem Besitzer unter seinem eigenen Deck den Löschknopf an fremden Kommentaren zu zeigen (siehe deck-comments). */
+  userId: string | null;
   name: string;
   format: string | null;
   updatedAt: string;
@@ -57,7 +59,7 @@ export class PublicDeckService {
       let query = DeckService.nurLebende(
         supabase
           .from('decks')
-          .select('id, name, format, updated_at, edhrec_tag, color_identity, commander_types')
+          .select('id, user_id, name, format, updated_at, edhrec_tag, color_identity, commander_types')
           .eq('is_private', false)
           .order('updated_at', { ascending: false })
           .limit(MAX_RESULTS)
@@ -96,6 +98,7 @@ export class PublicDeckService {
 
     const decks: PublicDeck[] = (data as any[]).map((row) => ({
       id: row.id,
+      userId: row.user_id,
       name: row.name,
       format: row.format,
       updatedAt: row.updated_at,

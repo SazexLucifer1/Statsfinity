@@ -1380,6 +1380,10 @@
       }
 
     }
+
+    <!-- Bewusst AUSSERHALB des detailBusy-Zweigs: die Kommentare haben mit dem Laden der
+         Kartenliste/Scryfall-Daten nichts zu tun und sollen nicht darauf warten. -->
+    <app-deck-comments [deckId]="deck.id" [ownerUserId]="deck.userId" />
   </div>
 </div>
 }

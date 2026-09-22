@@ -150,6 +150,23 @@ export const deck = {
     'pdfDialog.generateCount': '{{count}} Karten als PDF',
     'pdfDialog.msg.noCardsSelected': 'Keine Karten mit Bild ausgewählt.',
     'pdfDialog.msg.noImagesLoaded': 'Keine Kartenbilder konnten geladen werden.',
+
+    // --- Deck-Kommentare ---
+    'deckComment.title': 'Kommentare',
+    'deckComment.placeholder': 'Etwas zu diesem Deck sagen …',
+    'deckComment.replyPlaceholder': 'Antworten …',
+    'deckComment.send': 'Absenden',
+    'deckComment.sending': 'Wird gesendet …',
+    'deckComment.reply': 'Antworten',
+    'deckComment.replyCancel': 'Abbrechen',
+    'deckComment.deleteAria': 'Kommentar löschen',
+    'deckComment.loading': 'Lade Kommentare …',
+    'deckComment.empty': 'Noch keine Kommentare. Schreib den ersten.',
+    'deckComment.unknownAuthor': 'Unbekannt',
+    'deckComment.loginHint': 'Melde dich an, um dieses Deck zu kommentieren.',
+    'deckComment.loadFailed': 'Kommentare konnten nicht geladen werden.',
+    'deckComment.saveFailed': 'Kommentar konnte nicht gespeichert werden.',
+    'deckComment.deleteFailed': 'Kommentar konnte nicht gelöscht werden.',
   },
   en: {
     // --- Deck list ---
@@ -295,5 +312,22 @@ export const deck = {
     'pdfDialog.generateCount': '{{count}} cards as PDF',
     'pdfDialog.msg.noCardsSelected': 'No cards with an image selected.',
     'pdfDialog.msg.noImagesLoaded': 'No card images could be loaded.',
+
+    // --- Deck comments ---
+    'deckComment.title': 'Comments',
+    'deckComment.placeholder': 'Say something about this deck …',
+    'deckComment.replyPlaceholder': 'Write a reply …',
+    'deckComment.send': 'Post',
+    'deckComment.sending': 'Sending …',
+    'deckComment.reply': 'Reply',
+    'deckComment.replyCancel': 'Cancel',
+    'deckComment.deleteAria': 'Delete comment',
+    'deckComment.loading': 'Loading comments …',
+    'deckComment.empty': 'No comments yet. Be the first.',
+    'deckComment.unknownAuthor': 'Unknown',
+    'deckComment.loginHint': 'Sign in to comment on this deck.',
+    'deckComment.loadFailed': 'Comments could not be loaded.',
+    'deckComment.saveFailed': 'Comment could not be saved.',
+    'deckComment.deleteFailed': 'Comment could not be deleted.',
   },
 };

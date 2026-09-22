@@ -194,6 +194,12 @@
         </div>
       }
     }
+
+    <!-- Bewusst AUSSERHALB des deckBusy-Zweigs: die Kommentare hängen nicht an der Kartenliste
+         und sollen nicht auf deren Scryfall-Nachschlag warten. -->
+    @if (selectedDeck(); as deck) {
+      <app-deck-comments [deckId]="deck.id" [ownerUserId]="deck.userId" />
+    }
   }
   </section>
 </div>
