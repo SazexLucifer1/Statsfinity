@@ -89,6 +89,10 @@
             @if (!readonlyMode()) {
               <app-overflow-menu [label]="i18n.t('deck.deckActionsAria', { name: deck.name })" [heading]="deck.name">
                 <button class="glass-button" (click)="openGoldfish(deck)">{{ i18n.t('deck.goldfish') }}</button>
+                <button class="glass-button" (click)="duplicateDeck(deck)">
+                  <app-icon name="copy" />
+                  {{ i18n.t('deck.duplicate') }}
+                </button>
                 <button class="glass-button" (click)="toggleDeckPrivate(deck)">
                   <app-icon [name]="deck.isPrivate ? 'lock' : 'unlock'" />
                   {{ deck.isPrivate ? i18n.t('deck.makeVisibleAgain') : i18n.t('deck.makePrivate') }}

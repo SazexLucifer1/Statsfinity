@@ -372,6 +372,25 @@ function commanderMetadataFrom(
   };
 }
 
+/** Erkennt eine bereits nummerierte Fassung am Ende des Decknamens ("Atraxa (2)"). */
+const VERSIONS_SUFFIX = /\s*\((\d+)\)\s*$/;
+
+/**
+ * Name für die Kopie eines Decks: "Atraxa" wird zu "Atraxa (2)", eine bereits nummerierte Fassung
+ * zählt weiter ("Atraxa (2)" -> "Atraxa (3)") statt zu verschachteln, und belegte Nummern werden
+ * übersprungen - `vorhandene` sind dafür die Decknamen desselben Besitzers. Rein rechnerisch und
+ * deshalb hier statt in der Komponente: Die Liste zeigt den Namen nur an, gebildet wird er einmal.
+ */
+export function deckKopieName(original: string, vorhandene: string[]): string {
+  const basis = original.replace(VERSIONS_SUFFIX, '').trim() || original.trim();
+  const start = Number.parseInt(original.match(VERSIONS_SUFFIX)?.[1] ?? '1', 10);
+  const belegt = new Set(vorhandene.map((n) => n.trim().toLowerCase()));
+
+  let nummer = Math.max(2, start + 1);
+  while (belegt.has(`${basis} (${nummer})`.toLowerCase())) nummer++;
+  return `${basis} (${nummer})`;
+}
+
 @Injectable({ providedIn: 'root' })
 export class DeckService {
   private readonly scryfall = inject(ScryfallService);
@@ -1298,6 +1317,111 @@ export class DeckService {
     if (logError) console.error('Konnte den Änderungsverlauf des gelöschten Decks nicht entfernen:', logError);
 
     return 'weich';
+  }
+
+  /**
+   * Legt eine Kopie eines Decks an - die "zweite Version", die man weiterbaut, ohne das gespielte
+   * Original anzufassen. Kopiert werden Kartenliste (samt gewähltem Artwork, Karten-Tags, Token
+   * und engerer Auswahl) und die Deck-Metadaten; NICHT kopiert werden Partien, Statistik und
+   * Änderungsverlauf - die Kopie startet bei null Spielen.
+   *
+   * Bewusst NICHT über saveDeck(): das geht den Umweg über den Decklisten-Text und verlöre dabei
+   * von Hand gewählte Artworks, Karten-Tags und Token-Zeilen - vor allem aber hängt dort
+   * backfillDeckLinks() alte Partien mit demselben Commander an das frisch angelegte Deck. Genau
+   * das darf hier nicht passieren: Eine zweite Version erbt keine Statistik.
+   */
+  async duplicateDeck(deckId: string, newName: string): Promise<string | null> {
+    // Bracket-Spalten wie überall optional (siehe deckColumns()) - fehlt die Migration, wird eben
+    // ohne Bracket kopiert, statt die ganze Kopie an einem 42703 scheitern zu lassen.
+    const quellSpalten = () => {
+      const basis =
+        'user_id, player_id, name, format, is_precon, precon_release_year, edhrec_tag, color_identity, commander_types, is_private';
+      return DeckService.bracketSpaltenVerfuegbar ? `${basis}, ${DeckService.BRACKET_SPALTEN}` : basis;
+    };
+    const abfrage = () => supabase.from('decks').select(quellSpalten()).eq('id', deckId).maybeSingle();
+
+    let { data, error } = await abfrage();
+    for (let versuch = 0; versuch < 2 && DeckService.fehlendeSpalteAbgeschaltet(error); versuch++)
+      ({ data, error } = await abfrage());
+
+    if (error || !data) {
+      console.error('Konnte das zu kopierende Deck nicht laden:', error);
+      return null;
+    }
+    const quelle = data as any;
+
+    const { data: karten, error: kartenError } = await supabase
+      .from('deck_cards')
+      .select(
+        'card_name, quantity, image_url, type_line, cmc, is_commander, custom_tags, is_maybeboard, is_token, scryfall_oracle_id'
+      )
+      .eq('deck_id', deckId);
+
+    if (kartenError) {
+      console.error('Konnte die Kartenliste des zu kopierenden Decks nicht laden:', kartenError);
+      return null;
+    }
+
+    const neueZeile: Record<string, unknown> = {
+      user_id: quelle.user_id,
+      player_id: quelle.player_id,
+      name: newName,
+      format: quelle.format,
+      is_precon: quelle.is_precon ?? false,
+      precon_release_year: quelle.precon_release_year ?? null,
+      edhrec_tag: quelle.edhrec_tag ?? null,
+      color_identity: quelle.color_identity ?? [],
+      commander_types: quelle.commander_types ?? [],
+      is_private: quelle.is_private ?? false,
+      // is_outdated bleibt bewusst auf dem Spalten-Default (false): Eine gerade angelegte zweite
+      // Version ist das Gegenteil von veraltet, auch wenn das Original ausgemustert ist.
+    };
+    if (DeckService.bracketSpaltenVerfuegbar) {
+      // Die Kartenliste ist identisch, also gilt auch die geschätzte Stufe unverändert weiter -
+      // sonst stünde die Kopie in der Liste ohne Abzeichen da, bis sie einmal geöffnet wurde.
+      neueZeile['bracket'] = quelle.bracket ?? null;
+      neueZeile['bracket_auto'] = quelle.bracket_auto ?? null;
+      neueZeile['bracket_auto_at'] = quelle.bracket_auto_at ?? null;
+    }
+
+    const { data: angelegt, error: insertError } = await supabase
+      .from('decks')
+      .insert(neueZeile)
+      .select('id')
+      .single();
+
+    if (insertError || !angelegt) {
+      console.error('Konnte die Deck-Kopie nicht anlegen:', insertError);
+      return null;
+    }
+    const neueId: string = angelegt.id;
+
+    const kartenZeilen = (karten ?? []).map((row) => ({
+      deck_id: neueId,
+      card_name: row.card_name,
+      quantity: row.quantity,
+      image_url: row.image_url,
+      type_line: row.type_line,
+      cmc: row.cmc ?? 0,
+      is_commander: row.is_commander,
+      custom_tags: row.custom_tags ?? [],
+      is_maybeboard: row.is_maybeboard ?? false,
+      is_token: row.is_token ?? false,
+      scryfall_oracle_id: row.scryfall_oracle_id ?? null,
+    }));
+
+    if (kartenZeilen.length > 0) {
+      const { error: kartenInsertError } = await supabase.from('deck_cards').insert(kartenZeilen);
+      if (kartenInsertError) {
+        console.error('Konnte die Kartenliste der Kopie nicht speichern:', kartenInsertError);
+        // Kein halbes Deck stehen lassen: Die Kopie hat noch keine einzige Partie, ein hartes
+        // Löschen ist hier gefahrlos (anders als in deleteDeck()).
+        await supabase.from('decks').delete().eq('id', neueId);
+        return null;
+      }
+    }
+
+    return neueId;
   }
 
   /**

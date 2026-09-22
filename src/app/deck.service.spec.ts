@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { DeckService } from './deck.service';
+import { DeckService, deckKopieName } from './deck.service';
 
 /** Gekürzter, aber formattreuer Ausschnitt eines deckstats.net-Exports (Kategorie-Kommentare, Set-Kürzel, Maybeboard am Ende). */
 const DECKSTATS_EXPORT = `//Commander
@@ -205,5 +205,16 @@ describe('DeckService.parseDecklistText', () => {
     expect(byName.get("Atraxa, Praetors' Voice")?.isCommander).toBe(true);
     expect(byName.get('Sol Ring')?.collectorNumber).toBe('263');
     expect(byName.get('Duress')?.isMaybeboard).toBe(true);
+  });
+});
+
+describe('deckKopieName', () => {
+  it('haengt (2) an und zaehlt eine bereits nummerierte Fassung weiter', () => {
+    expect(deckKopieName('Atraxa', [])).toBe('Atraxa (2)');
+    expect(deckKopieName('Atraxa (2)', [])).toBe('Atraxa (3)');
+  });
+
+  it('ueberspringt belegte Nummern, unabhaengig von Gross-/Kleinschreibung', () => {
+    expect(deckKopieName('Atraxa', ['Atraxa', 'atraxa (2)', 'Atraxa (3)'])).toBe('Atraxa (4)');
   });
 });

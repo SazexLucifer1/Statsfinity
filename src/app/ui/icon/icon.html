@@ -42,6 +42,12 @@
     @case ('check') {
       <path d="m5 12.5 4.5 4.5L19 7.5" />
     }
+    @case ('copy') {
+      <!-- Zwei Karten hintereinander: die hintere nur mit ihrer sichtbaren Ecke, sonst wird es
+           bei 22px zum Gitter. -->
+      <rect x="8.5" y="8.5" width="11" height="11" rx="2.2" />
+      <path d="M15.5 5.5a2 2 0 0 0-2-2h-7a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2" />
+    }
     @case ('crown') {
       <path d="M3.5 7.5 7.5 11.5 12 5l4.5 6.5 4-4-1.6 10H5.1z" />
       <path d="M5.5 20h13" />
