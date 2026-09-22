@@ -4,8 +4,8 @@
   gap: var(--sp-3);
 }
 
-/* Die Werkzeugleiste bricht auf dem iPhone in zwei Zeilen um, statt waagerecht zu scrollen -
-   ein Werkzeug, das aus dem Bild gerutscht ist, findet niemand. */
+/* Die Werkzeugleisten brechen auf dem iPhone um, statt waagerecht zu scrollen - ein Werkzeug,
+   das aus dem Bild gerutscht ist, findet niemand. */
 .primer-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -13,15 +13,23 @@
   align-items: center;
 }
 
-.primer-block-select {
-  flex: 0 1 auto;
-  max-width: 14rem;
+.primer-toolbar-insert {
+  border-top: 1px solid var(--glass-border);
+  padding-top: var(--sp-2);
 }
 
-/* Knöpfe erben die Textfarbe nicht - ohne eigene Farbe zeichnet das Link-Piktogramm in der
-   dunklen Browser-Standardfarbe und verschwindet auf dunklem Grund. */
+.primer-block-select {
+  flex: 0 1 auto;
+  max-width: 12rem;
+}
+
+/* Knöpfe erben die Textfarbe nicht - ohne eigene Farbe zeichnen die Piktogramme in der dunklen
+   Browser-Standardfarbe und verschwinden auf dunklem Grund. */
 .primer-tool {
   color: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
   min-width: 2.5rem;
   justify-content: center;
 }
@@ -34,15 +42,43 @@
   font-style: italic;
 }
 
-.primer-link-row {
+/* Das Dateifeld selbst wird nie angezeigt - geklickt wird der Knopf daneben. */
+.primer-file-input {
+  display: none;
+}
+
+.primer-panel {
   display: flex;
   flex-wrap: wrap;
   gap: var(--sp-2);
   align-items: center;
+  padding: var(--sp-3);
+  border-radius: var(--r-md);
+  border: 1px solid var(--glass-border);
+  background: var(--surface-tile);
 
   input {
     flex: 1 1 12rem;
   }
+}
+
+.primer-panel-hint {
+  flex: 1 0 100%;
+  margin: 0;
+}
+
+.primer-suggestions {
+  flex: 1 0 100%;
+}
+
+.primer-mana-grid {
+  gap: var(--sp-2);
+}
+
+.primer-mana-button {
+  min-width: 2.75rem;
+  justify-content: center;
+  color: inherit;
 }
 
 .primer-editor {
@@ -80,53 +116,81 @@
   gap: var(--sp-2);
 }
 
-/* Der gelesene Primer. Die Abstände stehen hier und nicht global, weil es die einzige Stelle der
-   App ist, an der Fließtext mit eigenen Überschriften und Listen vorkommt. */
-.primer-body,
-.primer-editor {
-  line-height: 1.6;
-  overflow-wrap: anywhere;
+/* ::ng-deep ist hier nötig und kein Versehen: Der gelesene Primer kommt über [innerHTML] herein
+   und das Eingabefeld füllt sich per innerHTML - beides erzeugt Knoten OHNE Angulars
+   Komponenten-Attribut, gewöhnliche Regeln dieser Datei greifen daran also nicht. :host davor
+   hält die Regeln trotzdem in dieser Komponente. */
+:host ::ng-deep {
+  .primer-body,
+  .primer-editor {
+    line-height: 1.6;
+    overflow-wrap: anywhere;
 
-  h2 {
-    font-size: 1.05rem;
-    margin: var(--sp-4) 0 var(--sp-2);
-  }
+    h2 {
+      font-size: 1.05rem;
+      margin: var(--sp-4) 0 var(--sp-2);
+    }
 
-  h3 {
-    font-size: 0.95rem;
-    margin: var(--sp-3) 0 var(--sp-2);
-  }
+    h3 {
+      font-size: 0.95rem;
+      margin: var(--sp-3) 0 var(--sp-2);
+    }
 
-  p {
-    margin: 0 0 var(--sp-3);
-  }
+    p {
+      margin: 0 0 var(--sp-3);
+    }
 
-  ul,
-  ol {
-    margin: 0 0 var(--sp-3);
-    padding-left: var(--sp-5);
-  }
+    ul,
+    ol {
+      margin: 0 0 var(--sp-3);
+      padding-left: var(--sp-5);
+    }
 
-  li {
-    margin-bottom: var(--sp-1);
-  }
+    li {
+      margin-bottom: var(--sp-1);
+    }
 
-  blockquote {
-    margin: 0 0 var(--sp-3);
-    padding-left: var(--sp-3);
-    border-left: 3px solid var(--glass-border);
-    opacity: 0.85;
-  }
+    blockquote {
+      margin: 0 0 var(--sp-3);
+      padding-left: var(--sp-3);
+      border-left: 3px solid var(--glass-border);
+      opacity: 0.85;
+    }
 
-  a {
-    color: var(--accent);
-  }
+    a {
+      color: var(--accent);
+    }
 
-  :first-child {
-    margin-top: 0;
-  }
+    /* Kartenname: sieht aus wie ein Link, führt aber nirgendwohin - er öffnet die Kartenvorschau. */
+    a.primer-card {
+      color: var(--accent);
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      cursor: pointer;
+    }
 
-  :last-child {
-    margin-bottom: 0;
+    /* Bilder stehen für sich, nicht im Textfluss: Ein Kartenbild mitten in einem Satz wäre auf
+       Handybreite unlesbar. Die Breite ist begrenzt, damit ein hochgeladenes Foto den Primer
+       nicht sprengt. */
+    img.primer-image {
+      display: block;
+      max-width: min(100%, 260px);
+      height: auto;
+      margin: var(--sp-3) 0;
+      border-radius: var(--r-md);
+    }
+
+    /* Die Manasymbole der Mana-Schriftart sitzen sonst auf der Grundlinie und wirken zu tief. */
+    i.ms {
+      vertical-align: -0.05em;
+    }
+
+    :first-child {
+      margin-top: 0;
+    }
+
+    :last-child {
+      margin-bottom: 0;
+    }
   }
 }

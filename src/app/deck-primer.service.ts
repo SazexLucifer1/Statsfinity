@@ -1,5 +1,6 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import { supabase } from './supabase.client';
+import { AuthService } from './auth.service';
 import { bereinigePrimerHtml, primerIstLeer } from './primer-html';
 
 /**
@@ -18,6 +19,8 @@ import { bereinigePrimerHtml, primerIstLeer } from './primer-html';
  */
 @Injectable({ providedIn: 'root' })
 export class DeckPrimerService {
+  private readonly auth = inject(AuthService);
+
   /** Bereinigtes HTML des geladenen Decks, null = kein Primer geschrieben. */
   readonly primer = signal<string | null>(null);
   readonly loading = signal(false);
@@ -98,6 +101,68 @@ export class DeckPrimerService {
     if (this.loadedDeckId === deckId) this.primer.set(wert);
     return true;
   }
+
+  /** Läuft, während ein eigenes Bild in den Bucket hochgeladen wird. */
+  readonly bildUpload = signal(false);
+
+  /**
+   * Fehlt der Bucket noch (sql/primer-bilder-bucket-2026-09-22.sql läuft nicht automatisch mit dem
+   * Deployment), verschwindet der Knopf für eigene Bilder nach dem ersten Versuch - dieselbe
+   * Mechanik wie beim Reiter selbst. Kartenbilder von Scryfall bleiben davon unberührt, die
+   * brauchen keinen Bucket.
+   */
+  readonly eigeneBilderVerfuegbar = signal(true);
+
+  /**
+   * Lädt ein eigenes Bild in den Bucket "primer-images" und liefert die öffentliche Adresse
+   * (siehe sql/primer-bilder-bucket-2026-09-22.sql). Eigener Bucket statt "deck-art": Dort liegen
+   * Kartenbilder, die ein Deck ersetzt anzeigt - ein Primer-Bild ist etwas anderes, und beim
+   * Aufräumen ("welche Bilder hängen woran?") will man die beiden nicht auseinanderklauben müssen.
+   *
+   * Der Pfad beginnt mit der eigenen Benutzer-ID, weil genau darauf die Schreibrechte des Buckets
+   * prüfen - niemand soll in den Ordner eines anderen hochladen können.
+   */
+  async bildHochladen(file: File): Promise<string | null> {
+    const uid = this.auth.currentUser()?.id;
+    if (!uid) return null;
+    if (!file.type.startsWith('image/')) {
+      this.errorKey.set('deckPrimer.imageNotAnImage');
+      return null;
+    }
+    if (file.size > DeckPrimerService.MAX_BILD_BYTES) {
+      this.errorKey.set('deckPrimer.imageTooBig');
+      return null;
+    }
+
+    this.bildUpload.set(true);
+    this.errorKey.set(null);
+    const endung = (file.name.split('.').pop() ?? 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const pfad = `${uid}/${crypto.randomUUID()}.${endung || 'jpg'}`;
+    const { error } = await supabase.storage
+      .from('primer-images')
+      .upload(pfad, file, { contentType: file.type });
+    this.bildUpload.set(false);
+
+    if (error) {
+      // "Bucket not found" heißt nicht "Upload kaputt", sondern "Migration steht noch aus" - und
+      // das ist etwas, das nur der Betreiber beheben kann, nicht der Schreiber.
+      if ((error.message ?? '').toLowerCase().includes('bucket not found')) {
+        console.warn(
+          'Bucket primer-images fehlt noch - sql/primer-bilder-bucket-2026-09-22.sql im Supabase-SQL-Editor ausführen. Bis dahin gibt es im Primer nur Kartenbilder.',
+        );
+        this.eigeneBilderVerfuegbar.set(false);
+        this.errorKey.set('deckPrimer.imageBucketMissing');
+        return null;
+      }
+      console.error('Konnte Primer-Bild nicht hochladen:', error);
+      this.errorKey.set('deckPrimer.imageUploadFailed');
+      return null;
+    }
+    return supabase.storage.from('primer-images').getPublicUrl(pfad).data.publicUrl;
+  }
+
+  /** 5 MB: Ein Primer-Bild wird im Text auf Handybreite angezeigt - mehr ist nur Ladezeit. */
+  private static readonly MAX_BILD_BYTES = 5 * 1024 * 1024;
 
   /** Beim Schließen der Deck-Ansicht aufräumen, damit der nächste Aufruf nicht kurz den alten Text zeigt. */
   zuruecksetzen(): void {

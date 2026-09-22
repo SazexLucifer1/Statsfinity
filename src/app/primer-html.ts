@@ -1,3 +1,5 @@
+import { manaKlasse } from './ui/mana-symbol/mana-symbol';
+
 /**
  * Bereinigung des Primer-HTML (siehe deck-primer/ und sql/deck-primer-2026-09-22.sql).
  *
@@ -16,6 +18,17 @@
  * KEINE neue Abhängigkeit: Der Browser bringt mit DOMParser bereits einen vollständigen
  * HTML-Parser mit. Selbst geschriebene Bereinigung mit regulären Ausdrücken wäre der eine Weg,
  * der hier wirklich gefährlich ist.
+ *
+ * Neben dem Aufräumen macht diese Datei die drei Kürzel des Primers zu echtem Markup - beim
+ * Speichern, damit im Feld stehen bleiben darf, was der Schreiber getippt hat:
+ *
+ *   {G} {2} {U/R} {T}   ->  Manasymbol aus der Mana-Schriftart
+ *   [G] [X] [T]         ->  dasselbe, aber NUR Farb- und Sondersymbole: [1] und [2] sind in
+ *                           einem Text viel öfter eine Fußnote als eine Manakosten-Angabe
+ *   [[Sol Ring]]        ->  anklickbarer Kartenname, öffnet die Kartenvorschau
+ *
+ * Bilder (Kartenbilder von Scryfall, eigene aus dem Supabase-Bucket) stehen als <img> im Text;
+ * erlaubt sind nur diese beiden Herkünfte, siehe BILD_QUELLEN.
  */
 
 /**
@@ -45,6 +58,10 @@ const ERLAUBTE_TAGS = new Set([
   'LI',
   'BLOCKQUOTE',
   'A',
+  // <i> ist hier NICHT kursiv (das ist <em>), sondern ausschließlich ein Manasymbol aus der
+  // Mana-Schriftart - siehe manaElement(). Ein <i> ohne gültige ms-Klasse wird zu <em>.
+  'I',
+  'IMG',
 ]);
 
 /**
@@ -115,10 +132,123 @@ function sicheresZiel(href: string | null): string | null {
   return /^(https?:\/\/|mailto:)/i.test(flach) ? flach : null;
 }
 
+/** Klasse des anklickbaren Kartennamens - der Name selbst steht als Text im Element. */
+export const PRIMER_CARD_CLASS = 'primer-card';
+
+/** Klasse jedes Bildes im Primer. */
+export const PRIMER_IMAGE_CLASS = 'primer-image';
+
+/**
+ * Woher ein Bild im Primer kommen darf: Kartenbilder von Scryfall und eigene Uploads aus dem
+ * Supabase-Bucket dieses Projekts. Beide stehen bereits in der CSP (public/_headers) - ein Bild
+ * von irgendwoher würde der Browser also ohnehin blockieren, hier fällt es schon vor dem
+ * Speichern weg. Der Bucket-Pfad ist bewusst mitgeprüft: "irgendein Objekt in diesem Supabase"
+ * schlösse auch fremde Buckets ein.
+ */
+const BILD_QUELLEN = [
+  'https://cards.scryfall.io/',
+  'https://jkkelwpnrgzbvopszwrl.supabase.co/storage/v1/object/public/primer-images/',
+];
+
+/**
+ * Gültige Kürzel der Mana-Schriftart, wie sie in einer ms-Klasse stehen dürfen: Farben, farblos,
+ * X, Energie, Schnee, das Tap-Symbol, generische Beträge und Hybride ("ur", "2b", "gp").
+ *
+ * Das ist eine PRÜFUNG, keine zweite Zuordnung: Aus einem getippten {G} macht manaKlasse() (siehe
+ * ui/mana-symbol) die Klasse. Hier geht es nur um schon vorhandenes Markup - aus der Datenbank
+ * oder aus der Zwischenablage -, dessen Klasse niemand ungeprüft weiterreichen sollte.
+ */
+const MANA_KUERZEL = /^(?:[wubrgcxes]|tap|\d{1,2}|[wubrg0-9]+[wubrgp])$/;
+
+/** Text-Kürzel: alles in geschweiften Klammern, in eckigen nur Farben und Sondersymbole. */
+const KUERZEL = /\{([^{}\n]{1,5})\}|\[([WUBRGCXESTwubrgcxest])\]|\[\[([^\[\]\n]{1,120})\]\]/g;
+
+/**
+ * Ein <i> ist im Primer ein Manasymbol - aber nur mit gültiger ms-Klasse. Liefert das saubere
+ * Element oder null, dann behandelt der Aufrufer das <i> als gewöhnliches Kursiv.
+ */
+function manaElement(element: Element, doc: Document): HTMLElement | null {
+  const kuerzel = Array.from(element.classList)
+    .filter((klasse) => klasse.startsWith('ms-'))
+    .map((klasse) => klasse.slice(3).toLowerCase())
+    .find((token) => MANA_KUERZEL.test(token));
+  if (!kuerzel) return null;
+  const neu = doc.createElement('i');
+  // Klasse neu zusammensetzen statt übernehmen: Was sonst noch in class stand (fremde Stile,
+  // Größenklassen), hat im Primer nichts zu suchen.
+  neu.setAttribute('class', manaKlasse(kuerzel));
+  neu.setAttribute('aria-hidden', 'true');
+  return neu;
+}
+
+/** Bild mit erlaubter Herkunft, sonst null (das Bild fällt dann ersatzlos weg). */
+function bildElement(element: Element, doc: Document): HTMLElement | null {
+  const src = (element.getAttribute('src') ?? '').trim();
+  if (!BILD_QUELLEN.some((praefix) => src.startsWith(praefix))) return null;
+  const neu = doc.createElement('img');
+  neu.setAttribute('src', src);
+  neu.setAttribute('class', PRIMER_IMAGE_CLASS);
+  neu.setAttribute('alt', (element.getAttribute('alt') ?? '').slice(0, 120));
+  return neu;
+}
+
+/**
+ * Macht aus einem Textstück die drei Kürzel (siehe Kopf). Hängt das Ergebnis - Text und Elemente
+ * gemischt - an ziel an.
+ */
+function schreibeTextMitKuerzeln(text: string, ziel: HTMLElement, doc: Document): void {
+  let zuletzt = 0;
+  for (const treffer of text.matchAll(KUERZEL)) {
+    const start = treffer.index ?? 0;
+    const [ganzes, geschweift, eckig, karte] = treffer;
+
+    let element: HTMLElement | null = null;
+    if (karte !== undefined) {
+      const name = karte.trim();
+      if (name) {
+        element = doc.createElement('a');
+        element.setAttribute('class', PRIMER_CARD_CLASS);
+        // Kein href: Der Klick öffnet die Kartenvorschau in der App, er führt nirgendwohin.
+        // role/tabindex machen ihn trotzdem für Tastatur und Screenreader erreichbar.
+        element.setAttribute('role', 'button');
+        element.setAttribute('tabindex', '0');
+        element.appendChild(doc.createTextNode(name));
+      }
+    } else {
+      const symbol = (geschweift ?? eckig ?? '').trim();
+      // {} mit Unsinn darin ({Hallo}) bleibt Text. Geprüft wird das GETIPPTE Symbol, nicht die
+      // daraus gebaute Klasse: manaKlasse() macht aus allem Unbekannten ein farbloses Symbol -
+      // {Hallo} stünde dann als {C} im Text und behauptete etwas, das niemand geschrieben hat.
+      if (istManaSymbol(symbol)) {
+        element = doc.createElement('i');
+        element.setAttribute('class', manaKlasse(symbol));
+        element.setAttribute('aria-hidden', 'true');
+      }
+    }
+
+    if (!element) continue;
+    if (start > zuletzt) ziel.appendChild(doc.createTextNode(text.slice(zuletzt, start)));
+    ziel.appendChild(element);
+    zuletzt = start + ganzes.length;
+  }
+  if (zuletzt < text.length) ziel.appendChild(doc.createTextNode(text.slice(zuletzt)));
+}
+
+/** Schreibweisen, die als getipptes Manasymbol gelten: Farbe, Betrag, X/E/S/T, farblos, Hybrid. */
+const MANA_EINGABE = /^(?:[WUBRGCXEST]|\d{1,2}|[WUBRG0-9]+\/[WUBRGP])$/i;
+
+function istManaSymbol(symbol: string): boolean {
+  return MANA_EINGABE.test(symbol);
+}
+
 function uebertrage(quelle: Node, ziel: HTMLElement, doc: Document, tiefe: number): void {
   for (const kind of Array.from(quelle.childNodes)) {
     if (kind.nodeType === 3) {
-      ziel.appendChild(doc.createTextNode(kind.nodeValue ?? ''));
+      const text = kind.nodeValue ?? '';
+      // In einem Kartenlink steht schon ein Kartenname - dort noch einmal nach [[...]] zu suchen,
+      // verschachtelte nur Links ineinander.
+      if (ziel.tagName === 'A') ziel.appendChild(doc.createTextNode(text));
+      else schreibeTextMitKuerzeln(text, ziel, doc);
       continue;
     }
     if (kind.nodeType !== 1) continue;
@@ -130,6 +260,21 @@ function uebertrage(quelle: Node, ziel: HTMLElement, doc: Document, tiefe: numbe
     // Ein <div> ist im contenteditable mal ein Absatz (Safari setzt es beim Zeilenumbruch), mal
     // nur eine Klammer um mehrere Blöcke (eingefügter Fremdtext). Enthält es selbst Blöcke, wird
     // es ausgepackt - sonst stünden Absätze und Listen in einem Absatz.
+    // Manasymbol und Bild bringen ihre eigenen Regeln mit und sind danach fertig - sie haben
+    // keinen Inhalt, der noch übertragen werden müsste.
+    if (roh === 'I' || roh === 'EM') {
+      const symbol = manaElement(element, doc);
+      if (symbol) {
+        ziel.appendChild(symbol);
+        continue;
+      }
+    }
+    if (roh === 'IMG') {
+      const bild = bildElement(element, doc);
+      if (bild) ziel.appendChild(bild);
+      continue;
+    }
+
     let tag = ERSETZTE_TAGS[roh] ?? roh;
     if (roh === 'DIV') {
       const enthaeltBloecke = Array.from(element.children).some((c) =>
@@ -146,6 +291,17 @@ function uebertrage(quelle: Node, ziel: HTMLElement, doc: Document, tiefe: numbe
 
     const neu = doc.createElement(tag);
     if (tag === 'A') {
+      // Ein Kartenlink hat bewusst kein href (der Klick öffnet die Vorschau in der App) - er ist
+      // am Klassennamen zu erkennen und behält ihn.
+      if (element.classList.contains(PRIMER_CARD_CLASS)) {
+        neu.setAttribute('class', PRIMER_CARD_CLASS);
+        neu.setAttribute('role', 'button');
+        neu.setAttribute('tabindex', '0');
+        uebertrage(element, neu, doc, tiefe + 1);
+        if (neu.childNodes.length === 0) continue;
+        ziel.appendChild(neu);
+        continue;
+      }
       const ziel_url = sicheresZiel(element.getAttribute('href'));
       if (!ziel_url) {
         uebertrage(element, ziel, doc, tiefe);
@@ -163,7 +319,7 @@ function uebertrage(quelle: Node, ziel: HTMLElement, doc: Document, tiefe: numbe
     // Leere Blöcke fallen weg: execCommand hinterlässt beim Umschalten auf eine Liste oder eine
     // Überschrift regelmäßig ein <p></p>, das als Lücke im Text zu sehen wäre, ohne dass jemand
     // sie gesetzt hätte. Ein bewusst leer gelassener Absatz enthält ein <br> und bleibt deshalb.
-    if (neu.childNodes.length === 0 && tag !== 'BR') continue;
+    if (neu.childNodes.length === 0 && tag !== 'BR' && tag !== 'IMG' && tag !== 'I') continue;
     ziel.appendChild(neu);
   }
 }
@@ -192,7 +348,30 @@ export function primerText(html: string | null | undefined): string {
  * true = da steht nichts drin. Ein Feld, in das jemand hineingetippt und alles wieder gelöscht
  * hat, enthält je nach Browser <p><br></p> - das ist kein Primer, sondern ein leeres Feld, und es
  * soll in der Datenbank als NULL landen statt als Markup ohne Text.
+ *
+ * Bild und Manasymbol zählen mit, obwohl sie keinen Text haben: Ein Primer, der nur aus dem
+ * Kartenbild des Commanders besteht, ist eine Aussage - ihn als "leer" wegzuwerfen wäre
+ * Datenverlust.
  */
 export function primerIstLeer(html: string | null | undefined): boolean {
-  return primerText(html).length === 0;
+  if (primerText(html).length > 0) return false;
+  const eingabe = html ?? '';
+  if (!eingabe) return true;
+  const doc = new DOMParser().parseFromString(`<body>${eingabe}</body>`, 'text/html');
+  return doc.body.querySelector('img, i.ms') === null;
+}
+
+/**
+ * Alle Kartennamen, die als anklickbarer Link im Primer stehen. Die Anzeige lädt damit die Bilder
+ * EINMAL gebündelt nach, statt bei jedem Klick eine eigene Scryfall-Anfrage zu stellen - beim
+ * ersten Klick stünde man sonst spürbar vor einem leeren Fenster.
+ */
+export function primerKartenNamen(html: string | null | undefined): string[] {
+  const eingabe = html ?? '';
+  if (!eingabe) return [];
+  const doc = new DOMParser().parseFromString(`<body>${eingabe}</body>`, 'text/html');
+  const namen = Array.from(doc.querySelectorAll(`a.${PRIMER_CARD_CLASS}`))
+    .map((el) => (el.textContent ?? '').trim())
+    .filter((name) => name.length > 0);
+  return [...new Set(namen)];
 }

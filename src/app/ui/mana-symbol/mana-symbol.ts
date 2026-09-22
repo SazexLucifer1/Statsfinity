@@ -43,7 +43,16 @@ export class ManaSymbol {
    * dünnen dunklen Rand, den die Symbole auch auf den Karten haben - ohne den verschwimmt das
    * fast weiße W-Symbol auf hellen Hintergrundbildern.
    */
-  readonly symbolClass = computed(() => `ms ms-${manaToken(this.symbol())} ms-cost ms-shadow`);
+  readonly symbolClass = computed(() => manaKlasse(this.symbol()));
+}
+
+/**
+ * Die fertige Klassenliste für ein Manasymbol. Öffentlich, weil der Primer dieselben Symbole in
+ * gespeichertes HTML schreibt (siehe primer-html.ts) - stünde die Zusammensetzung dort ein zweites
+ * Mal, sähen die Symbole im Primer nach der nächsten Änderung hier anders aus als überall sonst.
+ */
+export function manaKlasse(symbol: string): string {
+  return `ms ms-${manaToken(symbol)} ms-cost ms-shadow`;
 }
 
 /** Klassenkürzel der Mana-Schriftart. Alles Unbekannte wird farblos, nie eine leere Klasse. */

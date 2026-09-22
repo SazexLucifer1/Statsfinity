@@ -1,4 +1,4 @@
-import { bereinigePrimerHtml, primerIstLeer, primerText } from './primer-html';
+import { bereinigePrimerHtml, primerIstLeer, primerKartenNamen, primerText } from './primer-html';
 
 /**
  * Der Primer ist die einzige Stelle der App, an der ein Nutzer Markup schreibt, das anderen
@@ -74,6 +74,82 @@ describe('primer-html', () => {
     it('bricht zu tiefe Verschachtelung ab, ohne Text zu verlieren', () => {
       const tief = '<div>'.repeat(40) + 'Kern' + '</div>'.repeat(40);
       expect(primerText(bereinigePrimerHtml(tief))).toBe('Kern');
+    });
+  });
+
+  describe('Kürzel im Text', () => {
+    it('macht aus {G} und [G] ein Manasymbol', () => {
+      expect(bereinigePrimerHtml('<p>Kostet {G}</p>')).toBe(
+        '<p>Kostet <i class="ms ms-g ms-cost ms-shadow" aria-hidden="true"></i></p>',
+      );
+      expect(bereinigePrimerHtml('<p>[U] und {2}</p>')).toBe(
+        '<p><i class="ms ms-u ms-cost ms-shadow" aria-hidden="true"></i> und <i class="ms ms-2 ms-cost ms-shadow" aria-hidden="true"></i></p>',
+      );
+      expect(bereinigePrimerHtml('<p>{U/R}</p>')).toBe(
+        '<p><i class="ms ms-ur ms-cost ms-shadow" aria-hidden="true"></i></p>',
+      );
+    });
+
+    it('lässt Text in Klammern in Ruhe, der kein Symbol ist', () => {
+      // {Hallo} würde über manaKlasse() zu einem farblosen Symbol - es soll Text bleiben.
+      expect(bereinigePrimerHtml('<p>{Hallo}</p>')).toBe('<p>{Hallo}</p>');
+      // Eckige Klammern mit Zahl sind viel öfter eine Fußnote als eine Manakosten-Angabe.
+      expect(bereinigePrimerHtml('<p>siehe [1]</p>')).toBe('<p>siehe [1]</p>');
+    });
+
+    it('macht aus [[Name]] einen anklickbaren Kartennamen', () => {
+      expect(bereinigePrimerHtml('<p>Erst [[Sol Ring]] legen</p>')).toBe(
+        '<p>Erst <a class="primer-card" role="button" tabindex="0">Sol Ring</a> legen</p>',
+      );
+      expect(
+        primerKartenNamen(
+          '<p><a class="primer-card">Sol Ring</a> und <a class="primer-card">Sol Ring</a></p>',
+        ),
+      ).toEqual(['Sol Ring']);
+    });
+
+    it('übernimmt vorhandene Symbole und Kartenlinks aus der Datenbank unverändert', () => {
+      const html =
+        '<p><i class="ms ms-g ms-cost ms-shadow" aria-hidden="true"></i> <a class="primer-card" role="button" tabindex="0">Sol Ring</a></p>';
+      expect(bereinigePrimerHtml(html)).toBe(html);
+    });
+
+    it('wirft erfundene ms-Klassen weg und macht aus <i> sonst Kursiv', () => {
+      expect(bereinigePrimerHtml('<i class="ms ms-boom">x</i>')).toBe('<em>x</em>');
+      expect(bereinigePrimerHtml('<i>kursiv</i>')).toBe('<em>kursiv</em>');
+    });
+  });
+
+  describe('Bilder', () => {
+    it('lässt Scryfall-Bilder und eigene Uploads durch', () => {
+      expect(
+        bereinigePrimerHtml(
+          '<img src="https://cards.scryfall.io/normal/front/a/b.jpg" alt="Sol Ring">',
+        ),
+      ).toBe(
+        '<img src="https://cards.scryfall.io/normal/front/a/b.jpg" class="primer-image" alt="Sol Ring">',
+      );
+      const eigenes =
+        'https://jkkelwpnrgzbvopszwrl.supabase.co/storage/v1/object/public/primer-images/abc/1.png';
+      expect(bereinigePrimerHtml(`<img src="${eigenes}">`)).toBe(
+        `<img src="${eigenes}" class="primer-image" alt="">`,
+      );
+    });
+
+    it('wirft Bilder von überall sonst weg', () => {
+      expect(bereinigePrimerHtml('<img src="https://beispiel.invalid/tracker.gif">')).toBe('');
+      // Auch ein anderer Bucket desselben Supabase-Projekts ist nicht der Primer-Bucket.
+      expect(
+        bereinigePrimerHtml(
+          '<img src="https://jkkelwpnrgzbvopszwrl.supabase.co/storage/v1/object/public/avatars/x.png">',
+        ),
+      ).toBe('');
+    });
+
+    it('zählt ein Bild als Inhalt, obwohl es keinen Text hat', () => {
+      const nurBild = '<img src="https://cards.scryfall.io/normal/front/a/b.jpg" alt="">';
+      expect(bereinigePrimerHtml(nurBild)).not.toBe('');
+      expect(primerIstLeer(bereinigePrimerHtml(nurBild))).toBe(false);
     });
   });
 
