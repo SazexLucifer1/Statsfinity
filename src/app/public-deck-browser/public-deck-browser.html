@@ -103,6 +103,10 @@
       <h3>{{ selectedDeck()?.name }}</h3>
     </div>
 
+    @if (selectedDeck(); as deck) {
+      <app-deck-social [deckId]="deck.id" [ownerUserId]="deck.userId" [countView]="true" />
+    }
+
     <!-- Derselbe Umschalter wie in der eigenen Deck-Ansicht, nur ohne Bearbeiten: Hier sieht man
          fremde Decks. Der Steckbrief steht immer zur Verfügung (er wird aus dem Deck gerechnet),
          der Primer-Reiter erscheint nur, wenn dieses Deck auch einen hat. -->

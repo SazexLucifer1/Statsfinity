@@ -145,6 +145,10 @@
         <p class="hint">{{ viewer.i18n.t('deckView.cardsCount', { count: viewer.viewingTotalCards() }) }}</p>
       }
 
+      <!-- Aufrufe und Likes: wie oft andere Leute das Deck geöffnet haben und wie vielen es
+           gefällt. Der Besitzer sieht beide Zahlen, liken kann er das eigene Deck nicht. -->
+      <app-deck-social [deckId]="deck.id" [ownerUserId]="deck.userId" [isPrivate]="deck.isPrivate" [countView]="true" />
+
       <!-- Bracket direkt unter der Format-Zeile: dort steht schon, WAS für ein Deck das ist, und
            die Stufe gehört zur selben Frage. Nur im Commander - für Brawl und PDH gibt es keine
            Brackets. -->

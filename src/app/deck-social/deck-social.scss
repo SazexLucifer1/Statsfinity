@@ -1,0 +1,48 @@
+.deck-social {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-5, 14px);
+  font-size: 0.95rem;
+  color: var(--text);
+  margin: var(--sp-3) 0;
+
+  &.compact {
+    margin: 2px 0;
+    gap: var(--sp-3);
+    font-size: 0.8rem;
+  }
+}
+
+.stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+
+  app-icon {
+    font-size: 1.15em;
+  }
+}
+
+/* Knöpfe erben die Textfarbe nicht - ohne eigene color wäre das Herz unsichtbar (siehe ui/icon). */
+.like-button {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--r-pill);
+  padding: 4px 10px;
+  margin: -4px -10px;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  min-height: 32px;
+
+  &.liked {
+    color: #ff5a79;
+    opacity: 1;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+  }
+}
