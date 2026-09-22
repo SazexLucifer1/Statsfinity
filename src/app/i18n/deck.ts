@@ -241,6 +241,9 @@ export const deck = {
       'Zwei Sätze machen aus den Zahlen eine Vorstellung: worum es dem Deck geht und woran es gewinnt.',
     'deckSteckbrief.shareHint':
       'Quadratisches Bild zum Teilen – passt ungeschnitten in einen Reddit- oder Discord-Beitrag.',
+    'deckSteckbrief.qrCaption': 'Deck ansehen',
+    'deckSteckbrief.privateNoQr':
+      'Dieses Deck ist privat – deshalb ohne QR-Code, der Link liefe für andere ins Leere. Das Bild kannst du trotzdem speichern.',
     'deckSteckbrief.drawing': 'Bild wird gezeichnet …',
     'deckSteckbrief.imageAlt': 'Steckbrief von {{deck}}',
     'deckSteckbrief.footer': 'Statsfinity · {{date}}',
@@ -482,6 +485,9 @@ export const deck = {
       'Two sentences turn the numbers into an introduction: what the deck is after, and how it wins.',
     'deckSteckbrief.shareHint':
       'Square image for sharing – fits into a Reddit or Discord post uncropped.',
+    'deckSteckbrief.qrCaption': 'View deck',
+    'deckSteckbrief.privateNoQr':
+      'This deck is private – no QR code, the link would go nowhere for anyone else. You can still save the image.',
     'deckSteckbrief.drawing': 'Drawing image …',
     'deckSteckbrief.imageAlt': 'Passport of {{deck}}',
     'deckSteckbrief.footer': 'Statsfinity · {{date}}',

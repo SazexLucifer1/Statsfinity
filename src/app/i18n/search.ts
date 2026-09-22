@@ -109,6 +109,8 @@ export const search = {
     'publicDecks.sortWinRate': 'Sortierung: Winrate',
     'publicDecks.searchButton': 'Suchen',
     'publicDecks.noResults': 'Keine öffentlichen Decks gefunden.',
+    'publicDecks.deckLinkEmpty':
+      'Dieses Deck gibt es nicht mehr oder es ist nicht öffentlich – der Link führt ins Leere.',
   },
   en: {
     // --- Header / Navigation ---
@@ -215,5 +217,7 @@ export const search = {
     'publicDecks.sortWinRate': 'Sort: Win rate',
     'publicDecks.searchButton': 'Search',
     'publicDecks.noResults': 'No public decks found.',
+    'publicDecks.deckLinkEmpty':
+      'This deck no longer exists or is not public – the link goes nowhere.',
   },
 };

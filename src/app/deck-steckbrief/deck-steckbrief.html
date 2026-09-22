@@ -30,7 +30,11 @@
     }
   </div>
 
-  <p class="hint">{{ i18n.t('deckSteckbrief.shareHint') }}</p>
+  <p class="hint">
+    {{
+      deck().istPrivat ? i18n.t('deckSteckbrief.privateNoQr') : i18n.t('deckSteckbrief.shareHint')
+    }}
+  </p>
 
   @if (canEdit() && steckbrief.verfuegbar() && bearbeitet()) {
     <!-- Zwei kurze Sätze, kein Editor: Alles andere auf dem Steckbrief rechnet die App aus dem
