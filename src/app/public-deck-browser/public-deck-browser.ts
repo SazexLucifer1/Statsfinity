@@ -1,10 +1,11 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DecimalPipe, CurrencyPipe } from '@angular/common';
 import { PublicDeckService, PublicDeck, PublicDeckStats } from '../public-deck.service';
 import { ScryfallCard, ScryfallService } from '../scryfall.service';
 import { CardPreviewService } from '../card-preview.service';
 import { I18nService } from '../i18n.service';
+import { NavigationService } from '../navigation.service';
 import { CardImage } from '../card-image/card-image';
 import { PartnerCardImage } from '../partner-card-image/partner-card-image';
 import { normalizeCardName } from '../array-utils';
@@ -143,6 +144,7 @@ export class PublicDeckBrowser {
   private readonly scryfall = inject(ScryfallService);
   private readonly cardPreview = inject(CardPreviewService);
   readonly i18n = inject(I18nService);
+  private readonly navigation = inject(NavigationService);
 
   readonly nameFilter = signal('');
   readonly browseColors = signal<ColorSelection>(EMPTY_COLOR_SELECTION);
@@ -191,10 +193,44 @@ export class PublicDeckBrowser {
   readonly creatureTypeFilter = signal<'all' | string>('all');
   readonly colorFilter = signal<ColorSelection>(EMPTY_COLOR_SELECTION);
 
+  /** Gesetzt, wenn ein über den Deck-Link geöffnetes Deck nicht (mehr) öffentlich erreichbar ist. */
+  readonly deckLinkLeer = signal(false);
+
   constructor() {
     this.publicDecks.archetypeOptions().then((options) => this.archetypeOptions.set(options));
     this.loadCreatureTypes();
     this.search();
+
+    // Jemand hat einen Deck-Link aufgerufen, etwa den QR-Code eines Steckbriefs abgescannt
+    // (siehe NavigationService.deckLink()). Das Deck steht in keiner Trefferliste - es wird
+    // einzeln geholt und direkt geöffnet.
+    effect(() => {
+      const deckId = this.navigation.pendingPublicDeckId();
+      if (!deckId) return;
+      untracked(() => void this.openDeckById(deckId));
+    });
+  }
+
+  /**
+   * Öffnet ein Deck über seine ID statt über die Trefferliste. Die Commander-Kartenbilder müssen
+   * dafür eigens nachgeladen werden: Die Karte im Kopf der Deck-Ansicht kommt aus der Zuordnung,
+   * die sonst die Suche füllt, und in der steht dieses Deck nicht.
+   */
+  private async openDeckById(deckId: string): Promise<void> {
+    this.navigation.pendingPublicDeckId.set(null);
+    this.deckLinkLeer.set(false);
+    this.deckBusy.set(true);
+
+    const deck = await this.publicDecks.getPublicDeck(deckId);
+    if (!deck) {
+      this.deckBusy.set(false);
+      this.deckLinkLeer.set(true);
+      return;
+    }
+
+    const karten = await this.commanderKarten([deck]);
+    this.commanderCardsByDeck.update((alt) => new Map([...alt, ...karten]));
+    await this.openDeck(deck);
   }
 
   private async loadCreatureTypes(): Promise<void> {
@@ -230,8 +266,18 @@ export class PublicDeckBrowser {
     this.stats.set(stats);
     this.page.set(0);
 
-    const allCommanderNames = [...new Set(decks.flatMap((d) => d.commanders.map((c) => c.name)))];
-    const cardMap = await this.scryfall.findCardsBulk(allCommanderNames);
+    this.commanderCardsByDeck.set(await this.commanderKarten(decks));
+
+    this.busy.set(false);
+  }
+
+  /**
+   * Die Commander-Kartenbilder je Deck. Eigene Methode, weil sie zweimal gebraucht wird: für die
+   * Trefferliste und für ein einzeln über den Deck-Link geöffnetes Deck, das in keiner Liste steht.
+   */
+  private async commanderKarten(decks: PublicDeck[]): Promise<Map<string, ScryfallCard[]>> {
+    const namen = [...new Set(decks.flatMap((d) => d.commanders.map((c) => c.name)))];
+    const cardMap = await this.scryfall.findCardsBulk(namen);
     const byDeck = new Map<string, ScryfallCard[]>();
     for (const deck of decks) {
       // Individuell gewähltes Artwork (deck_cards.image_url) hat Vorrang vor dem generischen
@@ -246,9 +292,7 @@ export class PublicDeckBrowser {
         .filter((c): c is ScryfallCard => !!c);
       byDeck.set(deck.id, cards);
     }
-    this.commanderCardsByDeck.set(byDeck);
-
-    this.busy.set(false);
+    return byDeck;
   }
 
   resetFilters(): void {
@@ -516,6 +560,9 @@ export class PublicDeckBrowser {
       bracket: null,
       bracketQuelle: 'auto',
       commander: deck.commanders.map((c) => ({ name: c.name, imageUrl: c.imageUrl })),
+      // Was hier ankommt, ist per RLS und Filter nicht privat - sonst stünde es nicht im
+      // öffentlichen Stöbern.
+      istPrivat: false,
     };
   });
 

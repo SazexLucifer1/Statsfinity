@@ -1,6 +1,12 @@
 <div class="public-deck-browser-content">
   <section class="glass-card">
   @if (!selectedDeck()) {
+    <!-- Jemand hat einen Deck-Link aufgerufen (QR-Code eines Steckbriefs), das Deck ist aber nicht
+         mehr öffentlich erreichbar. Statt wortlos in der Deck-Suche zu landen, steht hier, warum. -->
+    @if (deckLinkLeer()) {
+      <p class="hint error">{{ i18n.t('publicDecks.deckLinkEmpty') }}</p>
+    }
+
     <div class="public-deck-input-row">
       <input
         class="glass-input"

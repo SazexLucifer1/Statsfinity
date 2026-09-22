@@ -13,6 +13,7 @@ import { FormsModule } from '@angular/forms';
 import { DeckSteckbriefService } from '../deck-steckbrief.service';
 import { CardDataService } from '../card-data.service';
 import { I18nService } from '../i18n.service';
+import { NavigationService } from '../navigation.service';
 import { normalizeCardName } from '../array-utils';
 import { CARD_EFFECT_FILTERS } from '../card-effect-filters';
 import { Icon } from '../ui/icon/icon';
@@ -37,6 +38,11 @@ export interface SteckbriefDeckinfo {
   bracket: number | null;
   bracketQuelle: 'manual' | 'auto';
   commander: { name: string; imageUrl: string | null }[];
+  /**
+   * Privat gestellte Decks bekommen keinen QR-Code: Der Link darauf liefe für jeden anderen ins
+   * Leere, und ein toter QR-Code auf einem Bild zum Teilen ist schlimmer als keiner.
+   */
+  istPrivat: boolean;
 }
 
 /** Eine Deck-Karte, soweit der Steckbrief sie braucht: Name und Anzahl, mehr zählt er nicht. */
@@ -84,6 +90,7 @@ export class DeckSteckbrief {
   readonly steckbrief = inject(DeckSteckbriefService);
   readonly i18n = inject(I18nService);
   private readonly cardData = inject(CardDataService);
+  private readonly navigation = inject(NavigationService);
 
   readonly deck = input.required<SteckbriefDeckinfo>();
   /** Die Karten des Decks (ohne Maybeboard/Marken) - Grundlage der vier Wirkungs-Kacheln. */
@@ -192,6 +199,8 @@ export class DeckSteckbrief {
       bracketGeschaetzt: deck.bracketQuelle === 'auto',
       textbloecke,
       kacheln: this.kacheln(),
+      qrUrl: deck.istPrivat ? null : this.navigation.deckLink(deck.id),
+      qrBeschriftung: this.i18n.t('deckSteckbrief.qrCaption'),
       fusszeile: this.i18n.t('deckSteckbrief.footer', {
         date: new Date().toLocaleDateString(this.i18n.lang() === 'de' ? 'de-DE' : 'en-GB'),
       }),

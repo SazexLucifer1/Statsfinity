@@ -1,10 +1,11 @@
 // NEU
-import { Component, inject, signal } from '@angular/core';
+import { Component, effect, inject, signal } from '@angular/core';
 import { PublicCardSearch } from '../public-card-search/public-card-search';
 import { CommanderRecommendations } from '../commander-recommendations/commander-recommendations';
 import { PreconBrowser } from '../precon-browser/precon-browser';
 import { PublicDeckBrowser } from '../public-deck-browser/public-deck-browser';
 import { I18nService } from '../i18n.service';
+import { NavigationService } from '../navigation.service';
 
 /**
  * "Suche"-Tab zwischen Match und Stats - ohne Account nutzbar (Fan-Content-Policy). Umschalter
@@ -20,5 +21,15 @@ import { I18nService } from '../i18n.service';
 })
 export class SearchTab {
   readonly i18n = inject(I18nService);
+  private readonly navigation = inject(NavigationService);
   readonly subView = signal<'cards' | 'commander' | 'precons' | 'decks'>('cards');
+
+  constructor() {
+    // Ein aufgerufener Deck-Link (QR-Code eines Steckbriefs) landet in diesem Tab - aber der
+    // Deck-Browser, der ihn auswertet, hängt am Unter-Reiter "Decks". Ohne diesen Sprung stünde
+    // man auf der Kartensuche und das gescannte Deck öffnete sich nie.
+    effect(() => {
+      if (this.navigation.pendingPublicDeckId()) this.subView.set('decks');
+    });
+  }
 }

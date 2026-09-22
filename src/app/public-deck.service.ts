@@ -120,6 +120,52 @@ export class PublicDeckService {
   }
 
   /**
+   * Ein einzelnes öffentliches Deck über seine ID - für den Deck-Link aus dem QR-Code des
+   * Steckbriefs (siehe NavigationService.deckLink()). Das gescannte Deck steht in keiner
+   * Trefferliste, es muss also einzeln geholt werden.
+   *
+   * null heißt "gibt es nicht, ist gelöscht oder ist privat" - und zwar ohne Unterschied: Wer den
+   * Link nicht öffnen darf, soll aus der Antwort nicht ablesen können, dass es das Deck gibt. Die
+   * RLS-Regel (sql/public-deck-browse-2026-08-26.sql) sorgt ohnehin dafür, dass hier nichts
+   * Privates ankommt; der is_private-Filter steht trotzdem da, weil der Besitzer selbst sein
+   * privates Deck sonst über diesen Weg in der ÖFFENTLICHEN Ansicht öffnen könnte - und dort dann
+   * Kommentare unter einem Deck stünden, das niemand sonst sieht.
+   */
+  async getPublicDeck(deckId: string): Promise<PublicDeck | null> {
+    const abfrage = () =>
+      DeckService.nurLebende(
+        supabase
+          .from('decks')
+          .select('id, user_id, name, format, updated_at, edhrec_tag, color_identity, commander_types')
+          .eq('id', deckId)
+          .eq('is_private', false),
+      ).maybeSingle();
+
+    let { data, error } = await abfrage();
+    if (DeckService.fehlendeSpalteAbgeschaltet(error)) ({ data, error } = await abfrage());
+
+    if (error) {
+      console.error('Konnte öffentliches Deck nicht laden:', error);
+      return null;
+    }
+    if (!data) return null;
+
+    const row = data as any;
+    const commanders = await this.getCommanders([row.id]);
+    return {
+      id: row.id,
+      userId: row.user_id,
+      name: row.name,
+      format: row.format,
+      updatedAt: row.updated_at,
+      edhrecTag: row.edhrec_tag,
+      colorIdentity: row.color_identity ?? [],
+      commanderTypes: row.commander_types ?? [],
+      commanders: commanders.get(row.id) ?? [],
+    };
+  }
+
+  /**
    * Alle markierten Commander pro Deck (nicht nur der erste - wichtig für Partner-Decks), inklusive
    * des individuell gewählten Artworks (deck_cards.image_url). Wird für die Kartenbild-Anzeige
    * gebraucht - ein reiner Namens-Lookup bei Scryfall (frühere Version) liefert das generische/

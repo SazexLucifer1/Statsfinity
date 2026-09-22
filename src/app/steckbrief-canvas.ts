@@ -1,3 +1,4 @@
+import QRCode from 'qrcode';
 import { manaKlasse } from './ui/mana-symbol/mana-symbol';
 import { bildAusDataUrl, kartenBildAlsDataUrl } from './card-image-datauri';
 
@@ -60,12 +61,23 @@ export interface SteckbriefDaten {
   kacheln: SteckbriefKachel[];
   /** Kleingedrucktes unten, z.B. "Statsfinity · 22.09.2026". */
   fusszeile: string;
+  /**
+   * Adresse für den QR-Code, oder null für keinen QR (privates Deck - der Link liefe für jeden
+   * anderen ins Leere).
+   */
+  qrUrl: string | null;
+  /** Beschriftung unter dem QR-Code, z.B. "Deck ansehen". */
+  qrBeschriftung: string;
 }
 
 const RAND = 56;
 const SCHRIFT = "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif";
 /** Seitenverhältnis einer Magic-Karte (63 x 88 mm). */
 const KARTEN_VERHAELTNIS = 88 / 63;
+/** Kantenlänge der weißen Fläche, auf der der QR-Code sitzt. */
+const QR_GROESSE = 150;
+/** Platz, den QR-Code und Beschriftung zusammen brauchen. */
+const QR_GESAMTHOEHE = QR_GROESSE + 32;
 
 /**
  * Zeichnet den Steckbrief auf das übergebene Canvas. Setzt dessen Pixelgröße selbst.
@@ -96,10 +108,12 @@ export async function zeichneSteckbrief(
   );
   const kartenBilder = bilder.filter((b): b is HTMLImageElement => b !== null);
 
+  const qrBild = daten.qrUrl ? await qrCodeBild(daten.qrUrl) : null;
+
   hintergrund(ctx, kartenBilder[0] ?? null);
   const kopfEnde = kopfbereich(ctx, daten);
   const kachelOben = kachelBand(ctx, daten.kacheln);
-  mitte(ctx, daten, kartenBilder, kopfEnde, kachelOben);
+  mitte(ctx, daten, kartenBilder, kopfEnde, kachelOben, qrBild);
   fusszeile(ctx, daten.fusszeile);
 }
 
@@ -309,9 +323,15 @@ function mitte(
   bilder: HTMLImageElement[],
   oben: number,
   unten: number,
+  qrBild: HTMLImageElement | null,
 ): void {
   const hoehe = unten - oben - 24;
   if (hoehe < 80) return;
+
+  // Der QR-Code sitzt in beiden Aufteilungen an derselben Stelle: unten rechts im Mittelteil.
+  // Dort ist in beiden der Platz, der sonst leer bliebe - unter den zwei Sätzen bzw. neben der
+  // mittig stehenden Karte.
+  const qrBreite = qrBild ? qrCode(ctx, qrBild, daten.qrBeschriftung, oben, oben + hoehe) : 0;
 
   if (!daten.textbloecke.length) {
     kartenReihe(
@@ -320,7 +340,7 @@ function mitte(
       daten.commanderNamen,
       RAND,
       oben,
-      STECKBRIEF_GROESSE - 2 * RAND,
+      STECKBRIEF_GROESSE - 2 * RAND - (qrBreite ? qrBreite + 24 : 0),
       hoehe,
       true,
     );
@@ -335,12 +355,33 @@ function mitte(
 
   const x = RAND + bildBreite + 36;
   const breite = STECKBRIEF_GROESSE - RAND - x;
+  // Der QR-Code steht UNTER den Sätzen, nicht neben ihnen - neben ihnen bliebe für den Text eine
+  // Spalte, in der jeder Satz auf doppelt so viele kurze Zeilen bräche. Sein Platz geht deshalb
+  // von der Höhe ab, die den Absätzen bleibt.
+  const textRaum = hoehe - (qrBreite ? QR_GESAMTHOEHE + 20 : 0);
+
+  // Erst umbrechen, dann entscheiden: Solange alles zusammen hineinpasst, bekommt jeder Absatz so
+  // viele Zeilen, wie er braucht - ein kurzer erster verschenkt dann nichts an einen langen
+  // zweiten. Nur wenn es zusammen nicht reicht, wird gleichmäßig gekürzt; sonst schöbe ein langer
+  // erster Absatz den zweiten ganz aus dem Bild.
+  ctx.font = `400 28px ${SCHRIFT}`;
+  // Der Abstand NACH dem letzten Absatz zählt nicht mit - darunter kommt nichts mehr. Ohne diese
+  // Unterscheidung fehlten am Ende genau diese 22 Pixel, und ein Absatz verlor seine letzte Zeile,
+  // obwohl sie hineingepasst hätte.
+  const hoeheVon = (zeilen: string[][]) =>
+    zeilen.reduce(
+      (summe, z, i) => summe + 38 + z.length * 38 + (i < zeilen.length - 1 ? 22 : 0),
+      0,
+    );
+  let zeilenJeBlock = daten.textbloecke.map((block) => umbrich(ctx, block.text, breite, 6));
+  if (hoeheVon(zeilenJeBlock) > textRaum) {
+    const proBlock = textRaum / daten.textbloecke.length;
+    const maxZeilen = Math.max(1, Math.floor((proBlock - 54) / 38));
+    zeilenJeBlock = daten.textbloecke.map((block) => umbrich(ctx, block.text, breite, maxZeilen));
+  }
+
   let y = oben + 4;
-  // Der Platz wird gleichmäßig auf die vorhandenen Absätze verteilt: Bei nur einem darf er die
-  // ganze Höhe nutzen, bei zweien bekommt keiner mehr als die Hälfte - sonst schöbe ein langer
-  // erster Absatz den zweiten aus dem Bild.
-  const proBlock = hoehe / daten.textbloecke.length;
-  for (const block of daten.textbloecke) {
+  daten.textbloecke.forEach((block, i) => {
     ctx.font = `700 24px ${SCHRIFT}`;
     ctx.fillStyle = '#8ab4ff';
     ctx.fillText(kuerzeAufBreite(ctx, block.titel.toUpperCase(), breite), x, y);
@@ -348,13 +389,12 @@ function mitte(
 
     ctx.font = `400 28px ${SCHRIFT}`;
     ctx.fillStyle = 'rgba(244, 242, 250, 0.92)';
-    const maxZeilen = Math.max(1, Math.floor((proBlock - 54) / 38));
-    for (const zeile of umbrich(ctx, block.text, breite, maxZeilen)) {
+    for (const zeile of zeilenJeBlock[i]) {
       ctx.fillText(zeile, x, y);
       y += 38;
     }
     y += 22;
-  }
+  });
 }
 
 /**
@@ -425,6 +465,65 @@ function fusszeile(ctx: CanvasRenderingContext2D, text: string): void {
   ctx.textBaseline = 'alphabetic';
   ctx.fillText(text, RAND, STECKBRIEF_GROESSE - RAND + 8);
   ctx.textBaseline = 'top';
+}
+
+/**
+ * Der QR-Code auf ein weißes Feld, unten rechts im Mittelteil, mit Beschriftung darunter.
+ * Liefert seine Breite zurück, damit der Rest der Mitte ihm ausweichen kann.
+ *
+ * Weiße Fläche statt direkt auf den dunklen Grund: Ein QR-Code wird von den meisten Kameras nur
+ * zuverlässig erkannt, wenn er hell umrandet ist - und ein Bild, das sich nicht scannen lässt,
+ * ist genau so viel wert wie gar kein QR-Code.
+ */
+function qrCode(
+  ctx: CanvasRenderingContext2D,
+  bild: HTMLImageElement,
+  beschriftung: string,
+  oben: number,
+  unten: number,
+): number {
+  const x = STECKBRIEF_GROESSE - RAND - QR_GROESSE;
+  const y = Math.max(oben, unten - QR_GESAMTHOEHE);
+
+  ctx.save();
+  rundesRechteck(ctx, x, y, QR_GROESSE, QR_GROESSE, 14);
+  ctx.fillStyle = '#ffffff';
+  ctx.fill();
+  ctx.restore();
+  ctx.drawImage(bild, x + 8, y + 8, QR_GROESSE - 16, QR_GROESSE - 16);
+
+  ctx.font = `600 20px ${SCHRIFT}`;
+  ctx.fillStyle = 'rgba(244, 242, 250, 0.7)';
+  ctx.textAlign = 'center';
+  ctx.fillText(
+    kuerzeAufBreite(ctx, beschriftung, QR_GROESSE + 20),
+    x + QR_GROESSE / 2,
+    y + QR_GROESSE + 8,
+  );
+  ctx.textAlign = 'left';
+
+  return QR_GROESSE;
+}
+
+/**
+ * Erzeugt den QR-Code als Bild. Die Fehlerkorrektur steht auf "M": Der Code wird im Bild klein
+ * abgebildet und oft vom Telefon aus einem Foto heraus gescannt - die höheren Stufen machen das
+ * Muster dichter und damit schlechter lesbar, die niedrigste verzeiht keinen Fleck.
+ *
+ * null = ließ sich nicht erzeugen. Dann fehlt eben der QR-Code, statt dass das ganze Bild fehlt.
+ */
+async function qrCodeBild(url: string): Promise<HTMLImageElement | null> {
+  try {
+    const dataUrl = await QRCode.toDataURL(url, {
+      width: 512,
+      margin: 0,
+      errorCorrectionLevel: 'M',
+      color: { dark: '#0c0817ff', light: '#ffffffff' },
+    });
+    return await bildAusDataUrl(dataUrl);
+  } catch {
+    return null;
+  }
 }
 
 // ---------------------------------------------------------------------------

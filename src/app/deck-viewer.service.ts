@@ -1696,6 +1696,7 @@ export class DeckViewerService {
       commander: this.viewingDeckCards()
         .filter((c) => c.isCommander)
         .map((c) => ({ name: c.cardName, imageUrl: this.resolvedCardImage(c) })),
+      istPrivat: deck.isPrivate,
     };
   });
 
