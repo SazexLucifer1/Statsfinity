@@ -41,7 +41,11 @@
     } @else {
       <ul class="deck-comment-list">
         @for (comment of comments.comments(); track comment.id) {
-          <li class="deck-comment">
+          <li
+            class="deck-comment"
+            [id]="'comment-' + comment.id"
+            [class.hervorgehoben]="hervorgehoben() === comment.id"
+          >
             <div class="deck-comment-row">
               <app-player-avatar [url]="comment.avatarUrl" />
               <div class="deck-comment-main">
@@ -97,7 +101,11 @@
             @if (comment.replies.length > 0) {
               <ul class="deck-comment-replies">
                 @for (reply of comment.replies; track reply.id) {
-                  <li class="deck-comment">
+                  <li
+                    class="deck-comment"
+                    [id]="'comment-' + reply.id"
+                    [class.hervorgehoben]="hervorgehoben() === reply.id"
+                  >
                     <div class="deck-comment-row">
                       <app-player-avatar [url]="reply.avatarUrl" />
                       <div class="deck-comment-main">

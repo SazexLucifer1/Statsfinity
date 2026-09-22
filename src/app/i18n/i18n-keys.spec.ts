@@ -45,7 +45,7 @@ const MODULES = {
   group: { table: group, prefixes: ['group', 'permission'] },
   ingame: { table: ingame, prefixes: ['ingame', 'goldfish'] },
   match: { table: match, prefixes: ['match', 'game', 'placement'] },
-  profile: { table: profile, prefixes: ['profile'] },
+  profile: { table: profile, prefixes: ['profile', 'inbox'] },
   search: {
     table: search,
     prefixes: [

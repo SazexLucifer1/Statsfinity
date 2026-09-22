@@ -190,6 +190,17 @@ export const profile = {
     'profile.poolCommanderSection': 'Commander',
     'profile.poolDeckSection': 'Deck ({{count}})',
     'profile.poolOpenOnArchidekt': 'Auf Archidekt öffnen ↗',
+    // --- Postfach fuer Deck-Kommentare ---
+    'inbox.title': 'Postfach',
+    'inbox.loading': 'Lade Nachrichten …',
+    'inbox.empty':
+      'Keine Nachrichten. Hier landen Kommentare auf deine Decks und Antworten auf deine Kommentare.',
+    'inbox.loadFailed': 'Nachrichten konnten nicht geladen werden.',
+    'inbox.markAllRead': 'Alle als gelesen markieren',
+    'inbox.unreadAria': 'Ungelesen',
+    'inbox.badgeAria': '{{count}} ungelesene Nachrichten',
+    'inbox.subjectDeck': '{{name}} hat dein Deck „{{deck}}“ kommentiert',
+    'inbox.subjectReply': '{{name}} hat dir bei „{{deck}}“ geantwortet',
   },
   en: {
     // --- Profile tab ---
@@ -378,5 +389,15 @@ export const profile = {
     'profile.poolCommanderSection': 'Commanders',
     'profile.poolDeckSection': 'Deck ({{count}})',
     'profile.poolOpenOnArchidekt': 'Open on Archidekt ↗',
+    // --- Deck comment inbox ---
+    'inbox.title': 'Inbox',
+    'inbox.loading': 'Loading messages …',
+    'inbox.empty': 'No messages. Comments on your decks and replies to your comments show up here.',
+    'inbox.loadFailed': 'Messages could not be loaded.',
+    'inbox.markAllRead': 'Mark all as read',
+    'inbox.unreadAria': 'Unread',
+    'inbox.badgeAria': '{{count}} unread messages',
+    'inbox.subjectDeck': '{{name}} commented on your deck “{{deck}}”',
+    'inbox.subjectReply': '{{name}} replied to you on “{{deck}}”',
   },
 };

@@ -1,0 +1,58 @@
+@if (inbox.verfuegbar()) {
+  <section class="glass-card comment-inbox">
+    <button class="comment-inbox-header" (click)="toggle()" [attr.aria-expanded]="offen()">
+      <app-icon name="mail" />
+      <span class="comment-inbox-title">{{ i18n.t('inbox.title') }}</span>
+      @if (inbox.unreadCount() > 0) {
+        <span class="comment-inbox-badge">{{ inbox.unreadCount() }}</span>
+      }
+      <span class="comment-inbox-chevron">{{ offen() ? '▾' : '▸' }}</span>
+    </button>
+
+    @if (offen()) {
+      @if (inbox.loading()) {
+        <p class="hint">{{ i18n.t('inbox.loading') }}</p>
+      } @else if (inbox.loadFailed()) {
+        <p class="hint error">{{ i18n.t('inbox.loadFailed') }}</p>
+      } @else if (inbox.entries().length === 0) {
+        <p class="hint">{{ i18n.t('inbox.empty') }}</p>
+      } @else {
+        @if (inbox.unreadCount() > 0) {
+          <div class="chip-row">
+            <button class="glass-chip small" (click)="inbox.markAllAsRead()">
+              {{ i18n.t('inbox.markAllRead') }}
+            </button>
+          </div>
+        }
+
+        <ul class="comment-inbox-list">
+          @for (entry of inbox.entries(); track entry.commentId) {
+            <li>
+              <button
+                class="comment-inbox-entry"
+                [class.ungelesen]="!entry.gelesen"
+                [disabled]="oeffnenBusy()"
+                (click)="open(entry)"
+              >
+                <app-player-avatar [url]="entry.avatarUrl" />
+                <span class="comment-inbox-main">
+                  <span class="comment-inbox-subject">
+                    @if (!entry.gelesen) {
+                      <span
+                        class="comment-inbox-dot"
+                        [attr.aria-label]="i18n.t('inbox.unreadAria')"
+                      ></span>
+                    }
+                    {{ betreff(entry) }}
+                  </span>
+                  <span class="comment-inbox-body">{{ entry.body }}</span>
+                  <span class="hint">{{ entry.createdAt | date: 'dd.MM.yyyy HH:mm' }}</span>
+                </span>
+              </button>
+            </li>
+          }
+        </ul>
+      }
+    }
+  </section>
+}

@@ -79,7 +79,16 @@
     [class.active]="navigation.activeTab() === tab.id && !tournament.panelExpanded()"
     (click)="tournament.closePanel(); navigation.goToTab(tab.id)"
   >
-    <span class="tab-icon"><app-icon [name]="tab.icon" /></span>
+    <span class="tab-icon">
+      <app-icon [name]="tab.icon" />
+      <!-- Ungelesene Deck-Kommentare. Sitzt am Symbol, nicht an der Beschriftung: die Zahl soll
+           beim Blick auf die Leiste auffallen, ohne dass man sie liest. -->
+      @if (tab.id === 'profile' && inbox.unreadCount() > 0) {
+        <span class="tab-badge" [attr.aria-label]="i18n.t('inbox.badgeAria', { count: inbox.unreadCount() })">
+          {{ inbox.unreadCount() > 99 ? '99+' : inbox.unreadCount() }}
+        </span>
+      }
+    </span>
     <span class="tab-label">{{ i18n.t(tab.labelKey) }}</span>
   </button>
   } @if (session.phase() === 'ingame') {

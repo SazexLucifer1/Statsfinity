@@ -113,6 +113,12 @@
       <rect x="4.5" y="10" width="15" height="9.5" rx="2.5" />
       <path d="M8 10V7.8a4 4 0 0 1 8 0V10" />
     }
+    @case ('mail') {
+      <!-- Umschlag: Klappe als offenes V, nicht als geschlossenes Dreieck - bei 22px verschmelzen
+           die beiden Schenkel sonst mit dem oberen Rahmenrand. -->
+      <rect x="3.5" y="5.5" width="17" height="13" rx="2.2" />
+      <path d="m4.5 7.5 6.3 5a2 2 0 0 0 2.4 0l6.3-5" />
+    }
     @case ('outbox') {
       <path d="M12 13V3.5" />
       <path d="m8.2 7.2 3.8-3.7 3.8 3.7" />
