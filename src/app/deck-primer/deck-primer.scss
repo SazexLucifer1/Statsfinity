@@ -184,6 +184,16 @@
       border-radius: var(--r-md);
     }
 
+    /* Kartenbilder deutlich kleiner als eigene Bilder: Eine Karte in voller Breite reisst den
+       Satz auseinander, in dem sie steht, und bei mehreren wird aus dem Primer eine Galerie.
+       130px ist rund ein Viertel der Flaeche von vorher - Bild und Name bleiben erkennbar, den
+       Regeltext liest man ohnehin in der Vorschau (ein Klick auf die Karte). Erkannt am selben
+       Adress-Praefix, ueber das auch die Bereinigung entscheidet (BILD_QUELLEN in
+       primer-html.ts) - ein eigenes Foto ist als Bild gemeint und bleibt gross. */
+    img.primer-image[src^='https://cards.scryfall.io/'] {
+      max-width: min(100%, 130px);
+    }
+
     /* Die Manasymbole der Mana-Schriftart sitzen sonst auf der Grundlinie und wirken zu tief. */
     i.ms {
       vertical-align: -0.05em;
