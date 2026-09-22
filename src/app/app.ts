@@ -28,6 +28,7 @@ import { NavigationService, AppTab } from './navigation.service';
 import { ArchidektPoolBrowser } from './archidekt-pool-browser/archidekt-pool-browser';
 import { ArchidektPoolService } from './archidekt-pool.service';
 import { DeckViewerService } from './deck-viewer.service';
+import { DeckCommentInboxService } from './deck-comment-inbox.service';
 import { I18nService } from './i18n.service';
 import { FeedbackService } from './feedback.service';
 import { TournamentService } from './tournament.service';
@@ -77,6 +78,8 @@ export class App {
   readonly tournament = inject(TournamentService);
   readonly loginOverlay = inject(LoginOverlayService);
   readonly deckViewer = inject(DeckViewerService);
+  /** Nur fuer das Abzeichen an der Profil-Schaltflaeche der Tab-Leiste (ungelesene Deck-Kommentare). */
+  readonly inbox = inject(DeckCommentInboxService);
   readonly archidektPool = inject(ArchidektPoolService);
 
   /** Nur injiziert, damit der Dienst überhaupt existiert: er hängt sich an den Tab-Wechsel und holt

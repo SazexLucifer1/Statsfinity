@@ -85,6 +85,27 @@
     display: flex;
     font-size: 1.35rem;
     line-height: 1;
+    // Bezugspunkt für das Abzeichen darüber. Das Piktogramm selbst bleibt dadurch unberührt - die
+    // Marke liegt absolut darüber und verschiebt die Leiste nicht, wenn sie erscheint.
+    position: relative;
+  }
+
+  // Ungelesene Deck-Kommentare am Profil-Symbol (siehe app.html). Eigene Schriftgröße statt der
+  // geerbten 1.35rem des Symbols, sonst wäre die Zahl so groß wie das Piktogramm.
+  .tab-badge {
+    position: absolute;
+    top: -6px;
+    left: 60%;
+    min-width: 17px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: #ff4d4f;
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: 700;
+    line-height: 17px;
+    text-align: center;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
   }
 
   .tab-label {

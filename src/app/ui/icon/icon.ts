@@ -63,6 +63,7 @@ export type IconName =
   | 'layers'
   | 'link'
   | 'lock'
+  | 'mail'
   | 'outbox'
   | 'package'
   | 'palette'

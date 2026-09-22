@@ -44,6 +44,15 @@ export class DeckComments implements OnDestroy {
   readonly replyingTo = signal<string | null>(null);
   readonly replyDraft = signal('');
 
+  /** Kommentar, der nach einem Sprung aus dem Postfach gerade kurz hervorgehoben wird. */
+  readonly hervorgehoben = signal<string | null>(null);
+
+  /** Wie lange die Hervorhebung stehen bleibt. Lang genug zum Wiederfinden, kurz genug, dass sie nicht als dauerhafte Markierung missverstanden wird. */
+  private static readonly HIGHLIGHT_MS = 4000;
+
+  /** Wann nach dem Laden zum Ziel gesprungen wird - mehrfach, weil der Deck-Inhalt darueber nachlaedt. */
+  private static readonly SPRUNG_VERSUCHE_MS = [0, 400, 1200, 2500];
+
   constructor() {
     // Deck-Wechsel (anderes Deck geöffnet) lädt die Liste neu und verwirft angefangene Entwürfe -
     // ein halb getippter Kommentar gehört zu dem Deck, unter dem er getippt wurde.
@@ -53,6 +62,35 @@ export class DeckComments implements OnDestroy {
       this.replyingTo.set(null);
       this.replyDraft.set('');
       if (id) void this.comments.load(id);
+    });
+
+    // Sprung aus dem Postfach: sobald die Liste wirklich steht, zum gemeinten Kommentar scrollen
+    // und ihn kurz hervorheben. Das Ziel wird dabei gelöscht - sonst springt dasselbe Deck beim
+    // nächsten Öffnen wieder dorthin, obwohl niemand mehr danach gefragt hat.
+    effect(() => {
+      const ziel = this.comments.highlightCommentId();
+      if (!ziel || this.comments.comments().length === 0) return;
+
+      this.comments.highlightCommentId.set(null);
+      this.hervorgehoben.set(ziel);
+      window.setTimeout(() => {
+        if (this.hervorgehoben() === ziel) this.hervorgehoben.set(null);
+      }, DeckComments.HIGHLIGHT_MS);
+
+      // Zwei Gruende fuer mehrere Anlaeufe statt eines einzigen Sprungs: das Element gibt es erst,
+      // nachdem Angular die Liste gezeichnet hat, und der Deck-Inhalt DARUEBER (Kartenliste,
+      // Analyse, Kartenbilder) laedt danach weiter nach. Jede Nachladung schiebt den Kommentar
+      // nach unten - wer nur einmal springt, steht hinterher irgendwo im Deck. Nachgefasst wird
+      // nur, solange die Hervorhebung steht: scrollt der Nutzer in der Zeit selbst weg, hat er
+      // das Ziel ohnehin gesehen und wird nicht zurueckgerissen.
+      for (const verzoegerung of DeckComments.SPRUNG_VERSUCHE_MS) {
+        window.setTimeout(() => {
+          if (this.hervorgehoben() !== ziel) return;
+          document
+            .getElementById(`comment-${ziel}`)
+            ?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        }, verzoegerung);
+      }
     });
   }
 

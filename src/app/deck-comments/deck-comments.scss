@@ -104,3 +104,29 @@
   margin-bottom: 0;
   padding-left: var(--sp-6);
 }
+
+// Ziel eines Sprungs aus dem Postfach. Bewusst ein Rahmen plus sanftes Aufleuchten statt einer
+// Hintergrundfarbe: der Kasten steht auf dem halbtransparenten App-Hintergrund, eine Füllung
+// wirkt dort wie ein Anzeigefehler.
+.deck-comment.hervorgehoben > .deck-comment-row {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+  animation: deck-comment-aufleuchten 4s ease-out;
+}
+
+@keyframes deck-comment-aufleuchten {
+  0%,
+  35% {
+    background: color-mix(in srgb, var(--accent) 22%, var(--surface-tile));
+  }
+  100% {
+    background: var(--surface-tile);
+  }
+}
+
+// Wer "weniger Bewegung" eingestellt hat, bekommt den Rahmen, aber kein Aufleuchten.
+@media (prefers-reduced-motion: reduce) {
+  .deck-comment.hervorgehoben > .deck-comment-row {
+    animation: none;
+  }
+}

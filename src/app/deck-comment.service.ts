@@ -49,6 +49,13 @@ export class DeckCommentService {
   private loadedDeckId: string | null = null;
 
   /**
+   * Kommentar, zu dem nach dem Laden gesprungen und der kurz hervorgehoben werden soll - gesetzt
+   * vom Postfach, bevor es das Deck öffnet (siehe deck-comment-inbox.service.ts). Ohne das landet
+   * man bei einem langen Deck ganz oben und sucht die Nachricht von Hand.
+   */
+  readonly highlightCommentId = signal<string | null>(null);
+
+  /**
    * Steht die Migration noch aus, kennt Postgres deck_comments_for_deck() nicht. Dann verschwindet
    * der ganze Abschnitt still, statt unter jedem Deck eine Fehlermeldung zu zeigen - gleiche
    * Haltung wie bei den Bracket-/Grabstein-Spalten in DeckService, nur dass es hier nichts gibt,
@@ -90,6 +97,7 @@ export class DeckCommentService {
   /** Verwirft die Anzeige, wenn die Deck-Ansicht geschlossen wird - sonst blitzt beim nächsten Deck kurz die alte Liste auf. */
   clear(): void {
     this.loadedDeckId = null;
+    this.highlightCommentId.set(null);
     this.comments.set([]);
     this.errorKey.set(null);
     this.loading.set(false);
