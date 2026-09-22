@@ -1,6 +1,7 @@
 import { Injectable, effect, inject, signal } from '@angular/core';
 import { supabase } from './supabase.client';
 import { AuthService } from './auth.service';
+import { ArtLang, istArtLang } from './art-languages';
 
 export interface Profile {
   id: string;
@@ -8,6 +9,12 @@ export interface Profile {
   avatarUrl: string | null;
   favoriteCommanders: string[];
   language: 'de' | 'en';
+  /**
+   * Sprache der KARTENBILDER (Scryfall-Sprachcode, Standard 'en') - nicht die Oberflächensprache.
+   * Undefined, solange sql/artwork-sprache-2026-09-22.sql noch nicht gelaufen ist; dann gilt nur
+   * der Gerätewert aus dem localStorage (siehe art-language.service.ts).
+   */
+  artLanguage?: ArtLang;
   /** IDs der schon gesehenen/übersprungenen Einführungs-Touren (z.B. "intro", "match", "deckDetail", ...) - siehe tutorial.service.ts. */
   tutorialsSeen: string[];
   /** Developer-Flag (manuell in Supabase gesetzt, kein Selbstbedienungs-Feature) - nur für den/die
@@ -94,11 +101,24 @@ export class ProfileService {
     // Anfrage läuft/schon fertig ist. Nur das Ergebnis der zuletzt gestarteten Anfrage zählt.
     const seq = ++this.loadSeq;
     this.loading.set(true);
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('profiles')
-      .select('id, display_name, avatar_url, favorite_commanders, language, tutorials_seen, is_developer')
+      .select(ProfileService.profilSpalten())
       .eq('id', userId)
       .single();
+
+    // Die Artwork-Spalte kommt aus sql/artwork-sprache-2026-09-22.sql, und dieses Skript läuft
+    // NICHT automatisch mit dem Deployment. Stünde sie fest in der Select-Liste, würde PostgREST
+    // bis dahin JEDES Profil-Laden mit "column does not exist" (42703) ablehnen - die App wäre für
+    // alle unbenutzbar. Beim ersten 42703 wird sie deshalb für die Sitzung abgeschaltet und die
+    // Abfrage ohne sie wiederholt (gleiche Mechanik wie bei den Bracket-Spalten in deck.service.ts).
+    if (ProfileService.istFehlendeArtSpalte(error)) {
+      ({ data, error } = await supabase
+        .from('profiles')
+        .select(ProfileService.profilSpalten())
+        .eq('id', userId)
+        .single());
+    }
 
     if (seq !== this.loadSeq) return;
 
@@ -106,14 +126,18 @@ export class ProfileService {
       console.error('Konnte Profil nicht laden:', error);
       this.profile.set(null);
     } else {
+      // Die Spaltenliste steht erst zur Laufzeit fest (siehe profilSpalten()), damit verliert
+      // supabase-js die Typisierung der Zeile - deshalb der Cast auf einen schlichten Record.
+      const zeile = data as unknown as Record<string, unknown>;
       this.profile.set({
-        id: data.id,
-        displayName: data.display_name,
-        avatarUrl: data.avatar_url,
-        favoriteCommanders: data.favorite_commanders ?? [],
-        language: data.language === 'en' ? 'en' : 'de',
-        tutorialsSeen: data.tutorials_seen ?? [],
-        isDeveloper: data.is_developer ?? false,
+        id: zeile['id'] as string,
+        displayName: zeile['display_name'] as string,
+        avatarUrl: (zeile['avatar_url'] as string | null) ?? null,
+        favoriteCommanders: (zeile['favorite_commanders'] as string[] | null) ?? [],
+        language: zeile['language'] === 'en' ? 'en' : 'de',
+        artLanguage: istArtLang(zeile['art_language']) ? zeile['art_language'] : undefined,
+        tutorialsSeen: (zeile['tutorials_seen'] as string[] | null) ?? [],
+        isDeveloper: (zeile['is_developer'] as boolean | null) ?? false,
       });
       this.loadedUserId = userId;
     }
@@ -124,6 +148,58 @@ export class ProfileService {
   retryLoadProfile(): void {
     const user = this.auth.currentUser();
     if (user) this.loadProfile(user.id);
+  }
+
+  /** Siehe istFehlendeArtSpalte() - einmal je Sitzung umgelegt, nicht je Abfrage. */
+  private static artSpalteVerfuegbar = true;
+
+  private static readonly BASIS_SPALTEN =
+    'id, display_name, avatar_url, favorite_commanders, language, tutorials_seen, is_developer';
+
+  private static profilSpalten(): string {
+    return ProfileService.artSpalteVerfuegbar
+      ? `${ProfileService.BASIS_SPALTEN}, art_language`
+      : ProfileService.BASIS_SPALTEN;
+  }
+
+  /**
+   * true = der Fehler kam von der noch fehlenden Spalte art_language und der Aufrufer soll es
+   * ohne sie erneut versuchen. Prüft die Meldung mit, damit nicht irgendein anderer 42703 die
+   * Artwork-Sprache stillschweigend abschaltet.
+   */
+  private static istFehlendeArtSpalte(error: { code?: string; message?: string } | null): boolean {
+    if (!error || !ProfileService.artSpalteVerfuegbar) return false;
+    if (error.code !== '42703') return false;
+    if (!(error.message ?? '').includes('art_language')) return false;
+    console.warn(
+      'Spalte art_language fehlt noch - sql/artwork-sprache-2026-09-22.sql im Supabase-SQL-Editor ausführen. Die Artwork-Sprache gilt solange nur auf diesem Gerät.'
+    );
+    ProfileService.artSpalteVerfuegbar = false;
+    return true;
+  }
+
+  /**
+   * Speichert die Artwork-Sprache am Account. Fehlt die Spalte noch, ist das KEIN Fehlerfall:
+   * die Einstellung bleibt dann einfach im localStorage und gilt nur auf diesem Gerät.
+   */
+  async updateArtLanguage(artLanguage: ArtLang): Promise<boolean> {
+    const current = this.profile();
+    if (!current || !ProfileService.artSpalteVerfuegbar) return false;
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ art_language: artLanguage })
+      .eq('id', current.id);
+
+    if (error) {
+      if (!ProfileService.istFehlendeArtSpalte(error)) {
+        console.error('Konnte Artwork-Sprache nicht speichern:', error);
+      }
+      return false;
+    }
+
+    this.profile.update((p) => (p ? { ...p, artLanguage } : p));
+    return true;
   }
 
   /** Speichert die bevorzugte Sprache am Account, damit sie geräteübergreifend gilt. */

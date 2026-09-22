@@ -111,6 +111,14 @@
       background: rgba(255, 255, 255, 0.08);
     }
   }
+
+  // Der englische Name hinter einem gedruckten Treffer ("Sonnenring" -> Sol Ring): leise, aber
+  // lesbar - die Karte selbst zeigt danach ja den englischen Namen.
+  .suggestion-english {
+    margin-left: 8px;
+    font-size: 0.82em;
+    opacity: 0.6;
+  }
 }
 
 .public-search-result {

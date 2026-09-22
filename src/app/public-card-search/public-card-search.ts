@@ -1,7 +1,7 @@
 // NEU
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ScryfallCard, ScryfallService } from '../scryfall.service';
+import { CardSuggestion, ScryfallCard, ScryfallService } from '../scryfall.service';
 import { CardPreviewService } from '../card-preview.service';
 import { I18nService } from '../i18n.service';
 import { CardImage } from '../card-image/card-image';
@@ -30,7 +30,7 @@ export class PublicCardSearch {
   readonly i18n = inject(I18nService);
 
   readonly query = signal('');
-  readonly suggestions = signal<string[]>([]);
+  readonly suggestions = signal<CardSuggestion[]>([]);
   readonly result = signal<ScryfallCard | null>(null);
   readonly searched = signal(false);
   readonly loading = signal(false);
@@ -233,13 +233,17 @@ export class PublicCardSearch {
     }, 250);
   }
 
-  async selectCard(name: string): Promise<void> {
+  /**
+   * Im Eingabefeld bleibt der GEDRUCKTE Name stehen, den der Nutzer angetippt hat ("Sonnenring") -
+   * gesucht wird aber mit dem englischen, mit dem die App überall arbeitet.
+   */
+  async selectCard(vorschlag: CardSuggestion): Promise<void> {
     this.suggestions.set([]);
     this.gridResults.set([]);
-    this.query.set(name);
+    this.query.set(vorschlag.printedName ?? vorschlag.name);
     this.loading.set(true);
     this.searched.set(true);
-    this.result.set(await this.scryfall.findCard(name));
+    this.result.set(await this.scryfall.findCard(vorschlag.name));
     this.loading.set(false);
   }
 
@@ -250,7 +254,7 @@ export class PublicCardSearch {
       return;
     }
     if (!this.query().trim()) return;
-    await this.selectCard(this.query());
+    await this.selectCard({ name: this.query() });
   }
 
   openPreview(card: ScryfallCard): void {

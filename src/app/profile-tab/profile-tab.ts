@@ -23,6 +23,8 @@ import { AuthService } from '../auth.service';
 import { BackgroundService } from '../background.service';
 import { ScryfallCard, ScryfallService } from '../scryfall.service';
 import { I18nService } from '../i18n.service';
+import { ArtLanguageService } from '../art-language.service';
+import { ART_LANGUAGES, ArtLang } from '../art-languages';
 import { TutorialService } from '../tutorial.service';
 import { FeedbackService } from '../feedback.service';
 import { DialogService } from '../dialog.service';
@@ -57,6 +59,13 @@ const COLOR_RADAR_AXES: readonly string[] = [...FILTER_COLORS, COLORLESS];
 })
 export class ProfileTab {
   readonly profileService = inject(ProfileService);
+  readonly artLanguage = inject(ArtLanguageService);
+  readonly artLanguages = ART_LANGUAGES;
+
+  /** Umschalter für die Sprache der Kartenbilder (Profil) - siehe art-language.service.ts. */
+  setArtLanguage(lang: ArtLang): void {
+    void this.artLanguage.setLang(lang);
+  }
   readonly archidektPool = inject(ArchidektPoolService);
   readonly mtg = inject(MtgService);
   readonly groupService = inject(GroupService);

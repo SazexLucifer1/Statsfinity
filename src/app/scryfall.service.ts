@@ -1,9 +1,17 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { sleep, normalizeCardName } from './array-utils';
 import { ColorSelection } from './color-filter-match';
+import { ArtLanguageService } from './art-language.service';
+import { ArtLang } from './art-languages';
 
 export interface ScryfallCard {
   name: string;
+  /**
+   * Der gedruckte Name des angezeigten Drucks ("Sonnenring") - nur gesetzt, wenn das Bild NICHT
+   * englisch ist, also die Artwork-Sprache im Profil auf etwas anderes steht. Reine Anzeige:
+   * Gespeichert, gesucht und verrechnet wird immer über `name` (englisch).
+   */
+  printedName?: string;
   imageUrl?: string;
   typeLine?: string;
   cmc?: number;
@@ -36,6 +44,14 @@ export interface ScryfallCard {
    * zufällig gleichem Namen" unterscheiden.
    */
   oracleId?: string;
+}
+
+/** Ein Eintrag im Vorschlags-Dropdown der Kartensuche. */
+export interface CardSuggestion {
+  /** Englischer Kartenname - damit arbeitet die App weiter (Decklisten, Statistik, Scryfall). */
+  name: string;
+  /** Gedruckter Name, über den der Treffer gefunden wurde ("Sonnenring") - nur zur Anzeige. */
+  printedName?: string;
 }
 
 export interface ScryfallPrinting {
@@ -83,7 +99,16 @@ const API = 'https://api.scryfall.com';
 
 @Injectable({ providedIn: 'root' })
 export class ScryfallService {
+  private readonly artLang = inject(ArtLanguageService);
+
   private cachedSets: ScryfallSet[] | null = null;
+
+  /**
+   * Cache je (Sprache, normalisierter Vorderseitenname) für druckeInSprache(): das Rohobjekt des
+   * Drucks, oder null = "in dieser Sprache nicht gedruckt". Das null ist der wichtigere Teil -
+   * ohne es würde jede Ansicht für dieselben nie übersetzten Karten wieder Scryfall fragen.
+   */
+  private readonly druckCache = new Map<string, unknown | null>();
 
   private buildHeaders(): HeadersInit {
     return {
@@ -244,18 +269,25 @@ export class ScryfallService {
    * Karte, nicht nur Commander-legale), nutzt Scryfalls eigenen dafür vorgesehenen Endpoint statt
    * einer eigenen name:"..."-Suche.
    * Dieser Endpoint kennt allerdings NUR englische Namen ("Blitzschlag" liefert dort nichts),
-   * deshalb wird bei wenigen Treffern zusätzlich über die gedruckten deutschen Namen gesucht -
-   * genau wie in autocomplete() für Commander. Geliefert wird in beiden Fällen der englische Name,
-   * mit dem der Rest der App weiterarbeitet.
+   * deshalb wird bei wenigen Treffern zusätzlich über die gedruckten Namen gesucht - genau wie in
+   * autocomplete() für Commander. Geliefert wird immer der englische Name, mit dem der Rest der
+   * App weiterarbeitet, plus der gedruckte Name für die Anzeige im Dropdown.
    */
-  async autocompleteAnyCard(query: string): Promise<string[]> {
+  async autocompleteAnyCard(query: string): Promise<CardSuggestion[]> {
     if (query.trim().length < 2) return [];
     const res = await this.fetchWithRetry(`${API}/cards/autocomplete?q=${encodeURIComponent(query.trim())}`);
     const english = res?.ok ? (((await res.json()).data as string[]) ?? []) : [];
-    if (english.length >= 5) return english;
+    const vorschlaege: CardSuggestion[] = english.map((name) => ({ name }));
+    if (english.length >= 5) return vorschlaege;
 
-    const german = await this.searchGermanPrintedNames(query, 'any');
-    return [...new Set([...english, ...german])].slice(0, 12);
+    const gedruckt = await this.searchPrintedNames(query, 'any');
+    const bekannt = new Set(english.map((name) => name.toLowerCase()));
+    for (const vorschlag of gedruckt) {
+      if (bekannt.has(vorschlag.name.toLowerCase())) continue;
+      bekannt.add(vorschlag.name.toLowerCase());
+      vorschlaege.push(vorschlag);
+    }
+    return vorschlaege.slice(0, 12);
   }
 
   /** Sucht englische Kartennamen, die als Commander erlaubt sind (Regel 903.3). */
@@ -272,7 +304,8 @@ export class ScryfallService {
 
   /**
    * Prüft, ob eine Karte existiert, und liefert Details (englischer Name).
-   * Akzeptiert auch deutsche Kartennamen.
+   * Akzeptiert auch deutsche Kartennamen - geliefert wird aber immer der ENGLISCHE Druck,
+   * siehe englischerDruck().
    */
   async findCard(name: string): Promise<ScryfallCard | null> {
     if (!name.trim()) return null;
@@ -280,7 +313,7 @@ export class ScryfallService {
     // Fuzzy-Suche matcht auch viele gedruckte fremdsprachige Namen
     const res = await this.fetchWithRetry(`${API}/cards/named?fuzzy=${encodeURIComponent(name)}`);
     if (res?.ok) {
-      return this.toCard(await res.json());
+      return this.einzelnInKartensprache(await res.json());
     }
 
     // Fallback: exakte Suche über gedruckte Namen in beliebiger Sprache
@@ -289,10 +322,19 @@ export class ScryfallService {
     if (searchRes?.ok) {
       const data = await searchRes.json();
       if (data.data?.length > 0) {
-        return this.toCard(data.data[0]);
+        return this.einzelnInKartensprache(data.data[0]);
       }
     }
     return null;
+  }
+
+  /** inKartensprache() für ein einzelnes Scryfall-Rohobjekt. */
+  private async einzelnInKartensprache(roh: any): Promise<ScryfallCard> {
+    const [karte] = await this.inKartensprache(
+      [this.toCard(roh)],
+      [roh?.lang as string | undefined]
+    );
+    return karte;
   }
 
   /**
@@ -347,15 +389,44 @@ export class ScryfallService {
     query: string,
     scope: 'commander' | 'commanderOrBackground' | 'any' = 'commander'
   ): Promise<string[]> {
+    return (await this.searchPrintedNames(query, scope)).map((vorschlag) => vorschlag.name);
+  }
+
+  /**
+   * Wie searchGermanPrintedNames(), liefert aber zusätzlich den GEDRUCKTEN Namen, über den der
+   * Treffer gefunden wurde. Genau der gehört ins Vorschlags-Dropdown: Wer "Sonnenring" tippt, will
+   * dort "Sonnenring" lesen und nicht "Sol Ring" - der englische Name arbeitet im Hintergrund
+   * weiter.
+   */
+  private async searchPrintedNames(
+    query: string,
+    scope: 'commander' | 'commanderOrBackground' | 'any' = 'commander'
+  ): Promise<CardSuggestion[]> {
     const safeQuery = query.trim().replace(/"/g, '');
     if (!safeQuery) return [];
     const legality =
       scope === 'any' ? '' : scope === 'commanderOrBackground' ? '(is:commander or type:background) ' : 'is:commander ';
-    const q = encodeURIComponent(`${legality}lang:de name:"${safeQuery}"`);
+    const sprachklausel = this.gedruckteSuchsprachen()
+      .map((lang) => `lang:${lang} name:"${safeQuery}"`)
+      .join(' or ');
+    const q = encodeURIComponent(`${legality}(${sprachklausel})`);
     const res = await this.fetchWithRetry(`${API}/cards/search?q=${q}&unique=cards&order=name`);
     if (!res?.ok) return [];
     const data = await res.json();
-    return ((data.data as { name: string }[]) ?? []).map((c) => c.name).slice(0, 12);
+    return ((data.data as any[]) ?? [])
+      .map((c) => ({ name: c.name as string, printedName: c.printed_name as string | undefined }))
+      .slice(0, 12);
+  }
+
+  /**
+   * In welchen Sprachen nach GEDRUCKTEN Namen gesucht wird: immer Deutsch - das ist die
+   * Heimatsprache der App, und "Sonnenring" soll auch dann etwas finden, wenn die Kartenbilder
+   * (wie standardmäßig) englisch sind -, dazu die eingestellte Artwork-Sprache, falls sie eine
+   * andere ist. Beides zusammen in EINER Anfrage, nicht in zweien.
+   */
+  private gedruckteSuchsprachen(): ArtLang[] {
+    const art = this.artLang.lang();
+    return art === 'de' || art === 'en' ? ['de'] : ['de', art];
   }
   /**
    * Lädt Kartendaten (u.a. Bilder) für viele Kartennamen auf einmal, statt pro Karte eine
@@ -404,7 +475,22 @@ export class ScryfallService {
       })
     );
 
-    return result;
+    // Der Collection-Endpoint liefert immer den englischen Druck - steht die Artwork-Sprache auf
+    // etwas anderes, werden die Bilder hier noch einmal gebündelt getauscht. Auf Englisch kostet
+    // das keine einzige zusätzliche Anfrage.
+    return this.karteMapInKartensprache(result);
+  }
+
+  /** inKartensprache() für eine fertige Name->Karte-Map (Reihenfolge und Schlüssel bleiben). */
+  async karteMapInKartensprache(
+    karten: Map<string, ScryfallCard>
+  ): Promise<Map<string, ScryfallCard>> {
+    if (this.artLang.lang() === 'en' || karten.size === 0) return karten;
+    const schluessel = [...karten.keys()];
+    const uebersetzt = await this.inKartensprache(schluessel.map((k) => karten.get(k)!));
+    const ergebnis = new Map<string, ScryfallCard>();
+    schluessel.forEach((k, i) => ergebnis.set(k, uebersetzt[i]));
+    return ergebnis;
   }
 
   // NEU
@@ -537,12 +623,15 @@ export class ScryfallService {
 
     const parts = filters.commanderOnly === false ? [] : ['legal:commander'];
     // Der Name wird bewusst gegen den englischen UND den gedruckten deutschen Namen geprüft
-    // (ein Request statt zwei): Scryfall vergleicht name:"..." unter lang:de mit printed_name,
-    // liefert im Kartenobjekt aber weiterhin den englischen name - der Rest der App bleibt
-    // dadurch unverändert englisch. Ohne die zweite Hälfte findet "Sonnenring" nichts.
+    // (ein Request statt zwei): Scryfall vergleicht name:"..." unter lang:de mit printed_name.
+    // Ohne die zweite Hälfte findet "Sonnenring" nichts.
+    // Das lang:en der ersten Hälfte ist NICHT überflüssig: sobald irgendwo im Query ein lang:
+    // steht, schaltet Scryfall include_multilingual ein - ein nacktes name:"ring" matcht dann
+    // auch italienische ("Stringere un Accordo") und französische Drucke, und deren Kartenbild
+    // landete in der Trefferliste. Mit lang:en bleiben genau die beiden gewollten Sprachen übrig.
     if (trimmed) {
       const safeName = trimmed.replace(/"/g, '');
-      parts.push(`(name:"${safeName}" or (lang:de name:"${safeName}"))`);
+      parts.push(`(lang:en name:"${safeName}" or lang:de name:"${safeName}")`);
     }
     if (filters.type) parts.push(`type:"${filters.type}"`);
     if (creatureType) parts.push(`type:"${creatureType.replace(/"/g, '')}"`);
@@ -567,7 +656,11 @@ export class ScryfallService {
     const data = await res.json();
     // Scryfall liefert pro Seite ohnehin maximal 175 Treffer - keine zusätzliche Begrenzung nötig,
     // die Aufteilung in Seiten für die Anzeige übernimmt deck-viewer.service.ts (pagedAddCardResults).
-    return ((data.data as any[]) ?? []).map((c) => this.toCard(c));
+    const rohdaten = (data.data as any[]) ?? [];
+    return this.inKartensprache(
+      rohdaten.map((c) => this.toCard(c)),
+      rohdaten.map((c) => c.lang as string | undefined)
+    );
   }
 
   /**
@@ -611,7 +704,7 @@ export class ScryfallService {
     const res = await this.fetchWithRetry(`${API}/cards/search?q=${q}&unique=cards&order=edhrec`);
     if (!res?.ok) return [];
     const data = await res.json();
-    return ((data.data as any[]) ?? []).map((c) => this.toCard(c));
+    return this.inKartensprache(((data.data as any[]) ?? []).map((c) => this.toCard(c)));
   }
 
   /**
@@ -987,6 +1080,150 @@ export class ScryfallService {
     return { prices, incomplete };
   }
 
+  /**
+   * Setzt in einer Trefferliste Kartenbild und gedruckten Namen auf den Druck in der eingestellten
+   * Artwork-Sprache (Profil -> "Sprache der Kartenbilder", Standard Englisch).
+   *
+   * Alles andere bleibt ENGLISCH - Name, Typzeile, Regeltext, Farbidentität, Schlüsselwörter. Die
+   * App wertet genau diese Felder aus (Typzeilen-Prüfungen, Kartenname als Schlüssel in
+   * Decklisten und Statistik); eine übersetzte Typzeile erzeugt keine Fehlermeldung, sondern
+   * stillschweigend halbe Deck-Analysen.
+   *
+   * `sprachen[i]` sagt, in welcher Sprache Treffer i schon vorliegt (Default 'en'): Was passt,
+   * wird nicht nachgeschlagen. Steht die Sprache auf Englisch, erledigt derselbe Weg die
+   * Gegenrichtung - ein Treffer, den Scryfall nur über den gedruckten deutschen Namen gefunden
+   * hat, kommt als deutsches Kartenobjekt mit deutschem Bild zurück und wird hier englisch.
+   */
+  async inKartensprache(
+    karten: ScryfallCard[],
+    sprachen?: (string | undefined)[]
+  ): Promise<ScryfallCard[]> {
+    const ziel = this.artLang.lang();
+    const passtSchon = (index: number) => (sprachen?.[index] ?? 'en') === ziel;
+    const offen = karten.filter((karte, index) => karte.name && !passtSchon(index));
+    if (offen.length === 0) return karten;
+
+    const drucke = await this.druckeInSprache(
+      offen.map((karte) => karte.name),
+      ziel
+    );
+    return karten.map((karte, index) => {
+      if (!karte.name || passtSchon(index)) return karte;
+      const druck = drucke.get(ScryfallService.druckSchluessel(ziel, karte.name));
+      return druck ? ScryfallService.mitDruckbild(karte, druck) : karte;
+    });
+  }
+
+  /**
+   * Sucht zu englischen Kartennamen den Druck in einer bestimmten Sprache - gebündelt als
+   * `lang:xx (!"A" or !"B" ...)`, nicht einzeln. Der sonst übliche Collection-Endpoint scheidet
+   * hier aus: er kennt keinen Sprachparameter und liefert immer den englischen Druck.
+   * Karten ohne Druck in dieser Sprache fehlen im Ergebnis (und werden als null gemerkt) - der
+   * Aufrufer behält dann sein englisches Bild.
+   */
+  private async druckeInSprache(namen: string[], lang: ArtLang): Promise<Map<string, any>> {
+    const ergebnis = new Map<string, any>();
+    const offen: string[] = [];
+    const gesehen = new Set<string>();
+
+    for (const name of namen) {
+      const schluessel = ScryfallService.druckSchluessel(lang, name);
+      if (gesehen.has(schluessel)) continue;
+      gesehen.add(schluessel);
+      if (this.druckCache.has(schluessel)) {
+        const treffer = this.druckCache.get(schluessel);
+        if (treffer) ergebnis.set(schluessel, treffer);
+      } else {
+        offen.push(name);
+      }
+    }
+    if (offen.length === 0) return ergebnis;
+
+    // 25 Namen je Anfrage. Nicht 75 wie beim Collection-Endpoint: Scryfalls Suche hat eine
+    // Komplexitätsgrenze, und die meldet sie ausgerechnet als "Your search contains unclosed
+    // parentheses" (400) - bei 40 !"..."-Gliedern reproduzierbar, bei 39 nicht. 25 hält
+    // ausreichend Abstand, auch wenn die Namen lang sind.
+    const bloecke: string[][] = [];
+    for (let i = 0; i < offen.length; i += 25) bloecke.push(offen.slice(i, i + 25));
+
+    // Bewusst NACHEINANDER mit kurzer Pause statt parallel wie in findCardsBulk(): Eine volle
+    // Trefferseite sind 175 Karten und damit fünf Blöcke: gleichzeitig abgeschickt, beantwortet
+    // Scryfall den Großteil davon mit 429, was im Browser als CORS-Fehler ankommt (siehe
+    // fetchWithRetry). Genau das war zu sehen - von 30 angezeigten Karten kamen 5 auf Deutsch.
+    for (const block of bloecke) {
+      const namensteil = block
+        .map((name) => `!"${ScryfallService.vorderseite(name).replace(/"/g, '')}"`)
+        .join(' or ');
+      const q = encodeURIComponent(`lang:${lang} (${namensteil})`);
+      const res = await this.fetchWithRetry(`${API}/cards/search?q=${q}&unique=cards`);
+
+      // Aufgegeben (null) heißt NICHT "gibt es in dieser Sprache nicht" - würde dieser Block
+      // trotzdem als Fehlanzeige im Cache landen, bliebe er für den Rest der Sitzung englisch.
+      if (!res) continue;
+      if (res.ok) {
+        const data = await res.json();
+        for (const karte of (data.data as any[]) ?? []) {
+          // Schlüssel aus dem Namen des TREFFERS, nicht aus dem angefragten: !"Lightning Bolt"
+          // matcht auch eine doppelseitige Karte, deren Rückseite so heißt. Die landet dann unter
+          // ihrem eigenen Vorderseiten-Namen und damit an keinem angefragten Platz.
+          if (!ScryfallService.hatEchtesBild(karte)) continue;
+          const schluessel = ScryfallService.druckSchluessel(lang, karte.name as string);
+          if (!ergebnis.has(schluessel)) ergebnis.set(schluessel, karte);
+        }
+      } else if (res.status !== 404) {
+        continue; // 404 = wirklich kein Treffer im ganzen Block, alles andere ist ein Fehler
+      }
+
+      for (const name of block) {
+        const schluessel = ScryfallService.druckSchluessel(lang, name);
+        this.druckCache.set(schluessel, ergebnis.get(schluessel) ?? null);
+      }
+      if (block !== bloecke[bloecke.length - 1]) await sleep(100);
+    }
+    return ergebnis;
+  }
+
+  /**
+   * Zu vielen fremdsprachigen Drucken kennt Scryfall gar kein Bild und liefert statt der Karte
+   * einen Platzhalter ("Localized Image Not Available", `image_status: placeholder`) - allein auf
+   * Deutsch über 30.000 Stück. Der ist schlechter als das englische Artwork, deshalb zählt so ein
+   * Druck wie "gibt es in dieser Sprache nicht". Filtern lässt sich das nur hier: Scryfalls
+   * `is:placeholder` meint etwas anderes und schließt sie nicht aus, und welchen Druck `unique=cards`
+   * zurückgibt, ist über die Sortierung nicht steuerbar (geprüft mit order=released in beide
+   * Richtungen).
+   */
+  private static hatEchtesBild(druck: any): boolean {
+    const status = druck.image_status as string | undefined;
+    return status !== 'placeholder' && status !== 'missing';
+  }
+
+  /** Nur die Vorderseite - Scryfall matcht "A // B" bei !"..." über die einzelnen Seiten. */
+  private static vorderseite(name: string): string {
+    return name.split(' // ')[0].trim();
+  }
+
+  private static druckSchluessel(lang: ArtLang, name: string): string {
+    return `${lang}|${normalizeCardName(ScryfallService.vorderseite(name))}`;
+  }
+
+  /** Tauscht Bild (und gedruckten Namen) aus, lässt alle Spieldaten unberührt - siehe inKartensprache(). */
+  private static mitDruckbild(karte: ScryfallCard, druck: any): ScryfallCard {
+    const vorne =
+      druck.image_uris?.normal ??
+      druck.card_faces?.[0]?.image_uris?.normal ??
+      druck.image_uris?.art_crop ??
+      druck.card_faces?.[0]?.image_uris?.art_crop;
+    const hinten = druck.card_faces?.[1]?.image_uris?.normal as string | undefined;
+    return {
+      ...karte,
+      imageUrl: (vorne as string | undefined) ?? karte.imageUrl,
+      // Die Rückseite nur ersetzen, wenn die Karte überhaupt eine hat (siehe toCard) - sonst
+      // bekäme eine Adventure-/Split-Karte plötzlich ein zweites Bild, das es nicht gibt.
+      backImageUrl: karte.backImageUrl ? (hinten ?? karte.backImageUrl) : karte.backImageUrl,
+      printedName: (druck.printed_name as string | undefined) ?? undefined,
+    };
+  }
+
   private toCard(data: any): ScryfallCard {
     const backFace = data.card_faces?.[1];
     // image_uris auf Face 2 fehlt bei Adventure/Split (die teilen sich ein Bild) - nur wenn es
@@ -994,6 +1231,7 @@ export class ScryfallService {
     const hasFlippableBack = !!backFace?.image_uris?.normal;
     return {
       name: data.name as string,
+      printedName: data.printed_name as string | undefined,
       imageUrl:
         data.image_uris?.normal ??
         data.card_faces?.[0]?.image_uris?.normal ??
