@@ -60,8 +60,13 @@
 
   @if (suggestions().length > 0) {
     <ul class="public-search-suggestions">
-      @for (name of suggestions(); track name) {
-        <li (click)="selectCard(name)">{{ name }}</li>
+      @for (vorschlag of suggestions(); track vorschlag.name) {
+        <li (click)="selectCard(vorschlag)">
+          {{ vorschlag.printedName ?? vorschlag.name }}
+          @if (vorschlag.printedName && vorschlag.printedName !== vorschlag.name) {
+            <span class="suggestion-english">{{ vorschlag.name }}</span>
+          }
+        </li>
       }
     </ul>
   }
@@ -102,7 +107,10 @@
           <app-card-image [imageUrl]="card.imageUrl" [backImageUrl]="card.backImageUrl" [alt]="card.name" />
         }
         <div class="public-search-result-info">
-          <strong>{{ card.name }}</strong>
+          <strong>{{ card.printedName ?? card.name }}</strong>
+          @if (card.printedName && card.printedName !== card.name) {
+            <span class="type-line">{{ card.name }}</span>
+          }
           @if (card.typeLine) {
             <span class="type-line">{{ card.typeLine }}</span>
           }

@@ -530,3 +530,27 @@
 // Sektionen nach vorn - im Test landete die Danger Zone mit "Account löschen" in der zweiten Zeile
 // ganz oben auf der Seite, obwohl sie im Markup zuletzt steht. Die Reihenfolge der Seite ist hier
 // wichtiger als das letzte bisschen Dichte.
+
+// Sprachwahl für die Kartenbilder - eigene Zeile unter den Profil-Spalten.
+.art-language-row {
+  margin-top: var(--sp-6);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-4);
+
+  .art-language-label {
+    font-weight: 600;
+  }
+
+  // Die Sprachnamen sind kurz - das Feld soll nicht über die ganze Kartenbreite laufen.
+  .art-language-select {
+    max-width: 220px;
+  }
+
+  // Der Hinweis bekommt eine eigene Zeile, sonst quetscht ihn die Flexbox neben das Auswahlfeld.
+  .hint {
+    flex-basis: 100%;
+    margin: 0;
+  }
+}

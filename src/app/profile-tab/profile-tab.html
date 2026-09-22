@@ -355,6 +355,23 @@
         <button class="icon-button large" (click)="tutorial.openPicker()" [attr.aria-label]="i18n.t('profile.replayTutorialAria')" [title]="i18n.t('profile.replayTutorialAria')"><app-icon name="help" /></button>
       </div>
     </div>
+
+    <!-- Sprache der Kartenbilder: bewusst eine eigene Zeile UNTER den Spalten. In der schmalen
+         Gruppen-Spalte stand der Hinweistext auf dem iPhone als Buchstabenturm. -->
+    <div class="art-language-row">
+      <label class="art-language-label" for="art-language">{{ i18n.t('profile.artLanguage') }}</label>
+      <select
+        id="art-language"
+        class="glass-input small art-language-select"
+        [ngModel]="artLanguage.lang()"
+        (ngModelChange)="setArtLanguage($event)"
+      >
+        @for (sprache of artLanguages; track sprache.code) {
+          <option [ngValue]="sprache.code">{{ sprache.label }}</option>
+        }
+      </select>
+      <p class="hint">{{ i18n.t('profile.artLanguageHint') }}</p>
+    </div>
   </section>
 
   <!-- Statistik- und Deck-Bereich. Steht als ng-template auf oberster Ebene, weil ihn die

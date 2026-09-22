@@ -244,7 +244,10 @@ export class CardDataService {
       for (const [key, card] of await this.scryfall.findCardsBulk(fehlend)) result.set(key, card);
     }
 
-    return result;
+    // Die eigene Tabelle kennt nur die englischen Bilder (der nächtliche Abgleich liest Scryfalls
+    // englische Bulk-Datei). Steht die Artwork-Sprache auf etwas anderes, werden die Bild-URLs
+    // hier noch einmal gebündelt getauscht - auf Englisch kostet das keine einzige Anfrage.
+    return this.scryfall.karteMapInKartensprache(result);
   }
 
   /**
@@ -265,7 +268,8 @@ export class CardDataService {
       .limit(1);
 
     if (!error && data && data.length > 0) {
-      return this.toCard(data[0] as unknown as Record<string, unknown>);
+      const karte = this.toCard(data[0] as unknown as Record<string, unknown>);
+      return (await this.scryfall.inKartensprache([karte]))[0];
     }
     return this.scryfall.findCard(cardName);
   }
