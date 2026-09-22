@@ -1,0 +1,210 @@
+.deck-primer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+/* Die Werkzeugleisten brechen auf dem iPhone um, statt waagerecht zu scrollen - ein Werkzeug,
+   das aus dem Bild gerutscht ist, findet niemand. */
+.primer-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  align-items: center;
+}
+
+.primer-toolbar-insert {
+  border-top: 1px solid var(--glass-border);
+  padding-top: var(--sp-2);
+}
+
+.primer-block-select {
+  flex: 0 1 auto;
+  max-width: 12rem;
+}
+
+/* Knöpfe erben die Textfarbe nicht - ohne eigene Farbe zeichnen die Piktogramme in der dunklen
+   Browser-Standardfarbe und verschwinden auf dunklem Grund. */
+.primer-tool {
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  min-width: 2.5rem;
+  justify-content: center;
+}
+
+.primer-tool-bold {
+  font-weight: 700;
+}
+
+.primer-tool-italic {
+  font-style: italic;
+}
+
+/* Das Dateifeld selbst wird nie angezeigt - geklickt wird der Knopf daneben. */
+.primer-file-input {
+  display: none;
+}
+
+.primer-panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  align-items: center;
+  padding: var(--sp-3);
+  border-radius: var(--r-md);
+  border: 1px solid var(--glass-border);
+  background: var(--surface-tile);
+
+  input {
+    flex: 1 1 12rem;
+  }
+}
+
+.primer-panel-hint {
+  flex: 1 0 100%;
+  margin: 0;
+}
+
+.primer-suggestions {
+  flex: 1 0 100%;
+}
+
+.primer-mana-grid {
+  gap: var(--sp-2);
+}
+
+.primer-mana-button {
+  min-width: 2.75rem;
+  justify-content: center;
+  color: inherit;
+}
+
+.primer-editor {
+  min-height: 12rem;
+  padding: var(--sp-3);
+  border-radius: var(--r-md);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  /* Ohne das reicht eine eingefügte lange Adresse, um die ganze Seite waagerecht scrollen zu
+     lassen. */
+  overflow-wrap: anywhere;
+
+  &:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}
+
+.primer-edit-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  align-items: center;
+}
+
+.primer-count {
+  margin-right: auto;
+}
+
+.primer-edit-button {
+  align-self: flex-start;
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+/* ::ng-deep ist hier nötig und kein Versehen: Der gelesene Primer kommt über [innerHTML] herein
+   und das Eingabefeld füllt sich per innerHTML - beides erzeugt Knoten OHNE Angulars
+   Komponenten-Attribut, gewöhnliche Regeln dieser Datei greifen daran also nicht. :host davor
+   hält die Regeln trotzdem in dieser Komponente. */
+:host ::ng-deep {
+  .primer-body,
+  .primer-editor {
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+
+    h2 {
+      font-size: 1.05rem;
+      margin: var(--sp-4) 0 var(--sp-2);
+    }
+
+    h3 {
+      font-size: 0.95rem;
+      margin: var(--sp-3) 0 var(--sp-2);
+    }
+
+    p {
+      margin: 0 0 var(--sp-3);
+    }
+
+    ul,
+    ol {
+      margin: 0 0 var(--sp-3);
+      padding-left: var(--sp-5);
+    }
+
+    li {
+      margin-bottom: var(--sp-1);
+    }
+
+    blockquote {
+      margin: 0 0 var(--sp-3);
+      padding-left: var(--sp-3);
+      border-left: 3px solid var(--glass-border);
+      opacity: 0.85;
+    }
+
+    a {
+      color: var(--accent);
+    }
+
+    /* Kartenname: sieht aus wie ein Link, führt aber nirgendwohin - er öffnet die Kartenvorschau. */
+    a.primer-card {
+      color: var(--accent);
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      cursor: pointer;
+    }
+
+    /* Bilder stehen für sich, nicht im Textfluss: Ein Kartenbild mitten in einem Satz wäre auf
+       Handybreite unlesbar. Die Breite ist begrenzt, damit ein hochgeladenes Foto den Primer
+       nicht sprengt. */
+    /* inline-block statt block: Ein Bild soll mitten in einem Satz stehen dürfen. Auf einer
+       eigenen Zeile landet es weiterhin, wenn es allein in einem Absatz steht - das entscheidet
+       dann der Text drumherum und nicht diese Regel. */
+    img.primer-image {
+      display: inline-block;
+      vertical-align: middle;
+      max-width: min(100%, 260px);
+      height: auto;
+      margin: var(--sp-1);
+      border-radius: var(--r-md);
+    }
+
+    /* Kartenbilder deutlich kleiner als eigene Bilder: Eine Karte in voller Breite reisst den
+       Satz auseinander, in dem sie steht, und bei mehreren wird aus dem Primer eine Galerie.
+       130px ist rund ein Viertel der Flaeche von vorher - Bild und Name bleiben erkennbar, den
+       Regeltext liest man ohnehin in der Vorschau (ein Klick auf die Karte). Erkannt am selben
+       Adress-Praefix, ueber das auch die Bereinigung entscheidet (BILD_QUELLEN in
+       primer-html.ts) - ein eigenes Foto ist als Bild gemeint und bleibt gross. */
+    img.primer-image[src^='https://cards.scryfall.io/'] {
+      max-width: min(100%, 130px);
+    }
+
+    /* Die Manasymbole der Mana-Schriftart sitzen sonst auf der Grundlinie und wirken zu tief. */
+    i.ms {
+      vertical-align: -0.05em;
+    }
+
+    :first-child {
+      margin-top: 0;
+    }
+
+    :last-child {
+      margin-bottom: 0;
+    }
+  }
+}

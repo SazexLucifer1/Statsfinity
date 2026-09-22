@@ -1,0 +1,292 @@
+<section class="deck-primer">
+  @if (primerService.errorKey(); as key) {
+    <p class="hint error">{{ i18n.t(key) }}</p>
+  }
+
+  @if (bearbeitet()) {
+    <!-- mousedown wird abgefangen, nicht click: Ein Knopf, der den Fokus bekommt, nimmt dem
+         Eingabefeld die Markierung, und execCommand hätte dann nichts mehr zu formatieren.
+         Die Knöpfe ZEIGEN ihren Zustand (aktiv/nicht aktiv) - ohne das rät man beim Schreiben,
+         ob fett gerade an ist. -->
+    <div class="primer-toolbar">
+      <select
+        class="glass-input small primer-block-select"
+        [attr.aria-label]="i18n.t('deckPrimer.blockFormat')"
+        [value]="aktuellerBlock()"
+        (change)="setzeBlock($event)"
+      >
+        <option value="p">{{ i18n.t('deckPrimer.blockParagraph') }}</option>
+        <option value="h2">{{ i18n.t('deckPrimer.blockHeading') }}</option>
+        <option value="h3">{{ i18n.t('deckPrimer.blockSubheading') }}</option>
+        <option value="blockquote">{{ i18n.t('deckPrimer.blockQuote') }}</option>
+      </select>
+      <button
+        type="button"
+        class="glass-chip small primer-tool primer-tool-bold"
+        [class.active]="aktivFett()"
+        [attr.aria-pressed]="aktivFett()"
+        [attr.aria-label]="i18n.t('deckPrimer.bold')"
+        (mousedown)="$event.preventDefault()"
+        (click)="format('bold')"
+      >
+        B
+      </button>
+      <button
+        type="button"
+        class="glass-chip small primer-tool primer-tool-italic"
+        [class.active]="aktivKursiv()"
+        [attr.aria-pressed]="aktivKursiv()"
+        [attr.aria-label]="i18n.t('deckPrimer.italic')"
+        (mousedown)="$event.preventDefault()"
+        (click)="format('italic')"
+      >
+        I
+      </button>
+      <button
+        type="button"
+        class="glass-chip small primer-tool"
+        [class.active]="aktivListe()"
+        [attr.aria-pressed]="aktivListe()"
+        [attr.aria-label]="i18n.t('deckPrimer.bulletList')"
+        (mousedown)="$event.preventDefault()"
+        (click)="format('insertUnorderedList')"
+      >
+        •
+      </button>
+      <button
+        type="button"
+        class="glass-chip small primer-tool"
+        [class.active]="aktivNummern()"
+        [attr.aria-pressed]="aktivNummern()"
+        [attr.aria-label]="i18n.t('deckPrimer.numberedList')"
+        (mousedown)="$event.preventDefault()"
+        (click)="format('insertOrderedList')"
+      >
+        1.
+      </button>
+      <button
+        type="button"
+        class="glass-chip small primer-tool"
+        [attr.aria-label]="i18n.t('deckPrimer.clearFormat')"
+        (mousedown)="$event.preventDefault()"
+        (click)="format('removeFormat')"
+      >
+        ✕
+      </button>
+    </div>
+
+    <!-- Zweite Reihe: alles, was etwas EINFÜGT statt zu formatieren. Getrennt, weil die erste
+         Reihe den Zustand der Schreibmarke zeigt und diese hier nie aktiv ist. -->
+    <div class="primer-toolbar primer-toolbar-insert">
+      <button
+        type="button"
+        class="glass-chip small primer-tool"
+        [class.active]="offenesFeld() === 'mana'"
+        (mousedown)="$event.preventDefault()"
+        (click)="feldOeffnen('mana')"
+      >
+        <app-mana-symbol symbol="G" />
+        {{ i18n.t('deckPrimer.mana') }}
+      </button>
+      <button
+        type="button"
+        class="glass-chip small primer-tool"
+        [class.active]="offenesFeld() === 'karte'"
+        (mousedown)="$event.preventDefault()"
+        (click)="feldOeffnen('karte')"
+      >
+        <app-icon name="card" />
+        {{ i18n.t('deckPrimer.card') }}
+      </button>
+      <!-- Fehlt der Bucket (Migration steht aus), verschwindet der Knopf nach dem ersten Versuch:
+           Ein Knopf, der nur Fehlermeldungen erzeugt, ist schlimmer als keiner. Kartenbilder
+           brauchen keinen Bucket und bleiben. -->
+      @if (primerService.eigeneBilderVerfuegbar()) {
+        <button
+          type="button"
+          class="glass-chip small primer-tool"
+          [disabled]="primerService.bildUpload()"
+          (mousedown)="$event.preventDefault()"
+          (click)="eigenesBildWaehlen()"
+        >
+          <app-icon name="image" />
+          {{
+            primerService.bildUpload()
+              ? i18n.t('deckPrimer.imageUploading')
+              : i18n.t('deckPrimer.ownImage')
+          }}
+        </button>
+      }
+      <button
+        type="button"
+        class="glass-chip small primer-tool"
+        [class.active]="offenesFeld() === 'link'"
+        (mousedown)="$event.preventDefault()"
+        (click)="feldOeffnen('link')"
+      >
+        <app-icon name="link" />
+        {{ i18n.t('deckPrimer.link') }}
+      </button>
+      <input
+        #bildFeld
+        class="primer-file-input"
+        type="file"
+        accept="image/*"
+        (change)="eigenesBildGewaehlt($event)"
+      />
+    </div>
+
+    @switch (offenesFeld()) {
+      @case ('mana') {
+        <div class="primer-panel primer-mana-grid">
+          @for (symbol of manaSymbole; track symbol) {
+            <button
+              type="button"
+              class="glass-chip small primer-mana-button"
+              [attr.aria-label]="i18n.t('deckPrimer.manaInsert', { symbol: symbol })"
+              (mousedown)="$event.preventDefault()"
+              (click)="manaEinfuegen(symbol)"
+            >
+              <app-mana-symbol [symbol]="symbol" />
+            </button>
+          }
+          <p class="hint primer-panel-hint">{{ i18n.t('deckPrimer.manaHint') }}</p>
+        </div>
+      }
+      @case ('karte') {
+        <div class="primer-panel">
+          <input
+            class="glass-input small"
+            type="text"
+            [placeholder]="i18n.t('deckPrimer.cardPlaceholder')"
+            [ngModel]="kartenName()"
+            (ngModelChange)="kartenNameGeaendert($event)"
+          />
+          @if (kartenVorschlaege().length > 0) {
+            <div class="chip-row primer-suggestions">
+              @for (vorschlag of kartenVorschlaege(); track vorschlag.name) {
+                <button
+                  class="glass-chip small"
+                  (mousedown)="$event.preventDefault()"
+                  (click)="vorschlagUebernehmen(vorschlag)"
+                >
+                  {{ vorschlag.printedName ?? vorschlag.name }}
+                </button>
+              }
+            </div>
+          }
+          <div class="chip-row">
+            <button
+              class="glass-button small primary"
+              [disabled]="!kartenName().trim()"
+              (mousedown)="$event.preventDefault()"
+              (click)="karteAlsLinkEinfuegen()"
+            >
+              {{ i18n.t('deckPrimer.cardAsLink') }}
+            </button>
+            <button
+              class="glass-button small"
+              [disabled]="!kartenName().trim() || kartenBildLaedt()"
+              (mousedown)="$event.preventDefault()"
+              (click)="karteAlsBildEinfuegen()"
+            >
+              {{
+                kartenBildLaedt()
+                  ? i18n.t('deckPrimer.cardImageLoading')
+                  : i18n.t('deckPrimer.cardAsImage')
+              }}
+            </button>
+            <button class="glass-button small" (click)="feldSchliessen()">
+              {{ i18n.t('deckPrimer.linkCancel') }}
+            </button>
+          </div>
+          <p class="hint primer-panel-hint">{{ i18n.t('deckPrimer.cardHint') }}</p>
+        </div>
+      }
+      @case ('link') {
+        <!-- Eigene Zeile statt window.prompt(): Der Systemdialog sieht auf jedem Gerät anders aus
+             als der Rest der App, und auf dem iPhone verdeckt die Tastatur ihn zur Hälfte. -->
+        <div class="primer-panel primer-link-row">
+          <input
+            class="glass-input small"
+            type="url"
+            inputmode="url"
+            [placeholder]="i18n.t('deckPrimer.linkPlaceholder')"
+            [ngModel]="linkUrl()"
+            (ngModelChange)="linkUrl.set($event)"
+            (keydown.enter)="linkEinfuegen()"
+          />
+          <button
+            class="glass-button small primary"
+            [disabled]="!linkUrl().trim()"
+            (click)="linkEinfuegen()"
+          >
+            {{ i18n.t('deckPrimer.linkInsert') }}
+          </button>
+          <button class="glass-button small" (click)="feldSchliessen()">
+            {{ i18n.t('deckPrimer.linkCancel') }}
+          </button>
+          <p class="hint primer-panel-hint">{{ i18n.t('deckPrimer.linkHint') }}</p>
+        </div>
+      }
+    }
+
+    <div
+      #editor
+      class="primer-editor"
+      contenteditable="true"
+      role="textbox"
+      aria-multiline="true"
+      [attr.aria-label]="i18n.t('deckPrimer.editorAria')"
+      (input)="laengeAktualisieren(); zustandAktualisieren()"
+      (keyup)="zustandAktualisieren()"
+      (mouseup)="zustandAktualisieren()"
+    ></div>
+
+    <div class="primer-edit-footer">
+      <span class="hint primer-count" [class.error]="zuLang()">
+        {{ i18n.t('deckPrimer.charCount', { used: textLaenge(), max: maxLaenge }) }}
+      </span>
+      <button
+        class="glass-button small primary"
+        [disabled]="primerService.saving() || zuLang()"
+        (click)="speichern()"
+      >
+        {{ primerService.saving() ? i18n.t('deckPrimer.saving') : i18n.t('deckPrimer.save') }}
+      </button>
+      <button class="glass-button small" [disabled]="primerService.saving()" (click)="abbrechen()">
+        {{ i18n.t('deckPrimer.cancel') }}
+      </button>
+    </div>
+
+    @if (zuLang()) {
+      <p class="hint error">{{ i18n.t('deckPrimer.tooLong', { max: maxLaenge }) }}</p>
+    }
+  } @else {
+    @if (primerService.loading()) {
+      <p class="hint">{{ i18n.t('deckPrimer.loading') }}</p>
+    } @else if (angezeigterPrimer(); as html) {
+      <!-- innerHTML statt eigener Darstellung: Der gespeicherte Text IST Markup. Bereinigt wurde
+           er beim Speichern (primer-html.ts), und Angular bereinigt hier ein zweites Mal.
+           Der Klick-Zuhörer sitzt am ganzen Text, weil es in eingefügtem HTML keine einzelnen
+           Angular-Bindungen gibt - er reagiert nur auf Kartennamen. -->
+      <div
+        class="primer-body"
+        [innerHTML]="html"
+        (click)="aufPrimerKlick($event)"
+        (keydown.enter)="aufPrimerKlick($event)"
+      ></div>
+    } @else {
+      <p class="hint">
+        {{ canEdit() ? i18n.t('deckPrimer.emptyOwn') : i18n.t('deckPrimer.empty') }}
+      </p>
+    }
+
+    @if (canEdit()) {
+      <button class="glass-button small primer-edit-button" (click)="bearbeiten()">
+        <app-icon name="pencil" />
+        {{ primerService.primer() ? i18n.t('deckPrimer.edit') : i18n.t('deckPrimer.write') }}
+      </button>
+    }
+  }
+</section>

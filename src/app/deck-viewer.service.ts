@@ -31,6 +31,7 @@ import { AuthService } from './auth.service';
 import { GroupService } from './group.service';
 import { MtgService } from './mtg.service';
 import { I18nService } from './i18n.service';
+import { DeckPrimerService } from './deck-primer.service';
 import { COMMANDER_ARCHETYPE_FILTERS } from './commander-archetype-filters';
 import { ColorSelection, EMPTY_COLOR_SELECTION, matchesColorSelection } from './color-filter-match';
 import { BarChartDatum } from './ui/bar-chart/bar-chart';
@@ -180,6 +181,8 @@ export class DeckViewerService {
   private readonly groupService = inject(GroupService);
   private readonly mtg = inject(MtgService);
   readonly i18n = inject(I18nService);
+  /** Öffentlich, weil die Deck-Ansicht den Reiter direkt daran ausrichtet (gibt es einen Primer? ist die Spalte da?). */
+  readonly primer = inject(DeckPrimerService);
 
   readonly viewingDeck = signal<Deck | null>(null);
 
@@ -301,6 +304,12 @@ export class DeckViewerService {
   readonly deckStatsScope = signal<'mine' | 'all'>('mine');
   readonly detailBusy = signal(false);
   readonly viewMode = signal<'text' | 'visual'>('visual');
+  /**
+   * Offener Reiter der Deck-Ansicht: die Kartenliste samt Statistik und Analyse ('cards') oder der
+   * Primer, also die selbst geschriebene Beschreibung des Decks ('primer'). Kopfbereich (Name,
+   * Format, Bracket) und Kommentare stehen außerhalb und bleiben in beiden Reitern sichtbar.
+   */
+  readonly deckTab = signal<'cards' | 'primer'>('cards');
   readonly showChangeLog = signal(false);
   readonly showDeckStatsInfo = signal(false);
   readonly showDeckAnalysis = signal(false);
@@ -2887,6 +2896,12 @@ export class DeckViewerService {
     this.detailBusy.set(true);
     this.showChangeLog.set(false);
     this.selectedChangeGroupKey.set(null);
+    // Jedes Deck beginnt bei der Kartenliste - der Primer des vorigen Decks stünde sonst kurz
+    // unter dem neuen Namen.
+    this.deckTab.set('cards');
+    // Bewusst ohne await: Der Primer hängt an keiner anderen Ladeoperation, und ob es ihn gibt,
+    // entscheidet nur darüber, ob Fremde den Reiter überhaupt sehen (siehe DeckPrimerService).
+    this.primer.load(deck.id);
     this.showDeckStatsInfo.set(false);
     this.showDeckAnalysis.set(false);
     // Wie die anderen Info-Klappen daneben: eingeklappt starten. Blieb die Begründung offen,
@@ -3319,6 +3334,8 @@ export class DeckViewerService {
     const scrollBack = this.scrollBeforeOpen;
     setTimeout(() => window.scrollTo({ top: scrollBack }));
     this.viewingDeck.set(null);
+    this.deckTab.set('cards');
+    this.primer.zuruecksetzen();
     this.deckNameDraft.set('');
     this.deckTagDraft.set(null);
     this.deckInfoSaving.set(false);
