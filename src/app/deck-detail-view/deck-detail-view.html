@@ -360,6 +360,28 @@
         }
       }
 
+      <!-- Reiter-Umschalter (Vorbild Moxfield): Kopfbereich - Name, Format, Bracket - steht
+           darüber und bleibt in beiden Reitern sichtbar, ebenso die Kommentare ganz unten.
+           Umgeschaltet wird alles dazwischen: Kartenliste, Spiel-Statistik und Deck-Analyse
+           gegen die selbst geschriebene Beschreibung.
+           Für Fremde erscheint der Primer-Reiter nur, wenn es auch einen Primer gibt - ein
+           zweiter Reiter, hinter dem nie etwas steht, ist nur im Weg. Der Besitzer sieht ihn
+           immer, sonst gäbe es keinen Weg, den ersten Primer zu schreiben. -->
+      @if (viewer.primer.verfuegbar() && (viewer.canEditViewingDeck() || viewer.primer.hatPrimer())) {
+        <div class="segmented deck-tab-switch">
+          <button [class.active]="viewer.deckTab() === 'cards'" (click)="viewer.deckTab.set('cards')">
+            {{ viewer.i18n.t('deckPrimer.tabCards') }}
+          </button>
+          <button [class.active]="viewer.deckTab() === 'primer'" (click)="viewer.deckTab.set('primer')">
+            {{ viewer.i18n.t('deckPrimer.tabPrimer') }}
+          </button>
+        </div>
+      }
+
+      @if (viewer.deckTab() === 'primer') {
+        <app-deck-primer [deckId]="deck.id" [canEdit]="viewer.canEditViewingDeck()" />
+      } @else {
+
       @if (viewer.hideViewingDeckStats()) {
         <p class="hint">{{ viewer.i18n.t('profile.statsLockedHint') }}</p>
       } @else if (viewer.viewingDeckGameStats(); as gameStats) {
@@ -1377,6 +1399,8 @@
             }
           </ul>
         }
+      }
+
       }
 
     }

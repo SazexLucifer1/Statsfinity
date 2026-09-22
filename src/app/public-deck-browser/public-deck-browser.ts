@@ -11,6 +11,8 @@ import { normalizeCardName } from '../array-utils';
 import { BarChart, BarChartDatum } from '../ui/bar-chart/bar-chart';
 import { ColorFilter } from '../ui/color-filter/color-filter';
 import { DeckComments } from '../deck-comments/deck-comments';
+import { DeckPrimer } from '../deck-primer/deck-primer';
+import { DeckPrimerService } from '../deck-primer.service';
 import { ColorSelection, EMPTY_COLOR_SELECTION, matchesColorSelection } from '../color-filter-match';
 import {
   manaCurveChartData,
@@ -121,7 +123,7 @@ function sortByCmc(a: PublicDeckCardEntry, b: PublicDeckCardEntry): number {
  */
 @Component({
   selector: 'app-public-deck-browser',
-  imports: [FormsModule, CardImage, PartnerCardImage, DecimalPipe, CurrencyPipe, BarChart, ColorFilter, DeckComments],
+  imports: [FormsModule, CardImage, PartnerCardImage, DecimalPipe, CurrencyPipe, BarChart, ColorFilter, DeckComments, DeckPrimer],
   templateUrl: './public-deck-browser.html',
   styleUrl: './public-deck-browser.scss',
 })
@@ -154,6 +156,13 @@ export class PublicDeckBrowser {
     const start = this.effectivePage() * PublicDeckBrowser.PAGE_SIZE;
     return this.results().slice(start, start + PublicDeckBrowser.PAGE_SIZE);
   });
+
+  readonly primer = inject(DeckPrimerService);
+  /**
+   * Offener Reiter des geöffneten Decks - hier immer nur lesend: Geändert wird ein Primer in der
+   * eigenen Deck-Ansicht, wo auch alles andere am Deck geändert wird.
+   */
+  readonly deckTab = signal<'cards' | 'primer'>('cards');
 
   readonly selectedDeck = signal<PublicDeck | null>(null);
   readonly selectedDeckCommanderCards = signal<ScryfallCard[]>([]);
@@ -257,6 +266,10 @@ export class PublicDeckBrowser {
 
   async openDeck(deck: PublicDeck): Promise<void> {
     this.selectedDeck.set(deck);
+    this.deckTab.set('cards');
+    // Bewusst ohne await - der Primer hängt an keiner der anderen Ladeoperationen. Geladen wird er
+    // trotzdem sofort: Ob es den Reiter gibt, hängt daran, ob dieses Deck einen Primer hat.
+    this.primer.load(deck.id);
     this.selectedDeckCommanderCards.set(this.commanderCardsFor(deck.id));
     this.allCards.set([]);
     this.totalDeckPrice.set(null);
@@ -296,6 +309,8 @@ export class PublicDeckBrowser {
 
   backToList(): void {
     this.selectedDeck.set(null);
+    this.deckTab.set('cards');
+    this.primer.zuruecksetzen();
     this.selectedDeckCommanderCards.set([]);
     this.allCards.set([]);
   }

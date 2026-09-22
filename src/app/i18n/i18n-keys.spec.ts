@@ -38,7 +38,7 @@ const MODULES = {
   },
   deck: {
     table: deck,
-    prefixes: ['deck', 'deckComment', 'deckViewer', 'importDialog', 'pdfDialog'],
+    prefixes: ['deck', 'deckComment', 'deckPrimer', 'deckViewer', 'importDialog', 'pdfDialog'],
   },
   deckView: { table: deckView, prefixes: ['deckView'] },
   feedback: { table: feedback, prefixes: ['feedback'] },
