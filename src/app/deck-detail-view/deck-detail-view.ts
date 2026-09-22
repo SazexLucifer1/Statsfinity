@@ -17,6 +17,7 @@ import { EdhrecCardlist } from '../edhrec.service';
 import { CardImage } from '../card-image/card-image';
 import { DeckComments } from '../deck-comments/deck-comments';
 import { DeckPrimer } from '../deck-primer/deck-primer';
+import { DeckSteckbrief } from '../deck-steckbrief/deck-steckbrief';
 import { BarChart } from '../ui/bar-chart/bar-chart';
 import { OverflowMenu } from '../ui/overflow-menu/overflow-menu';
 import { ColorFilter } from '../ui/color-filter/color-filter';
@@ -27,7 +28,7 @@ import { Icon } from '../ui/icon/icon';
 
 @Component({
   selector: 'app-deck-detail-view',
-  imports: [CurrencyPipe, DatePipe, DecimalPipe, NgTemplateOutlet, PercentPipe, FormsModule, CardImage, DeckComments, DeckPrimer, BarChart, OverflowMenu, ColorFilter, CmcFilter, BracketBadge, ManaSymbol, Icon],
+  imports: [CurrencyPipe, DatePipe, DecimalPipe, NgTemplateOutlet, PercentPipe, FormsModule, CardImage, DeckComments, DeckPrimer, DeckSteckbrief, BarChart, OverflowMenu, ColorFilter, CmcFilter, BracketBadge, ManaSymbol, Icon],
   templateUrl: './deck-detail-view.html',
   styleUrls: ['./deck-detail-view.scss', './deck-detail-view.bracket.scss'],
 })

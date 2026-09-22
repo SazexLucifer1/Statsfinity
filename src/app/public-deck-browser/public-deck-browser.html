@@ -98,21 +98,29 @@
     </div>
 
     <!-- Derselbe Umschalter wie in der eigenen Deck-Ansicht, nur ohne Bearbeiten: Hier sieht man
-         fremde Decks, und der Primer-Reiter erscheint nur, wenn dieses Deck auch einen hat. -->
-    @if (primer.verfuegbar() && primer.hatPrimer()) {
-      <div class="segmented deck-tab-switch">
-        <button [class.active]="deckTab() === 'cards'" (click)="deckTab.set('cards')">
-          {{ i18n.t('deckPrimer.tabCards') }}
-        </button>
+         fremde Decks. Der Steckbrief steht immer zur Verfügung (er wird aus dem Deck gerechnet),
+         der Primer-Reiter erscheint nur, wenn dieses Deck auch einen hat. -->
+    <div class="segmented deck-tab-switch">
+      <button [class.active]="deckTab() === 'cards'" (click)="deckTab.set('cards')">
+        {{ i18n.t('deckPrimer.tabCards') }}
+      </button>
+      <button [class.active]="deckTab() === 'steckbrief'" (click)="deckTab.set('steckbrief')">
+        {{ i18n.t('deckSteckbrief.tab') }}
+      </button>
+      @if (primer.verfuegbar() && primer.hatPrimer()) {
         <button [class.active]="deckTab() === 'primer'" (click)="deckTab.set('primer')">
           {{ i18n.t('deckPrimer.tabPrimer') }}
         </button>
-      </div>
-    }
+      }
+    </div>
 
     @if (deckTab() === 'primer') {
       @if (selectedDeck(); as deck) {
         <app-deck-primer [deckId]="deck.id" />
+      }
+    } @else if (deckTab() === 'steckbrief') {
+      @if (steckbriefDeck(); as steckbrief) {
+        <app-deck-steckbrief [deck]="steckbrief" [zahlen]="steckbriefZahlen()" />
       }
     } @else if (deckBusy()) {
       <p class="hint">{{ i18n.t('login.pleaseWait') }}</p>

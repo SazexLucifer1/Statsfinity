@@ -1,5 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { I18nService } from './i18n.service';
+import { kartenBildAlsDataUrl } from './card-image-datauri';
 
 export interface PdfSourceCard {
   cardName: string;
@@ -103,28 +104,6 @@ export class DeckPdfService {
 
   setFillCorners(value: boolean): void {
     this.fillCorners.set(value);
-  }
-
-  private async fetchImageAsDataUrl(url: string): Promise<string | null> {
-    try {
-      // Der Proxy lässt aus Sicherheitsgründen nur cards.scryfall.io durch (siehe
-      // functions/api/proxy-image.ts) - eigene, selbst hochgeladene Artworks liegen im
-      // "deck-art"-Supabase-Bucket und müssen DIREKT geladen werden, sonst kommt vom Proxy ein 403
-      // und die Karte fehlt einfach im PDF, ohne dass irgendwo ein Fehler auftaucht.
-      const isScryfallImage = new URL(url, window.location.href).hostname === 'cards.scryfall.io';
-      const fetchUrl = isScryfallImage ? `/api/proxy-image?url=${encodeURIComponent(url)}` : url;
-      const res = await fetch(fetchUrl);
-      if (!res.ok) return null;
-      const blob = await res.blob();
-      return await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => reject(reader.error);
-        reader.readAsDataURL(blob);
-      });
-    } catch {
-      return null;
-    }
   }
 
   /**
@@ -276,7 +255,7 @@ export class DeckPdfService {
 
     const fillCorners = this.fillCorners();
     for (const url of uniqueUrls) {
-      const raw = await this.fetchImageAsDataUrl(url);
+      const raw = await kartenBildAlsDataUrl(url);
       imagesByUrl.set(url, raw ? await this.recompressForPrint(raw, fillCorners) : null);
       this.progress.update((p) => (p ? { ...p, done: p.done + 1 } : p));
     }

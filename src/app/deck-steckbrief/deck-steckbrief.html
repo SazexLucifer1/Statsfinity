@@ -1,0 +1,92 @@
+<section class="deck-steckbrief">
+  @if (steckbrief.errorKey(); as key) {
+    <p class="hint error">{{ i18n.t(key) }}</p>
+  }
+
+  <!-- Das Canvas IST der Steckbrief: dieselben Pixel, die der Knopf darunter herunterlädt. Es wird
+       in voller Größe (1080x1080) gezeichnet und nur per CSS auf die Spaltenbreite verkleinert -
+       so bleibt das gespeicherte Bild scharf, egal wie schmal das Telefon ist. -->
+  <div class="steckbrief-bild">
+    <canvas
+      #canvas
+      role="img"
+      [attr.aria-label]="i18n.t('deckSteckbrief.imageAlt', { deck: deck().name })"
+    ></canvas>
+    @if (zeichnet()) {
+      <p class="hint steckbrief-laedt">{{ i18n.t('deckSteckbrief.drawing') }}</p>
+    }
+  </div>
+
+  <div class="steckbrief-actions">
+    <button type="button" class="glass-button primary" (click)="herunterladen()">
+      <app-icon name="download" />
+      {{ i18n.t('deckSteckbrief.download') }}
+    </button>
+    @if (canEdit() && steckbrief.verfuegbar() && !bearbeitet()) {
+      <button type="button" class="glass-button" (click)="bearbeitenStarten()">
+        <app-icon name="pencil" />
+        {{ steckbrief.hatText() ? i18n.t('deckSteckbrief.edit') : i18n.t('deckSteckbrief.write') }}
+      </button>
+    }
+  </div>
+
+  <p class="hint">{{ i18n.t('deckSteckbrief.shareHint') }}</p>
+
+  @if (canEdit() && steckbrief.verfuegbar() && bearbeitet()) {
+    <!-- Zwei kurze Sätze, kein Editor: Alles andere auf dem Steckbrief rechnet die App aus dem
+         Deck aus. Geschrieben wird nur, was in keiner Kartenliste steht. -->
+    <div class="steckbrief-form">
+      <label class="steckbrief-feld">
+        <span class="steckbrief-label">{{ i18n.t('deckSteckbrief.aboutTitle') }}</span>
+        <textarea
+          class="glass-input"
+          rows="3"
+          [maxlength]="maxLaenge"
+          [placeholder]="i18n.t('deckSteckbrief.aboutPlaceholder')"
+          [ngModel]="entwurfKurz()"
+          (ngModelChange)="entwurfKurz.set($event)"
+        ></textarea>
+        <span class="steckbrief-count">
+          {{ i18n.t('deckSteckbrief.charCount', { used: entwurfKurz().length, max: maxLaenge }) }}
+        </span>
+      </label>
+
+      <label class="steckbrief-feld">
+        <span class="steckbrief-label">{{ i18n.t('deckSteckbrief.winTitle') }}</span>
+        <textarea
+          class="glass-input"
+          rows="3"
+          [maxlength]="maxLaenge"
+          [placeholder]="i18n.t('deckSteckbrief.winPlaceholder')"
+          [ngModel]="entwurfSieg()"
+          (ngModelChange)="entwurfSieg.set($event)"
+        ></textarea>
+        <span class="steckbrief-count">
+          {{ i18n.t('deckSteckbrief.charCount', { used: entwurfSieg().length, max: maxLaenge }) }}
+        </span>
+      </label>
+
+      @if (zuLang()) {
+        <p class="hint error">{{ i18n.t('deckSteckbrief.tooLong', { max: maxLaenge }) }}</p>
+      }
+
+      <div class="steckbrief-actions">
+        <button
+          type="button"
+          class="glass-button primary"
+          [disabled]="steckbrief.saving() || zuLang()"
+          (click)="speichern()"
+        >
+          {{
+            steckbrief.saving() ? i18n.t('deckSteckbrief.saving') : i18n.t('deckSteckbrief.save')
+          }}
+        </button>
+        <button type="button" class="glass-button" (click)="abbrechen()">
+          {{ i18n.t('deckSteckbrief.cancel') }}
+        </button>
+      </div>
+    </div>
+  } @else if (canEdit() && steckbrief.verfuegbar() && !steckbrief.hatText()) {
+    <p class="hint">{{ i18n.t('deckSteckbrief.emptyOwn') }}</p>
+  }
+</section>

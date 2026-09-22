@@ -361,25 +361,37 @@
       }
 
       <!-- Reiter-Umschalter (Vorbild Moxfield): Kopfbereich - Name, Format, Bracket - steht
-           darüber und bleibt in beiden Reitern sichtbar, ebenso die Kommentare ganz unten.
+           darüber und bleibt in allen Reitern sichtbar, ebenso die Kommentare ganz unten.
            Umgeschaltet wird alles dazwischen: Kartenliste, Spiel-Statistik und Deck-Analyse
-           gegen die selbst geschriebene Beschreibung.
-           Für Fremde erscheint der Primer-Reiter nur, wenn es auch einen Primer gibt - ein
-           zweiter Reiter, hinter dem nie etwas steht, ist nur im Weg. Der Besitzer sieht ihn
-           immer, sonst gäbe es keinen Weg, den ersten Primer zu schreiben. -->
-      @if (viewer.primer.verfuegbar() && (viewer.canEditViewingDeck() || viewer.primer.hatPrimer())) {
-        <div class="segmented deck-tab-switch">
-          <button [class.active]="viewer.deckTab() === 'cards'" (click)="viewer.deckTab.set('cards')">
-            {{ viewer.i18n.t('deckPrimer.tabCards') }}
-          </button>
+           gegen den Steckbrief zum Teilen und die selbst geschriebene Beschreibung.
+           Der Steckbrief-Reiter steht immer da - sein Inhalt wird aus dem Deck gerechnet, er ist
+           also nie leer. Für Fremde erscheint der Primer-Reiter dagegen nur, wenn es auch einen
+           Primer gibt - ein Reiter, hinter dem nie etwas steht, ist nur im Weg. Der Besitzer
+           sieht ihn immer, sonst gäbe es keinen Weg, den ersten Primer zu schreiben. -->
+      <div class="segmented deck-tab-switch">
+        <button [class.active]="viewer.deckTab() === 'cards'" (click)="viewer.deckTab.set('cards')">
+          {{ viewer.i18n.t('deckPrimer.tabCards') }}
+        </button>
+        <button [class.active]="viewer.deckTab() === 'steckbrief'" (click)="viewer.deckTab.set('steckbrief')">
+          {{ viewer.i18n.t('deckSteckbrief.tab') }}
+        </button>
+        @if (viewer.primer.verfuegbar() && (viewer.canEditViewingDeck() || viewer.primer.hatPrimer())) {
           <button [class.active]="viewer.deckTab() === 'primer'" (click)="viewer.deckTab.set('primer')">
             {{ viewer.i18n.t('deckPrimer.tabPrimer') }}
           </button>
-        </div>
-      }
+        }
+      </div>
 
       @if (viewer.deckTab() === 'primer') {
         <app-deck-primer [deckId]="deck.id" [canEdit]="viewer.canEditViewingDeck()" />
+      } @else if (viewer.deckTab() === 'steckbrief') {
+        @if (viewer.steckbriefDeck(); as steckbriefDeck) {
+          <app-deck-steckbrief
+            [deck]="steckbriefDeck"
+            [zahlen]="viewer.steckbriefZahlen()"
+            [canEdit]="viewer.canEditViewingDeck()"
+          />
+        }
       } @else {
 
       @if (viewer.hideViewingDeckStats()) {

@@ -13,7 +13,18 @@ import { ColorFilter } from '../ui/color-filter/color-filter';
 import { DeckComments } from '../deck-comments/deck-comments';
 import { DeckPrimer } from '../deck-primer/deck-primer';
 import { DeckPrimerService } from '../deck-primer.service';
-import { ColorSelection, EMPTY_COLOR_SELECTION, matchesColorSelection } from '../color-filter-match';
+import {
+  DeckSteckbrief,
+  SteckbriefDeckinfo,
+  SteckbriefZahlen,
+} from '../deck-steckbrief/deck-steckbrief';
+import { DeckSteckbriefService } from '../deck-steckbrief.service';
+import {
+  ColorSelection,
+  EMPTY_COLOR_SELECTION,
+  FILTER_COLORS,
+  matchesColorSelection,
+} from '../color-filter-match';
 import {
   manaCurveChartData,
   pipChartData,
@@ -123,7 +134,7 @@ function sortByCmc(a: PublicDeckCardEntry, b: PublicDeckCardEntry): number {
  */
 @Component({
   selector: 'app-public-deck-browser',
-  imports: [FormsModule, CardImage, PartnerCardImage, DecimalPipe, CurrencyPipe, BarChart, ColorFilter, DeckComments, DeckPrimer],
+  imports: [FormsModule, CardImage, PartnerCardImage, DecimalPipe, CurrencyPipe, BarChart, ColorFilter, DeckComments, DeckPrimer, DeckSteckbrief],
   templateUrl: './public-deck-browser.html',
   styleUrl: './public-deck-browser.scss',
 })
@@ -158,11 +169,12 @@ export class PublicDeckBrowser {
   });
 
   readonly primer = inject(DeckPrimerService);
+  readonly steckbriefTexte = inject(DeckSteckbriefService);
   /**
-   * Offener Reiter des geöffneten Decks - hier immer nur lesend: Geändert wird ein Primer in der
-   * eigenen Deck-Ansicht, wo auch alles andere am Deck geändert wird.
+   * Offener Reiter des geöffneten Decks - hier immer nur lesend: Geändert werden Primer und
+   * Steckbrief in der eigenen Deck-Ansicht, wo auch alles andere am Deck geändert wird.
    */
-  readonly deckTab = signal<'cards' | 'primer'>('cards');
+  readonly deckTab = signal<'cards' | 'steckbrief' | 'primer'>('cards');
 
   readonly selectedDeck = signal<PublicDeck | null>(null);
   readonly selectedDeckCommanderCards = signal<ScryfallCard[]>([]);
@@ -270,6 +282,7 @@ export class PublicDeckBrowser {
     // Bewusst ohne await - der Primer hängt an keiner der anderen Ladeoperationen. Geladen wird er
     // trotzdem sofort: Ob es den Reiter gibt, hängt daran, ob dieses Deck einen Primer hat.
     this.primer.load(deck.id);
+    this.steckbriefTexte.load(deck.id);
     this.selectedDeckCommanderCards.set(this.commanderCardsFor(deck.id));
     this.allCards.set([]);
     this.totalDeckPrice.set(null);
@@ -311,6 +324,7 @@ export class PublicDeckBrowser {
     this.selectedDeck.set(null);
     this.deckTab.set('cards');
     this.primer.zuruecksetzen();
+    this.steckbriefTexte.zuruecksetzen();
     this.selectedDeckCommanderCards.set([]);
     this.allCards.set([]);
   }
@@ -481,4 +495,40 @@ export class PublicDeckBrowser {
   sectionCardCount(cards: PublicDeckCardEntry[]): number {
     return cards.reduce((sum, e) => sum + e.quantity, 0);
   }
+
+  // --- Steckbrief (siehe deck-steckbrief/) ---
+
+  /**
+   * Das geöffnete fremde Deck als Steckbrief-Angaben. Ohne Bracket: Die öffentliche Deck-Suche
+   * lädt die Bracket-Spalten gar nicht erst (siehe PublicDeckService) und zeigt deshalb auch
+   * sonst nirgends ein Bracket-Abzeichen - der Steckbrief soll hier nicht mehr behaupten als die
+   * Ansicht drumherum weiß.
+   */
+  readonly steckbriefDeck = computed<SteckbriefDeckinfo | null>(() => {
+    const deck = this.selectedDeck();
+    if (!deck) return null;
+    return {
+      id: deck.id,
+      name: deck.name,
+      formatLabel: deck.format,
+      kreaturtyp: deck.commanderTypes[0] ?? null,
+      farben: FILTER_COLORS.filter((c) => deck.colorIdentity.includes(c)),
+      bracket: null,
+      bracketQuelle: 'auto',
+      commander: deck.commanders.map((c) => ({ name: c.name, imageUrl: c.imageUrl })),
+    };
+  });
+
+  /** Dieselben Kennzahlen, die diese Ansicht über der Kartenliste schon als Kacheln zeigt. */
+  readonly steckbriefZahlen = computed<SteckbriefZahlen>(() => {
+    const bilanz = this.selectedDeck() ? this.statsFor(this.selectedDeck()!.id) : null;
+    return {
+      karten: this.sectionCardCount(this.allCards()),
+      schnittMv: this.averageCmc(),
+      laender: this.landCount(),
+      kreaturen: this.typeBreakdown().find((t) => t.type === 'creature')?.count ?? null,
+      partien: bilanz?.games ?? null,
+      siegquote: bilanz?.winRate ?? null,
+    };
+  });
 }

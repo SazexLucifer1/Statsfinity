@@ -32,8 +32,18 @@ import { GroupService } from './group.service';
 import { MtgService } from './mtg.service';
 import { I18nService } from './i18n.service';
 import { DeckPrimerService } from './deck-primer.service';
+import { DeckSteckbriefService } from './deck-steckbrief.service';
 import { COMMANDER_ARCHETYPE_FILTERS } from './commander-archetype-filters';
-import { ColorSelection, EMPTY_COLOR_SELECTION, matchesColorSelection } from './color-filter-match';
+import {
+  ColorSelection,
+  EMPTY_COLOR_SELECTION,
+  FILTER_COLORS,
+  matchesColorSelection,
+} from './color-filter-match';
+import type {
+  SteckbriefDeckinfo,
+  SteckbriefZahlen,
+} from './deck-steckbrief/deck-steckbrief';
 import { BarChartDatum } from './ui/bar-chart/bar-chart';
 import { manaCurveChartData, pipChartData, typeChartData } from './ui/bar-chart/deck-chart-data';
 import { DeckFormat, DECK_FORMATS } from './models';
@@ -183,6 +193,7 @@ export class DeckViewerService {
   readonly i18n = inject(I18nService);
   /** Öffentlich, weil die Deck-Ansicht den Reiter direkt daran ausrichtet (gibt es einen Primer? ist die Spalte da?). */
   readonly primer = inject(DeckPrimerService);
+  readonly steckbriefTexte = inject(DeckSteckbriefService);
 
   readonly viewingDeck = signal<Deck | null>(null);
 
@@ -305,11 +316,12 @@ export class DeckViewerService {
   readonly detailBusy = signal(false);
   readonly viewMode = signal<'text' | 'visual'>('visual');
   /**
-   * Offener Reiter der Deck-Ansicht: die Kartenliste samt Statistik und Analyse ('cards') oder der
-   * Primer, also die selbst geschriebene Beschreibung des Decks ('primer'). Kopfbereich (Name,
-   * Format, Bracket) und Kommentare stehen außerhalb und bleiben in beiden Reitern sichtbar.
+   * Offener Reiter der Deck-Ansicht: die Kartenliste samt Statistik und Analyse ('cards'), der
+   * Steckbrief zum Teilen ('steckbrief') oder der Primer, also die selbst geschriebene
+   * Beschreibung des Decks ('primer'). Kopfbereich (Name, Format, Bracket) und Kommentare stehen
+   * außerhalb und bleiben in allen Reitern sichtbar.
    */
-  readonly deckTab = signal<'cards' | 'primer'>('cards');
+  readonly deckTab = signal<'cards' | 'steckbrief' | 'primer'>('cards');
   readonly showChangeLog = signal(false);
   readonly showDeckStatsInfo = signal(false);
   readonly showDeckAnalysis = signal(false);
@@ -1664,6 +1676,54 @@ export class DeckViewerService {
   });
 
   /**
+   * Alles, was der Steckbrief-Reiter über das Deck selbst braucht (siehe deck-steckbrief/).
+   *
+   * Steht hier und nicht in der Komponente, weil die Angaben aus einem halben Dutzend Quellen
+   * dieses Service stammen - Deck-Zeile, markierte Commander samt aufgelöstem Kartenbild und die
+   * Farbidentität, die erst aus den nachgeladenen Kartendetails entsteht.
+   */
+  readonly steckbriefDeck = computed<SteckbriefDeckinfo | null>(() => {
+    const deck = this.viewingDeck();
+    if (!deck) return null;
+    const farben = this.deckColorIdentitySubset() ?? [];
+    return {
+      id: deck.id,
+      name: deck.name,
+      formatLabel: deck.format,
+      kreaturtyp: deck.creatureType,
+      // In der Reihenfolge WUBRG statt in der zufälligen Reihenfolge der Commander-Karten - so
+      // stehen die Symbole wie überall sonst in der App und auf den Karten selbst.
+      farben: FILTER_COLORS.filter((c) => farben.includes(c)),
+      bracket: deck.bracket ?? deck.bracketAuto,
+      bracketQuelle: deck.bracket ? 'manual' : 'auto',
+      commander: this.viewingDeckCards()
+        .filter((c) => c.isCommander)
+        .map((c) => ({ name: c.cardName, imageUrl: this.resolvedCardImage(c) })),
+    };
+  });
+
+  /**
+   * Die Kennzahlen des Steckbriefs - bewusst genau die Signale, die die Deck-Ansicht direkt
+   * darüber schon anzeigt. Ein zweites Mal hier ausgerechnet stünde im geteilten Bild irgendwann
+   * etwas anderes als eine Bildschirmhöhe weiter oben.
+   *
+   * Die Bilanz folgt dem gewählten Umfang (eigene Partien / alle) und fehlt ganz, wenn die
+   * Statistik für diesen Betrachter gesperrt ist - was der Steckbrief zeigt, darf nicht mehr sein
+   * als das, was die Ansicht selbst hergibt.
+   */
+  readonly steckbriefZahlen = computed<SteckbriefZahlen>(() => {
+    const bilanz = this.hideViewingDeckStats() ? null : this.viewingDeckGameStats();
+    return {
+      karten: this.viewingTotalCards(),
+      schnittMv: this.averageCmc(),
+      laender: this.landCount(),
+      kreaturen: this.typeBreakdown().find((t) => t.type === 'creature')?.count ?? null,
+      partien: bilanz?.games ?? null,
+      siegquote: bilanz?.winRate ?? null,
+    };
+  });
+
+  /**
    * Änderungen im Bearbeitungsmodus (Karten hinzufügen/entfernen, Anzahl anpassen) werden NUR
    * lokal in pendingChanges gesammelt - erst saveEdits() schreibt sie in die Datenbank. So
    * verwirft cancelEdits() (oder Schließen der Ansicht/App ohne zu speichern) sie einfach wieder,
@@ -2902,6 +2962,8 @@ export class DeckViewerService {
     // Bewusst ohne await: Der Primer hängt an keiner anderen Ladeoperation, und ob es ihn gibt,
     // entscheidet nur darüber, ob Fremde den Reiter überhaupt sehen (siehe DeckPrimerService).
     this.primer.load(deck.id);
+    // Dasselbe für die zwei Sätze des Steckbriefs - sie hängen an derselben decks-Zeile.
+    this.steckbriefTexte.load(deck.id);
     this.showDeckStatsInfo.set(false);
     this.showDeckAnalysis.set(false);
     // Wie die anderen Info-Klappen daneben: eingeklappt starten. Blieb die Begründung offen,
@@ -3336,6 +3398,7 @@ export class DeckViewerService {
     this.viewingDeck.set(null);
     this.deckTab.set('cards');
     this.primer.zuruecksetzen();
+    this.steckbriefTexte.zuruecksetzen();
     this.deckNameDraft.set('');
     this.deckTagDraft.set(null);
     this.deckInfoSaving.set(false);
