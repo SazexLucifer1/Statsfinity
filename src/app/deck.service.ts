@@ -237,7 +237,11 @@ export interface DeckChangeEntry {
 
 const SECTION_HEADER =
   /^(deck|decklist|main|mainboard|main deck|sideboard|maybeboard|commander|companion)\s*:?\s*$/i;
-const QUANTITY_LINE = /^(\d+)\s*x?\s+(.+)$/i;
+/**
+ * "3 Island", "3x Island" - und "3× Island": Das Mal-Zeichen ist Absicht, so zeigt die eigene
+ * Deck-Ansicht die Anzahl an, und genau die kopieren Leute heraus (siehe normalisiereDeckAnsicht).
+ */
+const QUANTITY_LINE = /^(\d+)\s*[x×]?\s+(.+)$/i;
 /**
  * Set-Kürzel + Sammelnummer, wie sie z.B. deckstats.net anhängt: "Sol Ring (SOC) 128" -> "Sol Ring".
  * Beides wird zusätzlich ausgelesen (Gruppe 1/2), weil es genau EINEN Druck benennt - und damit das
@@ -260,6 +264,115 @@ const INLINE_MARKER = /\s*\*([A-Za-z]{1,9})\*/g;
 const SIDEBOARD_PREFIX = /^SB:\s*/i;
 /** Moxfield trennt die Hälften einer geteilten Karte mit einem einfachen Schrägstrich ("Revival / Revenge"), Scryfall kennt nur den doppelten. */
 const SINGLE_SLASH_SPLIT = /\s+\/\s+/g;
+
+/** Eine Zeile, die NUR aus einer Anzahl besteht ("1×", "3x", "12") - so bricht der Browser die Kartenzeilen der Deck-Ansicht um. */
+const NUR_ANZAHL_ZEILE = /^(\d+)\s*[x×]?$/i;
+
+/** Überschrift der Deck-Ansicht: der Abschnittsname plus seine Kartenzahl in Klammern ("Kreatur (27)", "Land (33 + 5 MDFC)"). */
+const ANSICHT_UEBERSCHRIFT = /^(.+?)\s*\((\d+[^)]*)\)$/;
+
+/**
+ * Die Abschnittsnamen, die die eigene Deck-Ansicht überschreibt (DeckViewerService.LABEL_KEYS, in
+ * beiden Sprachen). Nur zum Wiedererkennen des Formats - beim Umformen selbst gilt jede Zeile mit
+ * Klammer-Zahl als Überschrift, damit auch die Gruppierung nach eigenen Tags ("Ramp (12)") trägt.
+ */
+const ANSICHT_ABSCHNITTE = new Set([
+  'commander',
+  'planeswalker',
+  'battle',
+  'kreatur',
+  'creature',
+  'legendäre kreatur',
+  'legendary creature',
+  'spontanzauber',
+  'instant',
+  'hexerei',
+  'sorcery',
+  'artefakt',
+  'artifact',
+  'verzauberung',
+  'enchantment',
+  'land',
+  'sonstiges',
+  'other',
+  'ohne tag',
+  'no tag',
+  'maybeboard',
+  'tokens',
+]);
+
+/**
+ * Formt eine aus der **eigenen Deck-Ansicht** herauskopierte Liste in das gewöhnliche
+ * "Anzahl Name"-Format um; liefert null, wenn der Text gar nicht so aussieht.
+ *
+ * Wer kein Exportformat zur Hand hat, markiert die Deck-Ansicht und kopiert sie - und bekommt vom
+ * Browser etwas, das mit einer Decklist nur noch entfernt verwandt ist:
+ *
+ *     Commander (1)        <- Überschrift mit Kartenzahl
+ *     1×                   <- die Anzahl steht in einer eigenen Zeile
+ *     Gandalf, Party Guest
+ *
+ * Ungefiltert ergab das ein kaputtes Deck: Jede Überschrift wurde zu einer Karte ("Kreatur (2)"
+ * sogar mit dem Set-Kürzel "2"), alle "1×"-Zeilen zu EINER Geisterkarte mit der Summe als Anzahl,
+ * jede echte Karte bekam Anzahl 1 (aus "3× Island" wurde ein einzelnes Island), der Commander
+ * blieb unmarkiert - und die Tokens standen als Deckkarten in der Liste.
+ *
+ * Die Tokens-Gruppe fällt hier bewusst komplett weg: Das sind keine Deckkarten, sondern das, was
+ * das Deck erzeugt (deck_cards.is_token). Sie mitzuzählen hieße, 11 Karten zu viel zu importieren.
+ */
+function normalisiereDeckAnsicht(lines: string[]): string[] | null {
+  const siehtDanachAus = lines.some(
+    (line) =>
+      NUR_ANZAHL_ZEILE.test(line) ||
+      ANSICHT_ABSCHNITTE.has((line.match(ANSICHT_UEBERSCHRIFT)?.[1] ?? '').trim().toLowerCase()),
+  );
+  if (!siehtDanachAus) return null;
+
+  const out: string[] = [];
+  /** Anzahl aus der vorigen Zeile, die noch auf ihren Kartennamen wartet. */
+  let offeneAnzahl: string | null = null;
+  let inTokens = false;
+
+  for (const line of lines) {
+    if (!line) continue;
+
+    const anzahl = line.match(NUR_ANZAHL_ZEILE);
+    if (anzahl) {
+      offeneAnzahl = anzahl[1];
+      continue;
+    }
+
+    // Eine Überschrift steht nie zwischen Anzahl und Name - diese Bedingung hält Kartennamen
+    // heraus, die zufällig auf eine Klammer-Zahl enden.
+    const ueberschrift = offeneAnzahl === null ? line.match(ANSICHT_UEBERSCHRIFT) : null;
+    if (ueberschrift) {
+      const abschnitt = ueberschrift[1].trim().toLowerCase();
+      inTokens = abschnitt === 'tokens' || abschnitt === 'token';
+      // Jede andere Überschrift (auch ein eigener Tag) wird zu "Deck:", damit ein vorheriger
+      // Commander-/Maybeboard-Abschnitt sicher endet.
+      out.push(
+        abschnitt === 'commander'
+          ? 'Commander:'
+          : abschnitt === 'maybeboard' || abschnitt === 'sideboard'
+            ? 'Maybeboard:'
+            : 'Deck:',
+      );
+      continue;
+    }
+
+    if (inTokens) {
+      offeneAnzahl = null;
+      continue;
+    }
+
+    // Die wartende Anzahl gilt nur für eine Zeile, die selbst keine mitbringt - sonst machte eine
+    // einzelne verirrte Zahl in einer ganz gewöhnlichen Liste aus "1 Sol Ring" ein "100 1 Sol Ring".
+    out.push(offeneAnzahl && !QUANTITY_LINE.test(line) ? `${offeneAnzahl} ${line}` : line);
+    offeneAnzahl = null;
+  }
+
+  return out;
+}
 
 /**
  * Erkennt die zwei Exporte, die gar nichts beschriften und sich allein auf Leerzeilen verlassen:
@@ -644,7 +757,9 @@ export class DeckService {
    */
   parseDecklistText(text: string): ParsedDecklistEntry[] {
     const merged = new Map<string, ParsedDecklistEntry>();
-    const lines = text.split('\n').map((line) => line.trim());
+    const rohZeilen = text.split('\n').map((line) => line.trim());
+    // Aus der eigenen Deck-Ansicht kopiert? Dann erst in ein normales "Anzahl Name"-Format bringen.
+    const lines = normalisiereDeckAnsicht(rohZeilen) ?? rohZeilen;
     const roles = blockRoles(lines);
     let section: 'main' | 'commander' | 'maybeboard' = 'main';
 
