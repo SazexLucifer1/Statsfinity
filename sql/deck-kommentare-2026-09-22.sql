@@ -168,14 +168,21 @@ stable
 security definer
 set search_path = public
 as $$
+  -- Die ::text-Casts sind kein Schmuck: public.profiles wird NICHT von diesem Repo angelegt, seine
+  -- Spaltentypen stehen also nirgends hier. Ist display_name/avatar_url dort "character varying"
+  -- statt "text", lehnt Postgres das CREATE mit "return type mismatch in function declared to
+  -- return record ... returns character varying instead of text" ab - die Funktion entsteht gar
+  -- nicht erst, und die App sieht danach nur ein PGRST202, das wie eine vergessene Migration
+  -- aussieht. Der Cast ist bei "text" ein No-Op und macht die Funktion von der Deklaration drueben
+  -- unabhaengig.
   select
     c.id,
     c.parent_id,
     c.user_id,
-    c.body,
+    c.body::text,
     c.created_at,
-    p.display_name,
-    p.avatar_url
+    p.display_name::text,
+    p.avatar_url::text
   from public.deck_comments c
   left join public.profiles p on p.id = c.user_id
   where c.deck_id = p_deck_id
@@ -188,3 +195,11 @@ as $$
 $$;
 
 grant execute on function public.deck_comments_for_deck(uuid) to anon, authenticated;
+
+-- =====================================================================================
+-- 5. PostgREST seinen Schema-Cache neu lesen lassen. Ohne das kennt die REST-Schicht eine gerade
+--    angelegte Funktion unter Umstaenden minutenlang nicht und antwortet mit PGRST202 - von der
+--    App nicht zu unterscheiden von "Migration vergessen", weil sie genau daran ihren
+--    Abschalter festmacht (siehe DeckCommentService.istFehlendeMigration()).
+-- =====================================================================================
+notify pgrst, 'reload schema';
