@@ -120,7 +120,11 @@
       }
     } @else if (deckTab() === 'steckbrief') {
       @if (steckbriefDeck(); as steckbrief) {
-        <app-deck-steckbrief [deck]="steckbrief" [zahlen]="steckbriefZahlen()" />
+        <app-deck-steckbrief
+          [deck]="steckbrief"
+          [karten]="steckbriefKarten()"
+          [schnittMv]="averageCmc()"
+        />
       }
     } @else if (deckBusy()) {
       <p class="hint">{{ i18n.t('login.pleaseWait') }}</p>

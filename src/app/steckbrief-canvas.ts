@@ -254,13 +254,13 @@ function bracketAbzeichen(
  * Das Kennzahlen-Band unten. Liefert seine Oberkante zurück, damit der mittlere Bereich weiß, wie
  * viel Platz ihm bleibt.
  *
- * Bis vier Kacheln stehen nebeneinander, ab fünf in zwei Reihen zu drei - vier schmale Kacheln
- * sind noch lesbar, sechs wären es nicht mehr.
+ * Bis fünf Kacheln stehen nebeneinander, ab sechs in Reihen zu drei - fünf schmale Kacheln sind
+ * noch lesbar, sechs wären es nicht mehr. Eine zweite Reihe kostet Höhe, die der Mitte fehlt.
  */
 function kachelBand(ctx: CanvasRenderingContext2D, kacheln: SteckbriefKachel[]): number {
   if (!kacheln.length) return STECKBRIEF_GROESSE - RAND - 40;
 
-  const spalten = kacheln.length <= 4 ? kacheln.length : 3;
+  const spalten = kacheln.length <= 5 ? kacheln.length : 3;
   const reihen = Math.ceil(kacheln.length / spalten);
   const abstand = 16;
   const breite = (STECKBRIEF_GROESSE - 2 * RAND - abstand * (spalten - 1)) / spalten;
@@ -283,7 +283,9 @@ function kachelBand(ctx: CanvasRenderingContext2D, kacheln: SteckbriefKachel[]):
     ctx.font = `700 46px ${SCHRIFT}`;
     ctx.fillStyle = '#f4f2fa';
     ctx.fillText(kuerzeAufBreite(ctx, kachel.wert, breite - 20), x + breite / 2, y + 62);
-    ctx.font = `500 22px ${SCHRIFT}`;
+    // Bei fünf Kacheln nebeneinander wird es eng: "Avg. mana value" passt bei 22px nicht mehr und
+    // würde abgeschnitten. Zwei Punkt kleiner reicht, und die Zahl darüber bleibt unverändert groß.
+    ctx.font = `500 ${spalten >= 5 ? 20 : 22}px ${SCHRIFT}`;
     ctx.fillStyle = 'rgba(244, 242, 250, 0.64)';
     ctx.fillText(kuerzeAufBreite(ctx, kachel.label, breite - 16), x + breite / 2, y + 95);
     ctx.textAlign = 'left';

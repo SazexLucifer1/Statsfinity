@@ -16,7 +16,7 @@ import { DeckPrimerService } from '../deck-primer.service';
 import {
   DeckSteckbrief,
   SteckbriefDeckinfo,
-  SteckbriefZahlen,
+  SteckbriefKarte,
 } from '../deck-steckbrief/deck-steckbrief';
 import { DeckSteckbriefService } from '../deck-steckbrief.service';
 import {
@@ -519,16 +519,8 @@ export class PublicDeckBrowser {
     };
   });
 
-  /** Dieselben Kennzahlen, die diese Ansicht über der Kartenliste schon als Kacheln zeigt. */
-  readonly steckbriefZahlen = computed<SteckbriefZahlen>(() => {
-    const bilanz = this.selectedDeck() ? this.statsFor(this.selectedDeck()!.id) : null;
-    return {
-      karten: this.sectionCardCount(this.allCards()),
-      schnittMv: this.averageCmc(),
-      laender: this.landCount(),
-      kreaturen: this.typeBreakdown().find((t) => t.type === 'creature')?.count ?? null,
-      partien: bilanz?.games ?? null,
-      siegquote: bilanz?.winRate ?? null,
-    };
-  });
+  /** Die Karten des geöffneten Decks für den Steckbrief - er zählt daraus die Wirkungs-Kacheln. */
+  readonly steckbriefKarten = computed<SteckbriefKarte[]>(() =>
+    this.allCards().map((e) => ({ name: e.card.name, quantity: e.quantity })),
+  );
 }

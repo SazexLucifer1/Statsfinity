@@ -388,7 +388,8 @@
         @if (viewer.steckbriefDeck(); as steckbriefDeck) {
           <app-deck-steckbrief
             [deck]="steckbriefDeck"
-            [zahlen]="viewer.steckbriefZahlen()"
+            [karten]="viewer.steckbriefKarten()"
+            [schnittMv]="viewer.averageCmc()"
             [canEdit]="viewer.canEditViewingDeck()"
           />
         }

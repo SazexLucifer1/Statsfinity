@@ -11,7 +11,10 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DeckSteckbriefService } from '../deck-steckbrief.service';
+import { CardDataService } from '../card-data.service';
 import { I18nService } from '../i18n.service';
+import { normalizeCardName } from '../array-utils';
+import { CARD_EFFECT_FILTERS } from '../card-effect-filters';
 import { Icon } from '../ui/icon/icon';
 import {
   STECKBRIEF_MAX_LAENGE,
@@ -36,22 +39,27 @@ export interface SteckbriefDeckinfo {
   commander: { name: string; imageUrl: string | null }[];
 }
 
-/**
- * Die Kennzahlen für das untere Band. Alle fertig gerechnet von der einbettenden Ansicht - die
- * zeigt dieselben Zahlen bereits an anderer Stelle an, und ein zweites Mal hier ausgerechnet
- * stünde im Steckbrief irgendwann etwas anderes als eine Bildschirmhöhe darüber.
- *
- * null = diese Zahl gibt es für dieses Deck nicht; die Kachel fällt dann weg statt "–" zu zeigen.
- */
-export interface SteckbriefZahlen {
-  karten: number;
-  schnittMv: number | null;
-  laender: number;
-  kreaturen: number | null;
-  partien: number | null;
-  /** Siegquote in Prozent (0-100). */
-  siegquote: number | null;
+/** Eine Deck-Karte, soweit der Steckbrief sie braucht: Name und Anzahl, mehr zählt er nicht. */
+export interface SteckbriefKarte {
+  name: string;
+  quantity: number;
 }
+
+/**
+ * Die vier Wirkungs-Kacheln des Steckbriefs.
+ *
+ * Die Schlüssel sind die `category`-Werte aus `scryfall_card_effects`, gefüllt vom nächtlichen
+ * Scryfall-Abgleich; damit hier keine erfundenen Schlüssel stehen, kommen sie aus
+ * CARD_EFFECT_FILTERS - derselben Liste, aus der sich auch Kartensuche und Deck-Analyse bedienen.
+ * Die Beschriftungen sind bewusst dieselben i18n-Keys wie in der Deck-Analyse: Dieselbe Zahl soll
+ * nicht zwei Namen haben.
+ */
+const STECKBRIEF_KATEGORIEN: { key: string; labelKey: string }[] = [
+  { key: 'removal', labelKey: 'deckView.removalTile' },
+  { key: 'ramp', labelKey: 'deckView.rampTile' },
+  { key: 'draw', labelKey: 'deckView.drawTile' },
+  { key: 'boardwipe', labelKey: 'deckView.boardwipeTile' },
+].filter((k) => CARD_EFFECT_FILTERS.some((f) => f.value === k.key));
 
 /**
  * Der Steckbrief eines Decks: die Kurzvorstellung zum Herzeigen und Teilen (Vorbild
@@ -75,9 +83,17 @@ export interface SteckbriefZahlen {
 export class DeckSteckbrief {
   readonly steckbrief = inject(DeckSteckbriefService);
   readonly i18n = inject(I18nService);
+  private readonly cardData = inject(CardDataService);
 
   readonly deck = input.required<SteckbriefDeckinfo>();
-  readonly zahlen = input.required<SteckbriefZahlen>();
+  /** Die Karten des Decks (ohne Maybeboard/Marken) - Grundlage der vier Wirkungs-Kacheln. */
+  readonly karten = input.required<SteckbriefKarte[]>();
+  /**
+   * Durchschnittlicher Manawert ohne Länder. Kommt als Eingabe herein, weil beide Ansichten ihn
+   * bereits über der Kartenliste anzeigen - hier neu gerechnet stünde im Bild irgendwann etwas
+   * anderes als eine Bildschirmhöhe darüber.
+   */
+  readonly schnittMv = input.required<number | null>();
   /** Nur der Besitzer darf die zwei Sätze schreiben - im öffentlichen Stöbern ist alles nur lesbar. */
   readonly canEdit = input(false);
 
@@ -93,7 +109,24 @@ export class DeckSteckbrief {
   /** Zählt jeden Zeichenauftrag mit, damit ein überholter Lauf das Canvas nicht nachträglich überschreibt. */
   private lauf = 0;
 
+  /**
+   * Anzahl je Wirkungs-Kategorie (Schlüssel wie in STECKBRIEF_KATEGORIEN), null = noch nicht
+   * geladen. Solange null, zeigt das Bild nur den Manawert - eine Kachel mit einer 0, die
+   * gleich zu einer 7 wird, ist irreführender als eine, die noch nicht da ist.
+   */
+  private readonly kategorieZahlen = signal<Map<string, number> | null>(null);
+
+  /** Kartenliste, zu der kategorieZahlen gehört - gegen überholende Antworten bei Deck-Wechsel. */
+  private kategorieFuer = '';
+
   constructor() {
+    // Die Kategorien laden, sobald die Kartenliste steht. Getrennt vom Zeichnen-Effekt, damit das
+    // Ergebnis dieses Ladens nicht sofort ein neues Laden auslöst.
+    effect(() => {
+      const karten = this.karten();
+      untracked(() => void this.kategorienLaden(karten));
+    });
+
     effect(() => {
       const canvas = this.canvasRef()?.nativeElement;
       const daten = this.daten();
@@ -102,10 +135,44 @@ export class DeckSteckbrief {
     });
   }
 
+  /**
+   * Zählt, wie viele Karten des Decks als Entfernung, Rampe, Kartenziehen bzw. Bretträumung
+   * gelten - aus dem eigenen Kartenbestand (scryfall_card_effects, gefüllt vom nächtlichen
+   * Abgleich), eine Abfrage für alle vier.
+   *
+   * Bewusst OHNE den Rückfall auf eine Live-Suche bei Scryfall, den die Deck-Analyse hat: Der
+   * kostet bei kaltem Cache ein Dutzend Anfragen mit Zwangspausen dazwischen, und der Steckbrief
+   * wird geöffnet, um ein Bild zu sehen. Karten, die der Abgleich noch nicht kennt (frische
+   * Spoiler), zählen hier also nicht mit - das sind einzelne, und die Zahl daneben ist ohnehin
+   * eine Einordnung, keine Buchführung.
+   */
+  private async kategorienLaden(karten: SteckbriefKarte[]): Promise<void> {
+    const kennung = karten.map((k) => `${k.name}x${k.quantity}`).join('|');
+    if (kennung === this.kategorieFuer) return;
+    this.kategorieFuer = kennung;
+    this.kategorieZahlen.set(null);
+    if (!karten.length) return;
+
+    const treffer = await this.cardData.effectCategories(karten.map((k) => k.name));
+    // Inzwischen wurde ein anderes Deck geöffnet - diese Antwort gehört nicht mehr zur Anzeige.
+    if (kennung !== this.kategorieFuer) return;
+
+    const zahlen = new Map<string, number>();
+    for (const { key } of STECKBRIEF_KATEGORIEN) {
+      const namen = treffer.get(key) ?? new Set<string>();
+      // Vorderseiten-Name wie beim Abgleich: Eine Doppelkarte steht dort unter "A", im Deck als
+      // "A // B" - ohne das Kürzen findet sich keine einzige davon wieder.
+      const anzahl = karten
+        .filter((k) => namen.has(normalizeCardName(k.name.split(' // ')[0].trim())))
+        .reduce((summe, k) => summe + k.quantity, 0);
+      zahlen.set(key, anzahl);
+    }
+    this.kategorieZahlen.set(zahlen);
+  }
+
   /** Alles, was ins Bild kommt - fertig übersetzt, damit steckbrief-canvas.ts keine Sprache kennen muss. */
   private readonly daten = computed<SteckbriefDaten>(() => {
     const deck = this.deck();
-    const zahlen = this.zahlen();
 
     const untertitel = [deck.formatLabel, deck.kreaturtyp].filter(Boolean).join(' · ');
     const textbloecke = [
@@ -124,40 +191,34 @@ export class DeckSteckbrief {
         : null,
       bracketGeschaetzt: deck.bracketQuelle === 'auto',
       textbloecke,
-      kacheln: this.kacheln(zahlen),
+      kacheln: this.kacheln(),
       fusszeile: this.i18n.t('deckSteckbrief.footer', {
         date: new Date().toLocaleDateString(this.i18n.lang() === 'de' ? 'de-DE' : 'en-GB'),
       }),
     };
   });
 
-  private kacheln(zahlen: SteckbriefZahlen): SteckbriefKachel[] {
-    const liste: SteckbriefKachel[] = [
-      { wert: String(zahlen.karten), label: this.i18n.t('deckSteckbrief.tileCards') },
-    ];
-    if (zahlen.schnittMv !== null) {
+  /**
+   * Das Kachelband: der durchschnittliche Manawert und die vier Wirkungs-Kategorien.
+   *
+   * Bewusst keine Kartenzahl, keine Länder, keine Kreaturen und keine Bilanz - das steht entweder
+   * ohnehin über der Kartenliste oder sagt über ein Deck nichts, was man nicht schon am Commander
+   * sieht. Interessant ist, WIE ein Deck gebaut ist.
+   */
+  private kacheln(): SteckbriefKachel[] {
+    const liste: SteckbriefKachel[] = [];
+    const schnittMv = this.schnittMv();
+    if (schnittMv !== null) {
       liste.push({
-        wert: zahlen.schnittMv.toFixed(2).replace('.', this.i18n.lang() === 'de' ? ',' : '.'),
-        label: this.i18n.t('deckSteckbrief.tileAvgMv'),
+        wert: schnittMv.toFixed(2).replace('.', this.i18n.lang() === 'de' ? ',' : '.'),
+        label: this.i18n.t('deckView.avgCmcTile'),
       });
     }
-    liste.push({ wert: String(zahlen.laender), label: this.i18n.t('deckSteckbrief.tileLands') });
-    if (zahlen.kreaturen !== null) {
-      liste.push({
-        wert: String(zahlen.kreaturen),
-        label: this.i18n.t('deckSteckbrief.tileCreatures'),
-      });
-    }
-    if (zahlen.partien !== null && zahlen.partien > 0) {
-      liste.push({
-        wert: String(zahlen.partien),
-        label: this.i18n.t('deckSteckbrief.tileGames'),
-      });
-      if (zahlen.siegquote !== null) {
-        liste.push({
-          wert: `${Math.round(zahlen.siegquote)}%`,
-          label: this.i18n.t('deckSteckbrief.tileWinRate'),
-        });
+
+    const zahlen = this.kategorieZahlen();
+    if (zahlen) {
+      for (const { key, labelKey } of STECKBRIEF_KATEGORIEN) {
+        liste.push({ wert: String(zahlen.get(key) ?? 0), label: this.i18n.t(labelKey) });
       }
     }
     return liste;

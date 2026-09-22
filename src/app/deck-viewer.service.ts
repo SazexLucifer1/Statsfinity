@@ -40,10 +40,7 @@ import {
   FILTER_COLORS,
   matchesColorSelection,
 } from './color-filter-match';
-import type {
-  SteckbriefDeckinfo,
-  SteckbriefZahlen,
-} from './deck-steckbrief/deck-steckbrief';
+import type { SteckbriefDeckinfo, SteckbriefKarte } from './deck-steckbrief/deck-steckbrief';
 import { BarChartDatum } from './ui/bar-chart/bar-chart';
 import { manaCurveChartData, pipChartData, typeChartData } from './ui/bar-chart/deck-chart-data';
 import { DeckFormat, DECK_FORMATS } from './models';
@@ -1703,25 +1700,15 @@ export class DeckViewerService {
   });
 
   /**
-   * Die Kennzahlen des Steckbriefs - bewusst genau die Signale, die die Deck-Ansicht direkt
-   * darüber schon anzeigt. Ein zweites Mal hier ausgerechnet stünde im geteilten Bild irgendwann
-   * etwas anderes als eine Bildschirmhöhe weiter oben.
-   *
-   * Die Bilanz folgt dem gewählten Umfang (eigene Partien / alle) und fehlt ganz, wenn die
-   * Statistik für diesen Betrachter gesperrt ist - was der Steckbrief zeigt, darf nicht mehr sein
-   * als das, was die Ansicht selbst hergibt.
+   * Die Karten des geöffneten Decks für den Steckbrief - ohne Maybeboard und Marken, wie jede
+   * andere Deck-Analyse auch. Er zählt daraus, wie viel Entfernung, Rampe, Kartenziehen und
+   * Bretträumung das Deck mitbringt.
    */
-  readonly steckbriefZahlen = computed<SteckbriefZahlen>(() => {
-    const bilanz = this.hideViewingDeckStats() ? null : this.viewingDeckGameStats();
-    return {
-      karten: this.viewingTotalCards(),
-      schnittMv: this.averageCmc(),
-      laender: this.landCount(),
-      kreaturen: this.typeBreakdown().find((t) => t.type === 'creature')?.count ?? null,
-      partien: bilanz?.games ?? null,
-      siegquote: bilanz?.winRate ?? null,
-    };
-  });
+  readonly steckbriefKarten = computed<SteckbriefKarte[]>(() =>
+    this.viewingDeckCards()
+      .filter((c) => !c.isMaybeboard && !c.isToken)
+      .map((c) => ({ name: c.cardName, quantity: c.quantity })),
+  );
 
   /**
    * Änderungen im Bearbeitungsmodus (Karten hinzufügen/entfernen, Anzahl anpassen) werden NUR
