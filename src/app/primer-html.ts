@@ -375,3 +375,53 @@ export function primerKartenNamen(html: string | null | undefined): string[] {
     .filter((name) => name.length > 0);
   return [...new Set(namen)];
 }
+
+/**
+ * Dreht die Kürzel für den Bearbeiten-Modus wieder auf: Manasymbole werden zu {G}, anklickbare
+ * Kartennamen zu [[Sol Ring]].
+ *
+ * Grund: Ein Manasymbol ist ein Element OHNE Text. Im Schreibfeld lässt sich daran nichts
+ * markieren, die Rücktaste trifft es nur zufällig, und wer es ersetzen will, muss raten. Als
+ * Kürzel ist es gewöhnlicher Text - löschen, kopieren und tippen funktionieren wie überall sonst.
+ * Beim Speichern macht bereinigePrimerHtml() daraus wieder Symbol und Kartenlink; die beiden
+ * Richtungen sind genau zueinander gebaut.
+ *
+ * Geschweifte Klammern auch für Farben, obwohl [G] beim Tippen ebenfalls erkannt wird: In eckigen
+ * Klammern gelten nur Farb- und Sondersymbole, [2] bliebe beim nächsten Speichern als Text stehen
+ * und das Symbol wäre weg. {2} kommt immer heil zurück.
+ *
+ * Bilder bleiben Bilder - als Adresse im Text wären sie eine unlesbare Zeile, und anders als ein
+ * leeres Symbol lässt sich ein Bild im Schreibfeld problemlos anklicken und löschen.
+ */
+export function primerAlsBearbeitbaresHtml(html: string | null | undefined): string {
+  const eingabe = html ?? '';
+  if (!eingabe) return '';
+
+  const doc = new DOMParser().parseFromString(`<body>${eingabe}</body>`, 'text/html');
+
+  for (const symbol of Array.from(doc.querySelectorAll('i.ms'))) {
+    const kuerzel = Array.from(symbol.classList)
+      .filter((klasse) => klasse.startsWith('ms-'))
+      .map((klasse) => klasse.slice(3).toLowerCase())
+      .find((token) => MANA_KUERZEL.test(token));
+    if (!kuerzel) continue;
+    symbol.replaceWith(doc.createTextNode(`{${symbolAusKuerzel(kuerzel)}}`));
+  }
+
+  for (const karte of Array.from(doc.querySelectorAll(`a.${PRIMER_CARD_CLASS}`))) {
+    const name = (karte.textContent ?? '').trim();
+    karte.replaceWith(doc.createTextNode(name ? `[[${name}]]` : ''));
+  }
+
+  return doc.body.innerHTML;
+}
+
+/** Das Klassenkürzel zurück in die Schreibweise, aus der es entstanden ist: "g" -> "G", "ur" -> "U/R", "tap" -> "T". */
+function symbolAusKuerzel(kuerzel: string): string {
+  if (kuerzel === 'tap') return 'T';
+  if (/^\d{1,2}$/.test(kuerzel)) return kuerzel;
+  if (kuerzel.length === 1) return kuerzel.toUpperCase();
+  // Hybride schreibt die Schrift ohne Schrägstrich ("ur", "2b") - der letzte Buchstabe ist die
+  // zweite Hälfte.
+  return `${kuerzel.slice(0, -1).toUpperCase()}/${kuerzel.slice(-1).toUpperCase()}`;
+}

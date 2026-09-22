@@ -1,4 +1,10 @@
-import { bereinigePrimerHtml, primerIstLeer, primerKartenNamen, primerText } from './primer-html';
+import {
+  bereinigePrimerHtml,
+  primerAlsBearbeitbaresHtml,
+  primerIstLeer,
+  primerKartenNamen,
+  primerText,
+} from './primer-html';
 
 /**
  * Der Primer ist die einzige Stelle der App, an der ein Nutzer Markup schreibt, das anderen
@@ -150,6 +156,36 @@ describe('primer-html', () => {
       const nurBild = '<img src="https://cards.scryfall.io/normal/front/a/b.jpg" alt="">';
       expect(bereinigePrimerHtml(nurBild)).not.toBe('');
       expect(primerIstLeer(bereinigePrimerHtml(nurBild))).toBe(false);
+    });
+  });
+
+  describe('Rückweg in den Bearbeiten-Modus', () => {
+    it('macht aus Symbol und Kartenlink wieder das Kürzel', () => {
+      const gespeichert =
+        '<p><i class="ms ms-g ms-cost ms-shadow" aria-hidden="true"></i> über <a class="primer-card" role="button" tabindex="0">Sol Ring</a></p>';
+      expect(primerAlsBearbeitbaresHtml(gespeichert)).toBe('<p>{G} über [[Sol Ring]]</p>');
+    });
+
+    it('trifft auch Beträge, Hybride und das Tap-Symbol', () => {
+      const symbole = ['2', 'ur', 'tap', 'x'].map(
+        (k) => `<i class="ms ms-${k} ms-cost ms-shadow" aria-hidden="true"></i>`,
+      );
+      expect(primerAlsBearbeitbaresHtml(symbole.join(''))).toBe('{2}{U/R}{T}{X}');
+    });
+
+    it('kommt heil zurück - Hin- und Rückweg sind zueinander gebaut', () => {
+      // Das ist die eigentliche Zusage: Wer den Primer öffnet und ohne Änderung speichert, darf
+      // kein Symbol und keinen Kartennamen verlieren.
+      const gespeichert = bereinigePrimerHtml(
+        '<h2>Plan</h2><p>{G}{2} über [[Sol Ring]], dann [[Llanowar Elves]] und {U/R}.</p>',
+      );
+      expect(bereinigePrimerHtml(primerAlsBearbeitbaresHtml(gespeichert))).toBe(gespeichert);
+    });
+
+    it('lässt Bilder als Bild stehen', () => {
+      const bild =
+        '<img src="https://cards.scryfall.io/normal/front/a/b.jpg" class="primer-image" alt="Sol Ring">';
+      expect(primerAlsBearbeitbaresHtml(bild)).toBe(bild);
     });
   });
 

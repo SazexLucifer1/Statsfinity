@@ -172,11 +172,15 @@
     /* Bilder stehen für sich, nicht im Textfluss: Ein Kartenbild mitten in einem Satz wäre auf
        Handybreite unlesbar. Die Breite ist begrenzt, damit ein hochgeladenes Foto den Primer
        nicht sprengt. */
+    /* inline-block statt block: Ein Bild soll mitten in einem Satz stehen dürfen. Auf einer
+       eigenen Zeile landet es weiterhin, wenn es allein in einem Absatz steht - das entscheidet
+       dann der Text drumherum und nicht diese Regel. */
     img.primer-image {
-      display: block;
+      display: inline-block;
+      vertical-align: middle;
       max-width: min(100%, 260px);
       height: auto;
-      margin: var(--sp-3) 0;
+      margin: var(--sp-1);
       border-radius: var(--r-md);
     }
 

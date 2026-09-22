@@ -201,14 +201,14 @@ export const deck = {
     'deckPrimer.mana': 'Mana',
     'deckPrimer.manaInsert': 'Manasymbol {{symbol}} einfügen',
     'deckPrimer.manaHint':
-      'Geht auch beim Tippen: {G} oder [G] im Text wird beim Speichern zum Symbol.',
+      'Im Schreibfeld steht das Kürzel {G} – beim Speichern wird daraus das Symbol. Tippen geht genauso, [G] auch.',
     'deckPrimer.card': 'Karte',
     'deckPrimer.cardPlaceholder': 'Kartenname …',
     'deckPrimer.cardAsLink': 'Als Kartenname',
     'deckPrimer.cardAsImage': 'Als Kartenbild',
     'deckPrimer.cardImageLoading': 'Bild wird geholt …',
     'deckPrimer.cardHint':
-      'Geht auch beim Tippen: [[Sol Ring]] wird zum anklickbaren Kartennamen – ein Klick zeigt die Karte.',
+      'Im Schreibfeld steht [[Sol Ring]] – gespeichert wird daraus der anklickbare Kartenname, ein Klick zeigt die Karte.',
     'deckPrimer.cardNotFound': 'Zu diesem Namen gibt es bei Scryfall kein Kartenbild.',
     'deckPrimer.ownImage': 'Eigenes Bild',
     'deckPrimer.imageUploading': 'Wird hochgeladen …',
@@ -416,14 +416,14 @@ export const deck = {
     'deckPrimer.mana': 'Mana',
     'deckPrimer.manaInsert': 'Insert mana symbol {{symbol}}',
     'deckPrimer.manaHint':
-      'Typing works too: {G} or [G] in the text becomes a symbol when you save.',
+      'The editor shows the shorthand {G} – saving turns it into the symbol. Typing works the same, [G] too.',
     'deckPrimer.card': 'Card',
     'deckPrimer.cardPlaceholder': 'Card name …',
     'deckPrimer.cardAsLink': 'As card name',
     'deckPrimer.cardAsImage': 'As card image',
     'deckPrimer.cardImageLoading': 'Fetching image …',
     'deckPrimer.cardHint':
-      'Typing works too: [[Sol Ring]] becomes a clickable card name – one tap shows the card.',
+      'The editor shows [[Sol Ring]] – saving turns it into a clickable card name, one tap shows the card.',
     'deckPrimer.cardNotFound': 'Scryfall has no card image for that name.',
     'deckPrimer.ownImage': 'Own image',
     'deckPrimer.imageUploading': 'Uploading …',

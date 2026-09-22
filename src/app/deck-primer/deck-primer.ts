@@ -13,18 +13,19 @@ import {
 import { FormsModule } from '@angular/forms';
 import { DeckPrimerService } from '../deck-primer.service';
 import {
-  PRIMER_CARD_CLASS,
   PRIMER_MAX_TEXT_LENGTH,
   bereinigePrimerHtml,
+  primerAlsBearbeitbaresHtml,
   primerKartenNamen,
   primerText,
 } from '../primer-html';
+import { PRIMER_CARD_CLASS } from '../primer-html';
 import { DialogService } from '../dialog.service';
 import { I18nService } from '../i18n.service';
 import { CardPreviewService } from '../card-preview.service';
 import { CardSuggestion, ScryfallCard, ScryfallService } from '../scryfall.service';
 import { Icon } from '../ui/icon/icon';
-import { ManaSymbol, manaKlasse } from '../ui/mana-symbol/mana-symbol';
+import { ManaSymbol } from '../ui/mana-symbol/mana-symbol';
 
 /** Welches Zusatzfeld unter dem Werkzeugkasten gerade offen steht - immer höchstens eines. */
 type PrimerFeld = 'mana' | 'karte' | 'link';
@@ -131,7 +132,9 @@ export class DeckPrimer implements OnDestroy {
       const el = this.editorRef()?.nativeElement;
       if (!this.bearbeitet() || !el) return;
       untracked(() => {
-        el.innerHTML = this.primerService.primer() ?? '';
+        // Mit Kürzeln statt fertigem Markup: Ein Manasymbol ist ein Element ohne Text - im
+        // Schreibfeld ließe sich daran nichts markieren und die Rücktaste träfe es nur zufällig.
+        el.innerHTML = primerAlsBearbeitbaresHtml(this.primerService.primer());
         this.textLaenge.set(primerText(el.innerHTML).length);
         el.focus();
         this.zustandAktualisieren();
@@ -235,8 +238,13 @@ export class DeckPrimer implements OnDestroy {
     this.gemerkteAuswahl = null;
   }
 
+  /**
+   * Eingefügt wird das Kürzel, nicht das fertige Symbol - im Schreibfeld steht damit durchgehend
+   * dasselbe, egal ob getippt oder geklickt, und alles bleibt löschbar. Zum Symbol wird es beim
+   * Speichern.
+   */
   manaEinfuegen(symbol: string): void {
-    this.einfuegen(`<i class="${manaKlasse(symbol)}" aria-hidden="true"></i>&nbsp;`);
+    this.einfuegenText(`{${symbol}} `);
   }
 
   linkEinfuegen(): void {
@@ -282,13 +290,14 @@ export class DeckPrimer implements OnDestroy {
     this.kartenVorschlaege.set([]);
   }
 
-  /** Kartenname als anklickbarer Name im Text - genau das, was [[Sol Ring]] erzeugt. */
+  /**
+   * Kartenname als Kürzel [[Sol Ring]] - aus demselben Grund wie beim Mana: Im Schreibfeld steht
+   * das, was man auch tippen würde, beim Speichern wird daraus der anklickbare Name.
+   */
   karteAlsLinkEinfuegen(): void {
     const name = this.kartenName().trim();
     if (!name) return;
-    this.einfuegen(
-      `<a class="${PRIMER_CARD_CLASS}" role="button" tabindex="0">${maskiere(name)}</a>&nbsp;`,
-    );
+    this.einfuegenText(`[[${name}]] `);
   }
 
   /** Dasselbe als Kartenbild mitten im Text - die Adresse kommt von Scryfall. */
@@ -368,6 +377,19 @@ export class DeckPrimer implements OnDestroy {
     )
       return;
     this.bearbeitenBeenden();
+  }
+
+  /**
+   * Reiner Text an der Schreibmarke - für die Kürzel. Nicht insertHTML: Kartennamen wie "R&D's
+   * Secret Lair" enthalten Zeichen, die als Markup gelesen würden.
+   */
+  private einfuegenText(text: string): void {
+    const el = this.editorRef()?.nativeElement;
+    if (!el) return;
+    el.focus();
+    this.auswahlWiederherstellen();
+    document.execCommand('insertText', false, text);
+    this.nachDemEinfuegen();
   }
 
   private einfuegen(html: string): void {
