@@ -220,6 +220,32 @@ export const deck = {
     'deckPrimer.linkHint': 'Für Adressen außerhalb der App – EDHREC, eine Deckliste, ein Video.',
     'deckPrimer.loadFailed': 'Primer konnte nicht geladen werden.',
     'deckPrimer.saveFailed': 'Primer konnte nicht gespeichert werden.',
+
+    // --- Steckbrief (dritter Reiter, Vorbild deckpassport.com) ---
+    'deckSteckbrief.tab': 'Steckbrief',
+    'deckSteckbrief.aboutTitle': 'Worum geht es?',
+    'deckSteckbrief.winTitle': 'Wie gewinnt es?',
+    'deckSteckbrief.aboutPlaceholder':
+      'Ein, zwei Sätze: Was will das Deck, und was macht es besonders?',
+    'deckSteckbrief.winPlaceholder':
+      'Woran gewinnt das Deck – Combo, Schaden, Mitspieler zermürben?',
+    'deckSteckbrief.download': 'Als Bild speichern',
+    'deckSteckbrief.write': 'Text schreiben',
+    'deckSteckbrief.edit': 'Text bearbeiten',
+    'deckSteckbrief.save': 'Speichern',
+    'deckSteckbrief.saving': 'Wird gespeichert …',
+    'deckSteckbrief.cancel': 'Abbrechen',
+    'deckSteckbrief.charCount': '{{used}} / {{max}} Zeichen',
+    'deckSteckbrief.tooLong': 'Zu lang – höchstens {{max}} Zeichen je Feld.',
+    'deckSteckbrief.emptyOwn':
+      'Zwei Sätze machen aus den Zahlen eine Vorstellung: worum es dem Deck geht und woran es gewinnt.',
+    'deckSteckbrief.shareHint':
+      'Quadratisches Bild zum Teilen – passt ungeschnitten in einen Reddit- oder Discord-Beitrag.',
+    'deckSteckbrief.drawing': 'Bild wird gezeichnet …',
+    'deckSteckbrief.imageAlt': 'Steckbrief von {{deck}}',
+    'deckSteckbrief.footer': 'Statsfinity · {{date}}',
+    'deckSteckbrief.loadFailed': 'Steckbrief konnte nicht geladen werden.',
+    'deckSteckbrief.saveFailed': 'Steckbrief konnte nicht gespeichert werden.',
   },
   en: {
     // --- Deck list ---
@@ -435,5 +461,31 @@ export const deck = {
     'deckPrimer.linkHint': 'For addresses outside the app – EDHREC, a decklist, a video.',
     'deckPrimer.loadFailed': 'The primer could not be loaded.',
     'deckPrimer.saveFailed': 'The primer could not be saved.',
+
+    // --- Passport (third tab, modelled on deckpassport.com) ---
+    'deckSteckbrief.tab': 'Passport',
+    'deckSteckbrief.aboutTitle': 'What is it about?',
+    'deckSteckbrief.winTitle': 'How does it win?',
+    'deckSteckbrief.aboutPlaceholder':
+      'A sentence or two: what does the deck want, and what makes it special?',
+    'deckSteckbrief.winPlaceholder':
+      'How does the deck close – combo, damage, grinding people down?',
+    'deckSteckbrief.download': 'Save as image',
+    'deckSteckbrief.write': 'Write text',
+    'deckSteckbrief.edit': 'Edit text',
+    'deckSteckbrief.save': 'Save',
+    'deckSteckbrief.saving': 'Saving …',
+    'deckSteckbrief.cancel': 'Cancel',
+    'deckSteckbrief.charCount': '{{used}} / {{max}} characters',
+    'deckSteckbrief.tooLong': 'Too long – {{max}} characters per field at most.',
+    'deckSteckbrief.emptyOwn':
+      'Two sentences turn the numbers into an introduction: what the deck is after, and how it wins.',
+    'deckSteckbrief.shareHint':
+      'Square image for sharing – fits into a Reddit or Discord post uncropped.',
+    'deckSteckbrief.drawing': 'Drawing image …',
+    'deckSteckbrief.imageAlt': 'Passport of {{deck}}',
+    'deckSteckbrief.footer': 'Statsfinity · {{date}}',
+    'deckSteckbrief.loadFailed': 'The passport could not be loaded.',
+    'deckSteckbrief.saveFailed': 'The passport could not be saved.',
   },
 };

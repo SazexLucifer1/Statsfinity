@@ -1,0 +1,80 @@
+.deck-steckbrief {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+/* Das Canvas ist 1080x1080 groß und wird hier auf die verfügbare Breite heruntergerechnet. Die
+   Obergrenze verhindert, dass es auf dem Desktop die ganze Spaltenbreite einnimmt - ein
+   quadratisches Bild von 1000px Kantenlänge schiebt alles darunter aus dem Blick. */
+.steckbrief-bild {
+  position: relative;
+  align-self: center;
+  width: 100%;
+  max-width: 540px;
+}
+
+.steckbrief-bild canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--glass-border);
+}
+
+/* Steht ÜBER dem Bild statt darunter: Beim Sprachwechsel oder Deckwechsel wird kurz neu
+   gezeichnet, und ein Hinweis, der das Bild verschiebt, lässt die Seite hüpfen. */
+.steckbrief-laedt {
+  position: absolute;
+  left: 50%;
+  bottom: var(--sp-4);
+  transform: translateX(-50%);
+  margin: 0;
+  padding: var(--sp-2) var(--sp-5);
+  border-radius: var(--r-pill);
+  background: var(--surface-sheet);
+}
+
+.steckbrief-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  align-items: center;
+}
+
+/* Knöpfe erben die Textfarbe nicht - ohne eigene Farbe zeichnet das Piktogramm in der dunklen
+   Browser-Standardfarbe und verschwindet auf dunklem Grund. */
+.steckbrief-actions .glass-button {
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.steckbrief-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.steckbrief-feld {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.steckbrief-label {
+  font-weight: 600;
+}
+
+.steckbrief-feld textarea {
+  width: 100%;
+  resize: vertical;
+  font: inherit;
+}
+
+.steckbrief-count {
+  align-self: flex-end;
+  font-size: 0.8rem;
+  opacity: 0.7;
+}

@@ -54,6 +54,7 @@ export type IconName =
   | 'crown'
   | 'deck'
   | 'dice'
+  | 'download'
   | 'exchange'
   | 'exile'
   | 'graveyard'
