@@ -10,6 +10,7 @@ import { PartnerCardImage } from '../partner-card-image/partner-card-image';
 import { normalizeCardName } from '../array-utils';
 import { BarChart, BarChartDatum } from '../ui/bar-chart/bar-chart';
 import { ColorFilter } from '../ui/color-filter/color-filter';
+import { DeckComments } from '../deck-comments/deck-comments';
 import { ColorSelection, EMPTY_COLOR_SELECTION, matchesColorSelection } from '../color-filter-match';
 import {
   manaCurveChartData,
@@ -120,7 +121,7 @@ function sortByCmc(a: PublicDeckCardEntry, b: PublicDeckCardEntry): number {
  */
 @Component({
   selector: 'app-public-deck-browser',
-  imports: [FormsModule, CardImage, PartnerCardImage, DecimalPipe, CurrencyPipe, BarChart, ColorFilter],
+  imports: [FormsModule, CardImage, PartnerCardImage, DecimalPipe, CurrencyPipe, BarChart, ColorFilter, DeckComments],
   templateUrl: './public-deck-browser.html',
   styleUrl: './public-deck-browser.scss',
 })

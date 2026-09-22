@@ -1,0 +1,132 @@
+@if (comments.verfuegbar()) {
+  <section class="deck-comments">
+    <h3 class="deck-comments-title">
+      <app-icon name="comment" />
+      {{ i18n.t('deckComment.title') }}
+      @if (comments.count() > 0) {
+        <span class="deck-comments-count">{{ comments.count() }}</span>
+      }
+    </h3>
+
+    @if (comments.errorKey(); as key) {
+      <p class="hint error">{{ i18n.t(key) }}</p>
+    }
+
+    @if (loggedIn()) {
+      <div class="deck-comment-form">
+        <textarea
+          class="glass-input deck-comment-input"
+          rows="3"
+          [maxlength]="maxLength"
+          [placeholder]="i18n.t('deckComment.placeholder')"
+          [ngModel]="draft()"
+          (ngModelChange)="draft.set($event)"
+        ></textarea>
+        <button
+          class="glass-button primary"
+          [disabled]="comments.busy() || !draft().trim()"
+          (click)="submit()"
+        >
+          {{ comments.busy() ? i18n.t('deckComment.sending') : i18n.t('deckComment.send') }}
+        </button>
+      </div>
+    } @else {
+      <app-login-required [message]="i18n.t('deckComment.loginHint')" />
+    }
+
+    @if (comments.loading()) {
+      <p class="hint">{{ i18n.t('deckComment.loading') }}</p>
+    } @else if (comments.comments().length === 0) {
+      <p class="hint">{{ i18n.t('deckComment.empty') }}</p>
+    } @else {
+      <ul class="deck-comment-list">
+        @for (comment of comments.comments(); track comment.id) {
+          <li class="deck-comment">
+            <div class="deck-comment-row">
+              <app-player-avatar [url]="comment.avatarUrl" />
+              <div class="deck-comment-main">
+                <p class="deck-comment-meta">
+                  <strong>{{ nameOf(comment) }}</strong>
+                  <span class="hint">{{ comment.createdAt | date: 'dd.MM.yyyy HH:mm' }}</span>
+                </p>
+                <p class="deck-comment-body">{{ comment.body }}</p>
+                <div class="deck-comment-actions">
+                  @if (loggedIn()) {
+                    <button class="glass-chip small" (click)="toggleReply(comment)">
+                      {{
+                        replyingTo() === comment.id
+                          ? i18n.t('deckComment.replyCancel')
+                          : i18n.t('deckComment.reply')
+                      }}
+                    </button>
+                  }
+                  @if (canDelete(comment)) {
+                    <button
+                      class="icon-button deck-comment-delete"
+                      [disabled]="comments.busy()"
+                      [attr.aria-label]="i18n.t('deckComment.deleteAria')"
+                      (click)="remove(comment)"
+                    >
+                      <app-icon name="trash" />
+                    </button>
+                  }
+                </div>
+              </div>
+            </div>
+
+            @if (replyingTo() === comment.id) {
+              <div class="deck-comment-form deck-comment-reply-form">
+                <textarea
+                  class="glass-input deck-comment-input"
+                  rows="2"
+                  [maxlength]="maxLength"
+                  [placeholder]="i18n.t('deckComment.replyPlaceholder')"
+                  [ngModel]="replyDraft()"
+                  (ngModelChange)="replyDraft.set($event)"
+                ></textarea>
+                <button
+                  class="glass-button primary"
+                  [disabled]="comments.busy() || !replyDraft().trim()"
+                  (click)="submitReply(comment)"
+                >
+                  {{ comments.busy() ? i18n.t('deckComment.sending') : i18n.t('deckComment.send') }}
+                </button>
+              </div>
+            }
+
+            @if (comment.replies.length > 0) {
+              <ul class="deck-comment-replies">
+                @for (reply of comment.replies; track reply.id) {
+                  <li class="deck-comment">
+                    <div class="deck-comment-row">
+                      <app-player-avatar [url]="reply.avatarUrl" />
+                      <div class="deck-comment-main">
+                        <p class="deck-comment-meta">
+                          <strong>{{ nameOf(reply) }}</strong>
+                          <span class="hint">{{ reply.createdAt | date: 'dd.MM.yyyy HH:mm' }}</span>
+                        </p>
+                        <p class="deck-comment-body">{{ reply.body }}</p>
+                        @if (canDelete(reply)) {
+                          <div class="deck-comment-actions">
+                            <button
+                              class="icon-button deck-comment-delete"
+                              [disabled]="comments.busy()"
+                              [attr.aria-label]="i18n.t('deckComment.deleteAria')"
+                              (click)="remove(reply)"
+                            >
+                              <app-icon name="trash" />
+                            </button>
+                          </div>
+                        }
+                      </div>
+                    </div>
+                  </li>
+                }
+              </ul>
+            }
+          </li>
+        }
+      </ul>
+    }
+  </section>
+}

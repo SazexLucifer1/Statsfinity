@@ -49,6 +49,7 @@ export type IconName =
   | 'card'
   | 'chart'
   | 'check'
+  | 'comment'
   | 'copy'
   | 'crown'
   | 'deck'
