@@ -1249,9 +1249,21 @@
                 </div>
 
                 @if (viewer.editMode()) {
-                  <!-- Die Mengenleiste steht auch beim Commander (dort ohne − und +), damit die
-                       Kacheln einer Zeile gleich hoch bleiben. -->
+                  <!-- Umdrehen und Commander stehen mit in der Mengenleiste - links vom − und
+                       rechts vom +. Damit bleiben drei Werkzeuge für den Kasten darunter übrig,
+                       und der braucht keine zweite Zeile mehr. Die Leiste steht auch beim
+                       Commander (dort ohne − und +), damit die Kacheln einer Zeile gleich hoch
+                       bleiben. -->
                   <div class="deck-card-qtybar">
+                    @if (viewer.resolvedCardBackImage(card)) {
+                      <button
+                        class="deck-card-flip-toggle"
+                        (click)="viewer.toggleDeckCardFlip(card.cardName)"
+                        [attr.aria-label]="viewer.i18n.t('deckView.flipAria')"
+                      >
+                        <app-icon name="refresh" />
+                      </button>
+                    }
                     @if (card.isCommander) {
                       <span>{{ card.quantity }}×</span>
                     } @else {
@@ -1271,18 +1283,6 @@
                         +
                       </button>
                     }
-                  </div>
-
-                  <div class="deck-card-tools">
-                    @if (viewer.resolvedCardBackImage(card)) {
-                      <button
-                        class="deck-card-flip-toggle"
-                        (click)="viewer.toggleDeckCardFlip(card.cardName)"
-                        [attr.aria-label]="viewer.i18n.t('deckView.flipAria')"
-                      >
-                        <app-icon name="refresh" />
-                      </button>
-                    }
                     @if (viewer.showCommanderToggle() && (card.isCommander || viewer.isCommanderEligible(card))) {
                       <button
                         class="deck-card-commander-toggle"
@@ -1293,6 +1293,9 @@
                         <app-icon name="crown" />
                       </button>
                     }
+                  </div>
+
+                  <div class="deck-card-tools">
                     @if (!card.isCommander && !card.isToken) {
                       <button
                         class="deck-card-maybeboard-toggle"
