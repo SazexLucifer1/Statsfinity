@@ -91,7 +91,19 @@ export class I18nService {
 
   /** Übersetzt einen Key in die aktuell aktive Sprache, ersetzt optional {{platzhalter}} durch vars. */
   t(key: string, vars?: Record<string, string | number>): string {
-    const text = TRANSLATIONS[this.lang()][key] ?? key;
+    return this.tIn(this.lang(), key, vars);
+  }
+
+  /**
+   * Übersetzt einen Key in eine BESTIMMTE Sprache, unabhängig von der eingestellten.
+   *
+   * Gibt es für Inhalte, die die App verlassen und woanders gelesen werden: Das Steckbrief-Bild
+   * ist immer englisch, egal in welcher Sprache die App gerade läuft - es landet in Beiträgen auf
+   * Reddit und Discord, und dort liest es niemand auf Deutsch. Für alles, was in der App selbst
+   * steht, ist weiterhin t() richtig.
+   */
+  tIn(lang: Lang, key: string, vars?: Record<string, string | number>): string {
+    const text = TRANSLATIONS[lang][key] ?? key;
     if (!vars) return text;
     return Object.entries(vars).reduce(
       (result, [name, value]) => result.replaceAll(`{{${name}}}`, String(value)),

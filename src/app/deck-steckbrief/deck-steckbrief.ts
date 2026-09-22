@@ -177,14 +177,25 @@ export class DeckSteckbrief {
     this.kategorieZahlen.set(zahlen);
   }
 
-  /** Alles, was ins Bild kommt - fertig übersetzt, damit steckbrief-canvas.ts keine Sprache kennen muss. */
+  /**
+   * Alles, was ins Bild kommt - fertig übersetzt, damit steckbrief-canvas.ts keine Sprache kennen
+   * muss.
+   *
+   * IMMER ENGLISCH, unabhängig von der eingestellten Sprache (bis auf die zwei selbst
+   * geschriebenen Sätze - die bleiben so, wie sie getippt wurden). Das Bild ist das einzige in
+   * dieser App, das sie verlässt: Es landet in Beiträgen auf Reddit und Discord, und dort liest
+   * es niemand auf Deutsch. Die Bedienelemente drumherum bleiben in der App-Sprache - die sieht
+   * nur, wer die App benutzt.
+   */
   private readonly daten = computed<SteckbriefDaten>(() => {
     const deck = this.deck();
+    const t = (key: string, vars?: Record<string, string | number>) =>
+      this.i18n.tIn('en', key, vars);
 
     const untertitel = [deck.formatLabel, deck.kreaturtyp].filter(Boolean).join(' · ');
     const textbloecke = [
-      { titel: this.i18n.t('deckSteckbrief.aboutTitle'), text: this.steckbrief.kurz() ?? '' },
-      { titel: this.i18n.t('deckSteckbrief.winTitle'), text: this.steckbrief.sieg() ?? '' },
+      { titel: t('deckSteckbrief.aboutTitle'), text: this.steckbrief.kurz() ?? '' },
+      { titel: t('deckSteckbrief.winTitle'), text: this.steckbrief.sieg() ?? '' },
     ].filter((b) => b.text.length > 0);
 
     return {
@@ -194,15 +205,15 @@ export class DeckSteckbrief {
       farben: deck.farben,
       untertitel: untertitel || null,
       bracketText: deck.bracket
-        ? `B${deck.bracket} · ${this.i18n.t(`deck.bracket.name${deck.bracket}`)}`
+        ? `B${deck.bracket} · ${t(`deck.bracket.name${deck.bracket}`)}`
         : null,
       bracketGeschaetzt: deck.bracketQuelle === 'auto',
       textbloecke,
       kacheln: this.kacheln(),
       qrUrl: deck.istPrivat ? null : this.navigation.deckLink(deck.id),
-      qrBeschriftung: this.i18n.t('deckSteckbrief.qrCaption'),
-      fusszeile: this.i18n.t('deckSteckbrief.footer', {
-        date: new Date().toLocaleDateString(this.i18n.lang() === 'de' ? 'de-DE' : 'en-GB'),
+      qrBeschriftung: t('deckSteckbrief.qrCaption'),
+      fusszeile: t('deckSteckbrief.footer', {
+        date: new Date().toLocaleDateString('en-GB'),
       }),
     };
   });
@@ -218,16 +229,17 @@ export class DeckSteckbrief {
     const liste: SteckbriefKachel[] = [];
     const schnittMv = this.schnittMv();
     if (schnittMv !== null) {
+      // Punkt statt Komma, wie alles andere im Bild: Das Bild ist englisch (siehe daten()).
       liste.push({
-        wert: schnittMv.toFixed(2).replace('.', this.i18n.lang() === 'de' ? ',' : '.'),
-        label: this.i18n.t('deckView.avgCmcTile'),
+        wert: schnittMv.toFixed(2),
+        label: this.i18n.tIn('en', 'deckView.avgCmcTile'),
       });
     }
 
     const zahlen = this.kategorieZahlen();
     if (zahlen) {
       for (const { key, labelKey } of STECKBRIEF_KATEGORIEN) {
-        liste.push({ wert: String(zahlen.get(key) ?? 0), label: this.i18n.t(labelKey) });
+        liste.push({ wert: String(zahlen.get(key) ?? 0), label: this.i18n.tIn('en', labelKey) });
       }
     }
     return liste;
