@@ -272,7 +272,8 @@ export class ScryfallService {
 
   /**
    * Prüft, ob eine Karte existiert, und liefert Details (englischer Name).
-   * Akzeptiert auch deutsche Kartennamen.
+   * Akzeptiert auch deutsche Kartennamen - geliefert wird aber immer der ENGLISCHE Druck,
+   * siehe englischerDruck().
    */
   async findCard(name: string): Promise<ScryfallCard | null> {
     if (!name.trim()) return null;
@@ -280,7 +281,7 @@ export class ScryfallService {
     // Fuzzy-Suche matcht auch viele gedruckte fremdsprachige Namen
     const res = await this.fetchWithRetry(`${API}/cards/named?fuzzy=${encodeURIComponent(name)}`);
     if (res?.ok) {
-      return this.toCard(await res.json());
+      return this.toCard(await this.englischerDruck(await res.json()));
     }
 
     // Fallback: exakte Suche über gedruckte Namen in beliebiger Sprache
@@ -289,7 +290,7 @@ export class ScryfallService {
     if (searchRes?.ok) {
       const data = await searchRes.json();
       if (data.data?.length > 0) {
-        return this.toCard(data.data[0]);
+        return this.toCard(await this.englischerDruck(data.data[0]));
       }
     }
     return null;
@@ -537,12 +538,15 @@ export class ScryfallService {
 
     const parts = filters.commanderOnly === false ? [] : ['legal:commander'];
     // Der Name wird bewusst gegen den englischen UND den gedruckten deutschen Namen geprüft
-    // (ein Request statt zwei): Scryfall vergleicht name:"..." unter lang:de mit printed_name,
-    // liefert im Kartenobjekt aber weiterhin den englischen name - der Rest der App bleibt
-    // dadurch unverändert englisch. Ohne die zweite Hälfte findet "Sonnenring" nichts.
+    // (ein Request statt zwei): Scryfall vergleicht name:"..." unter lang:de mit printed_name.
+    // Ohne die zweite Hälfte findet "Sonnenring" nichts.
+    // Das lang:en der ersten Hälfte ist NICHT überflüssig: sobald irgendwo im Query ein lang:
+    // steht, schaltet Scryfall include_multilingual ein - ein nacktes name:"ring" matcht dann
+    // auch italienische ("Stringere un Accordo") und französische Drucke, und deren Kartenbild
+    // landete in der Trefferliste. Mit lang:en bleiben genau die beiden gewollten Sprachen übrig.
     if (trimmed) {
       const safeName = trimmed.replace(/"/g, '');
-      parts.push(`(name:"${safeName}" or (lang:de name:"${safeName}"))`);
+      parts.push(`(lang:en name:"${safeName}" or lang:de name:"${safeName}")`);
     }
     if (filters.type) parts.push(`type:"${filters.type}"`);
     if (creatureType) parts.push(`type:"${creatureType.replace(/"/g, '')}"`);
@@ -567,7 +571,7 @@ export class ScryfallService {
     const data = await res.json();
     // Scryfall liefert pro Seite ohnehin maximal 175 Treffer - keine zusätzliche Begrenzung nötig,
     // die Aufteilung in Seiten für die Anzeige übernimmt deck-viewer.service.ts (pagedAddCardResults).
-    return ((data.data as any[]) ?? []).map((c) => this.toCard(c));
+    return this.englischeDrucke((data.data as any[]) ?? []);
   }
 
   /**
@@ -985,6 +989,43 @@ export class ScryfallService {
     // keinen Preis". Letzteres ist der Normalfall (eur>0 blendet preislose Drucke aus) und würde
     // die Kennzeichnung sonst praktisch immer auslösen und damit wertlos machen.
     return { prices, incomplete };
+  }
+
+  /**
+   * Liefert zu einem Scryfall-Kartenobjekt den englischen Druck derselben Karte.
+   * Nötig, weil jede Suche über einen gedruckten deutschen Namen das DEUTSCHE Kartenobjekt
+   * zurückgibt: dessen `name`, `type_line` und `oracle_text` sind zwar englisch, `image_uris`
+   * zeigt aber auf das deutsche Kartenbild - in der Trefferliste stand dann eine deutsche Karte
+   * neben lauter englischen. Nachgeschlagen wird über den (englischen) Kartennamen; schlägt das
+   * fehl, bleibt es beim Original - ein fremdsprachiges Bild ist besser als gar keins.
+   */
+  private async englischerDruck(data: any): Promise<any> {
+    if (!data || data.lang === 'en') return data;
+    const res = await this.fetchWithRetry(`${API}/cards/named?exact=${encodeURIComponent(data.name as string)}`);
+    if (!res?.ok) return data;
+    const englisch = await res.json();
+    return englisch?.object === 'card' ? englisch : data;
+  }
+
+  /**
+   * Wie englischerDruck(), aber für eine ganze Trefferliste: alle fremdsprachigen Drucke werden
+   * mit EINEM zusätzlichen Collection-Request (findCardsBulk) durch ihren englischen Druck
+   * ersetzt, nicht mit einer Anfrage je Karte. Sind alle Treffer ohnehin englisch - der Normalfall
+   * bei einer englischen Suchanfrage - kostet das gar keine zusätzliche Anfrage.
+   */
+  private async englischeDrucke(rohdaten: any[]): Promise<ScryfallCard[]> {
+    const karten = rohdaten.map((c) => this.toCard(c));
+    const fremdsprachig = rohdaten
+      .map((c, index) => ({ index, name: c.name as string, fremd: c.lang !== 'en' }))
+      .filter((eintrag) => eintrag.fremd && !!eintrag.name);
+    if (fremdsprachig.length === 0) return karten;
+
+    const englisch = await this.findCardsBulk(fremdsprachig.map((eintrag) => eintrag.name));
+    for (const { index, name } of fremdsprachig) {
+      const karte = englisch.get(name.toLowerCase());
+      if (karte) karten[index] = karte;
+    }
+    return karten;
   }
 
   private toCard(data: any): ScryfallCard {
