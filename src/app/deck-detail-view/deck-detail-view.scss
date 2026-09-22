@@ -426,14 +426,9 @@
 }
 
 // NEU
+// Nur noch die Textliste benutzt den Stepper - in der Kachelansicht steht die Menge seit dem
+// freigeräumten Kartenbild in .deck-card-qtybar unter der Karte.
 .deck-card-stepper {
-  position: absolute;
-  // Mittig auf dem Kartenbild, aber im Illustrations-Bereich (oberer/mittlerer Teil der Karte) statt
-  // über der Textbox im unteren Kartendrittel - deshalb in % statt fixem px, damit die Position
-  // unabhängig von der tatsächlichen Kachelgröße im Kunstbereich bleibt.
-  bottom: 45%;
-  left: 50%;
-  transform: translateX(-50%);
   display: flex;
   align-items: center;
   gap: 4px;
@@ -450,8 +445,7 @@
 
   button {
     // 32 statt 20: das ist der Knopf, mit dem im Bearbeiten-Modus Kartenmengen geändert werden -
-    // die meistbenutzte Bedienung dort, und zwei davon standen 4px auseinander. 44px gehen hier
-    // nicht, der Knopf sitzt mitten auf einem Kartenbild.
+    // die meistbenutzte Bedienung dort, und zwei davon standen 4px auseinander.
     width: 32px;
     height: 32px;
     min-width: 0;
@@ -484,12 +478,15 @@
   }
 
   &.inline {
-    position: static;
     margin-left: auto;
     background: rgba(255, 255, 255, 0.08);
   }
 }
 
+// Der einzige Knopf, der noch auf dem Kartenbild liegt - und nur außerhalb des Bearbeiten-Modus.
+// Er trägt seit ui/icon ein Strich-Piktogramm statt eines Emojis: ein Emoji bringt seine Farbe
+// selbst mit, ein Piktogramm zeichnet in currentColor, und ein <button> ohne eigene color erbt
+// nicht vom Elternteil, sondern nimmt die dunkle Browser-Standardfarbe.
 .deck-card-flip-toggle {
   position: absolute;
   top: 4px;
@@ -500,125 +497,14 @@
   padding: 0;
   border-radius: 50%;
   border: none;
-  background: rgba(0, 0, 0, 0.6);
-  font-size: 0.9rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  opacity: 0.6;
-  transition: opacity 0.15s ease;
-
-  &:active {
-    opacity: 1;
-  }
-}
-
-.deck-card-commander-toggle {
-  position: absolute;
-  top: 4px;
-  left: 4px;
-  width: 26px;
-  height: 26px;
-  min-width: 0;
-  padding: 0;
-  border-radius: 50%;
-  border: none;
-  background: rgba(0, 0, 0, 0.6);
-  font-size: 0.9rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  opacity: 0.6;
-  transition: opacity 0.15s ease, background-color 0.15s ease;
-
-  &.active {
-    opacity: 1;
-    background: rgba(255, 209, 102, 0.85);
-  }
-}
-
-.deck-card-artwork-toggle {
-  position: absolute;
-  bottom: 4px;
-  left: 4px;
-  width: 26px;
-  height: 26px;
-  min-width: 0;
-  padding: 0;
-  border-radius: 50%;
-  border: none;
-  background: rgba(0, 0, 0, 0.6);
-  font-size: 0.9rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  opacity: 0.6;
-  transition: opacity 0.15s ease;
-
-  &:active {
-    opacity: 1;
-  }
-}
-
-.deck-card-tag-toggle {
-  position: absolute;
-  bottom: 4px;
-  left: 34px;
-  width: 26px;
-  height: 26px;
-  min-width: 0;
-  padding: 0;
-  border-radius: 50%;
-  border: none;
-  background: rgba(0, 0, 0, 0.6);
-  font-size: 0.9rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  opacity: 0.6;
-  transition: opacity 0.15s ease;
-
-  &:active {
-    opacity: 1;
-  }
-}
-
-// Die fünf runden Knöpfe auf dem Kartenbild tragen seit ui/icon ein Strich-Piktogramm statt eines
-// Emojis. Ein Emoji bringt seine Farbe selbst mit, ein Piktogramm zeichnet in currentColor - und ein
-// <button> ohne eigene color erbt nicht vom Elternteil, sondern nimmt die dunkle Browser-Standard-
-// farbe: auf dem dunklen Kreis war davon nichts mehr zu sehen. Die höhere Deckkraft kommt dazu,
-// weil ein 1,7px-Strich auf hellem Artwork weniger trägt als ein flächiges Emoji.
-.deck-card-flip-toggle,
-.deck-card-commander-toggle,
-.deck-card-artwork-toggle,
-.deck-card-tag-toggle,
-.deck-card-maybeboard-toggle {
-  color: #fff;
   background: rgba(0, 0, 0, 0.72);
-  opacity: 0.92;
-}
-
-.deck-card-maybeboard-toggle {
-  position: absolute;
-  bottom: 4px;
-  right: 4px;
-  width: 26px;
-  height: 26px;
-  min-width: 0;
-  padding: 0;
-  border-radius: 50%;
-  border: none;
-  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
   font-size: 0.9rem;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  opacity: 0.6;
+  opacity: 0.92;
   transition: opacity 0.15s ease;
 
   &:active {
@@ -910,4 +796,114 @@
   flex-wrap: wrap;
   gap: 6px;
   margin: 6px 0 12px;
+}
+
+// NEU
+// Bearbeiten-Modus: Bild frei, Bedienung darunter.
+// Die Kachel bleibt ein reines Kartenbild; die Menge sitzt als Leiste direkt an der Karte (gleiche
+// Breite, geteilte untere Ecken), die Werkzeuge stehen in einem eigenen Kasten darunter.
+.deck-card-cell {
+  display: flex;
+  flex-direction: column;
+}
+
+.deck-card-cell.editing {
+  .deck-card-tile {
+    border-radius: 8px 8px 0 0;
+  }
+}
+
+.deck-card-qtybar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 3px 4px;
+  border: 1px solid var(--glass-border);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 0.78rem;
+  font-weight: 700;
+
+  span {
+    min-width: 14px;
+    text-align: center;
+  }
+
+  button {
+    width: 34px;
+    height: 29px;
+    min-width: 0;
+    padding: 0;
+    border-radius: 8px;
+    border: none;
+    background: rgba(255, 255, 255, 0.14);
+    color: #fff;
+    font-size: 0.95rem;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.35s ease-out, transform 0.15s ease-out;
+
+    &.flash-add {
+      background-color: #4ade80;
+      transform: scale(1.2);
+    }
+
+    &.flash-remove {
+      background-color: #f87171;
+      transform: scale(1.2);
+    }
+
+    &:active {
+      background: rgba(255, 255, 255, 0.3);
+    }
+  }
+}
+
+.deck-card-tools {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 3px;
+  margin-top: 4px;
+  padding: 3px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+
+  button {
+    // position: static setzt den Umschalt-Knopf zurück, der außerhalb des Bearbeiten-Modus
+    // absolut auf dem Kartenbild sitzt.
+    position: static;
+    // Drei je Zeile: eine Reihe aus fünf wäre bei ~110px Kachelbreite keine 20px breit und damit
+    // auf dem iPhone nicht mehr zu treffen. Die angebrochene zweite Zeile steht mittig, damit sie
+    // nach Absicht aussieht und nicht nach Rest.
+    flex: 0 0 calc(33.333% - 2px);
+    height: 27px;
+    min-width: 0;
+    padding: 0;
+    border: none;
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text);
+    opacity: 1;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+
+    &:active {
+      background: rgba(255, 255, 255, 0.24);
+    }
+
+    &.active {
+      background: rgba(255, 209, 102, 0.85);
+      color: #1a1a1a;
+    }
+  }
 }
