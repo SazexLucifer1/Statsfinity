@@ -33,6 +33,7 @@ import {
 } from '../ui/bar-chart/deck-chart-data';
 import { DeckSocial } from '../deck-social/deck-social';
 import { DeckSocialService } from '../deck-social.service';
+import { BanlistService } from '../banlist.service';
 import { ProfileService } from '../profile.service';
 import { Icon } from '../ui/icon/icon';
 
@@ -176,6 +177,7 @@ export class PublicDeckBrowser {
 
   readonly primer = inject(DeckPrimerService);
   readonly social = inject(DeckSocialService);
+  readonly banlist = inject(BanlistService);
   private readonly profileService = inject(ProfileService);
   readonly steckbriefTexte = inject(DeckSteckbriefService);
   /**
@@ -187,6 +189,32 @@ export class PublicDeckBrowser {
   readonly selectedDeck = signal<PublicDeck | null>(null);
   readonly selectedDeckCommanderCards = signal<ScryfallCard[]>([]);
   readonly allCards = signal<PublicDeckCardEntry[]>([]);
+
+  /** Karten des geöffneten Decks, die in seinem Format verboten sind (Name → Status). */
+  readonly bannedCards = computed(() =>
+    this.banlist.violationsIn(
+      this.selectedDeck()?.format ?? null,
+      this.allCards().map((e) => ({ cardName: e.card.name, quantity: e.quantity })),
+    ),
+  );
+
+  /** Die verbotenen Karten als eine Zeile für den Hinweis über der Kartenliste. */
+  readonly bannedCardsText = computed(() =>
+    [...this.bannedCards()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([name, status]) =>
+        status === 'restricted' ? `${name} ${this.i18n.t('deckView.restrictedSuffix')}` : name,
+      )
+      .join(', '),
+  );
+
+  /** Text zum roten Ausrufezeichen einer Kachel. */
+  bannedHint(deck: PublicDeck): string {
+    return this.i18n.t('deck.bannedBadge', {
+      format: deck.format ?? '',
+      cards: this.banlist.violationsFor(deck.id).join(', '),
+    });
+  }
   readonly deckBusy = signal(false);
 
   readonly totalDeckPrice = signal<number | null>(null);
@@ -243,6 +271,16 @@ export class PublicDeckBrowser {
       const ids = this.pagedResults().map((d) => d.id);
       untracked(() => void this.social.load(ids));
     });
+
+    // Verbotene Karten ebenfalls seitenweise in einer Anfrage: Wer ein fremdes Deck nachbaut,
+    // soll vorher sehen, dass es in seinem Format so gar nicht erlaubt ist.
+    effect(() => {
+      const ids = this.pagedResults().map((d) => d.id);
+      untracked(() => void this.banlist.loadForDecks(ids));
+    });
+
+    // Bannliste des Formats für die rote Umrandung in der geöffneten Deck-Ansicht.
+    effect(() => void this.banlist.loadFormat(this.selectedDeck()?.format ?? null));
   }
 
   /**

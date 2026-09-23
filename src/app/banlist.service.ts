@@ -1,11 +1,17 @@
 import { Injectable, signal } from '@angular/core';
 import { supabase } from './supabase.client';
 import { normalizeCardName } from './array-utils';
-import { DeckFormat } from './models';
-import { DeckCard } from './deck.service';
 
 /** 'banned' = gar nicht erlaubt, 'restricted' = höchstens ein Exemplar (nur Vintage). */
 export type BanStatus = 'banned' | 'restricted';
+
+/** Was die Prüfung von einer Karte braucht - DeckCard (eigene Decks) und die Einträge des öffentlichen Stöberns passen beide. */
+export interface BanCheckCard {
+  cardName: string;
+  quantity: number;
+  isMaybeboard?: boolean;
+  isToken?: boolean;
+}
 
 /** Name vor " // ", normalisiert - derselbe Schlüssel wie format_banlist.name_normalized. */
 function banKey(cardName: string): string {
@@ -19,9 +25,10 @@ function banKey(cardName: string): string {
  * Zwei Wege, weil die beiden Stellen Unterschiedliches wissen:
  * - Die Deckliste (deck-list) hat nur Decks, keine Kartenlisten. Sie fragt über
  *   deck_banned_cards(ids) eine ganze Seite in EINER Anfrage ab und zeigt ein rotes Ausrufezeichen.
- * - Die Deck-Ansicht (deck-detail-view) hat die Karten schon geladen und muss auch während des
- *   Bearbeitens stimmen. Sie lädt die Bannliste des Formats (ein paar Dutzend Namen) und prüft
- *   selbst - eine Serverabfrage kennte nur den zuletzt gespeicherten Stand.
+ *   Das öffentliche Stöbern (public-deck-browser) macht es für seine Kacheln genauso.
+ * - Die Deck-Ansichten (deck-detail-view, public-deck-browser) haben die Karten schon geladen, und
+ *   die eigene muss auch während des Bearbeitens stimmen. Sie laden die Bannliste des Formats (ein
+ *   paar Dutzend Namen) und prüfen selbst - eine Serverabfrage kennte nur den gespeicherten Stand.
  *
  * Die Regel steht damit zweimal (hier und in der SQL-Funktion): nicht mitgezählt werden Maybeboard
  * und Marken, eine beschränkte Karte zählt erst ab dem zweiten Exemplar.
@@ -63,7 +70,7 @@ export class BanlistService {
   }
 
   /** Lädt die Bannliste eines Formats (einmal je Sitzung). */
-  async loadFormat(format: DeckFormat | null): Promise<void> {
+  async loadFormat(format: string | null): Promise<void> {
     if (!format || !this.verfuegbar) return;
     if (this.formatLists().has(format) || this.laufendeFormate.has(format)) return;
     this.laufendeFormate.add(format);
@@ -91,7 +98,7 @@ export class BanlistService {
    * Verbotene Karten eines Decks im gegebenen Format: Kartenname → Status. Leer, solange die
    * Bannliste des Formats nicht geladen ist (siehe loadFormat()).
    */
-  violationsIn(format: DeckFormat | null, cards: DeckCard[]): Map<string, BanStatus> {
+  violationsIn(format: string | null, cards: BanCheckCard[]): Map<string, BanStatus> {
     const result = new Map<string, BanStatus>();
     const liste = format ? this.formatLists().get(format) : undefined;
     if (!liste || liste.size === 0) return result;

@@ -975,7 +975,8 @@ h3 {
 
 // Karte, die im Format des Decks gebannt ist (oder in Vintage beschränkt und mehrfach drin) -
 // siehe BanlistService. Gleiche Farbe wie die fehlende Combo-Karte oben: Rot heißt hier „stimmt so nicht".
-.deck-card-tile.banned-card {
+.deck-card-tile.banned-card,
+.card-pick-image.banned-card {
   border-radius: var(--r-md);
   outline: 2px solid #ff5f56;
   outline-offset: 2px;
@@ -988,7 +989,14 @@ h3 {
   font-weight: 600;
 }
 
-// Rotes Ausrufezeichen an einem Deck mit verbotenen Karten (Deckliste, Deck-Ansicht).
+// Ganze Deck-Kachel im öffentlichen Stöbern. outline statt border: die Komponente setzt border
+// selbst und gewinnt dort über ihr Angular-Attribut, outline fasst sie nicht an.
+.public-deck-frame.banned-deck {
+  outline: 2px solid #ff5f56;
+  outline-offset: -1px;
+}
+
+// Rotes Ausrufezeichen an einem Deck mit verbotenen Karten (Deckliste, Stöbern, Deck-Ansichten).
 .ban-badge {
   display: inline-flex;
   align-items: center;

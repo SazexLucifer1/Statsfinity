@@ -67,7 +67,9 @@
           <div class="card-pick-tile" (click)="openDeck(deck)">
             <!-- Commander-Bild, Leiste, Name und Besitzer als EIN Rahmen, jede Zeile durch eine
                  Linie getrennt: Aufrufe, Likes und Bilanz hängen direkt am Bild. -->
-            <div class="public-deck-frame">
+            <!-- Verbotene Karten: roter Rahmen um die ganze Kachel und ein Ausrufezeichen vor dem
+                 Namen. Welche Karten es sind, steht beim Öffnen über der Kartenliste. -->
+            <div class="public-deck-frame" [class.banned-deck]="banlist.violationsFor(deck.id).length > 0">
               <!-- Klick aufs Commander-Bild zeigt erst den Steckbrief als Popup (von dort geht es
                    weiter ins Deck), ein Klick auf den Rest der Kachel öffnet das Deck direkt. -->
               <div
@@ -139,7 +141,12 @@
               </div>
               <!-- Name und Besitzer gehören mit in den Rahmen - je eine eigene Zeile darunter. Die
                    Besitzer-Zeile steht auch ohne Namen da, damit alle Rahmen gleich hoch sind. -->
-              <div class="public-deck-row public-deck-name">{{ deck.name }}</div>
+              <div class="public-deck-row public-deck-name">
+                @if (banlist.violationsFor(deck.id).length > 0) {
+                  <span class="ban-badge" role="img" [title]="bannedHint(deck)" [attr.aria-label]="bannedHint(deck)">!</span>
+                }
+                {{ deck.name }}
+              </div>
               <div class="public-deck-row public-deck-owner">
                 <!-- Profilname des Besitzers; ein Tipp darauf öffnet sein Profil statt des Decks. -->
                 @if (social.statsFor(deck.id)?.ownerName; as owner) {
@@ -181,6 +188,13 @@
 
     @if (selectedDeck(); as deck) {
       <app-deck-social [deckId]="deck.id" [ownerUserId]="deck.userId" [countView]="true" />
+      <!-- Über dem Umschalter, damit es in jedem Reiter sichtbar bleibt - auch im Steckbrief. -->
+      @if (bannedCards().size > 0) {
+        <p class="ban-hint deck-ban-notice">
+          <span class="ban-badge" aria-hidden="true">!</span>
+          {{ i18n.t('deckView.bannedNotice', { format: deck.format ?? '', cards: bannedCardsText() }) }}
+        </p>
+      }
     }
 
     <!-- Derselbe Umschalter wie in der eigenen Deck-Ansicht, nur ohne Bearbeiten: Hier sieht man
@@ -294,7 +308,7 @@
         <div class="card-pick-grid">
           @for (entry of section.cards; track entry.card.name) {
             <div class="card-pick-tile" (click)="openPreview(entry.card)">
-              <div class="card-pick-image">
+              <div class="card-pick-image" [class.banned-card]="bannedCards().has(entry.card.name)">
                 @if (entry.card.imageUrl) {
                   <app-card-image [imageUrl]="entry.card.imageUrl" [backImageUrl]="entry.card.backImageUrl" [alt]="entry.card.name" [compact]="true" />
                 } @else {
