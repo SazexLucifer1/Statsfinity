@@ -4,6 +4,7 @@ import { DatePipe, DecimalPipe, NgTemplateOutlet } from '@angular/common';
 import QRCode from 'qrcode';
 import { ArchidektPoolService } from '../archidekt-pool.service';
 import { ProfileService } from '../profile.service';
+import { Match } from '../models';
 import { MtgService } from '../mtg.service';
 import { GroupService } from '../group.service';
 import { DeckList } from '../deck-list/deck-list';
@@ -176,6 +177,14 @@ export class ProfileTab {
    * Eingabe der persönlichen Match-Historie. Dieselbe Auflösung wie in countPlacements: ein NPC hat
    * nur einen Namen, ein Account wird über die players-Verknüpfung gefunden.
    */
+  /**
+   * Matches eines FREMDEN Accounts, der nicht in der Gruppe des Betrachters spielt (oder der
+   * Betrachter ist gar nicht eingeloggt): Dann kennt mtg.history() seine Partien nicht, und die
+   * Liste stünde leer da. Stattdessen über MtgService.loadPublicMatchesForUser() aus allen
+   * Gruppen. null = die normale Gruppen-Historie gilt.
+   */
+  readonly publicViewedMatches = signal<{ match: Match; selfName: string }[] | null>(null);
+
   readonly profileHistoryName = computed(() => {
     const npcName = this.profileService.viewingPlayerName();
     if (npcName) return npcName;
@@ -528,6 +537,18 @@ export class ProfileTab {
   }
 
   constructor() {
+    effect(() => {
+      const userId = this.profileService.viewingUserId();
+      const inMeinerGruppe = !!this.profileHistoryName();
+      this.publicViewedMatches.set(null);
+      if (!userId || inMeinerGruppe) return;
+      void this.mtg.loadPublicMatchesForUser(userId).then((matches) => {
+        // Inzwischen ein anderes Profil geöffnet - diese Antwort gehört nicht mehr hierher.
+        if (this.profileService.viewingUserId() !== userId) return;
+        this.publicViewedMatches.set(matches ?? []);
+      });
+    });
+
     effect(() => {
       const owner = this.statsOwner();
       if (!owner) {
