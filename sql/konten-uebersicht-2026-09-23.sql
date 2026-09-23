@@ -66,3 +66,30 @@ where c.contype = 'f'
                       'public.matches'::regclass, 'auth.users'::regclass)
   and c.connamespace = 'public'::regnamespace
 order by 1, 2;
+
+-- 5) Welche echten Partien benutzen ein Deck oder einen Spieler eines zu löschenden Kontos?
+--    (Die Sicherheitsprüfung in konten-aufraeumen-2026-09-23.sql bricht genau hier ab.)
+with weg as (
+  select u.id from auth.users u left join public.profiles p on p.id = u.id
+  where p.display_name ilike 'claude%'
+     or u.email ilike 'claude%@example.com'
+     or u.email in ('fabianhofsfake@googlemail.com', 'fabianhofsfakefake@googlemail.com', '90ealter@web.de')
+)
+select g.name              as gruppe,
+       m.created_at::date  as datum,
+       mp.player_name      as spieler_in_partie,
+       d.name              as deck,
+       ud.email            as deck_gehoert,
+       up.email            as spieler_verknuepft_mit,
+       m.id                as match_id,
+       d.id                as deck_id
+from public.match_players mp
+join public.matches m on m.id = mp.match_id
+join public.groups g on g.id = m.group_id
+left join public.decks d on d.id = mp.deck_id
+left join auth.users ud on ud.id = d.user_id
+left join public.players pl on pl.id = mp.player_id
+left join auth.users up on up.id = pl.user_id
+where (d.user_id in (select id from weg) or pl.user_id in (select id from weg))
+  and not (g.name ilike '%claude%' or g.name ilike '%test%' or g.name ilike 'qa %')
+order by m.created_at;
