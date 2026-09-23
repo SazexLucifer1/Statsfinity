@@ -17,6 +17,7 @@ import { DECK_FORMATS, DeckFormat } from '../models';
 import { Icon } from '../ui/icon/icon';
 import { DeckSocial } from '../deck-social/deck-social';
 import { DeckSocialService } from '../deck-social.service';
+import { BanlistService } from '../banlist.service';
 
 export type DeckSortMode = 'alpha' | 'winRate' | 'games';
 
@@ -68,6 +69,7 @@ export class DeckList {
   private readonly scryfall = inject(ScryfallService);
   readonly i18n = inject(I18nService);
   private readonly social = inject(DeckSocialService);
+  readonly banlist = inject(BanlistService);
   private readonly dialog = inject(DialogService);
 
   readonly decks = signal<Deck[]>([]);
@@ -79,6 +81,14 @@ export class DeckList {
   readonly searchQuery = signal('');
   readonly sortMode = signal<DeckSortMode>('alpha');
   readonly formats = DECK_FORMATS;
+
+  /** Hinweistext zum roten Ausrufezeichen: welche Karten im Format des Decks verboten sind. */
+  bannedHint(deck: Deck): string {
+    return this.i18n.t('deck.bannedBadge', {
+      format: deck.format ?? '',
+      cards: this.banlist.violationsFor(deck.id).join(', '),
+    });
+  }
   /**
    * Formatfilter der Liste. 'all' zeigt alle Decks (auch die ohne hinterlegtes Format),
    * sonst nur Decks genau dieses Formats. Vorbelegt mit 'Commander', weil das in dieser Gruppe
@@ -151,6 +161,12 @@ export class DeckList {
     effect(() => {
       const ids = this.pagedDecks().map((d) => d.id);
       untracked(() => void this.social.load(ids));
+    });
+
+    // Bannliste: dieselbe Seite, ebenfalls in einer Anfrage (rotes Ausrufezeichen am Decknamen).
+    effect(() => {
+      const ids = this.pagedDecks().map((d) => d.id);
+      untracked(() => void this.banlist.loadForDecks(ids));
     });
 
     // Lädt die Liste neu, sobald die Detailansicht (Ansehen/Bearbeiten) wieder geschlossen wird -

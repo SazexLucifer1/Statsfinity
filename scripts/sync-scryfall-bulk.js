@@ -519,9 +519,82 @@ async function syncEffekte() {
   }
 }
 
+// =====================================================================================
+// Teil 3: Bannlisten aller Formate (sql/format-bannliste-2026-09-23.sql)
+// =====================================================================================
+
+/**
+ * App-Formatname (DECK_FORMATS in src/app/models.ts, so steht er in decks.format) -> Scryfalls
+ * Formatschlüssel. Nicht alles heißt gleich: das App-"Brawl" ist Scryfalls "standardbrawl", das
+ * App-"Historic Brawl" ist Scryfalls "brawl". Kommt in der App ein Format dazu, gehört es hierher -
+ * sonst bleibt seine Bannliste still leer.
+ */
+const BANN_FORMATE = {
+  Standard: 'standard',
+  Pioneer: 'pioneer',
+  Modern: 'modern',
+  Legacy: 'legacy',
+  Vintage: 'vintage',
+  Pauper: 'pauper',
+  Commander: 'commander',
+  'Pauper Commander': 'paupercommander',
+  Brawl: 'standardbrawl',
+  'Historic Brawl': 'brawl',
+  Alchemy: 'alchemy',
+  Explorer: 'explorer',
+  Timeless: 'timeless',
+};
+
+async function syncBannlisten() {
+  console.log('--- Teil 3: Bannlisten ---');
+
+  // Wie bei Teil 2: erst alles laden, dann schreiben - ein Abbruch mittendrin soll keine halb
+  // geleerte Bannliste hinterlassen. Eine leere Liste ist hier dagegen ein gültiges Ergebnis
+  // (Timeless und Brawl haben zeitweise keine Bans; Scryfall antwortet dann mit 404).
+  const geladen = [];
+  for (const [format, schluessel] of Object.entries(BANN_FORMATE)) {
+    const zeilen = new Map();
+    const { namen: gebannt } = await ladeKategorie(`banned:${schluessel}`);
+    for (const name of gebannt) zeilen.set(name, 'banned');
+    // Beschränkt ("restricted", höchstens ein Exemplar) gibt es nur in Vintage.
+    if (schluessel === 'vintage') {
+      const { namen: beschraenkt } = await ladeKategorie('restricted:vintage');
+      for (const name of beschraenkt) if (!zeilen.has(name)) zeilen.set(name, 'restricted');
+    }
+    console.log(`  ${format}: ${zeilen.size} Karten`);
+    geladen.push({ format, zeilen });
+    await sleep(500);
+  }
+
+  let gesamt = 0;
+  for (const { format, zeilen } of geladen) {
+    const { error: deleteError } = await supabase
+      .from('format_banlist')
+      .delete()
+      .eq('format', format);
+    if (deleteError)
+      throw new Error(`Konnte Bannliste ${format} nicht leeren: ${deleteError.message}`);
+
+    const rows = [...zeilen].map(([name, status]) => ({
+      format,
+      name_normalized: name,
+      status,
+    }));
+    if (rows.length > 0) {
+      const { error } = await supabase.from('format_banlist').insert(rows);
+      if (error) throw new Error(`Insert für Bannliste ${format} fehlgeschlagen: ${error.message}`);
+    }
+    gesamt += rows.length;
+  }
+
+  await writeSyncState('banlist', null, gesamt);
+  console.log(`Teil 3 fertig: ${gesamt} Zeilen über ${geladen.length} Formate.`);
+}
+
 async function main() {
   await syncKarten();
   await syncEffekte();
+  await syncBannlisten();
   console.log('Abgleich abgeschlossen.');
 }
 

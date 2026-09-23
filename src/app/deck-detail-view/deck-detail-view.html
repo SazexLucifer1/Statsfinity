@@ -145,6 +145,14 @@
         <p class="hint">{{ viewer.i18n.t('deckView.cardsCount', { count: viewer.viewingTotalCards() }) }}</p>
       }
 
+      <!-- Verbotene Karten: welche, steht hier; wo sie in der Liste liegen, zeigt der rote Rahmen. -->
+      @if (bannedCards().size > 0) {
+        <p class="ban-hint deck-ban-notice">
+          <span class="ban-badge" aria-hidden="true">!</span>
+          {{ viewer.i18n.t('deckView.bannedNotice', { format: deck.format ?? '', cards: bannedCardsText() }) }}
+        </p>
+      }
+
       <!-- Aufrufe und Likes: wie oft andere Leute das Deck geöffnet haben und wie vielen es
            gefällt. Der Besitzer sieht beide Zahlen, liken kann er das eigene Deck nicht. -->
       <app-deck-social [deckId]="deck.id" [ownerUserId]="deck.userId" [isPrivate]="deck.isPrivate" [countView]="true" />
@@ -1261,6 +1269,7 @@
               <div class="deck-card-cell" [class.editing]="viewer.editMode()" data-tutorial="deck-card-edit-controls">
                 <div
                   class="deck-card-tile"
+                  [class.banned-card]="bannedCards().has(card.cardName)"
                   [class.clickable]="!viewer.editMode()"
                   (click)="!viewer.editMode() && viewer.openCardPreview(card.cardName)"
                 >
@@ -1363,9 +1372,12 @@
               <li>
                 <span class="deck-card-qty-text">{{ card.quantity }}×</span>
                 @if (!viewer.editMode()) {
-                  <button class="card-name-link" (click)="viewer.openCardPreview(card.cardName)">{{ card.cardName }}</button>
+                  <button class="card-name-link" [class.banned-card-name]="bannedCards().has(card.cardName)" (click)="viewer.openCardPreview(card.cardName)">{{ card.cardName }}</button>
                 } @else {
-                  <span>{{ card.cardName }}</span>
+                  <span [class.banned-card-name]="bannedCards().has(card.cardName)">{{ card.cardName }}</span>
+                }
+                @if (bannedCards().has(card.cardName)) {
+                  <span class="ban-badge" role="img" [attr.aria-label]="viewer.i18n.t('deck.bannedBadge', { format: deck.format ?? '', cards: card.cardName })">!</span>
                 }
                 @if (viewer.editMode() && viewer.showCommanderToggle() && (card.isCommander || viewer.isCommanderEligible(card))) {
                   <button

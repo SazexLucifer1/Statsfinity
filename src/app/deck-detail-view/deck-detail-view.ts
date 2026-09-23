@@ -1,4 +1,4 @@
-import { Component, effect, inject } from '@angular/core';
+import { Component, computed, effect, inject } from '@angular/core';
 import { CurrencyPipe, DatePipe, DecimalPipe, NgTemplateOutlet, PercentPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
@@ -26,6 +26,7 @@ import { BracketBadge } from '../ui/bracket-badge/bracket-badge';
 import { ManaSymbol } from '../ui/mana-symbol/mana-symbol';
 import { Icon } from '../ui/icon/icon';
 import { DeckSocial } from '../deck-social/deck-social';
+import { BanlistService } from '../banlist.service';
 
 @Component({
   selector: 'app-deck-detail-view',
@@ -39,6 +40,26 @@ export class DeckDetailView {
   private readonly deckService = inject(DeckService);
   private readonly importService = inject(DeckImportService);
   private readonly pdfService = inject(DeckPdfService);
+  private readonly banlist = inject(BanlistService);
+
+  /**
+   * Karten, die im Format des Decks verboten sind (Name → 'banned'/'restricted'). Geprüft wird
+   * hier im Browser gegen die geladene Kartenliste statt über die Serverfunktion der Deckliste -
+   * so stimmt der rote Rahmen auch mitten im Bearbeiten, bevor gespeichert ist.
+   */
+  readonly bannedCards = computed(() =>
+    this.banlist.violationsIn(this.viewer.viewingDeck()?.format ?? null, this.viewer.viewingDeckCards())
+  );
+
+  /** Die verbotenen Karten als eine Zeile für den Hinweis über der Kartenliste. */
+  readonly bannedCardsText = computed(() =>
+    [...this.bannedCards()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([name, status]) =>
+        status === 'restricted' ? `${name} ${this.viewer.i18n.t('deckView.restrictedSuffix')}` : name
+      )
+      .join(', ')
+  );
 
   /**
    * Die beiden Karten einer Combo in der Form, die das Karten-Raster der Analyse erwartet - so
@@ -152,6 +173,9 @@ export class DeckDetailView {
   private readonly expandedEdhrecCategories = new Set<string>();
 
   constructor() {
+    // Bannliste des Deck-Formats nachladen (einmal je Format und Sitzung).
+    effect(() => void this.banlist.loadFormat(this.viewer.viewingDeck()?.format ?? null));
+
     // Sobald sich die EDHREC-Vorschlagsliste ändert (Tag gewechselt, Commander gewechselt, erneutes
     // Bearbeiten nach dem Speichern, ...), für bereits aufgeklappte Kategorien die Bilder direkt neu
     // nachladen - sonst zeigen sie weiterhin nur die (jetzt zu den neuen Karten nicht mehr
