@@ -515,7 +515,7 @@ export class ProfileTab {
     const owner = this.statsOwner();
     if (!owner) return;
     this.unassignedCommanderStats.set(
-      await this.deckService.getUnassignedCommanderStats(owner, { linkBorrowed: !this.devFullView() })
+      await this.deckService.getUnassignedCommanderStats(owner)
     );
     await this.deckListRef()?.refreshDecks();
   }
@@ -555,12 +555,7 @@ export class ProfileTab {
         this.unassignedCommanderStats.set([]);
         return;
       }
-      // linkBorrowed nur im EIGENEN Profil. Ein per Namen erkanntes geliehenes Deck wird dabei auch
-      // in der Datenbank verknüpft, damit die Partie wirklich am Deck hängt und von hier aus
-      // geöffnet werden kann. In der Developer-Vollansicht bleibt der Aufruf rein lesend - das
-      // bloße Ansehen eines fremden Profils darf keine Daten verändern.
-      const linkBorrowed = !this.devFullView();
-      this.deckService.getUnassignedCommanderStats(owner, { linkBorrowed }).then((stats) => {
+      this.deckService.getUnassignedCommanderStats(owner).then((stats) => {
         this.unassignedCommanderStats.set(stats);
         this.ownCommanderListRef()?.reset();
       });
