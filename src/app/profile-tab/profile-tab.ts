@@ -641,18 +641,26 @@ export class ProfileTab {
           .filter((c) => !c.imageUrl)
           .map((c) => c.cardName),
       ];
+      this.commanderCardsRetry();
       const cache = this.commanderCards();
       const missing = [...new Set(names)].filter((n) => !(n.toLowerCase() in cache));
       if (missing.length === 0) return;
 
-      this.scryfall.findCardsBulk(missing).then((found) => {
+      const failed = new Set<string>();
+      this.scryfall.findCardsBulk(missing, failed).then((found) => {
         this.commanderCards.update((current) => {
           const next = { ...current };
           for (const name of missing) {
+            // Gescheiterte Anfrage (meist Scryfalls Rate-Limit) ist nicht "Karte gibt es nicht" -
+            // als null abgelegt, bliebe das Bild bis zum Neuladen der App verschwunden.
+            if (failed.has(name)) continue;
             next[name.toLowerCase()] = found.get(name.toLowerCase()) ?? null;
           }
           return next;
         });
+        if (failed.size > 0 && this.commanderCardsRetryCount++ < 3) {
+          setTimeout(() => this.commanderCardsRetry.update((n) => n + 1), 10_000);
+        }
       });
     });
 
@@ -668,6 +676,10 @@ export class ProfileTab {
   /** Kartenname (lowercase) -> Scryfall-Daten oder null (nicht gefunden). Füllt die "Commander ohne
    * Deck"-Liste und springt bei den meistgespielten Karten ein, wo im Deck kein Bild hinterlegt ist. */
   private readonly commanderCards = signal<Record<string, ScryfallCard | null>>({});
+  /** Stößt das Nachladen nach einer gescheiterten Anfrage erneut an - höchstens dreimal, damit
+   * ein nicht erreichbares Scryfall nicht endlos Anfragen erzeugt. */
+  private readonly commanderCardsRetry = signal(0);
+  private commanderCardsRetryCount = 0;
 
   /** Als gebundene Arrow-Function-Property statt Methode gehalten, damit sie unverändert als
    * Input an app-commander-stat-list durchgereicht werden kann (eine normale Methode würde dabei
