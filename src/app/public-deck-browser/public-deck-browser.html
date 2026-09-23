@@ -65,7 +65,16 @@
       <div class="card-pick-grid">
         @for (deck of pagedResults(); track deck.id) {
           <div class="card-pick-tile" (click)="openDeck(deck)">
-            <div class="card-pick-image">
+            <!-- Klick aufs Commander-Bild zeigt erst den Steckbrief als Popup (von dort geht es
+                 weiter ins Deck), ein Klick auf den Rest der Kachel öffnet das Deck direkt. -->
+            <div
+              class="card-pick-image"
+              role="button"
+              tabindex="0"
+              [attr.aria-label]="i18n.t('publicDecks.passportAria', { name: deck.name })"
+              (click)="$event.stopPropagation(); openPassport(deck)"
+              (keydown.enter)="$event.stopPropagation(); openPassport(deck)"
+            >
               @if (commanderCardsFor(deck.id).length > 0) {
                 <app-partner-card-image [cards]="commanderCardsFor(deck.id)" [compact]="true" />
               } @else {
@@ -80,6 +89,19 @@
                 }
               }
             </span>
+            <!-- Kasten unter jedem Deck: wem es gehört, wie oft es angesehen wurde, wie viele
+                 Likes es hat. Die Zahlen lädt der DeckSocialService für die ganze Seite auf einmal. -->
+            @if (social.verfuegbar() && social.statsFor(deck.id); as s) {
+              <div class="public-deck-meta">
+                @if (s.ownerName) {
+                  <span class="public-deck-owner" [attr.aria-label]="i18n.t('publicDecks.ownerAria', { name: s.ownerName })">
+                    <app-icon name="user" />
+                    <span class="public-deck-owner-name">{{ s.ownerName }}</span>
+                  </span>
+                }
+                <app-deck-social [deckId]="deck.id" [compact]="true" />
+              </div>
+            }
           </div>
         }
       </div>
@@ -242,3 +264,23 @@
   }
   </section>
 </div>
+
+@if (passportDeck(); as deck) {
+  <!-- Steckbrief-Popup über der Trefferliste. Unten der Weg ins Deck selbst. -->
+  <div class="options-menu-overlay" (click)="closePassport()">
+    <div class="options-menu-sheet passport-sheet" (click)="$event.stopPropagation()">
+      <div class="passport-head">
+        <h3>{{ deck.name }}</h3>
+        <button type="button" class="icon-button passport-close" [attr.aria-label]="i18n.t('common.close')" (click)="closePassport()">✕</button>
+      </div>
+      @if (passportBusy()) {
+        <p class="hint">{{ i18n.t('publicDecks.passportLoading') }}</p>
+      } @else if (passportSteckbrief(); as steckbrief) {
+        <app-deck-steckbrief [deck]="steckbrief" [karten]="passportKarten()" [schnittMv]="passportAverageCmc()" />
+      }
+      <button type="button" class="glass-button primary" (click)="openPassportDeck()">
+        {{ i18n.t('publicDecks.viewDeck') }}
+      </button>
+    </div>
+  </div>
+}

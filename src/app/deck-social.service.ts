@@ -9,6 +9,8 @@ export interface DeckSocialStats {
   likes: number;
   /** Ob der eingeloggte Nutzer selbst geliket hat. Ohne Login immer false. */
   likedByMe: boolean;
+  /** Anzeigename des Besitzers (Account oder Spieler ohne Login) - null, wenn keiner hinterlegt ist. */
+  ownerName: string | null;
 }
 
 /**
@@ -66,6 +68,7 @@ export class DeckSocialService {
         views: Number(row.views) || 0,
         likes: Number(row.likes) || 0,
         likedByMe: row.liked_by_me === true,
+        ownerName: row.owner_name?.trim() || null,
       });
     }
     this.stats.set(next);
@@ -164,4 +167,5 @@ interface SocialRow {
   views: number | string;
   likes: number | string;
   liked_by_me: boolean;
+  owner_name: string | null;
 }

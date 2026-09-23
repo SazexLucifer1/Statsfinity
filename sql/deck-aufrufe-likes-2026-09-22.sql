@@ -126,18 +126,30 @@ $$;
 grant execute on function public.deck_register_view(uuid) to anon, authenticated;
 
 -- =====================================================================================
--- 4. Aufrufe, Likes und "habe ich geliket" für mehrere Decks auf einmal - die Deckliste im
---    Profil fragt so mit EINER Anfrage für alle Decks der Seite, statt einmal je Zeile.
+-- 4. Aufrufe, Likes, "habe ich geliket" und der Name des Besitzers für mehrere Decks auf
+--    einmal - die Deckliste im Profil und die Kacheln im öffentlichen Stöbern fragen so mit EINER
+--    Anfrage für alle Decks der Seite, statt einmal je Zeile.
 --    Die Sichtbarkeitsschranke steht in der Funktion: zu privaten fremden Decks kommt nichts
 --    zurück. Decks ohne Aufrufe und Likes erscheinen mit 0/0 (left join), damit der Client nicht
 --    zwischen "keine Zeile" und "null" unterscheiden muss.
+--    Der Besitzername kommt beim LESEN aus profiles (Deck eines Accounts) bzw. players (Deck
+--    eines Spielers ohne eigenen Login) - gleiche Begründung wie bei deck_comments_for_deck():
+--    public.profiles muss dafür nicht für "anon" offen sein, herausgegeben wird nur der
+--    Anzeigename. Die ::text-Casts machen die Funktion vom Spaltentyp drüben unabhängig.
+--
+--    Das "drop function" davor ist nötig, weil eine erste Fassung dieser Funktion ohne die
+--    Spalte owner_name existiert haben kann: "create or replace" darf den Rückgabetyp nicht
+--    ändern und bricht sonst mit "cannot change return type of existing function" ab.
 -- =====================================================================================
-create or replace function public.deck_social_stats(p_deck_ids uuid[])
+drop function if exists public.deck_social_stats(uuid[]);
+
+create function public.deck_social_stats(p_deck_ids uuid[])
 returns table (
   deck_id uuid,
   views bigint,
   likes bigint,
-  liked_by_me boolean
+  liked_by_me boolean,
+  owner_name text
 )
 language sql
 stable
@@ -148,9 +160,12 @@ as $$
     d.id,
     coalesce(v.views, 0),
     (select count(*) from public.deck_likes l where l.deck_id = d.id),
-    exists (select 1 from public.deck_likes l where l.deck_id = d.id and l.user_id = auth.uid())
+    exists (select 1 from public.deck_likes l where l.deck_id = d.id and l.user_id = auth.uid()),
+    coalesce(p.display_name::text, pl.display_name::text)
   from public.decks d
   left join public.deck_view_counts v on v.deck_id = d.id
+  left join public.profiles p on p.id = d.user_id
+  left join public.players pl on pl.id = d.player_id
   where d.id = any(p_deck_ids)
     and (not d.is_private or d.user_id = auth.uid());
 $$;

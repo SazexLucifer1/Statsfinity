@@ -32,6 +32,8 @@ import {
   typeChartData,
 } from '../ui/bar-chart/deck-chart-data';
 import { DeckSocial } from '../deck-social/deck-social';
+import { DeckSocialService } from '../deck-social.service';
+import { Icon } from '../ui/icon/icon';
 
 interface PublicDeckCardEntry {
   card: ScryfallCard;
@@ -136,7 +138,7 @@ function sortByCmc(a: PublicDeckCardEntry, b: PublicDeckCardEntry): number {
  */
 @Component({
   selector: 'app-public-deck-browser',
-  imports: [FormsModule, CardImage, PartnerCardImage, DecimalPipe, CurrencyPipe, BarChart, ColorFilter, DeckComments, DeckPrimer, DeckSocial, DeckSteckbrief],
+  imports: [FormsModule, CardImage, PartnerCardImage, DecimalPipe, CurrencyPipe, BarChart, ColorFilter, DeckComments, DeckPrimer, DeckSocial, DeckSteckbrief, Icon],
   templateUrl: './public-deck-browser.html',
   styleUrl: './public-deck-browser.scss',
 })
@@ -172,6 +174,7 @@ export class PublicDeckBrowser {
   });
 
   readonly primer = inject(DeckPrimerService);
+  readonly social = inject(DeckSocialService);
   readonly steckbriefTexte = inject(DeckSteckbriefService);
   /**
    * Offener Reiter des geöffneten Decks - hier immer nur lesend: Geändert werden Primer und
@@ -194,6 +197,15 @@ export class PublicDeckBrowser {
   readonly creatureTypeFilter = signal<'all' | string>('all');
   readonly colorFilter = signal<ColorSelection>(EMPTY_COLOR_SELECTION);
 
+  /**
+   * Deck, dessen Steckbrief gerade als Popup über der Trefferliste liegt (Klick aufs
+   * Commander-Bild einer Kachel). Eigener Zustand neben selectedDeck, weil die Liste darunter
+   * stehen bleibt - erst „Deck ansehen" im Popup öffnet das Deck wirklich.
+   */
+  readonly passportDeck = signal<PublicDeck | null>(null);
+  readonly passportCards = signal<PublicDeckCardEntry[]>([]);
+  readonly passportBusy = signal(false);
+
   /** Gesetzt, wenn ein über den Deck-Link geöffnetes Deck nicht (mehr) öffentlich erreichbar ist. */
   readonly deckLinkLeer = signal(false);
 
@@ -209,6 +221,12 @@ export class PublicDeckBrowser {
       const deckId = this.navigation.pendingPublicDeckId();
       if (!deckId) return;
       untracked(() => void this.openDeckById(deckId));
+    });
+
+    // Aufrufe, Likes und Besitzer nur für die sichtbare Seite, in einer Anfrage - nicht je Kachel.
+    effect(() => {
+      const ids = this.pagedResults().map((d) => d.id);
+      untracked(() => void this.social.load(ids));
     });
   }
 
@@ -365,6 +383,47 @@ export class PublicDeckBrowser {
     this.priceBusy.set(false);
   }
 
+  /**
+   * Steckbrief eines Decks als Popup über der Liste. Die Karten werden dafür eigens geladen: Der
+   * Steckbrief zählt daraus seine Wirkungs-Kacheln und braucht den Ø Manawert - beides steht in
+   * der Trefferliste nicht. Aufgerufen wird der Steckbrief damit NICHT als Aufruf gezählt; das
+   * passiert erst, wenn jemand über „Deck ansehen" das Deck selbst öffnet.
+   */
+  async openPassport(deck: PublicDeck): Promise<void> {
+    this.passportDeck.set(deck);
+    this.passportCards.set([]);
+    this.passportBusy.set(true);
+    this.steckbriefTexte.load(deck.id);
+
+    const entries = await this.publicDecks.loadDeckCards(deck.id);
+    const cardMap = await this.scryfall.findCardsBulk(entries.map((e) => e.name));
+    // Inzwischen geschlossen oder ein anderes Deck geöffnet - diese Antwort gehört nicht mehr hierher.
+    if (this.passportDeck()?.id !== deck.id) return;
+
+    const all: PublicDeckCardEntry[] = [];
+    for (const entry of entries) {
+      const card = cardMap.get(entry.name.toLowerCase());
+      if (card) all.push({ card, quantity: entry.quantity, isCommander: entry.isCommander });
+    }
+    this.passportCards.set(all);
+    this.passportBusy.set(false);
+  }
+
+  closePassport(): void {
+    this.passportDeck.set(null);
+    this.passportCards.set([]);
+    this.passportBusy.set(false);
+    this.steckbriefTexte.zuruecksetzen();
+  }
+
+  /** „Deck ansehen" im Popup: Popup zu, Deck auf - wie ein Klick auf den Rest der Kachel. */
+  openPassportDeck(): void {
+    const deck = this.passportDeck();
+    if (!deck) return;
+    this.closePassport();
+    void this.openDeck(deck);
+  }
+
   backToList(): void {
     this.selectedDeck.set(null);
     this.deckTab.set('cards');
@@ -382,7 +441,7 @@ export class PublicDeckBrowser {
   // --- Deck-Analyse (Manakurve/Pips/Typ-Verteilung/Kennzahlen) - über ALLE Karten inkl. Commander,
   // wie DeckViewerService.analysisDeckCards() (dort ebenfalls nicht commander-ausgeschlossen). ---
 
-  private readonly nonLandCards = computed(() => this.allCards().filter((e) => !(e.card.typeLine ?? '').includes('Land')));
+  private readonly nonLandCards = computed(() => ohneLaender(this.allCards()));
 
   readonly manaCurve = computed<ManaCurveBucket[]>(() => {
     const buckets = [0, 1, 2, 3, 4, 5, 6].map((cmc) => ({ label: `${cmc}`, count: 0 }));
@@ -395,13 +454,7 @@ export class PublicDeckBrowser {
     return [...buckets, sevenPlus];
   });
 
-  readonly averageCmc = computed<number | null>(() => {
-    const cards = this.nonLandCards();
-    const totalQty = cards.reduce((sum, e) => sum + e.quantity, 0);
-    if (totalQty === 0) return null;
-    const totalCmc = cards.reduce((sum, e) => sum + (e.card.cmc ?? 0) * e.quantity, 0);
-    return totalCmc / totalQty;
-  });
+  readonly averageCmc = computed<number | null>(() => durchschnittMv(this.nonLandCards()));
 
   private readonly landCards = computed(() => this.allCards().filter((e) => (e.card.typeLine ?? '').includes('Land')));
   readonly landCount = computed(() => this.landCards().reduce((sum, e) => sum + e.quantity, 0));
@@ -551,24 +604,49 @@ export class PublicDeckBrowser {
    */
   readonly steckbriefDeck = computed<SteckbriefDeckinfo | null>(() => {
     const deck = this.selectedDeck();
-    if (!deck) return null;
-    return {
-      id: deck.id,
-      name: deck.name,
-      formatLabel: deck.format,
-      kreaturtyp: deck.commanderTypes[0] ?? null,
-      farben: FILTER_COLORS.filter((c) => deck.colorIdentity.includes(c)),
-      bracket: null,
-      bracketQuelle: 'auto',
-      commander: deck.commanders.map((c) => ({ name: c.name, imageUrl: c.imageUrl })),
-      // Was hier ankommt, ist per RLS und Filter nicht privat - sonst stünde es nicht im
-      // öffentlichen Stöbern.
-      istPrivat: false,
-    };
+    return deck ? alsSteckbrief(deck) : null;
   });
 
   /** Die Karten des geöffneten Decks für den Steckbrief - er zählt daraus die Wirkungs-Kacheln. */
-  readonly steckbriefKarten = computed<SteckbriefKarte[]>(() =>
-    this.allCards().map((e) => ({ name: e.card.name, quantity: e.quantity })),
-  );
+  readonly steckbriefKarten = computed<SteckbriefKarte[]>(() => alsSteckbriefKarten(this.allCards()));
+
+  // Dasselbe für das Steckbrief-Popup über der Trefferliste.
+  readonly passportSteckbrief = computed<SteckbriefDeckinfo | null>(() => {
+    const deck = this.passportDeck();
+    return deck ? alsSteckbrief(deck) : null;
+  });
+  readonly passportKarten = computed<SteckbriefKarte[]>(() => alsSteckbriefKarten(this.passportCards()));
+  readonly passportAverageCmc = computed<number | null>(() => durchschnittMv(ohneLaender(this.passportCards())));
+}
+
+function alsSteckbrief(deck: PublicDeck): SteckbriefDeckinfo {
+  return {
+    id: deck.id,
+    name: deck.name,
+    formatLabel: deck.format,
+    kreaturtyp: deck.commanderTypes[0] ?? null,
+    farben: FILTER_COLORS.filter((c) => deck.colorIdentity.includes(c)),
+    bracket: null,
+    bracketQuelle: 'auto',
+    commander: deck.commanders.map((c) => ({ name: c.name, imageUrl: c.imageUrl })),
+    // Was hier ankommt, ist per RLS und Filter nicht privat - sonst stünde es nicht im
+    // öffentlichen Stöbern.
+    istPrivat: false,
+  };
+}
+
+function alsSteckbriefKarten(entries: PublicDeckCardEntry[]): SteckbriefKarte[] {
+  return entries.map((e) => ({ name: e.card.name, quantity: e.quantity }));
+}
+
+function ohneLaender(entries: PublicDeckCardEntry[]): PublicDeckCardEntry[] {
+  return entries.filter((e) => !(e.card.typeLine ?? '').includes('Land'));
+}
+
+/** Ø Manawert ohne Länder, nach Anzahl gewichtet - null bei einem Deck ohne Nichtländer. */
+function durchschnittMv(nonLands: PublicDeckCardEntry[]): number | null {
+  const totalQty = nonLands.reduce((sum, e) => sum + e.quantity, 0);
+  if (totalQty === 0) return null;
+  const totalCmc = nonLands.reduce((sum, e) => sum + (e.card.cmc ?? 0) * e.quantity, 0);
+  return totalCmc / totalQty;
 }
