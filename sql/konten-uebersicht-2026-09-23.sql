@@ -50,3 +50,19 @@ select g.name as gruppe,
 from public.groups g
 where g.id in (select gm.group_id from public.group_members gm where gm.user_id in (select id from weg))
    or g.id in (select pl.group_id from public.players pl where pl.user_id in (select id from weg));
+
+-- 4) Was hängt an Gruppen, Spielern, Partien und Decks - und darf "created_by" leer sein?
+select c.confrelid::regclass as verweist_auf,
+       c.conrelid::regclass  as tabelle,
+       a.attname             as spalte,
+       case c.confdeltype when 'c' then 'CASCADE' when 'n' then 'SET NULL'
+                          when 'a' then 'NO ACTION' when 'r' then 'RESTRICT'
+                          else 'SET DEFAULT' end as beim_loeschen,
+       not a.attnotnull      as darf_leer_sein
+from pg_constraint c
+join pg_attribute a on a.attrelid = c.conrelid and a.attnum = any (c.conkey)
+where c.contype = 'f'
+  and c.confrelid in ('public.groups'::regclass, 'public.players'::regclass,
+                      'public.matches'::regclass, 'auth.users'::regclass)
+  and c.connamespace = 'public'::regnamespace
+order by 1, 2;
