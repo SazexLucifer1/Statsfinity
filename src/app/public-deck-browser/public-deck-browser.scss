@@ -141,6 +141,25 @@
   white-space: nowrap;
 }
 
+// Umschaltknopf für Decks mit zwei Commandern, zwischen Likes und Bilanz. Eigene color, weil ein
+// Knopf die Textfarbe nicht erbt und das Piktogramm sonst unsichtbar wäre (siehe ui/icon).
+.public-deck-swap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 26px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  font-size: 0.8rem;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
 .public-deck-winrate {
   font-weight: 600;
   font-variant-numeric: tabular-nums;

@@ -33,6 +33,7 @@ import {
 } from '../ui/bar-chart/deck-chart-data';
 import { DeckSocial } from '../deck-social/deck-social';
 import { DeckSocialService } from '../deck-social.service';
+import { Icon } from '../ui/icon/icon';
 
 interface PublicDeckCardEntry {
   card: ScryfallCard;
@@ -137,7 +138,7 @@ function sortByCmc(a: PublicDeckCardEntry, b: PublicDeckCardEntry): number {
  */
 @Component({
   selector: 'app-public-deck-browser',
-  imports: [FormsModule, CardImage, PartnerCardImage, DecimalPipe, CurrencyPipe, BarChart, ColorFilter, DeckComments, DeckPrimer, DeckSocial, DeckSteckbrief],
+  imports: [FormsModule, CardImage, PartnerCardImage, DecimalPipe, CurrencyPipe, BarChart, ColorFilter, DeckComments, DeckPrimer, DeckSocial, DeckSteckbrief, Icon],
   templateUrl: './public-deck-browser.html',
   styleUrl: './public-deck-browser.scss',
 })
@@ -202,6 +203,13 @@ export class PublicDeckBrowser {
    * stehen bleibt - erst „Deck ansehen" im Popup öffnet das Deck wirklich.
    */
   readonly passportDeck = signal<PublicDeck | null>(null);
+
+  /**
+   * Bei Decks mit zwei Commandern: welche Karte in der Kachel vorne liegt (Deck-ID → 0/1). Liegt
+   * hier und nicht in partner-card-image, weil der Umschaltknopf in der Leiste unter dem Bild
+   * sitzt, also außerhalb der Bild-Komponente.
+   */
+  readonly partnerFront = signal<ReadonlyMap<string, number>>(new Map());
   readonly passportCards = signal<PublicDeckCardEntry[]>([]);
   readonly passportBusy = signal(false);
 
@@ -406,6 +414,20 @@ export class PublicDeckBrowser {
     }
     this.passportCards.set(all);
     this.passportBusy.set(false);
+  }
+
+  partnerFrontFor(deckId: string): number {
+    return this.partnerFront().get(deckId) ?? 0;
+  }
+
+  setPartnerFront(deckId: string, index: number): void {
+    const next = new Map(this.partnerFront());
+    next.set(deckId, index);
+    this.partnerFront.set(next);
+  }
+
+  swapPartner(deckId: string): void {
+    this.setPartnerFront(deckId, 1 - this.partnerFrontFor(deckId));
   }
 
   closePassport(): void {

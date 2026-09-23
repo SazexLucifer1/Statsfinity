@@ -79,7 +79,13 @@
                 (keydown.enter)="$event.stopPropagation(); openPassport(deck)"
               >
                 @if (commanderCardsFor(deck.id).length > 0) {
-                  <app-partner-card-image [cards]="commanderCardsFor(deck.id)" [compact]="true" />
+                  <app-partner-card-image
+                    [cards]="commanderCardsFor(deck.id)"
+                    [compact]="true"
+                    [showSwapButton]="false"
+                    [frontIndex]="partnerFrontFor(deck.id)"
+                    (frontIndexChange)="setPartnerFront(deck.id, $event)"
+                  />
                 } @else {
                   <div class="card-pick-placeholder">{{ deck.name }}</div>
                 }
@@ -90,6 +96,19 @@
               <div class="public-deck-bar">
                 @if (social.verfuegbar()) {
                   <app-deck-social [deckId]="deck.id" [compact]="true" />
+                }
+                <!-- Zwei Commander: der Umschaltknopf sitzt hier statt auf der Karte, wo er das
+                     Kartenbild verdeckte. -->
+                @if (commanderCardsFor(deck.id).length > 1) {
+                  <button
+                    type="button"
+                    class="public-deck-swap"
+                    [attr.aria-label]="i18n.t('partnerCardImage.swapAria')"
+                    [title]="i18n.t('partnerCardImage.swapAria')"
+                    (click)="$event.stopPropagation(); swapPartner(deck.id)"
+                  >
+                    <app-icon name="users" />
+                  </button>
                 }
                 @if (statsFor(deck.id); as s) {
                   @if (s.games > 0) {

@@ -14,15 +14,17 @@
         <div class="partner-card-placeholder">{{ frontCard.name }}</div>
       }
     </div>
-    <button
-      type="button"
-      class="partner-swap-button"
-      (click)="swapToFront($event)"
-      [attr.aria-label]="i18n.t('partnerCardImage.swapAria')"
-      [title]="i18n.t('partnerCardImage.swapAria')"
-    >
-      <app-icon name="users" />
-    </button>
+    @if (showSwapButton()) {
+      <button
+        type="button"
+        class="partner-swap-button"
+        (click)="swapToFront($event)"
+        [attr.aria-label]="i18n.t('partnerCardImage.swapAria')"
+        [title]="i18n.t('partnerCardImage.swapAria')"
+      >
+        <app-icon name="users" />
+      </button>
+    }
   </div>
 } @else {
   <div class="partner-card-slot partner-card-solo" (click)="onFrontClick()">
