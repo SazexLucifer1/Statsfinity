@@ -43,3 +43,107 @@
     }
   }
 }
+
+.artwork-toggle {
+  // Knöpfe erben die Textfarbe nicht - ohne eigene color wäre das Piktogramm unsichtbar.
+  color: inherit;
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: var(--r-sm);
+  padding: 4px 8px;
+  font-size: 1.1rem;
+  line-height: 1;
+  opacity: 0.7;
+
+  &.active {
+    opacity: 1;
+    border-color: rgba(138, 180, 255, 0.8);
+    color: rgb(138, 180, 255);
+  }
+}
+
+.copy-artworks {
+  margin: 12px 0;
+
+  .chip-row {
+    margin-top: 8px;
+  }
+}
+
+.copy-artworks-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.copy-strip {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.copy-thumb,
+.printing {
+  flex: 0 0 auto;
+  position: relative;
+  padding: 0;
+  background: none;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  color: inherit;
+  cursor: pointer;
+
+  img {
+    display: block;
+    width: 100%;
+    border-radius: 4px;
+  }
+
+  span {
+    display: block;
+    font-size: 0.7rem;
+    text-align: center;
+    opacity: 0.8;
+  }
+}
+
+.copy-thumb {
+  width: 56px;
+
+  &.custom {
+    border-color: rgba(138, 180, 255, 0.6);
+  }
+
+  &.picking {
+    border-color: rgb(138, 180, 255);
+  }
+}
+
+.printing-picker {
+  margin-top: 10px;
+
+  .hint {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+}
+
+.picker-close {
+  color: inherit;
+  background: none;
+  border: none;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.printing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
+  gap: 6px;
+  max-height: 44dvh;
+  overflow-y: auto;
+}

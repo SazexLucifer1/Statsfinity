@@ -1,12 +1,18 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { I18nService } from './i18n.service';
 import { kartenBildAlsDataUrl } from './card-image-datauri';
+import { ScryfallPrinting, ScryfallService } from './scryfall.service';
+import { supabase } from './supabase.client';
+import { DeckCopyArtworks } from './models';
 
 export interface PdfSourceCard {
   cardName: string;
   quantity: number;
   imageUrl: string | null;
   backImageUrl: string | null;
+  /** Für die Artwork-Suche (getPrintings) - Marken werden über die Oracle-ID gesucht. */
+  isToken?: boolean;
+  oracleId?: string | null;
 }
 
 export interface PdfCardEntry {
@@ -15,6 +21,15 @@ export interface PdfCardEntry {
   imageUrl: string | null;
   backImageUrl: string | null;
   selected: boolean;
+  isToken: boolean;
+  oracleId: string | null;
+  /** Ein Eintrag je Exemplar, null = normales Artwork (imageUrl). Siehe DeckCopyArtworks. */
+  copyArtworks: (string | null)[];
+}
+
+/** Ob sich für diese Karte je Exemplar ein Artwork wählen lässt. Doppelseitige Karten nicht: Zum gewählten Vorderseiten-Druck fehlte die passende Rückseite. */
+export function hatExemplarArtworks(entry: PdfCardEntry): boolean {
+  return entry.quantity > 1 && !!entry.imageUrl && !entry.backImageUrl;
 }
 
 // Echte Kartengröße (63,5x88,9mm / 2,5"x3,5") statt gerundet, damit sich das PDF 1:1 zum Ausschneiden eignet.
@@ -43,6 +58,7 @@ const MARGIN_Y_MM = (PAGE_HEIGHT_MM - GRID_HEIGHT_MM) / 2;
 @Injectable({ providedIn: 'root' })
 export class DeckPdfService {
   readonly i18n = inject(I18nService);
+  private readonly scryfall = inject(ScryfallService);
 
   readonly showDialog = signal(false);
   readonly deckName = signal('');
@@ -64,8 +80,36 @@ export class DeckPdfService {
 
   readonly selectedCount = computed(() => this.entries().filter((e) => e.selected).length);
 
-  /** Reihenfolge kommt unverändert vom Aufrufer (Deck-Gruppierung wie beim Deckbauen) - hier bewusst NICHT alphabetisch sortieren. */
-  open(deckName: string, cards: PdfSourceCard[]): void {
+  /** Zahl der Bilder, die tatsächlich im PDF landen - mit eigenen Artworks je Exemplar weicht sie von selectedCount() ab. */
+  readonly printCount = computed(() =>
+    this.entries()
+      .filter((e) => e.selected && e.imageUrl)
+      .reduce((sum, e) => sum + this.copyImages(e).length * (e.backImageUrl ? 2 : 1), 0),
+  );
+
+  // --- Artwork je Exemplar -------------------------------------------------------------------
+
+  /** Karte (Name), deren Exemplare gerade aufgeklappt sind - immer höchstens eine. */
+  readonly expandedCard = signal<string | null>(null);
+  /** Offene Artwork-Auswahl für genau ein Exemplar. */
+  readonly picker = signal<{ cardName: string; copyIndex: number } | null>(null);
+  readonly printingsLoading = signal(false);
+  /** Drucke je Kartenname (klein) - einmal je Sitzung geladen, auch über mehrere Dialoge hinweg. */
+  private readonly printingsCache = new Map<string, ScryfallPrinting[]>();
+  readonly printings = signal<ScryfallPrinting[]>([]);
+
+  /** Deck, zu dem die Auswahl gespeichert wird; null = nur für diesen Druck (fremdes Deck). */
+  private deckId: string | null = null;
+  private dirty = false;
+  /** Fehlt sql/deck-exemplar-artworks-2026-09-23.sql, bleibt die Auswahl einfach ungespeichert. */
+  private static spalteVerfuegbar = true;
+
+  /**
+   * Reihenfolge kommt unverändert vom Aufrufer (Deck-Gruppierung wie beim Deckbauen) - hier bewusst
+   * NICHT alphabetisch sortieren. `deckId` lädt die gespeicherte Artwork-Auswahl je Exemplar;
+   * `canSave` entscheidet, ob Änderungen daran zurück ins Deck geschrieben werden.
+   */
+  open(deckName: string, cards: PdfSourceCard[], options?: { deckId?: string; canSave?: boolean }): void {
     this.deckName.set(deckName);
     this.entries.set(
       cards.map((c) => ({
@@ -74,6 +118,9 @@ export class DeckPdfService {
         imageUrl: c.imageUrl,
         backImageUrl: c.backImageUrl,
         selected: true,
+        isToken: c.isToken ?? false,
+        oracleId: c.oracleId ?? null,
+        copyArtworks: Array(c.quantity).fill(null),
       }))
     );
     this.copiesMode.set('one');
@@ -81,11 +128,153 @@ export class DeckPdfService {
     this.busy.set(false);
     this.progress.set(null);
     this.errorMessage.set('');
+    this.expandedCard.set(null);
+    this.picker.set(null);
+    this.dirty = false;
+    this.deckId = options?.canSave ? (options.deckId ?? null) : null;
     this.showDialog.set(true);
+    if (options?.deckId) void this.loadCopyArtworks(options.deckId);
   }
 
   close(): void {
+    this.picker.set(null);
     this.showDialog.set(false);
+    void this.saveCopyArtworks();
+  }
+
+  private async loadCopyArtworks(deckId: string): Promise<void> {
+    if (!DeckPdfService.spalteVerfuegbar) return;
+    const { data, error } = await supabase.from('decks').select('copy_artworks').eq('id', deckId).maybeSingle();
+    if (error) {
+      if (this.spalteFehlt(error)) return;
+      console.error('Konnte Artworks je Exemplar nicht laden:', error);
+      return;
+    }
+    const stored = ((data as { copy_artworks?: DeckCopyArtworks | null } | null)?.copy_artworks ?? {}) as DeckCopyArtworks;
+    // Der Nutzer hat inzwischen selbst gewählt - dann gewinnt seine Auswahl, nicht die späte Antwort.
+    if (this.dirty) return;
+    this.entries.update((list) =>
+      list.map((e) => {
+        const saved = stored[e.cardName.toLowerCase()];
+        if (!Array.isArray(saved) || !hatExemplarArtworks(e)) return e;
+        // Auf die aktuelle Anzahl zuschneiden bzw. auffüllen: Aus 10 Forests können inzwischen 8 geworden sein.
+        const copyArtworks = Array.from({ length: e.quantity }, (_, i) =>
+          typeof saved[i] === 'string' ? saved[i] : null,
+        );
+        return { ...e, copyArtworks };
+      }),
+    );
+  }
+
+  /**
+   * Schreibt die Auswahl zurück ins Deck - aber nur die Karten dieses Dialogs: Der Druck einer
+   * einzelnen Bearbeitung (printChangeGroup) enthält nur einen Teil des Decks, die übrigen Karten
+   * behalten ihre gespeicherte Auswahl.
+   */
+  private async saveCopyArtworks(): Promise<void> {
+    const deckId = this.deckId;
+    if (!deckId || !this.dirty || !DeckPdfService.spalteVerfuegbar) return;
+    this.dirty = false;
+    const { data, error } = await supabase.from('decks').select('copy_artworks').eq('id', deckId).maybeSingle();
+    if (error) {
+      if (!this.spalteFehlt(error)) console.error('Konnte Artworks je Exemplar nicht laden:', error);
+      return;
+    }
+    const merged: DeckCopyArtworks = { ...((data as { copy_artworks?: DeckCopyArtworks | null } | null)?.copy_artworks ?? {}) };
+    for (const e of this.entries()) {
+      const key = e.cardName.toLowerCase();
+      if (e.copyArtworks.some((u) => u)) merged[key] = e.copyArtworks;
+      else delete merged[key];
+    }
+    // updated_at bleibt unangetastet (wie beim Primer): Ein anderes Druck-Artwork ändert das Deck nicht.
+    const { error: saveError } = await supabase
+      .from('decks')
+      .update({ copy_artworks: Object.keys(merged).length ? merged : null })
+      .eq('id', deckId);
+    if (saveError && !this.spalteFehlt(saveError)) console.error('Konnte Artworks je Exemplar nicht speichern:', saveError);
+  }
+
+  private spalteFehlt(error: { code?: string }): boolean {
+    if (error.code !== '42703' && error.code !== 'PGRST204') return false;
+    DeckPdfService.spalteVerfuegbar = false;
+    return true;
+  }
+
+  toggleExpanded(cardName: string): void {
+    this.picker.set(null);
+    this.expandedCard.update((c) => (c === cardName ? null : cardName));
+  }
+
+  /** Bild, das ein Exemplar gerade trägt (eigene Wahl oder das normale Artwork). */
+  copyImage(entry: PdfCardEntry, index: number): string | null {
+    return entry.copyArtworks[index] ?? entry.imageUrl;
+  }
+
+  /**
+   * Bilder dieser Karte in Druckreihenfolge. "Jede Kopie einzeln" druckt jedes Exemplar mit seinem
+   * Artwork; "Nur 1 Bild" druckt jedes VERSCHIEDENE Artwork einmal - wer drei Nazgûl-Artworks
+   * gewählt hat, will sie auch im sparsamen Modus alle sehen.
+   */
+  private copyImages(entry: PdfCardEntry): string[] {
+    if (!entry.imageUrl) return [];
+    const all = Array.from({ length: entry.quantity }, (_, i) => this.copyImage(entry, i)!);
+    return this.copiesMode() === 'all' ? all : [...new Set(all)];
+  }
+
+  private async ensurePrintings(entry: PdfCardEntry): Promise<ScryfallPrinting[]> {
+    const key = entry.cardName.toLowerCase();
+    const cached = this.printingsCache.get(key);
+    if (cached) return cached;
+    this.printingsLoading.set(true);
+    try {
+      const list = await this.scryfall.getPrintings(entry.cardName, { isToken: entry.isToken, oracleId: entry.oracleId });
+      if (list.length) this.printingsCache.set(key, list);
+      return list;
+    } finally {
+      this.printingsLoading.set(false);
+    }
+  }
+
+  async openPicker(entry: PdfCardEntry, copyIndex: number): Promise<void> {
+    this.picker.set({ cardName: entry.cardName, copyIndex });
+    this.printings.set([]);
+    const list = await this.ensurePrintings(entry);
+    if (this.picker()?.cardName === entry.cardName) this.printings.set(list);
+  }
+
+  closePicker(): void {
+    this.picker.set(null);
+  }
+
+  /** `imageUrl` null = zurück zum normalen Artwork des Decks. */
+  chooseArtwork(imageUrl: string | null): void {
+    const p = this.picker();
+    if (!p) return;
+    this.updateCopies(p.cardName, (entry) =>
+      entry.copyArtworks.map((u, i) => (i === p.copyIndex ? (imageUrl === entry.imageUrl ? null : imageUrl) : u)),
+    );
+    this.picker.set(null);
+  }
+
+  /**
+   * Verteilt verschiedene Artworks auf alle Exemplare: Das erste behält das Artwork des Decks, die
+   * übrigen bekommen der Reihe nach die neuesten anderen Drucke. Gibt es weniger Drucke als
+   * Exemplare, beginnt die Reihe von vorn.
+   */
+  async distributeArtworks(entry: PdfCardEntry): Promise<void> {
+    const list = await this.ensurePrintings(entry);
+    const others = [...new Set(list.map((p) => p.imageUrl!).filter((u) => u !== entry.imageUrl))];
+    if (others.length === 0) return;
+    this.updateCopies(entry.cardName, (e) => e.copyArtworks.map((_, i) => (i === 0 ? null : others[(i - 1) % others.length])));
+  }
+
+  resetArtworks(entry: PdfCardEntry): void {
+    this.updateCopies(entry.cardName, (e) => e.copyArtworks.map(() => null));
+  }
+
+  private updateCopies(cardName: string, fn: (entry: PdfCardEntry) => (string | null)[]): void {
+    this.dirty = true;
+    this.entries.update((list) => list.map((e) => (e.cardName === cardName ? { ...e, copyArtworks: fn(e) } : e)));
   }
 
   toggleCard(cardName: string): void {
@@ -331,7 +520,7 @@ export class DeckPdfService {
     // Rückseiten-URLs (doppelseitige Karten) zählen dabei genauso mit wie die Vorderseiten.
     const uniqueUrls = [
       ...new Set(
-        selected.flatMap((e) => [e.imageUrl, e.backImageUrl].filter((u): u is string => !!u)),
+        selected.flatMap((e) => [...this.copyImages(e), e.backImageUrl].filter((u): u is string => !!u)),
       ),
     ];
     const imagesByUrl = new Map<string, string | null>();
@@ -344,7 +533,6 @@ export class DeckPdfService {
       this.progress.update((p) => (p ? { ...p, done: p.done + 1 } : p));
     }
 
-    const copiesMode = this.copiesMode();
     const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
     let slot = 0;
 
@@ -404,12 +592,11 @@ export class DeckPdfService {
     };
 
     for (const entry of selected) {
-      const dataUrl = imagesByUrl.get(entry.imageUrl!);
-      if (!dataUrl) continue;
       const backDataUrl = entry.backImageUrl ? imagesByUrl.get(entry.backImageUrl) : null;
-
-      const copies = copiesMode === 'all' ? entry.quantity : 1;
-      for (let i = 0; i < copies; i++) {
+      for (const url of this.copyImages(entry)) {
+        // Ein eigenes Artwork, das nicht lädt, fällt auf das normale zurück statt das Exemplar zu verlieren.
+        const dataUrl = imagesByUrl.get(url) ?? imagesByUrl.get(entry.imageUrl!);
+        if (!dataUrl) continue;
         placeCard(dataUrl);
         if (backDataUrl) placeCard(backDataUrl);
       }
@@ -429,6 +616,6 @@ export class DeckPdfService {
         .trim() || 'deck'
     }.pdf`;
     pdf.save(fileName);
-    this.showDialog.set(false);
+    this.close();
   }
 }

@@ -184,3 +184,11 @@ export interface DeckStats {
   /** true = das Deck wurde gelöscht und steht nur noch als Grabstein in der Datenbank (siehe DeckService.deleteDeck()). Die Zahlen hier bleiben davon unberührt, nur ansehen lässt sich das Deck nicht mehr. */
   isDeleted?: boolean;
 }
+
+/**
+ * Artwork je Exemplar für den PDF-Druck (decks.copy_artworks, siehe
+ * sql/deck-exemplar-artworks-2026-09-23.sql): Schlüssel ist der kleingeschriebene Kartenname, der
+ * Wert hat einen Eintrag je Exemplar - Stelle 0 ist das erste Exemplar, `null` heißt "das normale
+ * Artwork des Decks". Nur für mehrfach vorhandene Karten (Standardländer, Nazgûl, Seven Dwarves, …).
+ */
+export type DeckCopyArtworks = Record<string, (string | null)[]>;

@@ -155,6 +155,14 @@ export const deck = {
     'pdfDialog.generateCount': '{{count}} Karten als PDF',
     'pdfDialog.msg.noCardsSelected': 'Keine Karten mit Bild ausgewählt.',
     'pdfDialog.msg.noImagesLoaded': 'Keine Kartenbilder konnten geladen werden.',
+    'pdfDialog.copyArtworks': 'Artworks je Exemplar',
+    'pdfDialog.copyArtworksHint': 'Tippe ein Exemplar an, um ihm ein eigenes Artwork zu geben.',
+    'pdfDialog.distributeArtworks': 'Verschiedene Artworks verteilen',
+    'pdfDialog.resetArtworks': 'Zurücksetzen',
+    'pdfDialog.pickArtworkFor': 'Artwork für Exemplar {{n}}',
+    'pdfDialog.loadingArtworks': 'Lade Artworks …',
+    'pdfDialog.deckArtwork': 'Deck',
+    'pdfDialog.done': 'Fertig',
 
     // --- Deck-Kommentare ---
     'deckSocial.views': '{{count}} Aufrufe',
@@ -413,6 +421,14 @@ export const deck = {
     'pdfDialog.generateCount': '{{count}} cards as PDF',
     'pdfDialog.msg.noCardsSelected': 'No cards with an image selected.',
     'pdfDialog.msg.noImagesLoaded': 'No card images could be loaded.',
+    'pdfDialog.copyArtworks': 'Artwork per copy',
+    'pdfDialog.copyArtworksHint': 'Tap a copy to give it its own artwork.',
+    'pdfDialog.distributeArtworks': 'Distribute different artworks',
+    'pdfDialog.resetArtworks': 'Reset',
+    'pdfDialog.pickArtworkFor': 'Artwork for copy {{n}}',
+    'pdfDialog.loadingArtworks': 'Loading artworks …',
+    'pdfDialog.deckArtwork': 'Deck',
+    'pdfDialog.done': 'Done',
 
     // --- Deck comments ---
     'deckSocial.views': '{{count}} views',
