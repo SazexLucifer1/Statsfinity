@@ -2,14 +2,22 @@
   <div class="partner-card-stack">
     <div class="partner-card-slot partner-card-back" (click)="swapToFront($event)">
       @if (backCard.imageUrl; as imageUrl) {
-        <app-card-image [imageUrl]="imageUrl" [backImageUrl]="backCard.backImageUrl" [alt]="backCard.name" [compact]="compact()" />
+        <app-card-image [imageUrl]="imageUrl" [backImageUrl]="backCard.backImageUrl" [alt]="backCard.name" [compact]="compact()" [showFlipButton]="showFlipButton()" />
       } @else {
         <div class="partner-card-placeholder">{{ backCard.name }}</div>
       }
     </div>
     <div class="partner-card-slot partner-card-front" (click)="onFrontClick()">
       @if (frontCard.imageUrl; as imageUrl) {
-        <app-card-image [imageUrl]="imageUrl" [backImageUrl]="frontCard.backImageUrl" [alt]="frontCard.name" [compact]="compact()" />
+        <app-card-image
+          [imageUrl]="imageUrl"
+          [backImageUrl]="frontCard.backImageUrl"
+          [alt]="frontCard.name"
+          [compact]="compact()"
+          [showFlipButton]="showFlipButton()"
+          [showingBack]="frontShowingBack()"
+          (showingBackChange)="frontShowingBack.set($event)"
+        />
       } @else {
         <div class="partner-card-placeholder">{{ frontCard.name }}</div>
       }
@@ -29,7 +37,15 @@
 } @else {
   <div class="partner-card-slot partner-card-solo" (click)="onFrontClick()">
     @if (cards()[0].imageUrl; as imageUrl) {
-      <app-card-image [imageUrl]="imageUrl" [backImageUrl]="cards()[0].backImageUrl" [alt]="cards()[0].name" [compact]="compact()" />
+      <app-card-image
+        [imageUrl]="imageUrl"
+        [backImageUrl]="cards()[0].backImageUrl"
+        [alt]="cards()[0].name"
+        [compact]="compact()"
+        [showFlipButton]="showFlipButton()"
+        [showingBack]="frontShowingBack()"
+        (showingBackChange)="frontShowingBack.set($event)"
+      />
     } @else {
       <div class="partner-card-placeholder">{{ cards()[0].name }}</div>
     }

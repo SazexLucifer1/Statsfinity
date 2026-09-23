@@ -141,7 +141,13 @@
   white-space: nowrap;
 }
 
-// Umschaltknopf für Decks mit zwei Commandern, zwischen Likes und Bilanz. Eigene color, weil ein
+.public-deck-actions {
+  display: inline-flex;
+  gap: 4px;
+}
+
+// Knöpfe in der Leiste zwischen Likes und Bilanz: Commander wechseln (zwei Commander) und
+// umdrehen (doppelseitige Karte). Eigene color, weil ein
 // Knopf die Textfarbe nicht erbt und das Piktogramm sonst unsichtbar wäre (siehe ui/icon).
 .public-deck-swap {
   display: inline-flex;
@@ -158,6 +164,11 @@
   font-size: 0.8rem;
   cursor: pointer;
   touch-action: manipulation;
+
+  &.active {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
 }
 
 .public-deck-winrate {

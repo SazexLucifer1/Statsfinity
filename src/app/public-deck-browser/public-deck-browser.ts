@@ -212,6 +212,12 @@ export class PublicDeckBrowser {
    * sitzt, also außerhalb der Bild-Komponente.
    */
   readonly partnerFront = signal<ReadonlyMap<string, number>>(new Map());
+
+  /**
+   * Ob der vordere Commander einer Kachel gerade seine Rückseite zeigt (doppelseitige Karten).
+   * Liegt aus demselben Grund hier wie partnerFront: Der Umdreh-Knopf sitzt in der Leiste.
+   */
+  readonly flipped = signal<ReadonlySet<string>>(new Set());
   readonly passportCards = signal<PublicDeckCardEntry[]>([]);
   readonly passportBusy = signal(false);
 
@@ -434,6 +440,26 @@ export class PublicDeckBrowser {
     const next = new Map(this.partnerFront());
     next.set(deckId, index);
     this.partnerFront.set(next);
+    // Der neu nach vorne geholte Commander liegt mit der Vorderseite oben.
+    this.setFlipped(deckId, false);
+  }
+
+  /** Der Commander, der in der Kachel gerade vorne liegt - an ihm hängt der Umdreh-Knopf. */
+  frontCardFor(deckId: string): ScryfallCard | null {
+    const cards = this.commanderCardsFor(deckId);
+    return cards[this.partnerFrontFor(deckId)] ?? cards[0] ?? null;
+  }
+
+  flippedFor(deckId: string): boolean {
+    return this.flipped().has(deckId);
+  }
+
+  setFlipped(deckId: string, on: boolean): void {
+    if (this.flippedFor(deckId) === on) return;
+    const next = new Set(this.flipped());
+    if (on) next.add(deckId);
+    else next.delete(deckId);
+    this.flipped.set(next);
   }
 
   swapPartner(deckId: string): void {
