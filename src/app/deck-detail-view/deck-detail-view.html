@@ -405,7 +405,7 @@
         <div class="deck-game-stats">
           <div class="chip-row">
             <button class="glass-chip small" [class.active]="viewer.deckStatsScope() === 'mine'" (click)="viewer.setDeckStatsScope('mine')">
-              {{ viewer.i18n.t('deckView.statsScopeMine') }}
+              {{ viewer.deckStatsScopeOwnLabel() }}
             </button>
             <button class="glass-chip small" [class.active]="viewer.deckStatsScope() === 'all'" (click)="viewer.setDeckStatsScope('all')">
               {{ viewer.i18n.t('deckView.statsScopeAll') }}

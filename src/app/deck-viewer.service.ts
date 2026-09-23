@@ -308,8 +308,19 @@ export class DeckViewerService {
   /** Läuft, während für den Druck einer Bearbeitung fehlende Kartenbilder von Scryfall nachgeladen werden. */
   readonly changeGroupPrintBusy = signal(false);
   readonly viewingDeckGameStats = signal<DeckGameStats | null>(null);
-  /** "mine" = nur Partien, in denen der eingeloggte Nutzer selbst Pilot war (nicht zwingend Deck-Besitzer, siehe resolveMyPlayerIds()). */
+  /**
+   * "mine" = nur Partien, in denen der BESITZER des Decks selbst Pilot war (siehe ownerPlayerIds()),
+   * "all" = alle Partien mit diesem Deck, also auch die, in denen es jemand ausgeliehen hat. Bewusst
+   * nicht der eingeloggte Nutzer: wer ein fremdes Deck ansieht, bekäme sonst nur seine eigenen
+   * Leih-Partien damit gezählt - bei Theos "Lorehold Spirit" stand für Fabian "1" statt Theos "3".
+   */
   readonly deckStatsScope = signal<'mine' | 'all'>('mine');
+  /** Beschriftung des "mine"-Knopfs: beim eigenen Deck "Meine Spiele", sonst "Vom Besitzer". */
+  readonly deckStatsScopeOwnLabel = computed(() => {
+    const deck = this.viewingDeck();
+    const eigenes = !!deck?.userId && deck.userId === this.auth.currentUser()?.id;
+    return this.i18n.t(eigenes ? 'deckView.statsScopeMine' : 'deckView.statsScopeOwner');
+  });
   readonly detailBusy = signal(false);
   readonly viewMode = signal<'text' | 'visual'>('visual');
   /**
@@ -2912,16 +2923,22 @@ export class DeckViewerService {
     this.loadPriceForBracket(cards);
   }
 
-  /** Cache für resolveMyPlayerIds() - ändert sich innerhalb einer Login-Session praktisch nie. */
-  private myPlayerIds: string[] | null = null;
+  /** Löst den Besitzer eines Decks auf seine players.id über alle Gruppen hinweg auf - für die "Meine Spiele"-Filterung in getDeckStats(). */
+  private async ownerPlayerIds(deck: Deck): Promise<string[]> {
+    if (deck.playerId) return [deck.playerId];
+    if (!deck.userId) return [];
+    return this.deckService.resolvePlayerIds({ kind: 'user', userId: deck.userId });
+  }
 
-  /** Löst den eingeloggten Nutzer auf seine players.id über alle Gruppen hinweg auf - für die "Meine Spiele"-Filterung in getDeckStats(). */
-  private async resolveMyPlayerIds(): Promise<string[]> {
-    if (this.myPlayerIds) return this.myPlayerIds;
-    const userId = this.auth.currentUser()?.id;
-    if (!userId) return [];
-    this.myPlayerIds = await this.deckService.resolvePlayerIds({ kind: 'user', userId });
-    return this.myPlayerIds;
+  /**
+   * Spiel-Statistik eines Decks für den gewählten Umfang. Ein Besitzer ohne Spieler-Eintrag hat das
+   * Deck nie selbst gespielt - getDeckStats() würde eine leere Liste aber als "kein Filter" lesen.
+   */
+  private async deckStatsFor(deck: Deck, scope: 'mine' | 'all'): Promise<DeckGameStats> {
+    if (scope === 'all') return this.deckService.getDeckStats(deck.id);
+    const pilots = await this.ownerPlayerIds(deck);
+    if (pilots.length === 0) return { games: 0, wins: 0, winRate: 0 };
+    return this.deckService.getDeckStats(deck.id, pilots);
   }
 
   async open(deck: Deck): Promise<void> {
@@ -3003,12 +3020,11 @@ export class DeckViewerService {
     this.effectCategoryPopup.set(null);
     this.deckStatsScope.set('mine');
 
-    const [cards, log, myPlayerIds] = await Promise.all([
+    const [cards, log, gameStats] = await Promise.all([
       this.deckService.loadDeckCards(deck.id),
       this.deckService.loadChangeLog(deck.id),
-      this.resolveMyPlayerIds(),
+      this.deckStatsFor(deck, 'mine'),
     ]);
-    const gameStats = await this.deckService.getDeckStats(deck.id, myPlayerIds);
 
     this.viewingDeckCards.set(cards);
     this.viewingChangeLog.set(log);
@@ -3021,13 +3037,12 @@ export class DeckViewerService {
     this.analysisExtrasLoaded = false;
   }
 
-  /** Schaltet die Spiel-Statistik-Kacheln zwischen "nur meine Partien" und "alle Partien mit diesem Deck" um. */
+  /** Schaltet die Spiel-Statistik-Kacheln zwischen "Partien des Besitzers" und "alle Partien mit diesem Deck" um. */
   async setDeckStatsScope(scope: 'mine' | 'all'): Promise<void> {
     const deck = this.viewingDeck();
     if (!deck || this.deckStatsScope() === scope) return;
     this.deckStatsScope.set(scope);
-    const pilotPlayerIds = scope === 'mine' ? await this.resolveMyPlayerIds() : undefined;
-    this.viewingDeckGameStats.set(await this.deckService.getDeckStats(deck.id, pilotPlayerIds));
+    this.viewingDeckGameStats.set(await this.deckStatsFor(deck, scope));
   }
 
   /** Laufender loadCardDetails()-Aufruf, falls einer läuft - siehe ensureCardDetailsLoaded(). */
