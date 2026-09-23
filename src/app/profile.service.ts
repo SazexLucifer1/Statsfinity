@@ -1,6 +1,7 @@
 import { Injectable, effect, inject, signal } from '@angular/core';
 import { supabase } from './supabase.client';
 import { AuthService } from './auth.service';
+import { NavigationService } from './navigation.service';
 import { ArtLang, istArtLang } from './art-languages';
 
 export interface Profile {
@@ -27,6 +28,7 @@ export interface Profile {
 @Injectable({ providedIn: 'root' })
 export class ProfileService {
   private readonly auth = inject(AuthService);
+  private readonly navigation = inject(NavigationService);
 
   readonly profile = signal<Profile | null>(null);
   readonly loading = signal<boolean>(true);
@@ -53,7 +55,10 @@ export class ProfileService {
     this.viewingPlayerName.set(null);
     this.viewingUserId.set(userId);
     this.viewingBusy.set(true);
-    this.viewingProfile.set(await this.loadPublicProfile(userId));
+    const profile = await this.loadPublicProfile(userId);
+    // Inzwischen den Tab verlassen oder ein anderes Profil geöffnet: die Antwort gehört zu nichts mehr.
+    if (this.viewingUserId() !== userId) return;
+    this.viewingProfile.set(profile);
     this.viewingBusy.set(false);
   }
 
@@ -69,6 +74,7 @@ export class ProfileService {
     this.viewingProfile.set(null);
     this.viewingPlayerId.set(null);
     this.viewingPlayerName.set(null);
+    this.viewingBusy.set(false);
   }
 
   /** Account-ID des zuletzt ERFOLGREICH geladenen Profils - verhindert unnötige Neuladungen. */
@@ -77,6 +83,13 @@ export class ProfileService {
   private loadSeq = 0;
 
   constructor() {
+    // Ein fremdes Profil ist ein Abstecher, kein Zustand des Tabs: Wer den Profil-Tab verlässt und
+    // später wieder antippt, soll sein eigenes Profil sehen. Alle Wege ins fremde Profil wechseln
+    // erst den Tab und setzen dann das Profil, deshalb löscht das hier nichts zu früh.
+    effect(() => {
+      if (this.navigation.activeTab() !== 'profile') this.stopViewingProfile();
+    });
+
     effect(() => {
       const user = this.auth.currentUser();
       if (!user) {
