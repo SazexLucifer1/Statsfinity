@@ -324,7 +324,10 @@
             @if (!isPlayerLinked(player)) {
               <span class="role-badge npc">{{ i18n.t('profile.npcBadge') }}</span>
             }
-            <span class="player-games">{{ i18n.t('group.gamesCount', { count: gamesPerPlayer().get(player) ?? 0 }) }}</span>
+            <!-- Wie viel jemand spielt, geht nur den Gruppen-Admin (Owner) etwas an - nicht die Mitspieler. -->
+            @if (groupService.isOwner()) {
+              <span class="player-games">{{ i18n.t('group.gamesCount', { count: gamesPerPlayer().get(player) ?? 0 }) }}</span>
+            }
             <!-- Drei Icon-Knöpfe pro Spielerzeile ergaben bei acht Spielern 24 Knöpfe untereinander;
                  alle drei sind seltene Verwaltungsaktionen. -->
             <app-overflow-menu [label]="i18n.t('group.playerActionsAria', { name: player })" [heading]="player">
