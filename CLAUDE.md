@@ -169,7 +169,7 @@ Bei diesen Dateien grundsätzlich `grep`/`Glob` vor `Read`; wenn doch gelesen we
 | 1233   | `src/app/scryfall.service.ts`                    |
 | 1386   | `src/app/stats-tab/stats-tab.ts`                 |
 | 1111   | `src/app/game-session.service.ts`                |
-| 1046   | `src/app/profile-tab/profile-tab.ts`             |
+| 1154   | `src/app/profile-tab/profile-tab.ts`             |
 | 1727   | `src/app/deck-detail-view/deck-detail-view.html` |
 | 1075   | `src/app/sim-card-profile.ts`                    |
 | 1015   | `src/app/goldfish-sim.ts`                        |
