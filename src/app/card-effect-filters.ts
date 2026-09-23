@@ -32,6 +32,7 @@ export const CARD_EFFECT_FILTERS: CardEffectFilter[] = [
       'otag:reanimate',
   },
   { value: 'recursion', query: 'otag:recursion' },
+  { value: 'mill', query: 'otag:mill' },
   { value: 'sacrifice', query: 'otag:sacrifice-outlet' },
   { value: 'extracombat', query: 'otag:extra-combat' },
 ];

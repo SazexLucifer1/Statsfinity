@@ -1620,6 +1620,7 @@ export class DeckViewerService {
       query: 'otag:reanimate',
     },
     { value: 'recursion', label: 'Rekursion', query: 'otag:recursion' },
+    { value: 'mill', label: 'Mahlen (Mill)', query: 'otag:mill' },
     { value: 'tutor', label: 'Tutor', query: '' },
     { value: 'sacrifice', label: 'Opfern', query: 'otag:sacrifice-outlet' },
     { value: 'extraturn', label: 'Extra-Runde', query: '' },
