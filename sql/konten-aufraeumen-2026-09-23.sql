@@ -38,6 +38,24 @@ where (g.id in (select group_id from public.group_members where user_id in (sele
 create temp table weg_spieler on commit drop as
 select id from public.players where group_id in (select id from weg_gruppen);
 
+-- Decks eines zu löschenden Kontos, mit denen in einer ECHTEN Partie gespielt wurde, gehen an
+-- den Spieler, der damit gespielt hat - sonst risse das Löschen (decks.user_id ist CASCADE) das
+-- Deck aus der Partie. Nur wenn genau ein echter Spieler damit gespielt hat; sonst bricht die
+-- Prüfung unten ab. Am 23.09.2026 betraf das ein Deck: "Esper Artefakte" (Bene, 31.12.2025).
+-- player_id wird geleert, weil decks.player_id beim Löschen des Spielers CASCADE ist.
+update public.decks d
+   set user_id = neu.user_id, player_id = null
+  from (select mp.deck_id, min(pl.user_id::text)::uuid as user_id
+          from public.match_players mp
+          join public.matches m  on m.id = mp.match_id
+          join public.players pl on pl.id = mp.player_id
+         where m.group_id not in (select id from weg_gruppen)
+           and pl.user_id is not null and pl.user_id not in (select id from weg)
+           and mp.deck_id in (select id from public.decks where user_id in (select id from weg))
+         group by mp.deck_id
+        having count(distinct pl.user_id) = 1) neu
+ where d.id = neu.deck_id;
+
 -- Sicherheitsprüfungen: echte Daten dürfen nicht mitgerissen werden.
 do $$
 begin
