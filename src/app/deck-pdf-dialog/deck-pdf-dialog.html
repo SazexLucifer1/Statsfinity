@@ -2,10 +2,71 @@
 <div class="options-menu-overlay" (click)="pdfService.close()">
   <div class="options-menu-sheet pdf-sheet" (click)="$event.stopPropagation()">
     <h3>{{ pdfService.i18n.t('pdfDialog.title') }}</h3>
-    <p class="hint">
-      {{ pdfService.i18n.t('pdfDialog.hint') }}
-    </p>
-
+    @if (expandedEntry(); as entry) {
+      <div class="copy-artworks">
+        <div class="copy-artworks-head">
+          <strong>{{ entry.cardName }} · {{ entry.quantity }}×</strong>
+          <button class="glass-chip small" (click)="pdfService.toggleExpanded(entry.cardName)">
+            {{ pdfService.i18n.t('pdfDialog.done') }}
+          </button>
+        </div>
+        <p class="hint">{{ pdfService.i18n.t('pdfDialog.copyArtworksHint') }}</p>
+        <div class="copy-strip">
+          @for (i of copyIndices(entry); track i) {
+            <button
+              class="copy-thumb"
+              [class.custom]="!!entry.copyArtworks[i]"
+              [class.picking]="pdfService.picker()?.copyIndex === i"
+              (click)="pdfService.openPicker(entry, i)"
+            >
+              <img [src]="pdfService.copyImage(entry, i)" [alt]="entry.cardName" loading="lazy" />
+              <span>{{ i + 1 }}</span>
+            </button>
+          }
+        </div>
+        <div class="chip-row">
+          <button
+            class="glass-chip small"
+            [disabled]="pdfService.printingsLoading()"
+            (click)="pdfService.distributeArtworks(entry)"
+          >
+            {{ pdfService.i18n.t('pdfDialog.distributeArtworks') }}
+          </button>
+          @if (hasCustom(entry)) {
+            <button class="glass-chip small" (click)="pdfService.resetArtworks(entry)">
+              {{ pdfService.i18n.t('pdfDialog.resetArtworks') }}
+            </button>
+          }
+        </div>
+        @if (pdfService.picker(); as picker) {
+          <div class="printing-picker">
+            <p class="hint">
+              {{ pdfService.i18n.t('pdfDialog.pickArtworkFor', { n: picker.copyIndex + 1 }) }}
+              <button class="picker-close" (click)="pdfService.closePicker()">
+                {{ pdfService.i18n.t('group.cancel') }}
+              </button>
+            </p>
+            @if (pdfService.printingsLoading()) {
+              <p class="hint">{{ pdfService.i18n.t('pdfDialog.loadingArtworks') }}</p>
+            } @else {
+              <div class="printing-grid">
+                <button class="printing" (click)="pdfService.chooseArtwork(null)">
+                  <img [src]="entry.imageUrl" [alt]="entry.cardName" loading="lazy" />
+                  <span>{{ pdfService.i18n.t('pdfDialog.deckArtwork') }}</span>
+                </button>
+                @for (p of pdfService.printings(); track p.id) {
+                  <button class="printing" (click)="pdfService.chooseArtwork(p.imageUrl)">
+                    <img [src]="p.imageUrl" [alt]="p.setName" loading="lazy" />
+                    <span>{{ p.setCode.toUpperCase() }}</span>
+                  </button>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+    } @else {
+    <p class="hint">{{ pdfService.i18n.t('pdfDialog.hint') }}</p>
     <div class="import-field">
       <label class="hint">{{ pdfService.i18n.t('pdfDialog.copiesLabel') }}</label>
       <div class="chip-row">
@@ -59,9 +120,21 @@
           />
           <span class="deck-name">{{ entry.cardName }}</span>
           <span class="hint">{{ entry.quantity }}×</span>
+          @if (hatExemplarArtworks(entry)) {
+            <button
+              class="artwork-toggle"
+              [class.active]="pdfService.expandedCard() === entry.cardName || hasCustom(entry)"
+              [disabled]="pdfService.busy()"
+              [attr.aria-label]="pdfService.i18n.t('pdfDialog.copyArtworks')"
+              (click)="$event.stopPropagation(); pdfService.toggleExpanded(entry.cardName)"
+            >
+              <app-icon name="image" />
+            </button>
+          }
         </li>
       }
     </ul>
+    }
 
     @if (pdfService.progress(); as progress) {
       <p class="hint">{{ pdfService.i18n.t('pdfDialog.loadingImages', { done: progress.done, total: progress.total }) }}</p>
@@ -75,7 +148,7 @@
       [disabled]="pdfService.busy() || pdfService.selectedCount() === 0"
       (click)="pdfService.generatePdf()"
     >
-      {{ pdfService.busy() ? pdfService.i18n.t('pdfDialog.generating') : pdfService.i18n.t('pdfDialog.generateCount', { count: pdfService.selectedCount() }) }}
+      {{ pdfService.busy() ? pdfService.i18n.t('pdfDialog.generating') : pdfService.i18n.t('pdfDialog.generateCount', { count: pdfService.printCount() }) }}
     </button>
     <button class="glass-button" [disabled]="pdfService.busy()" (click)="pdfService.close()">{{ pdfService.i18n.t('group.cancel') }}</button>
   </div>

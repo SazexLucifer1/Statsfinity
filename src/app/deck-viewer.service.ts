@@ -3486,6 +3486,8 @@ export class DeckViewerService {
           quantity: entry.quantity,
           imageUrl: card ? this.resolvedCardPrintImage(card) : null,
           backImageUrl: card ? this.resolvedCardBackPrintImage(card) : null,
+          isToken: card?.isToken,
+          oracleId: card?.scryfallOracleId,
         };
       });
 

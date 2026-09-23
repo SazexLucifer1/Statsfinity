@@ -134,7 +134,10 @@ export class DeckDetailView {
         quantity: c.quantity,
         imageUrl: this.viewer.resolvedCardPrintImage(c),
         backImageUrl: this.viewer.resolvedCardBackPrintImage(c),
-      }))
+        isToken: c.isToken,
+        oracleId: c.scryfallOracleId,
+      })),
+      { deckId: deck.id, canSave: this.viewer.canEditViewingDeck() }
     );
   }
 
@@ -151,7 +154,10 @@ export class DeckDetailView {
     // ISO-Datum (2026-09-05) statt lokalem Format: DeckPdfService.generatePdf() wirft beim Bauen des
     // Dateinamens alles ausser Wortzeichen, Bindestrich, Klammern und Leerzeichen weg - aus "5.9.2026"
     // würde damit "592026".
-    this.pdfService.open(`${deck.name} ${group.changedAt.slice(0, 10)}`, cards);
+    this.pdfService.open(`${deck.name} ${group.changedAt.slice(0, 10)}`, cards, {
+      deckId: deck.id,
+      canSave: this.viewer.canEditViewingDeck(),
+    });
   }
 
   async onCustomArtworkSelected(event: Event): Promise<void> {
