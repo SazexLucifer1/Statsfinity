@@ -221,26 +221,22 @@ Wichtig zur Einordnung:
 
 ## Test-Accounts: die App selbst anschauen und Änderungen validieren
 
-Es gibt vier Testkonten auf der **Produktiv**-Supabase, die zusammen in der Gruppe
-„Claude Testgruppe" spielen. Damit kann jede Session die laufende App selbst bedienen —
-einloggen, durchklicken, Screenshots machen — statt Änderungen nur im Code zu prüfen.
+Die App läuft lokal gegen die **Produktiv**-Supabase. Damit kann jede Session die laufende App
+selbst bedienen — einloggen, durchklicken, Screenshots machen — statt Änderungen nur im Code zu prüfen.
 
-> ⚠️ **Die Passwörter stehen bewusst nicht hier.** Dieses Repo ist öffentlich; eingecheckte
-> Zugangsdaten wären für jeden lesbar. Der User gibt sie auf Nachfrage im Chat heraus.
-> Notfalls kommt man auch ohne sie weiter: Die Registrierung ist offen und
-> `mailer_autoconfirm` ist aktiv, ein frisches Konto ist also in Sekunden einsatzbereit —
-> es sieht dann nur die Gruppendaten nicht, solange es nicht eingeladen wurde.
+**Es gibt keine festen Testkonten mehr.** Die früheren vier Konten der „Claude Testgruppe" wurden
+am 23.09.2026 zusammen mit rund 30 liegengebliebenen Wegwerfkonten gelöscht
+(`sql/konten-aufraeumen-2026-09-23.sql`). Die Registrierung ist offen und `mailer_autoconfirm` ist
+aktiv, ein frisches Konto ist also in Sekunden einsatzbereit. Wer eines braucht:
 
-| Konto     | E-Mail                                | Rolle            |
-| --------- | ------------------------------------- | ---------------- |
-| Admin     | `claude.qa.1788426226171@example.com` | Admin der Gruppe |
-| Spieler 2 | `claude.qa.1788420220051@example.com` | Mitglied         |
-| Spieler 3 | `claude.qa.1788420433192@example.com` | Mitglied         |
-| Spieler 4 | `claude.qa.1788420636039@example.com` | Mitglied         |
-
-Bestand: 8 importierte Precon-Decks (2 pro Konto), 15 gespielte Matches, dadurch gefüllte
-Spieler-, Deck- und Commander-Ranglisten. **Diese Daten nicht löschen** — ohne sie sind alle
-Statistik-Ansichten leer und damit nicht prüfbar.
+- **E-Mail immer nach dem Muster `claude.<zweck>.<zeitstempel>@example.com`** — nur so erkennt
+  das Aufräum-Skript das Konto später wieder. Ein Konto unter anderem Namen bleibt für immer liegen
+  und landet in der Kontenliste des Users.
+- **Nie in eine echte Gruppe eintreten** und keine Partien in einer echten Gruppe speichern — das
+  Aufräum-Skript bricht dann ab, statt echte Partien mitzulöschen. Für Statistik-Ansichten eine
+  eigene Gruppe anlegen und dort ein paar Matches spielen.
+- **Ein Konto je Session reicht.** Nach dem Test nicht selbst löschen (die Session hat keinen
+  Service-Key); der User lässt `sql/konten-aufraeumen-2026-09-23.sql` bei Gelegenheit erneut laufen.
 
 ### Erwartung an neue Sessions
 
