@@ -396,6 +396,11 @@ export class DeckPrimer implements OnDestroy {
     if (await this.primerService.save(this.deckId(), el.innerHTML)) this.bearbeitenBeenden();
   }
 
+  /** Erklärt die Schreibweise (Kürzel für Mana und Karten, Werkzeugleiste) - hinter dem i-Knopf. */
+  syntaxErklaeren(): void {
+    void this.dialog.alert(this.i18n.t('deckPrimer.syntaxInfo'));
+  }
+
   async abbrechen(): Promise<void> {
     const el = this.editorRef()?.nativeElement;
     const jetzt = bereinigePrimerHtml(el?.innerHTML ?? '');
