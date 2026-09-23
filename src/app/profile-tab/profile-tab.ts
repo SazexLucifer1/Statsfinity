@@ -68,6 +68,11 @@ export class ProfileTab {
   setArtLanguage(lang: ArtLang): void {
     void this.artLanguage.setLang(lang);
   }
+
+  /** Erklärung zur Sprache der Kartenbilder - steht hinter dem i-Knopf statt offen unter dem Feld. */
+  showArtLanguageInfo(): void {
+    void this.dialog.alert(this.i18n.t('profile.artLanguageHint'));
+  }
   readonly archidektPool = inject(ArchidektPoolService);
   readonly mtg = inject(MtgService);
   readonly groupService = inject(GroupService);

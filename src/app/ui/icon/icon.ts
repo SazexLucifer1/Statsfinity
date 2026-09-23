@@ -64,6 +64,7 @@ export type IconName =
   | 'help'
   | 'image'
   | 'inbox'
+  | 'info'
   | 'layers'
   | 'link'
   | 'lock'

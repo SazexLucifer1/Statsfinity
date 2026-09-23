@@ -3,6 +3,7 @@ export const profile = {
   de: {
     // --- Profil-Tab ---
     'profile.artLanguage': 'Sprache der Kartenbilder',
+    'profile.artLanguageInfoAria': 'Was bewirkt diese Einstellung?',
     'profile.artLanguageHint':
       'Gilt nur für die Bilder: Kartennamen, Typzeilen und alles Gespeicherte bleiben englisch. Nicht jede Karte ist in jeder Sprache gedruckt worden - was es nicht gibt, bleibt englisch. Andere Sprachen als Englisch laden außerdem etwas langsamer.',
     'profile.loadingProfile': 'Lade Profil …',
@@ -205,6 +206,7 @@ export const profile = {
   en: {
     // --- Profile tab ---
     'profile.artLanguage': 'Card image language',
+    'profile.artLanguageInfoAria': 'What does this setting do?',
     'profile.artLanguageHint':
       'Applies to the images only: card names, type lines and everything stored stay English. Not every card has been printed in every language - whatever is missing stays English. Languages other than English also load a little slower.',
     'profile.loadingProfile': 'Loading profile …',
