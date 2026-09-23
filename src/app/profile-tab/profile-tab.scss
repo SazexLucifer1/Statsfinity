@@ -548,9 +548,12 @@
     max-width: 220px;
   }
 
-  // Der Hinweis bekommt eine eigene Zeile, sonst quetscht ihn die Flexbox neben das Auswahlfeld.
-  .hint {
-    flex-basis: 100%;
-    margin: 0;
+  // Kleiner als die übrigen Icon-Knöpfe: er steht neben dem Auswahlfeld, nicht als eigene Aktion.
+  .art-language-info {
+    margin-left: calc(-1 * var(--sp-2));
+    border: none;
+    background: transparent;
+    color: var(--text);
+    opacity: 0.75;
   }
 }

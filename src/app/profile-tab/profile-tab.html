@@ -361,8 +361,8 @@
       </div>
     </div>
 
-    <!-- Sprache der Kartenbilder: bewusst eine eigene Zeile UNTER den Spalten. In der schmalen
-         Gruppen-Spalte stand der Hinweistext auf dem iPhone als Buchstabenturm. -->
+    <!-- Sprache der Kartenbilder: bewusst eine eigene Zeile UNTER den Spalten. Der Erklärtext steht
+         nicht mehr offen darunter, sondern hinter dem i-Knopf als Popup. -->
     <div class="art-language-row">
       <label class="art-language-label" for="art-language">{{ i18n.t('profile.artLanguage') }}</label>
       <select
@@ -375,7 +375,15 @@
           <option [ngValue]="sprache.code">{{ sprache.label }}</option>
         }
       </select>
-      <p class="hint">{{ i18n.t('profile.artLanguageHint') }}</p>
+      <button
+        type="button"
+        class="icon-button art-language-info"
+        (click)="showArtLanguageInfo()"
+        [attr.aria-label]="i18n.t('profile.artLanguageInfoAria')"
+        [title]="i18n.t('profile.artLanguageInfoAria')"
+      >
+        <app-icon name="info" />
+      </button>
     </div>
   </section>
 
