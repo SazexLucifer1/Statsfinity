@@ -29,6 +29,10 @@ export const deck = {
     'deck.fromImportedDeck': 'Aus importiertem Deck',
     'deck.outdatedBadge': 'Outdated - aus der normalen Ansicht ausgeblendet',
     'deck.bannedBadge': 'In {{format}} nicht erlaubt: {{cards}}',
+    'deck.ruleCountExact': '{{ist}} Karten – {{format}} verlangt genau {{soll}}',
+    'deck.ruleCountMin': '{{ist}} Karten – {{format}} verlangt mindestens {{soll}}',
+    'deck.ruleCountMax': '{{ist}} Karten – {{format}} erlaubt höchstens {{soll}}',
+    'deck.ruleCopies': 'Zu viele Kopien für {{format}}: {{cards}}',
     'deck.showOutdated': 'Nur Outdated',
     'deck.msg.confirmDuplicate':
       'Kopie von „{{name}}" als „{{copy}}" anlegen?\n\nDie Kopie bekommt dieselbe Kartenliste, startet aber bei null Partien - Statistiken und Änderungsverlauf des Originals werden nicht übernommen.',
@@ -288,6 +292,10 @@ export const deck = {
     'deck.fromImportedDeck': 'From an imported deck',
     'deck.outdatedBadge': 'Outdated - hidden from the normal view',
     'deck.bannedBadge': 'Not allowed in {{format}}: {{cards}}',
+    'deck.ruleCountExact': '{{ist}} cards – {{format}} requires exactly {{soll}}',
+    'deck.ruleCountMin': '{{ist}} cards – {{format}} requires at least {{soll}}',
+    'deck.ruleCountMax': '{{ist}} cards – {{format}} allows at most {{soll}}',
+    'deck.ruleCopies': 'Too many copies for {{format}}: {{cards}}',
     'deck.showOutdated': 'Only outdated',
     'deck.msg.confirmDuplicate':
       'Create a copy of "{{name}}" named "{{copy}}"?\n\nThe copy gets the same card list but starts at zero matches - statistics and change log of the original are not carried over.',

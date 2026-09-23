@@ -43,23 +43,23 @@ export class DeckDetailView {
   private readonly banlist = inject(BanlistService);
 
   /**
-   * Karten, die im Format des Decks verboten sind (Name → 'banned'/'restricted'). Geprüft wird
-   * hier im Browser gegen die geladene Kartenliste statt über die Serverfunktion der Deckliste -
-   * so stimmt der rote Rahmen auch mitten im Bearbeiten, bevor gespeichert ist.
+   * Bannliste und Bauregeln (Kartenzahl, Kopien) für das angezeigte Deck: rot markierte Karten und
+   * Hinweiszeilen. Geprüft wird im Browser gegen die BEARBEITETE Kartenliste und das Format aus dem
+   * Bearbeiten-Feld - so stimmt die Anzeige schon vor dem Speichern.
    */
-  readonly bannedCards = computed(() =>
-    this.banlist.violationsIn(this.viewer.viewingDeck()?.format ?? null, this.viewer.viewingDeckCards())
-  );
-
-  /** Die verbotenen Karten als eine Zeile für den Hinweis über der Kartenliste. */
-  readonly bannedCardsText = computed(() =>
-    [...this.bannedCards()]
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([name, status]) =>
-        status === 'restricted' ? `${name} ${this.viewer.i18n.t('deckView.restrictedSuffix')}` : name
-      )
-      .join(', ')
-  );
+  readonly pruefung = computed(() => {
+    const format = this.viewer.editMode()
+      ? this.viewer.deckFormatDraft()
+      : (this.viewer.viewingDeck()?.format ?? null);
+    const details = this.viewer.viewingCardDetails();
+    return this.banlist.pruefe(
+      format,
+      this.viewer.editedDeckCards().map((c) => ({
+        ...c,
+        oracleText: details.get(c.cardName.toLowerCase())?.oracleText,
+      })),
+    );
+  });
 
   /**
    * Die beiden Karten einer Combo in der Form, die das Karten-Raster der Analyse erwartet - so
@@ -174,7 +174,11 @@ export class DeckDetailView {
 
   constructor() {
     // Bannliste des Deck-Formats nachladen (einmal je Format und Sitzung).
-    effect(() => void this.banlist.loadFormat(this.viewer.viewingDeck()?.format ?? null));
+    effect(() =>
+      void this.banlist.loadFormat(
+        this.viewer.editMode() ? this.viewer.deckFormatDraft() : (this.viewer.viewingDeck()?.format ?? null)
+      )
+    );
 
     // Sobald sich die EDHREC-Vorschlagsliste ändert (Tag gewechselt, Commander gewechselt, erneutes
     // Bearbeiten nach dem Speichern, ...), für bereits aufgeklappte Kategorien die Bilder direkt neu

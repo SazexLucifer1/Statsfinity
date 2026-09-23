@@ -145,11 +145,11 @@
         <p class="hint">{{ viewer.i18n.t('deckView.cardsCount', { count: viewer.viewingTotalCards() }) }}</p>
       }
 
-      <!-- Verbotene Karten: welche, steht hier; wo sie in der Liste liegen, zeigt der rote Rahmen. -->
-      @if (bannedCards().size > 0) {
+      <!-- Verstöße gegen Bannliste und Bauregeln: was, steht hier; welche Karten, zeigt der rote Rahmen. -->
+      @for (text of pruefung().texte; track text) {
         <p class="ban-hint deck-ban-notice">
           <span class="ban-badge" aria-hidden="true">!</span>
-          {{ viewer.i18n.t('deckView.bannedNotice', { format: deck.format ?? '', cards: bannedCardsText() }) }}
+          {{ text }}
         </p>
       }
 
@@ -1269,7 +1269,7 @@
               <div class="deck-card-cell" [class.editing]="viewer.editMode()" data-tutorial="deck-card-edit-controls">
                 <div
                   class="deck-card-tile"
-                  [class.banned-card]="bannedCards().has(card.cardName)"
+                  [class.banned-card]="pruefung().markiert.has(card.cardName)"
                   [class.clickable]="!viewer.editMode()"
                   (click)="!viewer.editMode() && viewer.openCardPreview(card.cardName)"
                 >
@@ -1372,12 +1372,12 @@
               <li>
                 <span class="deck-card-qty-text">{{ card.quantity }}×</span>
                 @if (!viewer.editMode()) {
-                  <button class="card-name-link" [class.banned-card-name]="bannedCards().has(card.cardName)" (click)="viewer.openCardPreview(card.cardName)">{{ card.cardName }}</button>
+                  <button class="card-name-link" [class.banned-card-name]="pruefung().markiert.has(card.cardName)" (click)="viewer.openCardPreview(card.cardName)">{{ card.cardName }}</button>
                 } @else {
-                  <span [class.banned-card-name]="bannedCards().has(card.cardName)">{{ card.cardName }}</span>
+                  <span [class.banned-card-name]="pruefung().markiert.has(card.cardName)">{{ card.cardName }}</span>
                 }
-                @if (bannedCards().has(card.cardName)) {
-                  <span class="ban-badge" role="img" [attr.aria-label]="viewer.i18n.t('deck.bannedBadge', { format: deck.format ?? '', cards: card.cardName })">!</span>
+                @if (pruefung().markiert.has(card.cardName)) {
+                  <span class="ban-badge" aria-hidden="true">!</span>
                 }
                 @if (viewer.editMode() && viewer.showCommanderToggle() && (card.isCommander || viewer.isCommanderEligible(card))) {
                   <button

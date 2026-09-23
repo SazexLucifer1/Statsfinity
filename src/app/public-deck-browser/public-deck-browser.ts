@@ -190,30 +190,22 @@ export class PublicDeckBrowser {
   readonly selectedDeckCommanderCards = signal<ScryfallCard[]>([]);
   readonly allCards = signal<PublicDeckCardEntry[]>([]);
 
-  /** Karten des geöffneten Decks, die in seinem Format verboten sind (Name → Status). */
-  readonly bannedCards = computed(() =>
-    this.banlist.violationsIn(
+  /** Bannliste und Bauregeln für das geöffnete Deck: rot markierte Karten und Hinweiszeilen. */
+  readonly pruefung = computed(() =>
+    this.banlist.pruefe(
       this.selectedDeck()?.format ?? null,
-      this.allCards().map((e) => ({ cardName: e.card.name, quantity: e.quantity })),
+      this.allCards().map((e) => ({
+        cardName: e.card.name,
+        quantity: e.quantity,
+        typeLine: e.card.typeLine,
+        oracleText: e.card.oracleText,
+      })),
     ),
   );
 
-  /** Die verbotenen Karten als eine Zeile für den Hinweis über der Kartenliste. */
-  readonly bannedCardsText = computed(() =>
-    [...this.bannedCards()]
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([name, status]) =>
-        status === 'restricted' ? `${name} ${this.i18n.t('deckView.restrictedSuffix')}` : name,
-      )
-      .join(', '),
-  );
-
-  /** Text zum roten Ausrufezeichen einer Kachel. */
-  bannedHint(deck: PublicDeck): string {
-    return this.i18n.t('deck.bannedBadge', {
-      format: deck.format ?? '',
-      cards: this.banlist.violationsFor(deck.id).join(', '),
-    });
+  /** Hinweiszeilen zum Ausrufezeichen einer Kachel. */
+  deckProbleme(deck: PublicDeck): string[] {
+    return this.banlist.problemsFor(deck.id, deck.format);
   }
   readonly deckBusy = signal(false);
 
