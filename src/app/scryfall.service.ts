@@ -3,6 +3,7 @@ import { sleep, normalizeCardName } from './array-utils';
 import { ColorSelection } from './color-filter-match';
 import { ArtLanguageService } from './art-language.service';
 import { ArtLang } from './art-languages';
+import { DeckFormat, SCRYFALL_FORMAT } from './models';
 
 export interface ScryfallCard {
   name: string;
@@ -590,8 +591,8 @@ export class ScryfallService {
 
   // NEU
   /**
-   * Kartensuche zum Hinzufügen einzelner Karten zu einem Deck. Beschränkt sich bewusst auf
-   * Commander-legale Karten (legal:commander) und optional auf eine Farbidentität
+   * Kartensuche zum Hinzufügen einzelner Karten zu einem Deck. Beschränkt sich auf Karten, die im
+   * Format des Decks erlaubt sind (legal:<format>, siehe filters.format) und optional auf eine Farbidentität
    * (id<=<Farben> - Teilmenge, damit das Ergebnis wirklich in ein Deck mit dieser
    * Commander-Farbidentität passt; leeres Array = nur farblose Karten über id:c).
    */
@@ -612,6 +613,11 @@ export class ScryfallService {
       order?: 'name' | 'cmc';
       /** Default true (bestehendes Verhalten fürs Deck-Hinzufügen). false = auch Nicht-Commander-legale Karten (öffentliche Suche ohne Format-Bezug). */
       commanderOnly?: boolean;
+      /**
+       * Format des Decks: nur Karten, die dort erlaubt sind (gebannte bewusst nicht). null = Deck
+       * ohne Format, dann ohne Einschränkung. Fehlt der Schlüssel ganz, entscheidet commanderOnly.
+       */
+      format?: DeckFormat | null;
     }
   ): Promise<ScryfallCard[]> {
     const trimmed = query.trim();
@@ -628,7 +634,12 @@ export class ScryfallService {
       return [];
     }
 
-    const parts = filters.commanderOnly === false ? [] : ['legal:commander'];
+    const parts: string[] = [];
+    if (filters.format !== undefined) {
+      if (filters.format) parts.push(`legal:${SCRYFALL_FORMAT[filters.format]}`);
+    } else if (filters.commanderOnly !== false) {
+      parts.push('legal:commander');
+    }
     // Der Name wird bewusst gegen den englischen UND den gedruckten deutschen Namen geprüft
     // (ein Request statt zwei): Scryfall vergleicht name:"..." unter lang:de mit printed_name.
     // Ohne die zweite Hälfte findet "Sonnenring" nichts.

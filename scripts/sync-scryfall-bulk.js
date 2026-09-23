@@ -527,7 +527,8 @@ async function syncEffekte() {
  * App-Formatname (DECK_FORMATS in src/app/models.ts, so steht er in decks.format) -> Scryfalls
  * Formatschlüssel. Nicht alles heißt gleich: das App-"Brawl" ist Scryfalls "standardbrawl", das
  * App-"Historic Brawl" ist Scryfalls "brawl". Kommt in der App ein Format dazu, gehört es hierher -
- * sonst bleibt seine Bannliste still leer.
+ * sonst bleibt seine Bannliste still leer. Dieselbe Zuordnung steht als SCRYFALL_FORMAT in
+ * src/app/models.ts (die Kartensuche beim Hinzufügen filtert damit auf das Deck-Format).
  */
 const BANN_FORMATE = {
   Standard: 'standard',
