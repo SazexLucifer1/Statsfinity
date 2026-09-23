@@ -76,7 +76,7 @@ with weg as (
      or u.email in ('fabianhofsfake@googlemail.com', 'fabianhofsfakefake@googlemail.com', '90ealter@web.de')
 )
 select g.name              as gruppe,
-       m.created_at::date  as datum,
+       m.played_at::date   as datum,
        mp.player_name      as spieler_in_partie,
        d.name              as deck,
        ud.email            as deck_gehoert,
@@ -92,4 +92,4 @@ left join public.players pl on pl.id = mp.player_id
 left join auth.users up on up.id = pl.user_id
 where (d.user_id in (select id from weg) or pl.user_id in (select id from weg))
   and not (g.name ilike '%claude%' or g.name ilike '%test%' or g.name ilike 'qa %')
-order by m.created_at;
+order by m.played_at;
