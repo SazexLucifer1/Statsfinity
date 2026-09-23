@@ -17,7 +17,9 @@
   <ul class="player-list">
     @for (c of paged(); track c.commander) {
       <li>
-        @if (commanderImage()(c.commander); as img) {
+        <!-- Geliehen: gespeichertes Bild des echten Decks zuerst (wie in der Deck-Liste), die
+             Namenssuche bei Scryfall nur als Rückfall. -->
+        @if (c.borrowedDeck?.commanderImageUrl ?? commanderImage()(c.commander); as img) {
           <button type="button" class="card-thumb" (click)="cardPreview.open(img, commanderBackImage()(c.commander), c.commander)">
             <app-card-image [compact]="true" [imageUrl]="img" [backImageUrl]="commanderBackImage()(c.commander)" [alt]="c.commander" />
           </button>

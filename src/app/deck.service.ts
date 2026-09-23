@@ -95,6 +95,12 @@ export interface BorrowedDeckInfo {
   name: string;
   /** Anzeigename des Besitzers, falls auflösbar (z.B. bei einem Deck aus einer anderen Gruppe nicht). */
   ownerName: string | null;
+  /**
+   * Gespeichertes Commander-Bild des Decks (deck_cards.image_url) - wie in der eigenen Deck-Liste.
+   * Ohne das müsste die Profil-Liste das Bild über den Namen bei Scryfall nachschlagen, und das
+   * scheitert ab und zu am Rate-Limit.
+   */
+  commanderImageUrl: string | null;
 }
 
 /**
@@ -2390,7 +2396,10 @@ export class DeckService {
     const result = new Map<string, BorrowedDeckInfo>();
     if (deckIds.length === 0) return result;
 
-    const { data: deckRows, error } = await supabase.from('decks').select('id, name, user_id, player_id').in('id', deckIds);
+    const [{ data: deckRows, error }, storedCommanders] = await Promise.all([
+      supabase.from('decks').select('id, name, user_id, player_id').in('id', deckIds),
+      this.getStoredCommanders(deckIds),
+    ]);
     if (error || !deckRows || deckRows.length === 0) {
       if (error) console.error('Konnte geliehene Decks nicht laden:', error);
       return result;
@@ -2415,7 +2424,12 @@ export class DeckService {
 
     for (const deck of deckRows) {
       const ownerName = (deck.user_id ? nameByUser.get(deck.user_id) : null) ?? (deck.player_id ? nameByPlayer.get(deck.player_id) : null);
-      result.set(deck.id, { id: deck.id, name: deck.name, ownerName: ownerName ?? null });
+      result.set(deck.id, {
+        id: deck.id,
+        name: deck.name,
+        ownerName: ownerName ?? null,
+        commanderImageUrl: storedCommanders.get(deck.id)?.imageUrl ?? null,
+      });
     }
     return result;
   }
