@@ -64,6 +64,11 @@
         </div>
         <div class="deck-info">
           <span class="deck-name-text">
+            <!-- Rot und vorne: eine verbotene Karte macht das Deck in seinem Format unspielbar,
+                 das soll man in der Liste sehen, bevor man es zum Spieleabend mitnimmt. -->
+            @if (banlist.violationsFor(deck.id).length > 0) {
+              <span class="ban-badge" aria-hidden="true">!</span>
+            }
             @if (deck.isPrecon) {<span [title]="i18n.t('deck.preconBadge')"><app-icon name="package" [label]="i18n.t('deck.preconBadge')" /></span>}
             @if (deck.isPrivate) {<span [title]="i18n.t('deck.privateBadge')"><app-icon name="lock" [label]="i18n.t('deck.privateBadge')" /></span>}
             @if (deck.isOutdated) {<span [title]="i18n.t('deck.outdatedBadge')"><app-icon name="archive" [label]="i18n.t('deck.outdatedBadge')" /></span>}
@@ -74,6 +79,10 @@
             }
             {{ deck.name }}
           </span>
+          <!-- Ein Tooltip hilft auf dem iPhone nicht - welche Karten es sind, steht deshalb als Zeile da. -->
+          @if (banlist.violationsFor(deck.id).length > 0) {
+            <span class="ban-hint">{{ bannedHint(deck) }}</span>
+          }
           @if (!hideStats()) {
             @if (deck.games > 0) {
               <span class="hint">{{ deck.wins }} / {{ deck.games }} {{ i18n.t('stats.wins') }} · {{ deck.winRate | number: '1.0-0' }}%</span>

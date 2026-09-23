@@ -28,6 +28,7 @@ export const deck = {
     'deck.preconBadge': 'Precon',
     'deck.fromImportedDeck': 'Aus importiertem Deck',
     'deck.outdatedBadge': 'Outdated - aus der normalen Ansicht ausgeblendet',
+    'deck.bannedBadge': 'In {{format}} nicht erlaubt: {{cards}}',
     'deck.showOutdated': 'Nur Outdated',
     'deck.msg.confirmDuplicate':
       'Kopie von „{{name}}" als „{{copy}}" anlegen?\n\nDie Kopie bekommt dieselbe Kartenliste, startet aber bei null Partien - Statistiken und Änderungsverlauf des Originals werden nicht übernommen.',
@@ -286,6 +287,7 @@ export const deck = {
     'deck.preconBadge': 'Precon',
     'deck.fromImportedDeck': 'From an imported deck',
     'deck.outdatedBadge': 'Outdated - hidden from the normal view',
+    'deck.bannedBadge': 'Not allowed in {{format}}: {{cards}}',
     'deck.showOutdated': 'Only outdated',
     'deck.msg.confirmDuplicate':
       'Create a copy of "{{name}}" named "{{copy}}"?\n\nThe copy gets the same card list but starts at zero matches - statistics and change log of the original are not carried over.',
