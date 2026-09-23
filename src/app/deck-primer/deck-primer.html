@@ -73,6 +73,16 @@
       >
         ✕
       </button>
+      <button
+        type="button"
+        class="glass-chip small primer-tool primer-tool-info"
+        [attr.aria-label]="i18n.t('deckPrimer.syntaxInfoAria')"
+        [title]="i18n.t('deckPrimer.syntaxInfoAria')"
+        (mousedown)="$event.preventDefault()"
+        (click)="syntaxErklaeren()"
+      >
+        <app-icon name="info" />
+      </button>
     </div>
 
     <!-- Zweite Reihe: alles, was etwas EINFÜGT statt zu formatieren. Getrennt, weil die erste

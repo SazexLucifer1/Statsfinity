@@ -201,6 +201,9 @@ export const deck = {
     'deckPrimer.numberedList': 'Nummerierte Liste',
     'deckPrimer.link': 'Link',
     'deckPrimer.clearFormat': 'Formatierung entfernen',
+    'deckPrimer.syntaxInfoAria': 'Wie schreibe ich einen Primer?',
+    'deckPrimer.syntaxInfo':
+      'Formatierung: Text markieren und oben Format, B, I oder eine Liste wählen. ✕ entfernt die Formatierung wieder.\n\nManasymbole: {G}, {2}, {T} oder {W/U} – beim Speichern wird daraus das Symbol. Für Farben und Sondersymbole geht auch [G].\n\nKartennamen: [[Sol Ring]] wird zum anklickbaren Kartennamen, ein Tipp zeigt die Karte.\n\nBilder und Links: über die Knöpfe in der zweiten Reihe – Kartenbild über „Karte“, eigenes Bild über „Eigenes Bild“, Adressen über „Link“.\n\nIm Schreibfeld siehst du die Kürzel, erst nach dem Speichern die fertigen Symbole und Kartennamen.',
     'deckPrimer.linkPlaceholder': 'https://…',
     'deckPrimer.linkInsert': 'Einfügen',
     'deckPrimer.linkCancel': 'Abbrechen',
@@ -451,6 +454,9 @@ export const deck = {
     'deckPrimer.numberedList': 'Numbered list',
     'deckPrimer.link': 'Link',
     'deckPrimer.clearFormat': 'Clear formatting',
+    'deckPrimer.syntaxInfoAria': 'How do I write a primer?',
+    'deckPrimer.syntaxInfo':
+      'Formatting: select text and pick a format, B, I or a list above. ✕ removes the formatting again.\n\nMana symbols: {G}, {2}, {T} or {W/U} – saving turns them into the symbol. For colours and special symbols [G] works too.\n\nCard names: [[Sol Ring]] becomes a clickable card name, one tap shows the card.\n\nImages and links: use the buttons in the second row – card image via “Card”, your own picture via “Own image”, addresses via “Link”.\n\nThe editor shows the shorthands; the finished symbols and card names appear after saving.',
     'deckPrimer.linkPlaceholder': 'https://…',
     'deckPrimer.linkInsert': 'Insert',
     'deckPrimer.linkCancel': 'Cancel',
