@@ -146,6 +146,15 @@ export class DeckPdfService {
         // Abtastung den Kartenrand-Farbverlauf statt eines echten Rahmens - näherungsweise passend.
         const edgeOffset = 5;
         const nearEdge = 2;
+        // Alpha-Karten (LEA) haben eine deutlich rundere Ecke als alle späteren Drucke - im
+        // Scryfall-Bild gut 1,5-mal so groß wie r. Mit festem r blieb dort zwischen Füllung und
+        // echter Rundung ein weißer Streifen stehen. Deshalb wird zusätzlich innerhalb eines
+        // größeren Zwickels (Radius R) der Eckhintergrund selbst verfolgt: ausgehend vom äußersten
+        // Eckpixel alles, was diesem Hintergrund ähnlicher ist als dem Rahmen (Flutfüllung, also
+        // nur zusammenhängend). Bei normalen Karten endet die Flut an der eigenen Rundung, bei
+        // randlosen Karten hält sie der Zwickel von R davon ab, ins Artwork zu laufen. Die
+        // Messpunkte liegen hinter R, damit sie auch bei Alpha auf der geraden Kante landen.
+        const R = Math.round(r * 1.6);
         const sample = (x: number, y: number): [number, number, number] => {
           const d = ctx.getImageData(Math.max(0, Math.min(targetW - 1, x)), Math.max(0, Math.min(targetH - 1, y)), 1, 1).data;
           return [d[0], d[1], d[2]];
@@ -153,57 +162,130 @@ export class DeckPdfService {
         const corners: Array<{
           x0: number;
           y0: number;
-          x1: number;
-          y1: number;
           cx: number;
           cy: number;
+          seedX: number;
+          seedY: number;
           sampleA: [number, number];
           sampleB: [number, number];
         }> = [
           {
             x0: 0,
             y0: 0,
-            x1: r,
-            y1: r,
             cx: r,
             cy: r,
-            sampleA: [r + edgeOffset, nearEdge],
-            sampleB: [nearEdge, r + edgeOffset],
+            seedX: 0,
+            seedY: 0,
+            sampleA: [R + edgeOffset, nearEdge],
+            sampleB: [nearEdge, R + edgeOffset],
           },
           {
             x0: targetW - r,
             y0: 0,
-            x1: targetW,
-            y1: r,
             cx: targetW - r,
             cy: r,
-            sampleA: [targetW - r - edgeOffset, nearEdge],
-            sampleB: [targetW - nearEdge, r + edgeOffset],
+            seedX: targetW - 1,
+            seedY: 0,
+            sampleA: [targetW - R - edgeOffset, nearEdge],
+            sampleB: [targetW - nearEdge, R + edgeOffset],
           },
           {
             x0: 0,
             y0: targetH - r,
-            x1: r,
-            y1: targetH,
             cx: r,
             cy: targetH - r,
-            sampleA: [r + edgeOffset, targetH - nearEdge],
-            sampleB: [nearEdge, targetH - r - edgeOffset],
+            seedX: 0,
+            seedY: targetH - 1,
+            sampleA: [R + edgeOffset, targetH - nearEdge],
+            sampleB: [nearEdge, targetH - R - edgeOffset],
           },
           {
             x0: targetW - r,
             y0: targetH - r,
-            x1: targetW,
-            y1: targetH,
             cx: targetW - r,
             cy: targetH - r,
-            sampleA: [targetW - r - edgeOffset, targetH - nearEdge],
-            sampleB: [targetW - nearEdge, targetH - r - edgeOffset],
+            seedX: targetW - 1,
+            seedY: targetH - 1,
+            sampleA: [targetW - R - edgeOffset, targetH - nearEdge],
+            sampleB: [targetW - nearEdge, targetH - R - edgeOffset],
           },
         ];
+        // Flutfüllung im RxR-Eckfeld um seedX/seedY: färbt alle zusammenhängenden Pixel außerhalb
+        // des R-Viertelkreises, die näher an der Eckfarbe liegen als an der Rahmenfarbe, plus zwei
+        // Pixel Saum (sonst bleibt der kantengeglättete Übergang als heller Schimmer stehen).
+        const floodCorner = (
+          seedX: number,
+          seedY: number,
+          fill: [number, number, number],
+        ): void => {
+          const bx = seedX === 0 ? 0 : targetW - R;
+          const by = seedY === 0 ? 0 : targetH - R;
+          // Mittelpunkt des R-Viertelkreises in Feldkoordinaten (die innere Ecke des Feldes).
+          const mx = seedX === 0 ? R : 0;
+          const my = seedY === 0 ? R : 0;
+          const data = ctx.getImageData(bx, by, R, R);
+          const px = data.data;
+          const s = ((seedY - by) * R + (seedX - bx)) * 4;
+          const bg = [px[s], px[s + 1], px[s + 2]];
+          const dist = (i: number, c: ArrayLike<number>): number =>
+            (px[i] - c[0]) ** 2 + (px[i + 1] - c[1]) ** 2 + (px[i + 2] - c[2]) ** 2;
+          const inZwickel = (x: number, y: number): boolean =>
+            (x + 0.5 - mx) ** 2 + (y + 0.5 - my) ** 2 > R * R;
+          const mask = new Uint8Array(R * R);
+          const stack = [(seedY - by) * R + (seedX - bx)];
+          mask[stack[0]] = 1;
+          while (stack.length) {
+            const p = stack.pop()!;
+            const x = p % R;
+            const y = (p - x) / R;
+            for (const [nx, ny] of [
+              [x + 1, y],
+              [x - 1, y],
+              [x, y + 1],
+              [x, y - 1],
+            ]) {
+              if (nx < 0 || ny < 0 || nx >= R || ny >= R) continue;
+              const q = ny * R + nx;
+              if (mask[q] || !inZwickel(nx, ny)) continue;
+              if (dist(q * 4, bg) >= dist(q * 4, fill)) continue;
+              mask[q] = 1;
+              stack.push(q);
+            }
+          }
+          for (let pass = 0; pass < 2; pass++) {
+            const prev = mask.slice();
+            for (let y = 0; y < R; y++) {
+              for (let x = 0; x < R; x++) {
+                const q = y * R + x;
+                if (prev[q] || !inZwickel(x, y)) continue;
+                if (
+                  (x > 0 && prev[q - 1]) ||
+                  (x < R - 1 && prev[q + 1]) ||
+                  (y > 0 && prev[q - R]) ||
+                  (y < R - 1 && prev[q + R])
+                ) {
+                  mask[q] = 1;
+                }
+              }
+            }
+          }
+          for (let q = 0; q < R * R; q++) {
+            if (!mask[q]) continue;
+            px[q * 4] = fill[0];
+            px[q * 4 + 1] = fill[1];
+            px[q * 4 + 2] = fill[2];
+          }
+          ctx.putImageData(data, bx, by);
+        };
         for (const c of corners) {
           const [ra, ga, ba] = sample(c.sampleA[0], c.sampleA[1]);
           const [rb, gb, bb] = sample(c.sampleB[0], c.sampleB[1]);
+          const fill: [number, number, number] = [
+            Math.round((ra + rb) / 2),
+            Math.round((ga + gb) / 2),
+            Math.round((ba + bb) / 2),
+          ];
+          floodCorner(c.seedX, c.seedY, fill);
           ctx.save();
           // Nur den "Zwickel" außerhalb der Kartenrundung füllen (Eckquadrat MINUS Rundungs-
           // Viertelkreis), nicht das ganze Eckquadrat - sonst würde die bereits gezeichnete
@@ -213,12 +295,12 @@ export class DeckPdfService {
           // mit destination-out komplett transparent "ausgestanzt" - beim JPEG-Export ohne
           // Alphakanal wurde daraus ein sichtbarer schwarzer Kreis).
           ctx.beginPath();
-          ctx.rect(c.x0, c.y0, c.x1 - c.x0, c.y1 - c.y0);
+          ctx.rect(c.x0, c.y0, r, r);
           ctx.moveTo(c.cx + r, c.cy);
           ctx.arc(c.cx, c.cy, r, 0, Math.PI * 2);
           ctx.clip('evenodd');
-          ctx.fillStyle = `rgb(${Math.round((ra + rb) / 2)}, ${Math.round((ga + gb) / 2)}, ${Math.round((ba + bb) / 2)})`;
-          ctx.fillRect(c.x0, c.y0, c.x1 - c.x0, c.y1 - c.y0);
+          ctx.fillStyle = `rgb(${fill[0]}, ${fill[1]}, ${fill[2]})`;
+          ctx.fillRect(c.x0, c.y0, r, r);
           ctx.restore();
         }
       }
@@ -248,7 +330,9 @@ export class DeckPdfService {
     // Jedes Bild nur einmal laden, auch wenn "jede Kopie einzeln" mehrfach dieselbe Karte braucht.
     // Rückseiten-URLs (doppelseitige Karten) zählen dabei genauso mit wie die Vorderseiten.
     const uniqueUrls = [
-      ...new Set(selected.flatMap((e) => [e.imageUrl, e.backImageUrl].filter((u): u is string => !!u))),
+      ...new Set(
+        selected.flatMap((e) => [e.imageUrl, e.backImageUrl].filter((u): u is string => !!u)),
+      ),
     ];
     const imagesByUrl = new Map<string, string | null>();
     this.progress.set({ done: 0, total: uniqueUrls.length });
@@ -339,7 +423,11 @@ export class DeckPdfService {
       return;
     }
 
-    const fileName = `${this.deckName().replace(/[^\w\-() ]+/g, '').trim() || 'deck'}.pdf`;
+    const fileName = `${
+      this.deckName()
+        .replace(/[^\w\-() ]+/g, '')
+        .trim() || 'deck'
+    }.pdf`;
     pdf.save(fileName);
     this.showDialog.set(false);
   }
