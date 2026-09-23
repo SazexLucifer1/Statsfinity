@@ -432,8 +432,11 @@ export class ScryfallService {
    * Lädt Kartendaten (u.a. Bilder) für viele Kartennamen auf einmal, statt pro Karte eine
    * Anfrage zu schicken. Nutzt Scryfalls Collection-Endpoint (max. 75 Identifier pro Request).
    * Karten, die nicht exakt gefunden werden, fehlen einfach in der Ergebnis-Map (kein Fehler).
+   * `failed` (optional) sammelt die Namen, die NICHT fehlen, weil Scryfall sie nicht kennt,
+   * sondern weil ihre Anfrage auch nach Wiederholungen scheiterte (meist das Rate-Limit) - wer
+   * Ergebnisse zwischenspeichert, darf die nicht als "gibt es nicht" ablegen.
    */
-  async findCardsBulk(names: string[]): Promise<Map<string, ScryfallCard>> {
+  async findCardsBulk(names: string[], failed?: Set<string>): Promise<Map<string, ScryfallCard>> {
     const unique = [...new Set(names.map((n) => n.trim()).filter(Boolean))];
     const result = new Map<string, ScryfallCard>();
 
@@ -465,7 +468,11 @@ export class ScryfallService {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ identifiers: chunk.map((name) => ({ name })) }),
         });
-        if (!res?.ok) return; // Chunk übersprungen (auch nach Wiederholungen fehlgeschlagen) - betroffene Karten bleiben einfach ohne Bild.
+        if (!res?.ok) {
+          // Chunk übersprungen (auch nach Wiederholungen fehlgeschlagen) - betroffene Karten bleiben einfach ohne Bild.
+          for (const name of chunk) failed?.add(searchNameToOriginal.get(normalizeCardName(name)) ?? name);
+          return;
+        }
         const data = await res.json();
         for (const card of (data.data as any[]) ?? []) {
           const original = searchNameToOriginal.get(normalizeCardName(frontFaceName(card.name as string)));
