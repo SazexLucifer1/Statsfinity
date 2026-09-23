@@ -3,7 +3,7 @@ import { supabase } from './supabase.client';
 import { ScryfallService, ScryfallCard } from './scryfall.service';
 import { CardDataService } from './card-data.service';
 import { isPlayerWinner } from './match-utils';
-import { chunk, sleep } from './array-utils';
+import { sleep } from './array-utils';
 import { GroupService } from './group.service';
 import { PreconService } from './precon.service';
 import { COLORLESS, FILTER_COLORS } from './color-filter-match';
@@ -2294,16 +2294,14 @@ export class DeckService {
    * Listen mit den jeweils zugehörigen Partien - eine gemeinsame Zeile könnte die Winrate keiner
    * der beiden Listen korrekt ausweisen.
    *
-   * `linkBorrowed` trägt die per Namen erkannte Leihe auch in der Datenbank nach (deck_id auf das
-   * fremde Deck), statt sie nur anzuzeigen: erst dadurch ist die Partie wirklich mit dem Deck
-   * verknüpft und taucht beim Besitzer als geliehen gespielte Partie auf - genau wie bei einem über
-   * den Ausleih-Picker gewählten Deck. Nur beim eigenen Profil setzen; beim bloßen Ansehen eines
-   * fremden Profils darf ein Aufruf keine Daten verändern.
+   * "Geliehen" heißt ausschließlich: die Partie ist mit dem Deck einer anderen Person verknüpft
+   * (Ausleih-Picker). Bewusst KEIN Raten über den Commander-Namen mehr - das hat Partien ohne Deck
+   * dem einzigen fremden Deck mit demselben Commander zugeschlagen und das sogar in die Datenbank
+   * geschrieben. Wer seine Decks noch nicht hochgeladen hat, spielt aber fast immer ein eigenes Deck
+   * und nicht das des Einzigen, der dieses Commander-Deck schon angelegt hat (Edgard mit vier
+   * eigenen Decks, die plötzlich Michi gehörten, 23.09.2026).
    */
-  async getUnassignedCommanderStats(
-    owner: DeckOwner,
-    options: { linkBorrowed?: boolean } = {}
-  ): Promise<UnassignedCommanderStats[]> {
+  async getUnassignedCommanderStats(owner: DeckOwner): Promise<UnassignedCommanderStats[]> {
     const playerIds = await this.resolvePlayerIds(owner);
     if (playerIds.length === 0) return [];
 
@@ -2323,8 +2321,7 @@ export class DeckService {
     const ownDeckIds = await this.ownDeckIds(owner);
 
     // Zeilen mit eigenem Deck fallen raus (die stehen bereits in der Deck-Liste), alles andere
-    // wird vorsortiert. Der Rest ohne Deck-Verknüpfung muss danach noch gegen die Decks der
-    // anderen geprüft werden - deshalb erst sammeln, dann einteilen.
+    // wird vorsortiert.
     const relevant: { commander: string; won: boolean; deckId: string | null; cube: boolean }[] = [];
     for (const row of data as any[]) {
       const match = row.matches;
@@ -2344,24 +2341,14 @@ export class DeckService {
     }
     if (relevant.length === 0) return [];
 
-    const unlinkedNames = [...new Set(relevant.filter((r) => !r.deckId && !r.cube).map((r) => r.commander))];
-    const foreignDeckByCommander = await this.foreignDeckIdsByCommander(unlinkedNames, ownDeckIds);
-
-    if (options.linkBorrowed && foreignDeckByCommander.size > 0) {
-      await this.linkBorrowedMatches(owner, unlinkedNames, foreignDeckByCommander);
-    }
-
-    const borrowedDeckIds = new Set<string>([
-      ...relevant.filter((r) => r.deckId).map((r) => r.deckId as string),
-      ...foreignDeckByCommander.values(),
-    ]);
+    const borrowedDeckIds = new Set<string>(relevant.filter((r) => r.deckId).map((r) => r.deckId as string));
     const borrowedDecks = await this.borrowedDeckInfos([...borrowedDeckIds]);
 
     // Schlüssel ist Kategorie + Name, damit derselbe Commander aus einer Cube-Runde und aus einem
     // normalen Spiel nicht zu einer Zeile verschmilzt.
     const stats = new Map<string, UnassignedCommanderStats>();
     for (const row of relevant) {
-      const deckId = row.deckId ?? foreignDeckByCommander.get(row.commander.toLowerCase()) ?? null;
+      const deckId = row.deckId;
       const category: UnassignedCommanderCategory = row.cube ? 'cube' : deckId ? 'borrowed' : 'none';
 
       const key = `${category}::${row.commander}`;
@@ -2396,77 +2383,6 @@ export class DeckService {
       return new Set();
     }
     return new Set((data ?? []).map((d) => d.id as string));
-  }
-
-  /**
-   * Sucht zu Commander-Namen ohne Deck-Verknüpfung ein passendes Deck, das jemand ANDEREM gehört.
-   *
-   * Hintergrund: Wer sich ein Deck ausleiht und beim Erfassen nur den Commander eingetippt hat
-   * (statt das Deck über den Ausleih-Picker zu wählen), hätte sonst einen Commander in der Liste
-   * "Commander ohne Deck" stehen, zu dem sehr wohl ein Deck existiert - es gehört nur jemand
-   * anderem und darf deshalb nicht in der eigenen Deck-Liste landen.
-   *
-   * Zwei Namen fallen bewusst durch:
-   *
-   * - Es gibt ein EIGENES Deck mit diesem Commander. Dann ist die Partie kein Leihfall, sondern
-   *   nur (noch) nicht verknüpft - und ohne diese Bedingung würde eine gerade im Verknüpfen-Dialog gelöste
-   *   Verknüpfung sofort wieder als "geliehen" gesetzt.
-   * - Mehrere fremde Decks passen. Dann steht nicht fest, welches gemeint war; wie in
-   *   findDeckIdByCommander() wird lieber gar nichts geraten.
-   *
-   * Rückgabe: kleingeschriebener Commander-Name -> deck_id des fremden Decks.
-   */
-  private async foreignDeckIdsByCommander(commanderNames: string[], ownDeckIds: Set<string>): Promise<Map<string, string>> {
-    if (commanderNames.length === 0) return new Map();
-
-    const decksByName = new Map<string, { own: boolean; foreign: Set<string> }>();
-    for (const batch of chunk(commanderNames, 100)) {
-      const { data, error } = await supabase
-        .from('deck_cards')
-        .select('deck_id, card_name')
-        .eq('is_commander', true)
-        .in('card_name', batch);
-
-      if (error) {
-        console.error('Konnte fremde Decks zu Commander-Namen nicht laden:', error);
-        continue;
-      }
-
-      for (const row of data ?? []) {
-        const key = (row.card_name as string).toLowerCase();
-        const entry = decksByName.get(key) ?? { own: false, foreign: new Set<string>() };
-        if (ownDeckIds.has(row.deck_id as string)) entry.own = true;
-        else entry.foreign.add(row.deck_id as string);
-        decksByName.set(key, entry);
-      }
-    }
-
-    const found = new Map<string, string>();
-    for (const [name, entry] of decksByName) {
-      if (entry.own || entry.foreign.size !== 1) continue;
-      found.set(name, [...entry.foreign][0]);
-    }
-    return found;
-  }
-
-  /**
-   * Trägt die per Namen erkannte Leihe in match_players nach: die eigenen Partien mit diesem
-   * Commander bekommen die deck_id des fremden Decks. Damit ist die Partie genauso verknüpft wie
-   * eine über den Ausleih-Picker erfasste - sie lässt sich aus dem Profil heraus öffnen und
-   * zählt beim Besitzer als von jemand anderem gespielte Partie.
-   *
-   * backfillDeckLinks() macht die eigentliche Arbeit und ist derselbe Weg, den ein neu angelegtes
-   * eigenes Deck geht - inklusive der Regel, Cube- und Draft-Partien niemals zu verknüpfen.
-   */
-  private async linkBorrowedMatches(
-    owner: DeckOwner,
-    commanderNames: string[],
-    foreignDeckByCommander: Map<string, string>
-  ): Promise<void> {
-    for (const name of commanderNames) {
-      const deckId = foreignDeckByCommander.get(name.toLowerCase());
-      if (deckId) await this.backfillDeckLinks(deckId, owner, name);
-    }
   }
 
   /** Name und Besitzer zu Deck-IDs - für die Anzeige geliehener Decks und zum Öffnen aus der Liste heraus. */
