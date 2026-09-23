@@ -31,3 +31,22 @@ select u.email,
 from auth.users u
 left join public.profiles p on p.id = u.id
 order by verdacht desc, partien desc, u.created_at;
+
+-- 3) In welchen Gruppen stecken die Konten, die weg sollen - und wer spielt dort sonst noch?
+--    Liegt eine Gruppe mit echten Mitspielern hier drin, dürfen deren Partien nicht verschwinden.
+with weg as (
+  select u.id from auth.users u left join public.profiles p on p.id = u.id
+  where p.display_name ilike 'claude%'
+     or u.email in ('fabianhofsfake@googlemail.com', 'fabianhofsfakefake@googlemail.com', '90ealter@web.de')
+)
+select g.name as gruppe,
+       g.id   as gruppe_id,
+       (select string_agg(coalesce(pr.display_name, gm.user_id::text), ', ')
+          from public.group_members gm left join public.profiles pr on pr.id = gm.user_id
+         where gm.group_id = g.id and gm.user_id not in (select id from weg)) as bleibende_mitglieder,
+       (select string_agg(pl.display_name, ', ')
+          from public.players pl where pl.group_id = g.id and pl.user_id in (select id from weg)) as spieler_der_weg_konten,
+       (select count(*) from public.matches m where m.group_id = g.id) as partien_in_gruppe
+from public.groups g
+where g.id in (select gm.group_id from public.group_members gm where gm.user_id in (select id from weg))
+   or g.id in (select pl.group_id from public.players pl where pl.user_id in (select id from weg));
