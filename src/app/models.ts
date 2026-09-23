@@ -51,6 +51,28 @@ export const DECK_FORMATS: DeckFormat[] = [
 ];
 
 /**
+ * Scryfalls Schlüssel je App-Format (für legal:/banned:-Suchen). Nicht alles heißt gleich: das
+ * App-"Brawl" ist Scryfalls "standardbrawl", das App-"Historic Brawl" ist Scryfalls "brawl".
+ * Dieselbe Zuordnung steht als BANN_FORMATE in scripts/sync-scryfall-bulk.js (das Skript läuft ohne
+ * TypeScript und kann sie nicht importieren) - wer hier etwas ändert, ändert dort mit.
+ */
+export const SCRYFALL_FORMAT: Record<DeckFormat, string> = {
+  Standard: 'standard',
+  Pioneer: 'pioneer',
+  Modern: 'modern',
+  Legacy: 'legacy',
+  Vintage: 'vintage',
+  Pauper: 'pauper',
+  Commander: 'commander',
+  'Pauper Commander': 'paupercommander',
+  Brawl: 'standardbrawl',
+  'Historic Brawl': 'brawl',
+  Alchemy: 'alchemy',
+  Explorer: 'explorer',
+  Timeless: 'timeless',
+};
+
+/**
  * Spielkategorie eines Matches/Turniers - orthogonal zum Spielformat (DeckFormat oben): 'Normal'
  * heißt "keine besondere Kategorie, ganz normales 1v1/Multiplayer-Spiel" und wird IMMER mit einem
  * Format kombiniert (z.B. Normal+Commander, Normal+Modern). Two-Headed Giant/Archenemy/Cube/Draft

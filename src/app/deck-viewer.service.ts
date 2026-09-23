@@ -2542,6 +2542,9 @@ export class DeckViewerService {
         keyword: keyword === 'all' ? undefined : keyword,
         colorIdentitySubset: this.deckColorIdentitySubset(),
         order: this.addCardSortMode(),
+        // Das Format aus dem Bearbeiten-Feld, nicht das gespeicherte: wer es gerade umstellt,
+        // sucht schon für das neue.
+        format: this.deckFormatDraft(),
       });
       this.addCardResults.set(results);
       this.addCardResultsPage.set(0);
