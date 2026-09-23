@@ -1891,7 +1891,7 @@ export class DeckService {
    * Gesamt-Statistik für ein Deck über ALLE Gruppen hinweg (nicht nur die aktuell aktive). Ohne
    * pilotPlayerIds unabhängig davon, wer es jeweils gespielt hat (eigener Pilot oder ausgeliehen) -
    * im Gegensatz zu den gruppen-gebundenen Stats im Stats-Tab, die nur die aktive Gruppe sehen. Mit
-   * pilotPlayerIds (siehe DeckViewerService.resolveMyPlayerIds()) nur die Partien, in denen einer
+   * pilotPlayerIds (siehe DeckViewerService.ownerPlayerIds()) nur die Partien, in denen einer
    * dieser Spieler tatsächlich gespielt hat - für die "Meine Spiele"/"Alle Spiele"-Umschaltung in
    * der Deck-Detailansicht.
    */
