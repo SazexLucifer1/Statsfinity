@@ -33,6 +33,7 @@ import {
 } from '../ui/bar-chart/deck-chart-data';
 import { DeckSocial } from '../deck-social/deck-social';
 import { DeckSocialService } from '../deck-social.service';
+import { ProfileService } from '../profile.service';
 import { Icon } from '../ui/icon/icon';
 
 interface PublicDeckCardEntry {
@@ -175,6 +176,7 @@ export class PublicDeckBrowser {
 
   readonly primer = inject(DeckPrimerService);
   readonly social = inject(DeckSocialService);
+  private readonly profileService = inject(ProfileService);
   readonly steckbriefTexte = inject(DeckSteckbriefService);
   /**
    * Offener Reiter des geöffneten Decks - hier immer nur lesend: Geändert werden Primer und
@@ -414,6 +416,14 @@ export class PublicDeckBrowser {
     }
     this.passportCards.set(all);
     this.passportBusy.set(false);
+  }
+
+  /** Tipp auf „von …“ unter einer Kachel: ins Profil des Besitzers, wie „Profil ansehen“ im Gruppen-Tab. */
+  openOwnerProfile(userId: string): void {
+    this.navigation.goToTab('profile');
+    void this.profileService.viewProfile(userId);
+    // Sonst bleibt die Scrollhöhe aus der Trefferliste stehen und das Profil öffnet mittendrin.
+    window.scrollTo({ top: 0 });
   }
 
   partnerFrontFor(deckId: string): number {

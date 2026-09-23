@@ -132,8 +132,8 @@ grant execute on function public.deck_register_view(uuid) to anon, authenticated
 --    Die Sichtbarkeitsschranke steht in der Funktion: zu privaten fremden Decks kommt nichts
 --    zurück. Decks ohne Aufrufe und Likes erscheinen mit 0/0 (left join), damit der Client nicht
 --    zwischen "keine Zeile" und "null" unterscheiden muss.
---    Der Besitzername kommt beim LESEN aus profiles (Deck eines Accounts, ersatzweise dessen
---    Spielername aus players) bzw. players (Deck eines Spielers ohne eigenen Login) - gleiche Begründung wie bei deck_comments_for_deck():
+--    Der Besitzername ist ausschließlich der Profilname aus profiles, beim LESEN nachgeschlagen -
+--    gleiche Begründung wie bei deck_comments_for_deck():
 --    public.profiles muss dafür nicht für "anon" offen sein, herausgegeben wird nur der
 --    Anzeigename. Die ::text-Casts machen die Funktion vom Spaltentyp drüben unabhängig.
 --
@@ -161,23 +161,12 @@ as $$
     coalesce(v.views, 0),
     (select count(*) from public.deck_likes l where l.deck_id = d.id),
     exists (select 1 from public.deck_likes l where l.deck_id = d.id and l.user_id = auth.uid()),
-    -- Reihenfolge: Profilname des Accounts, sonst der Spieler ohne Login, dem das Deck gehört,
-    -- sonst der Name, unter dem der Account in einer Gruppe spielt (viele Accounts haben im
-    -- Profil keinen Namen, nur als Spieler - gleiche Rückfallkette wie in DeckService).
-    coalesce(
-      nullif(btrim(p.display_name::text), ''),
-      nullif(btrim(pl.display_name::text), ''),
-      (
-        select nullif(btrim(pu.display_name::text), '')
-        from public.players pu
-        where pu.user_id = d.user_id and nullif(btrim(pu.display_name::text), '') is not null
-        limit 1
-      )
-    )
+    -- Nur der Profilname: Er ist der Name, unter dem das Profil erscheint, auf das der Name in
+    -- der Deck-Suche verlinkt. Decks von Spielern ohne Login haben kein Profil und bekommen keinen.
+    nullif(btrim(p.display_name::text), '')
   from public.decks d
   left join public.deck_view_counts v on v.deck_id = d.id
   left join public.profiles p on p.id = d.user_id
-  left join public.players pl on pl.id = d.player_id
   where d.id = any(p_deck_ids)
     and (not d.is_private or d.user_id = auth.uid());
 $$;

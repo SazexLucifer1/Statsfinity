@@ -120,8 +120,18 @@
                    Besitzer-Zeile steht auch ohne Namen da, damit alle Rahmen gleich hoch sind. -->
               <div class="public-deck-row public-deck-name">{{ deck.name }}</div>
               <div class="public-deck-row public-deck-owner">
+                <!-- Profilname des Besitzers; ein Tipp darauf öffnet sein Profil statt des Decks. -->
                 @if (social.statsFor(deck.id)?.ownerName; as owner) {
-                  {{ i18n.t('publicDecks.byOwner', { name: owner }) }}
+                  @if (deck.userId; as ownerId) {
+                    <button
+                      type="button"
+                      class="public-deck-owner-link"
+                      [attr.aria-label]="i18n.t('publicDecks.ownerProfileAria', { name: owner })"
+                      (click)="$event.stopPropagation(); openOwnerProfile(ownerId)"
+                    >
+                      {{ i18n.t('publicDecks.byOwner', { name: owner }) }}
+                    </button>
+                  }
                 }
               </div>
             </div>

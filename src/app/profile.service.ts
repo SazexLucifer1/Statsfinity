@@ -385,17 +385,38 @@ export class ProfileService {
       .from('profiles')
       .select('display_name, avatar_url, favorite_commanders')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
 
-    if (error || !data) {
-      console.error('Konnte Profil nicht laden:', error);
+    if (!error && data) {
+      return {
+        displayName: data.display_name,
+        avatarUrl: data.avatar_url,
+        favoriteCommanders: data.favorite_commanders ?? [],
+      };
+    }
+
+    // Ohne Login (und je nach RLS auch für Fremde) ist profiles gesperrt - dann über die
+    // SECURITY-DEFINER-Funktion public_profile() (sql/oeffentliches-profil-2026-09-23.sql), die
+    // nur Name, Avatar und Lieblingscommander herausgibt. Gebraucht wird das, weil die Deck-Suche
+    // unter jedem Deck auf das Profil des Besitzers verlinkt, auch für nicht eingeloggte Besucher.
+    const rpc = await supabase.rpc('public_profile', { p_user_id: userId });
+    const row = ((rpc.data as PublicProfileRow[] | null) ?? [])[0];
+    if (rpc.error || !row) {
+      console.error('Konnte Profil nicht laden:', error ?? rpc.error);
       return null;
     }
 
     return {
-      displayName: data.display_name,
-      avatarUrl: data.avatar_url,
-      favoriteCommanders: data.favorite_commanders ?? [],
+      displayName: row.display_name ?? '',
+      avatarUrl: row.avatar_url,
+      favoriteCommanders: row.favorite_commanders ?? [],
     };
   }
+}
+
+/** Rohform einer Zeile aus public_profile(). */
+interface PublicProfileRow {
+  display_name: string | null;
+  avatar_url: string | null;
+  favorite_commanders: string[] | null;
 }

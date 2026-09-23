@@ -23,6 +23,7 @@ import { LoginRequired } from './login-required/login-required';
 import { Login } from './login/login';
 import { ResetPassword } from './reset-password/reset-password';
 import { GameSessionService } from './game-session.service';
+import { ProfileService } from './profile.service';
 import { AuthService } from './auth.service';
 import { NavigationService, AppTab } from './navigation.service';
 import { ArchidektPoolBrowser } from './archidekt-pool-browser/archidekt-pool-browser';
@@ -71,6 +72,7 @@ import { APP_VERSION, APP_COMMIT } from './version';
 })
 export class App {
   readonly auth = inject(AuthService);
+  readonly profiles = inject(ProfileService);
   readonly session = inject(GameSessionService);
   readonly navigation = inject(NavigationService);
   readonly i18n = inject(I18nService);

@@ -52,7 +52,8 @@
   } @case ('group') {
   @if (auth.currentUser()) { <app-group-tab /> } @else { <app-login-required [message]="i18n.t('loginRequired.group')" /> }
   } @case ('profile') {
-  @if (auth.currentUser()) { <app-profile-tab /> } @else { <app-login-required [message]="i18n.t('loginRequired.profile')" /> }
+  <!-- Ein FREMDES Profil (etwa über „von …“ in der Deck-Suche) ist auch ohne Login lesbar, das eigene nicht. -->
+  @if (auth.currentUser() || profiles.viewingUserId()) { <app-profile-tab /> } @else { <app-login-required [message]="i18n.t('loginRequired.profile')" /> }
   } }
   }
 </main>

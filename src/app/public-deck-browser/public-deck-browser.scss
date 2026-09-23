@@ -183,7 +183,21 @@
 
 .public-deck-owner {
   min-height: calc(0.72rem * 1.25 + 8px);
-  opacity: 0.75;
+}
+
+// Profilname als Link: Knopf ohne Knopf-Optik. Eigene color, weil ein Knopf die Textfarbe nicht
+// erbt (siehe ui/icon).
+.public-deck-owner-link {
+  max-width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: var(--accent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
 }
 
 // Das Steckbrief-Bild braucht mehr Breite als die 300px der üblichen Dialoge.
