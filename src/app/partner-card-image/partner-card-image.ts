@@ -1,4 +1,4 @@
-import { Component, inject, input, output, signal } from '@angular/core';
+import { Component, inject, input, model, output } from '@angular/core';
 import { ScryfallCard } from '../scryfall.service';
 import { CardImage } from '../card-image/card-image';
 import { I18nService } from '../i18n.service';
@@ -37,7 +37,15 @@ export class PartnerCardImage {
 
   readonly imageClick = output<ScryfallCard>();
 
-  readonly frontIndex = signal(0);
+  /**
+   * Welche der beiden Karten vorne liegt. Als model(), damit eine umgebende Ansicht den Wechsel
+   * auch von außen auslösen kann - das öffentliche Stöbern setzt seinen Umschaltknopf in die
+   * Leiste unter dem Bild statt auf die Karte (siehe showSwapButton).
+   */
+  readonly frontIndex = model(0);
+
+  /** false = der runde Umschaltknopf auf der Karte entfällt, weil die Ansicht einen eigenen hat. */
+  readonly showSwapButton = input(true);
 
   get frontCard(): ScryfallCard {
     return this.cards()[this.frontIndex()] ?? this.cards()[0];

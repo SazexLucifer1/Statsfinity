@@ -1,4 +1,4 @@
-import { Component, ElementRef, computed, effect, inject, input, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, computed, effect, inject, input, signal, untracked, viewChild } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DeckService, Deck, DeckGameStats, DeckOwner, deckKopieName } from '../deck.service';
@@ -15,6 +15,8 @@ import { BracketBadge } from '../ui/bracket-badge/bracket-badge';
 import { storedDeckBracket } from '../bracket';
 import { DECK_FORMATS, DeckFormat } from '../models';
 import { Icon } from '../ui/icon/icon';
+import { DeckSocial } from '../deck-social/deck-social';
+import { DeckSocialService } from '../deck-social.service';
 
 export type DeckSortMode = 'alpha' | 'winRate' | 'games';
 
@@ -48,7 +50,7 @@ function gridBreakpointPx(): number {
 
 @Component({
   selector: 'app-deck-list',
-  imports: [DecimalPipe, FormsModule, CardImage, OverflowMenu, Pager, BracketBadge, Icon],
+  imports: [DecimalPipe, FormsModule, CardImage, OverflowMenu, Pager, BracketBadge, Icon, DeckSocial],
   templateUrl: './deck-list.html',
   styleUrl: './deck-list.scss',
 })
@@ -65,6 +67,7 @@ export class DeckList {
   readonly importService = inject(DeckImportService);
   private readonly scryfall = inject(ScryfallService);
   readonly i18n = inject(I18nService);
+  private readonly social = inject(DeckSocialService);
   private readonly dialog = inject(DialogService);
 
   readonly decks = signal<Deck[]>([]);
@@ -142,6 +145,12 @@ export class DeckList {
           return next;
         });
       });
+    });
+
+    // Aufrufe und Likes nur für die sichtbare Seite, in einer Anfrage - nicht je Zeile.
+    effect(() => {
+      const ids = this.pagedDecks().map((d) => d.id);
+      untracked(() => void this.social.load(ids));
     });
 
     // Lädt die Liste neu, sobald die Detailansicht (Ansehen/Bearbeiten) wieder geschlossen wird -

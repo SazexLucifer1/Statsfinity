@@ -1,0 +1,30 @@
+@if (social.verfuegbar()) {
+  @if (stats(); as s) {
+    <div class="deck-social" [class.compact]="compact()">
+      <span class="stat" [title]="i18n.t('deckSocial.views', { count: s.views })">
+        <app-icon name="eye" [label]="i18n.t('deckSocial.views', { count: s.views })" />
+        <span aria-hidden="true">{{ s.views }}</span>
+      </span>
+      @if (canLike()) {
+        <button
+          type="button"
+          class="stat like-button"
+          [class.liked]="s.likedByMe"
+          [disabled]="busy()"
+          [attr.aria-pressed]="s.likedByMe"
+          [attr.aria-label]="likeHint() + ' · ' + i18n.t('deckSocial.likes', { count: s.likes })"
+          [title]="likeHint()"
+          (click)="toggle()"
+        >
+          <app-icon [name]="s.likedByMe ? 'heart-filled' : 'heart'" />
+          <span>{{ s.likes }}</span>
+        </button>
+      } @else {
+        <span class="stat" [title]="likeHint()">
+          <app-icon name="heart" [label]="i18n.t('deckSocial.likes', { count: s.likes })" />
+          <span aria-hidden="true">{{ s.likes }}</span>
+        </span>
+      }
+    </div>
+  }
+}

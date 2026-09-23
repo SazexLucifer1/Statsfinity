@@ -42,6 +42,7 @@ const MODULES = {
       'deck',
       'deckComment',
       'deckPrimer',
+      'deckSocial',
       'deckSteckbrief',
       'deckViewer',
       'importDialog',

@@ -65,21 +65,76 @@
       <div class="card-pick-grid">
         @for (deck of pagedResults(); track deck.id) {
           <div class="card-pick-tile" (click)="openDeck(deck)">
-            <div class="card-pick-image">
-              @if (commanderCardsFor(deck.id).length > 0) {
-                <app-partner-card-image [cards]="commanderCardsFor(deck.id)" [compact]="true" />
-              } @else {
-                <div class="card-pick-placeholder">{{ deck.name }}</div>
-              }
-            </div>
-            <span class="card-pick-stats card-pick-name">{{ deck.name }}</span>
-            <span class="card-pick-stats public-deck-winrate">
-              @if (statsFor(deck.id); as s) {
-                @if (s.games > 0) {
-                  {{ s.winRate | number: '1.0-0' }}% ({{ s.wins }}/{{ s.games }})
+            <!-- Commander-Bild, Leiste, Name und Besitzer als EIN Rahmen, jede Zeile durch eine
+                 Linie getrennt: Aufrufe, Likes und Bilanz hängen direkt am Bild. -->
+            <div class="public-deck-frame">
+              <!-- Klick aufs Commander-Bild zeigt erst den Steckbrief als Popup (von dort geht es
+                   weiter ins Deck), ein Klick auf den Rest der Kachel öffnet das Deck direkt. -->
+              <div
+                class="card-pick-image"
+                role="button"
+                tabindex="0"
+                [attr.aria-label]="i18n.t('publicDecks.passportAria', { name: deck.name })"
+                (click)="$event.stopPropagation(); openPassport(deck)"
+                (keydown.enter)="$event.stopPropagation(); openPassport(deck)"
+              >
+                @if (commanderCardsFor(deck.id).length > 0) {
+                  <app-partner-card-image
+                    [cards]="commanderCardsFor(deck.id)"
+                    [compact]="true"
+                    [showSwapButton]="false"
+                    [frontIndex]="partnerFrontFor(deck.id)"
+                    (frontIndexChange)="setPartnerFront(deck.id, $event)"
+                  />
+                } @else {
+                  <div class="card-pick-placeholder">{{ deck.name }}</div>
                 }
-              }
-            </span>
+              </div>
+              <!-- Die Leiste steht immer da, auch leer - sonst sitzen Name und Besitzer je nach
+                   Kachel unterschiedlich hoch. Die Zahlen lädt der DeckSocialService für die ganze
+                   Seite auf einmal. -->
+              <div class="public-deck-bar">
+                @if (social.verfuegbar()) {
+                  <app-deck-social [deckId]="deck.id" [compact]="true" />
+                }
+                <!-- Zwei Commander: der Umschaltknopf sitzt hier statt auf der Karte, wo er das
+                     Kartenbild verdeckte. -->
+                @if (commanderCardsFor(deck.id).length > 1) {
+                  <button
+                    type="button"
+                    class="public-deck-swap"
+                    [attr.aria-label]="i18n.t('partnerCardImage.swapAria')"
+                    [title]="i18n.t('partnerCardImage.swapAria')"
+                    (click)="$event.stopPropagation(); swapPartner(deck.id)"
+                  >
+                    <app-icon name="users" />
+                  </button>
+                }
+                @if (statsFor(deck.id); as s) {
+                  @if (s.games > 0) {
+                    <span class="public-deck-winrate">{{ s.wins }}/{{ s.games }} {{ s.winRate | number: '1.0-0' }}%</span>
+                  }
+                }
+              </div>
+              <!-- Name und Besitzer gehören mit in den Rahmen - je eine eigene Zeile darunter. Die
+                   Besitzer-Zeile steht auch ohne Namen da, damit alle Rahmen gleich hoch sind. -->
+              <div class="public-deck-row public-deck-name">{{ deck.name }}</div>
+              <div class="public-deck-row public-deck-owner">
+                <!-- Profilname des Besitzers; ein Tipp darauf öffnet sein Profil statt des Decks. -->
+                @if (social.statsFor(deck.id)?.ownerName; as owner) {
+                  @if (deck.userId; as ownerId) {
+                    <button
+                      type="button"
+                      class="public-deck-owner-link"
+                      [attr.aria-label]="i18n.t('publicDecks.ownerProfileAria', { name: owner })"
+                      (click)="$event.stopPropagation(); openOwnerProfile(ownerId)"
+                    >
+                      {{ i18n.t('publicDecks.byOwner', { name: owner }) }}
+                    </button>
+                  }
+                }
+              </div>
+            </div>
           </div>
         }
       </div>
@@ -102,6 +157,10 @@
       }
       <h3>{{ selectedDeck()?.name }}</h3>
     </div>
+
+    @if (selectedDeck(); as deck) {
+      <app-deck-social [deckId]="deck.id" [ownerUserId]="deck.userId" [countView]="true" />
+    }
 
     <!-- Derselbe Umschalter wie in der eigenen Deck-Ansicht, nur ohne Bearbeiten: Hier sieht man
          fremde Decks. Der Steckbrief steht immer zur Verfügung (er wird aus dem Deck gerechnet),
@@ -238,3 +297,23 @@
   }
   </section>
 </div>
+
+@if (passportDeck(); as deck) {
+  <!-- Steckbrief-Popup über der Trefferliste. Unten der Weg ins Deck selbst. -->
+  <div class="options-menu-overlay" (click)="closePassport()">
+    <div class="options-menu-sheet passport-sheet" (click)="$event.stopPropagation()">
+      <div class="passport-head">
+        <h3>{{ deck.name }}</h3>
+        <button type="button" class="icon-button passport-close" [attr.aria-label]="i18n.t('common.close')" (click)="closePassport()">✕</button>
+      </div>
+      @if (passportBusy()) {
+        <p class="hint">{{ i18n.t('publicDecks.passportLoading') }}</p>
+      } @else if (passportSteckbrief(); as steckbrief) {
+        <app-deck-steckbrief [deck]="steckbrief" [karten]="passportKarten()" [schnittMv]="passportAverageCmc()" />
+      }
+      <button type="button" class="glass-button primary" (click)="openPassportDeck()">
+        {{ i18n.t('publicDecks.viewDeck') }}
+      </button>
+    </div>
+  </div>
+}

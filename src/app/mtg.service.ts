@@ -843,6 +843,24 @@ export class MtgService {
   }
 
   /**
+   * Alle Matches, an denen ein Account teilgenommen hat, aus ALLEN Gruppen - für die Match-Liste
+   * eines fremden Profils, wenn der Betrachter nicht in derselben Gruppe ist oder gar nicht
+   * eingeloggt (sql/oeffentliche-matches-2026-09-23.sql). selfName ist der Name, unter dem die
+   * Person im jeweiligen Match gespielt hat; er kann je Gruppe anders lauten. null = die Funktion
+   * fehlt noch oder der Aufruf schlug fehl.
+   */
+  async loadPublicMatchesForUser(userId: string): Promise<{ match: Match; selfName: string }[] | null> {
+    const { data, error } = await supabase.rpc('public_player_matches', { p_user_id: userId });
+    if (error) {
+      console.error('Konnte öffentliche Matches nicht laden:', error);
+      return null;
+    }
+    return ((data as any[] | null) ?? [])
+      .filter((row) => !!row.self_name)
+      .map((row) => ({ match: mapMatchRow(row), selfName: row.self_name as string }));
+  }
+
+  /**
    * Ergänzt fehlende deck_id-Werte automatisch: falls ein Spieler keine explizite Deck-Auswahl
    * hat (weder eigenes noch geliehenes Deck), aber einen Commander-Namen, der zu einem seiner
    * eigenen Decks passt, wird das Deck automatisch verknüpft - sonst müsste man Alt-Matches ohne

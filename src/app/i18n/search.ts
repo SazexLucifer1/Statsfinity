@@ -109,6 +109,11 @@ export const search = {
     'publicDecks.sortWinRate': 'Sortierung: Winrate',
     'publicDecks.searchButton': 'Suchen',
     'publicDecks.noResults': 'Keine öffentlichen Decks gefunden.',
+    'publicDecks.byOwner': 'von {{name}}',
+    'publicDecks.ownerProfileAria': 'Profil von {{name}} ansehen',
+    'publicDecks.passportAria': 'Steckbrief von {{name}} anzeigen',
+    'publicDecks.passportLoading': 'Lade Deck …',
+    'publicDecks.viewDeck': 'Deck ansehen',
     'publicDecks.deckLinkEmpty':
       'Dieses Deck gibt es nicht mehr oder es ist nicht öffentlich – der Link führt ins Leere.',
   },
@@ -217,6 +222,11 @@ export const search = {
     'publicDecks.sortWinRate': 'Sort: Win rate',
     'publicDecks.searchButton': 'Search',
     'publicDecks.noResults': 'No public decks found.',
+    'publicDecks.byOwner': 'by {{name}}',
+    'publicDecks.ownerProfileAria': 'View profile of {{name}}',
+    'publicDecks.passportAria': 'Show passport of {{name}}',
+    'publicDecks.passportLoading': 'Loading deck …',
+    'publicDecks.viewDeck': 'View deck',
     'publicDecks.deckLinkEmpty':
       'This deck no longer exists or is not public – the link goes nowhere.',
   },

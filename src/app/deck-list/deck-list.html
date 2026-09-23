@@ -81,6 +81,7 @@
               <span class="hint">{{ i18n.t('deck.notPlayedYet') }}</span>
             }
           }
+          <app-deck-social [deckId]="deck.id" [compact]="true" />
           <!-- Ansehen ist die Aktion, die man auf einer Deck-Zeile praktisch immer will; Goldfisch,
                Sichtbarkeit und Löschen wandern ins ⋮. Bei zehn Decks waren das vorher 40 Knöpfe,
                und im Profil-Tab steckt diese Liste gleich dreimal. -->

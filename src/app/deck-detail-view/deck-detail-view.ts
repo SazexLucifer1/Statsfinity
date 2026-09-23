@@ -25,10 +25,11 @@ import { CmcFilter } from '../ui/cmc-filter/cmc-filter';
 import { BracketBadge } from '../ui/bracket-badge/bracket-badge';
 import { ManaSymbol } from '../ui/mana-symbol/mana-symbol';
 import { Icon } from '../ui/icon/icon';
+import { DeckSocial } from '../deck-social/deck-social';
 
 @Component({
   selector: 'app-deck-detail-view',
-  imports: [CurrencyPipe, DatePipe, DecimalPipe, NgTemplateOutlet, PercentPipe, FormsModule, CardImage, DeckComments, DeckPrimer, DeckSteckbrief, BarChart, OverflowMenu, ColorFilter, CmcFilter, BracketBadge, ManaSymbol, Icon],
+  imports: [CurrencyPipe, DatePipe, DecimalPipe, NgTemplateOutlet, PercentPipe, FormsModule, CardImage, DeckComments, DeckPrimer, DeckSocial, DeckSteckbrief, BarChart, OverflowMenu, ColorFilter, CmcFilter, BracketBadge, ManaSymbol, Icon],
   templateUrl: './deck-detail-view.html',
   styleUrls: ['./deck-detail-view.scss', './deck-detail-view.bracket.scss'],
 })

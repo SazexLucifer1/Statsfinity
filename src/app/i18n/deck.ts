@@ -152,6 +152,12 @@ export const deck = {
     'pdfDialog.msg.noImagesLoaded': 'Keine Kartenbilder konnten geladen werden.',
 
     // --- Deck-Kommentare ---
+    'deckSocial.views': '{{count}} Aufrufe',
+    'deckSocial.likes': '{{count}} Likes',
+    'deckSocial.like': 'Gefällt mir',
+    'deckSocial.unlike': 'Gefällt mir nicht mehr',
+    'deckSocial.likeLoginHint': 'Zum Liken einloggen',
+    'deckSocial.ownDeckHint': 'Das eigene Deck lässt sich nicht liken',
     'deckComment.title': 'Kommentare',
     'deckComment.placeholder': 'Etwas zu diesem Deck sagen …',
     'deckComment.replyPlaceholder': 'Antworten …',
@@ -396,6 +402,12 @@ export const deck = {
     'pdfDialog.msg.noImagesLoaded': 'No card images could be loaded.',
 
     // --- Deck comments ---
+    'deckSocial.views': '{{count}} views',
+    'deckSocial.likes': '{{count}} likes',
+    'deckSocial.like': 'Like',
+    'deckSocial.unlike': 'Unlike',
+    'deckSocial.likeLoginHint': 'Log in to like',
+    'deckSocial.ownDeckHint': 'You can’t like your own deck',
     'deckComment.title': 'Comments',
     'deckComment.placeholder': 'Say something about this deck …',
     'deckComment.replyPlaceholder': 'Write a reply …',

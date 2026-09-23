@@ -59,18 +59,27 @@ export class PlayerMatchHistory {
   readonly playerName = input.required<string | null>();
   /** Jahresfilter des eigenen Profils; 'Alle' (Vorgabe) zeigt alle Jahre. */
   readonly year = input<number | 'Alle'>('Alle');
+  /**
+   * Gesetzt = statt der Matches der aktiven Gruppe (mtg.history()) genau diese zeigen, samt dem
+   * Namen, unter dem die Person im jeweiligen Match gespielt hat. Für ein fremdes Profil, dessen
+   * Besitzer nicht in der Gruppe des Betrachters spielt (MtgService.loadPublicMatchesForUser()).
+   */
+  readonly externalMatches = input<{ match: Match; selfName: string }[] | null>(null);
 
   readonly page = signal(0);
   readonly pageSize = 10;
 
   readonly rows = computed<PlayerMatchRow[]>(() => {
     const name = this.playerName();
-    if (!name) return [];
+    const extern = this.externalMatches();
+    if (!name && !extern) return [];
     const year = this.year();
 
+    // Beide Quellen kommen bereits nach Datum absteigend sortiert.
+    const quelle = extern ?? this.mtg.history().map((match) => ({ match, selfName: name! }));
+
     const rows: PlayerMatchRow[] = [];
-    // mtg.history() kommt bereits nach Datum absteigend sortiert aus Supabase.
-    for (const match of this.mtg.history()) {
+    for (const { match, selfName: name } of quelle) {
       // Dieselbe Grenze wie im Match-Tab: alte Excel-Importe bleiben in der Statistik, aber aus
       // dem sichtbaren Verlauf raus (siehe LIVE_TRACKING_START_DATE in models.ts).
       if (new Date(match.date) < LIVE_TRACKING_START_DATE) continue;

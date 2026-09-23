@@ -80,6 +80,10 @@
       <path d="M20 15H7" />
       <path d="m10 12-3 3 3 3" />
     }
+    @case ('eye') {
+      <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" />
+      <circle cx="12" cy="12" r="3" />
+    }
     @case ('exile') {
       <circle cx="12" cy="12" r="8.2" />
       <path d="m9.2 14.8 5.6-5.6" />
@@ -89,6 +93,14 @@
       <path d="M6 19.5V9.5a6 6 0 0 1 12 0v10z" />
       <path d="M12 7.5v6M9.5 10h5" />
       <path d="M4 19.5h16" />
+    }
+    @case ('heart') {
+      <path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.2a4.3 4.3 0 0 1 7.5 2.6C19.5 15.4 12 20 12 20z" />
+    }
+    @case ('heart-filled') {
+      <!-- Dieselbe Form, gefüllt: ein gesetztes Like. Als eigener Name statt als Stilregel, weil
+           Stile der umgebenden Komponente nicht bis in dieses SVG durchgreifen. -->
+      <path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.2a4.3 4.3 0 0 1 7.5 2.6C19.5 15.4 12 20 12 20z" fill="currentColor" />
     }
     @case ('help') {
       <circle cx="12" cy="12" r="8.5" />

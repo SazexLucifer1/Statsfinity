@@ -29,10 +29,6 @@
   }
 }
 
-.public-deck-winrate {
-  font-weight: 600;
-}
-
 .commander-rec-header {
   display: flex;
   align-items: center;
@@ -118,21 +114,111 @@
   text-align: center;
 }
 
-// Feste Höhe für Name (immer 2 Zeilen reserviert, egal ob der Name in eine oder zwei passt) und
-// Winrate-Zeile (immer gerendert, auch leer ohne erfasste Partien) - sonst variiert die Kachelhöhe
-// je nach Namenslänge/Partienzahl, was das 2-spaltige Grid auf schmalen Bildschirmen (Handy) sehr
-// ungleichmäßig aussehen lässt (Zeilen springen je nach längster Kachel unterschiedlich weit runter).
-.card-pick-name {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+// Bild, Leiste, Name und Besitzer als ein Rahmen: der Rahmen trägt Rand und Rundung, das Bild
+// darin nicht mehr.
+.public-deck-frame {
+  border-radius: 8px;
   overflow: hidden;
-  line-height: 1.25;
-  min-height: calc(0.72rem * 1.25 * 2);
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.06);
+
+  .card-pick-image {
+    border: none;
+    border-radius: 0;
+  }
+}
+
+// Aufrufe und Likes links, Bilanz rechts - direkt unter dem Commander-Bild.
+.public-deck-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  min-height: 26px;
+  padding: 3px 6px;
+  border-top: 1px solid var(--glass-border);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+// Umschaltknopf für Decks mit zwei Commandern, zwischen Likes und Bilanz. Eigene color, weil ein
+// Knopf die Textfarbe nicht erbt und das Piktogramm sonst unsichtbar wäre (siehe ui/icon).
+.public-deck-swap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 26px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  font-size: 0.8rem;
+  cursor: pointer;
+  touch-action: manipulation;
 }
 
 .public-deck-winrate {
-  min-height: calc(0.72rem * 1.25);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+// Name und Besitzer: eigene Zeilen im Rahmen, wie die Leiste durch eine Linie abgetrennt.
+.public-deck-row {
+  padding: 4px 6px;
+  border-top: 1px solid var(--glass-border);
+  font-size: 0.72rem;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.25;
+}
+
+.public-deck-name {
+  font-weight: 600;
+}
+
+.public-deck-owner {
+  min-height: calc(0.72rem * 1.25 + 8px);
+}
+
+// Profilname als Link: Knopf ohne Knopf-Optik. Eigene color, weil ein Knopf die Textfarbe nicht
+// erbt (siehe ui/icon).
+.public-deck-owner-link {
+  max-width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: var(--accent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+// Das Steckbrief-Bild braucht mehr Breite als die 300px der üblichen Dialoge.
+.options-menu-sheet.passport-sheet {
+  max-width: 520px;
+}
+
+.passport-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+
+  h3 {
+    margin: 0;
+  }
+}
+
+.passport-close {
+  flex-shrink: 0;
+  color: var(--text);
 }
 
 .pager {

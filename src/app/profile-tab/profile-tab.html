@@ -110,7 +110,7 @@
       <section class="glass-card span-full">
         <h2>{{ i18n.t('profile.matchHistory') }}</h2>
         <p class="hint">{{ i18n.t('profile.matchHistoryHint') }}</p>
-        <app-player-match-history [playerName]="profileHistoryName()" />
+        <app-player-match-history [playerName]="profileHistoryName()" [externalMatches]="publicViewedMatches()" />
       </section>
     }
   }
