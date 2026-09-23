@@ -33,7 +33,6 @@ import {
 } from '../ui/bar-chart/deck-chart-data';
 import { DeckSocial } from '../deck-social/deck-social';
 import { DeckSocialService } from '../deck-social.service';
-import { Icon } from '../ui/icon/icon';
 
 interface PublicDeckCardEntry {
   card: ScryfallCard;
@@ -138,7 +137,7 @@ function sortByCmc(a: PublicDeckCardEntry, b: PublicDeckCardEntry): number {
  */
 @Component({
   selector: 'app-public-deck-browser',
-  imports: [FormsModule, CardImage, PartnerCardImage, DecimalPipe, CurrencyPipe, BarChart, ColorFilter, DeckComments, DeckPrimer, DeckSocial, DeckSteckbrief, Icon],
+  imports: [FormsModule, CardImage, PartnerCardImage, DecimalPipe, CurrencyPipe, BarChart, ColorFilter, DeckComments, DeckPrimer, DeckSocial, DeckSteckbrief],
   templateUrl: './public-deck-browser.html',
   styleUrl: './public-deck-browser.scss',
 })

@@ -65,42 +65,42 @@
       <div class="card-pick-grid">
         @for (deck of pagedResults(); track deck.id) {
           <div class="card-pick-tile" (click)="openDeck(deck)">
-            <!-- Klick aufs Commander-Bild zeigt erst den Steckbrief als Popup (von dort geht es
-                 weiter ins Deck), ein Klick auf den Rest der Kachel öffnet das Deck direkt. -->
-            <div
-              class="card-pick-image"
-              role="button"
-              tabindex="0"
-              [attr.aria-label]="i18n.t('publicDecks.passportAria', { name: deck.name })"
-              (click)="$event.stopPropagation(); openPassport(deck)"
-              (keydown.enter)="$event.stopPropagation(); openPassport(deck)"
-            >
-              @if (commanderCardsFor(deck.id).length > 0) {
-                <app-partner-card-image [cards]="commanderCardsFor(deck.id)" [compact]="true" />
-              } @else {
-                <div class="card-pick-placeholder">{{ deck.name }}</div>
-              }
+            <!-- Commander-Bild und Leiste darunter als EIN Rahmen: Aufrufe, Likes und die Bilanz
+                 hängen direkt am Bild, Name und Besitzer stehen darunter. -->
+            <div class="public-deck-frame">
+              <!-- Klick aufs Commander-Bild zeigt erst den Steckbrief als Popup (von dort geht es
+                   weiter ins Deck), ein Klick auf den Rest der Kachel öffnet das Deck direkt. -->
+              <div
+                class="card-pick-image"
+                role="button"
+                tabindex="0"
+                [attr.aria-label]="i18n.t('publicDecks.passportAria', { name: deck.name })"
+                (click)="$event.stopPropagation(); openPassport(deck)"
+                (keydown.enter)="$event.stopPropagation(); openPassport(deck)"
+              >
+                @if (commanderCardsFor(deck.id).length > 0) {
+                  <app-partner-card-image [cards]="commanderCardsFor(deck.id)" [compact]="true" />
+                } @else {
+                  <div class="card-pick-placeholder">{{ deck.name }}</div>
+                }
+              </div>
+              <!-- Die Leiste steht immer da, auch leer - sonst sitzen Name und Besitzer je nach
+                   Kachel unterschiedlich hoch. Die Zahlen lädt der DeckSocialService für die ganze
+                   Seite auf einmal. -->
+              <div class="public-deck-bar">
+                @if (social.verfuegbar()) {
+                  <app-deck-social [deckId]="deck.id" [compact]="true" />
+                }
+                @if (statsFor(deck.id); as s) {
+                  @if (s.games > 0) {
+                    <span class="public-deck-winrate">{{ s.wins }}/{{ s.games }} {{ s.winRate | number: '1.0-0' }}%</span>
+                  }
+                }
+              </div>
             </div>
             <span class="card-pick-stats card-pick-name">{{ deck.name }}</span>
-            <span class="card-pick-stats public-deck-winrate">
-              @if (statsFor(deck.id); as s) {
-                @if (s.games > 0) {
-                  {{ s.winRate | number: '1.0-0' }}% ({{ s.wins }}/{{ s.games }})
-                }
-              }
-            </span>
-            <!-- Kasten unter jedem Deck: wem es gehört, wie oft es angesehen wurde, wie viele
-                 Likes es hat. Die Zahlen lädt der DeckSocialService für die ganze Seite auf einmal. -->
-            @if (social.verfuegbar() && social.statsFor(deck.id); as s) {
-              <div class="public-deck-meta">
-                @if (s.ownerName) {
-                  <span class="public-deck-owner" [attr.aria-label]="i18n.t('publicDecks.ownerAria', { name: s.ownerName })">
-                    <app-icon name="user" />
-                    <span class="public-deck-owner-name">{{ s.ownerName }}</span>
-                  </span>
-                }
-                <app-deck-social [deckId]="deck.id" [compact]="true" />
-              </div>
+            @if (social.statsFor(deck.id)?.ownerName; as owner) {
+              <span class="card-pick-stats public-deck-owner">{{ i18n.t('publicDecks.byOwner', { name: owner }) }}</span>
             }
           </div>
         }

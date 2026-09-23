@@ -29,10 +29,6 @@
   }
 }
 
-.public-deck-winrate {
-  font-weight: 600;
-}
-
 .commander-rec-header {
   display: flex;
   align-items: center;
@@ -118,46 +114,51 @@
   text-align: center;
 }
 
-// Feste Höhe für Name (immer 2 Zeilen reserviert, egal ob der Name in eine oder zwei passt) und
-// Winrate-Zeile (immer gerendert, auch leer ohne erfasste Partien) - sonst variiert die Kachelhöhe
-// je nach Namenslänge/Partienzahl, was das 2-spaltige Grid auf schmalen Bildschirmen (Handy) sehr
-// ungleichmäßig aussehen lässt (Zeilen springen je nach längster Kachel unterschiedlich weit runter).
+// Name höchstens zwei Zeilen. Die Kachelhöhe muss hier nicht mehr festgehalten werden: Bild und
+// Leiste stehen oben und sind in jeder Kachel gleich hoch, Name und Besitzer kommen darunter.
 .card-pick-name {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   overflow: hidden;
   line-height: 1.25;
-  min-height: calc(0.72rem * 1.25 * 2);
+  font-weight: 600;
+  opacity: 0.95;
+}
+
+// Bild + Leiste als ein Rahmen: der Rahmen trägt Rand und Rundung, das Bild darin nicht mehr.
+.public-deck-frame {
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.06);
+
+  .card-pick-image {
+    border: none;
+    border-radius: 0;
+  }
+}
+
+// Aufrufe und Likes links, Bilanz rechts - direkt unter dem Commander-Bild.
+.public-deck-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  min-height: 26px;
+  padding: 3px 6px;
+  border-top: 1px solid var(--glass-border);
+  font-size: 0.72rem;
+  white-space: nowrap;
 }
 
 .public-deck-winrate {
-  min-height: calc(0.72rem * 1.25);
-}
-
-// Kasten unter jeder Kachel: Besitzer, Aufrufe, Likes.
-.public-deck-meta {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 5px 6px;
-  border-radius: var(--r-sm);
-  border: 1px solid var(--glass-border);
-  background: rgba(255, 255, 255, 0.05);
-  font-size: 0.72rem;
-  min-width: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .public-deck-owner {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  max-width: 100%;
-  opacity: 0.85;
-}
-
-.public-deck-owner-name {
+  margin-top: -2px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
