@@ -82,12 +82,9 @@ export class DeckList {
   readonly sortMode = signal<DeckSortMode>('alpha');
   readonly formats = DECK_FORMATS;
 
-  /** Hinweistext zum roten Ausrufezeichen: welche Karten im Format des Decks verboten sind. */
-  bannedHint(deck: Deck): string {
-    return this.i18n.t('deck.bannedBadge', {
-      format: deck.format ?? '',
-      cards: this.banlist.violationsFor(deck.id).join(', '),
-    });
+  /** Hinweiszeilen zum roten Ausrufezeichen: gebannte Karten, Kartenzahl, Kopien im Format des Decks. */
+  deckProbleme(deck: Deck): string[] {
+    return this.banlist.problemsFor(deck.id, deck.format);
   }
   /**
    * Formatfilter der Liste. 'all' zeigt alle Decks (auch die ohne hinterlegtes Format),
@@ -163,7 +160,7 @@ export class DeckList {
       untracked(() => void this.social.load(ids));
     });
 
-    // Bannliste: dieselbe Seite, ebenfalls in einer Anfrage (rotes Ausrufezeichen am Decknamen).
+    // Bannliste und Bauregeln: dieselbe Seite, ebenfalls gebündelt (rotes Ausrufezeichen am Decknamen).
     effect(() => {
       const ids = this.pagedDecks().map((d) => d.id);
       untracked(() => void this.banlist.loadForDecks(ids));
