@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, input, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, model, signal } from '@angular/core';
 import { I18nService } from '../i18n.service';
 import { Icon } from '../ui/icon/icon';
 
@@ -36,7 +36,14 @@ export class CardImage {
    * Komponenteninstanz und damit ihren eigenen Flip-Zustand, ganz ohne Set<string>/frontFaceKey-
    * Buchhaltung im Aufrufer (im Unterschied zum älteren, in deck-viewer.service.ts kopierten Muster).
    */
-  readonly showingBack = signal(false);
+  readonly showingBack = model(false);
+
+  /**
+   * false = der Umdreh-Knopf auf dem Bild entfällt, weil die umgebende Ansicht einen eigenen hat
+   * und showingBack von außen setzt - so die Kacheln im öffentlichen Stöbern, deren Knopf in der
+   * Leiste unter dem Bild sitzt statt auf dem Kartenbild.
+   */
+  readonly showFlipButton = input(true);
 
   /** Aktuell gezeigte Bild-URL (Vorder- oder Rückseite je nach Flip-Zustand). */
   readonly currentSrc = computed(() => (this.showingBack() && this.backImageUrl() ? this.backImageUrl()! : this.imageUrl()));

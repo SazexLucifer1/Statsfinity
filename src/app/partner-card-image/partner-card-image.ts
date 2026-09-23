@@ -47,6 +47,16 @@ export class PartnerCardImage {
   /** false = der runde Umschaltknopf auf der Karte entfällt, weil die Ansicht einen eigenen hat. */
   readonly showSwapButton = input(true);
 
+  /** false = auch der Umdreh-Knopf doppelseitiger Karten entfällt (siehe CardImage.showFlipButton). */
+  readonly showFlipButton = input(true);
+
+  /**
+   * Ob die VORDERE Karte gerade ihre Rückseite zeigt. Als model(), damit die Ansicht ihren eigenen
+   * Umdreh-Knopf bedienen kann. Beim Tausch der beiden Karten zurück auf die Vorderseite - sonst
+   * läge der neu nach vorne geholte Commander gleich umgedreht da.
+   */
+  readonly frontShowingBack = model(false);
+
   get frontCard(): ScryfallCard {
     return this.cards()[this.frontIndex()] ?? this.cards()[0];
   }
@@ -65,5 +75,6 @@ export class PartnerCardImage {
     // Kachel (Deck/Commander öffnen) mit-auslöst.
     event.stopPropagation();
     this.frontIndex.update((i) => 1 - i);
+    this.frontShowingBack.set(false);
   }
 }

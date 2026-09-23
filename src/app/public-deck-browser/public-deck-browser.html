@@ -85,6 +85,9 @@
                     [showSwapButton]="false"
                     [frontIndex]="partnerFrontFor(deck.id)"
                     (frontIndexChange)="setPartnerFront(deck.id, $event)"
+                    [showFlipButton]="false"
+                    [frontShowingBack]="flippedFor(deck.id)"
+                    (frontShowingBackChange)="setFlipped(deck.id, $event)"
                   />
                 } @else {
                   <div class="card-pick-placeholder">{{ deck.name }}</div>
@@ -97,18 +100,36 @@
                 @if (social.verfuegbar()) {
                   <app-deck-social [deckId]="deck.id" [compact]="true" />
                 }
-                <!-- Zwei Commander: der Umschaltknopf sitzt hier statt auf der Karte, wo er das
-                     Kartenbild verdeckte. -->
-                @if (commanderCardsFor(deck.id).length > 1) {
-                  <button
-                    type="button"
-                    class="public-deck-swap"
-                    [attr.aria-label]="i18n.t('partnerCardImage.swapAria')"
-                    [title]="i18n.t('partnerCardImage.swapAria')"
-                    (click)="$event.stopPropagation(); swapPartner(deck.id)"
-                  >
-                    <app-icon name="users" />
-                  </button>
+                @if (commanderCardsFor(deck.id).length > 1 || frontCardFor(deck.id)?.backImageUrl) {
+                  <span class="public-deck-actions">
+                    <!-- Zwei Commander: der Umschaltknopf sitzt hier statt auf der Karte, wo er das
+                         Kartenbild verdeckte. -->
+                    @if (commanderCardsFor(deck.id).length > 1) {
+                      <button
+                        type="button"
+                        class="public-deck-swap"
+                        [attr.aria-label]="i18n.t('partnerCardImage.swapAria')"
+                        [title]="i18n.t('partnerCardImage.swapAria')"
+                        (click)="$event.stopPropagation(); swapPartner(deck.id)"
+                      >
+                        <app-icon name="users" />
+                      </button>
+                    }
+                    <!-- Doppelseitiger Commander: auch der Umdreh-Knopf sitzt hier statt auf der Karte. -->
+                    @if (frontCardFor(deck.id)?.backImageUrl) {
+                      <button
+                        type="button"
+                        class="public-deck-swap"
+                        [class.active]="flippedFor(deck.id)"
+                        [attr.aria-label]="i18n.t('cardImage.flipAria')"
+                        [attr.aria-pressed]="flippedFor(deck.id)"
+                        [title]="i18n.t('cardImage.flipAria')"
+                        (click)="$event.stopPropagation(); setFlipped(deck.id, !flippedFor(deck.id))"
+                      >
+                        <app-icon name="refresh" />
+                      </button>
+                    }
+                  </span>
                 }
                 @if (statsFor(deck.id); as s) {
                   @if (s.games > 0) {

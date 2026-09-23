@@ -3,7 +3,7 @@
 } @else {
   <div class="card-image-fallback">{{ alt() }}</div>
 }
-@if (backImageUrl()) {
+@if (backImageUrl() && showFlipButton()) {
   <button
     type="button"
     class="card-image-flip-button"
