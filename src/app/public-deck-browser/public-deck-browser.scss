@@ -114,19 +114,8 @@
   text-align: center;
 }
 
-// Name höchstens zwei Zeilen. Die Kachelhöhe muss hier nicht mehr festgehalten werden: Bild und
-// Leiste stehen oben und sind in jeder Kachel gleich hoch, Name und Besitzer kommen darunter.
-.card-pick-name {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
-  line-height: 1.25;
-  font-weight: 600;
-  opacity: 0.95;
-}
-
-// Bild + Leiste als ein Rahmen: der Rahmen trägt Rand und Rundung, das Bild darin nicht mehr.
+// Bild, Leiste, Name und Besitzer als ein Rahmen: der Rahmen trägt Rand und Rundung, das Bild
+// darin nicht mehr.
 .public-deck-frame {
   border-radius: 8px;
   overflow: hidden;
@@ -157,11 +146,25 @@
   font-variant-numeric: tabular-nums;
 }
 
-.public-deck-owner {
-  margin-top: -2px;
+// Name und Besitzer: eigene Zeilen im Rahmen, wie die Leiste durch eine Linie abgetrennt.
+.public-deck-row {
+  padding: 4px 6px;
+  border-top: 1px solid var(--glass-border);
+  font-size: 0.72rem;
+  text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  line-height: 1.25;
+}
+
+.public-deck-name {
+  font-weight: 600;
+}
+
+.public-deck-owner {
+  min-height: calc(0.72rem * 1.25 + 8px);
+  opacity: 0.75;
 }
 
 // Das Steckbrief-Bild braucht mehr Breite als die 300px der üblichen Dialoge.

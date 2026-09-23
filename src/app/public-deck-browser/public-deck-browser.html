@@ -65,8 +65,8 @@
       <div class="card-pick-grid">
         @for (deck of pagedResults(); track deck.id) {
           <div class="card-pick-tile" (click)="openDeck(deck)">
-            <!-- Commander-Bild und Leiste darunter als EIN Rahmen: Aufrufe, Likes und die Bilanz
-                 hängen direkt am Bild, Name und Besitzer stehen darunter. -->
+            <!-- Commander-Bild, Leiste, Name und Besitzer als EIN Rahmen, jede Zeile durch eine
+                 Linie getrennt: Aufrufe, Likes und Bilanz hängen direkt am Bild. -->
             <div class="public-deck-frame">
               <!-- Klick aufs Commander-Bild zeigt erst den Steckbrief als Popup (von dort geht es
                    weiter ins Deck), ein Klick auf den Rest der Kachel öffnet das Deck direkt. -->
@@ -97,11 +97,15 @@
                   }
                 }
               </div>
+              <!-- Name und Besitzer gehören mit in den Rahmen - je eine eigene Zeile darunter. Die
+                   Besitzer-Zeile steht auch ohne Namen da, damit alle Rahmen gleich hoch sind. -->
+              <div class="public-deck-row public-deck-name">{{ deck.name }}</div>
+              <div class="public-deck-row public-deck-owner">
+                @if (social.statsFor(deck.id)?.ownerName; as owner) {
+                  {{ i18n.t('publicDecks.byOwner', { name: owner }) }}
+                }
+              </div>
             </div>
-            <span class="card-pick-stats card-pick-name">{{ deck.name }}</span>
-            @if (social.statsFor(deck.id)?.ownerName; as owner) {
-              <span class="card-pick-stats public-deck-owner">{{ i18n.t('publicDecks.byOwner', { name: owner }) }}</span>
-            }
           </div>
         }
       </div>
