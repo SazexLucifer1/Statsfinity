@@ -60,6 +60,19 @@
   -webkit-backdrop-filter: blur(22px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.22);
   box-shadow: 0 10px 35px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+
+  // Als installierte App (iPhone-Homescreen) von OBEN verankert statt von unten: iOS vergisst nach
+  // dem Schließen der Tastatur gelegentlich, das Layout-Viewport wieder auf volle Höhe zu setzen -
+  // alles mit `bottom` hängt dann um die Tastaturhöhe zu hoch mitten im Bild, bis die Seite neu
+  // lädt. `top` bleibt davon unberührt, und 100lvh ist die feste Bildschirmhöhe. Nur im
+  // Standalone-Modus: im Safari-Tab ist 100lvh die Höhe OHNE Adressleiste, die Leiste säße dort
+  // bei eingeblendeter Adressleiste darunter. Das -100% zieht die Leiste um ihre eigene Höhe
+  // hoch, damit hier keine Höhe fest stehen muss.
+  @media (display-mode: standalone) {
+    bottom: auto;
+    top: calc(100lvh - env(safe-area-inset-bottom, 0px) - 14px);
+    transform: translate(-50%, -100%);
+  }
 }
 
 // NEU
