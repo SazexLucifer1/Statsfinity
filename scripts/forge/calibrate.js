@@ -94,8 +94,19 @@ for (const s of STUFEN) {
 }
 
 const ergebnisse = fs.existsSync(AUS) ? JSON.parse(fs.readFileSync(AUS, 'utf8')) : [];
-const schon = new Set(ergebnisse.map((e) => JSON.stringify([e.probe, e.sitz])));
-const offen = partien.filter((p) => !schon.has(JSON.stringify([p.probe, p.sitz])));
+// Gezählt, nicht als Menge: Dieselbe Aufstellung kommt mehrfach vor (die Sitzreihenfolge rotiert mit
+// Periode 4). Eine Menge hielte nach einer gespielten Partie alle gleichen für erledigt.
+const schon = new Map();
+for (const e of ergebnisse) {
+  const k = JSON.stringify([e.probe, e.sitz]);
+  schon.set(k, (schon.get(k) ?? 0) + 1);
+}
+const offen = partien.filter((p) => {
+  const k = JSON.stringify([p.probe, p.sitz]);
+  if (!schon.get(k)) return true;
+  schon.set(k, schon.get(k) - 1);
+  return false;
+});
 console.log(
   `${partien.length} Partien geplant, ${partien.length - offen.length} schon gespielt, ${offen.length} offen.`,
 );
