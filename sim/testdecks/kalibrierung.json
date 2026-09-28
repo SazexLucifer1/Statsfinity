@@ -3291,5 +3291,125 @@
   ],
   "dauerS": 88,
   "fehler": null
+ },
+ {
+  "probe": "innen",
+  "stufe": 4,
+  "sitz": [
+   "b4-muerra-ein-waschbaer.dck",
+   "b4-hazezon-azir-in-dune.dck",
+   "b4-jodah-f-steht-fuer-freunde.dck",
+   "b4-marwyn-elf-ramp.dck"
+  ],
+  "geprueft": null,
+  "sieger": "b4-marwyn-elf-ramp.dck",
+  "runde": 9,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b4-muerra-ein-waschbaer.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-hazezon-azir-in-dune.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-jodah-f-steht-fuer-freunde.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 237,
+  "fehler": null
+ },
+ {
+  "probe": "innen",
+  "stufe": 4,
+  "sitz": [
+   "b4-hazezon-azir-in-dune.dck",
+   "b4-jodah-f-steht-fuer-freunde.dck",
+   "b4-marwyn-elf-ramp.dck",
+   "b4-muerra-ein-waschbaer.dck"
+  ],
+  "geprueft": null,
+  "sieger": "b4-hazezon-azir-in-dune.dck",
+  "runde": 7,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b4-jodah-f-steht-fuer-freunde.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-marwyn-elf-ramp.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-muerra-ein-waschbaer.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 511,
+  "fehler": null
+ },
+ {
+  "probe": "innen",
+  "stufe": 4,
+  "sitz": [
+   "b4-jodah-f-steht-fuer-freunde.dck",
+   "b4-marwyn-elf-ramp.dck",
+   "b4-muerra-ein-waschbaer.dck",
+   "b4-hazezon-azir-in-dune.dck"
+  ],
+  "geprueft": null,
+  "sieger": "b4-jodah-f-steht-fuer-freunde.dck",
+  "runde": 5,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b4-marwyn-elf-ramp.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-muerra-ein-waschbaer.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-hazezon-azir-in-dune.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 163,
+  "fehler": null
+ },
+ {
+  "probe": "innen",
+  "stufe": 4,
+  "sitz": [
+   "b4-jodah-f-steht-fuer-freunde.dck",
+   "b4-marwyn-elf-ramp.dck",
+   "b4-muerra-ein-waschbaer.dck",
+   "b4-hazezon-azir-in-dune.dck"
+  ],
+  "geprueft": null,
+  "sieger": "b4-hazezon-azir-in-dune.dck",
+  "runde": 6,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b4-jodah-f-steht-fuer-freunde.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-marwyn-elf-ramp.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-muerra-ein-waschbaer.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 638,
+  "fehler": null
  }
 ]

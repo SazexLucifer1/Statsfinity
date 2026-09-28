@@ -81,9 +81,16 @@ node scripts/forge/card-coverage.js .forge/forge/forge-gui/res oracle-cards.json
 
 Oder in GitHub: „Actions“ → „Forge card coverage“ → „Run workflow“; der Bericht hängt als Artefakt am Lauf.
 
-## Nächste Schritte
+## Stand
 
-1. ~~Durchstich + Abdeckung~~ (dieser Stand)
-2. Test-Decks je Bracket, von Hand kuratiert, Kalibrierungsturnier
-3. Runner (`run-pod.js`), Deck-Umwandlung, Siegplan-Analyse, Tabellen, Workflow
-4. Anbindung in der App
+1. ~~Durchstich + Abdeckung~~
+2. ~~Test-Decks je Bracket~~ (`sim/testdecks/`), Kalibrierungsturnier läuft (`calibrate.js`)
+3. ~~Runner und Einstufung~~: `einstufen.js`, `src/app/forge-einstufung.ts`, Workflow `forge-einstufung.yml`,
+   Tabelle `forge_einstufungen`
+4. Offen: Siegplan-Analyse, Anbindung in der App (anfordern, Status, Ergebnis anzeigen)
+
+Ein Deck von Hand einstufen (im Container, eine Stufe, wenige Partien zum Ausprobieren):
+
+```bash
+node scripts/forge/einstufen.js .forge/forge --deck <statsfinity-deck-id> --stufen 2 --spiele 8 --parallel 2
+```
