@@ -128,3 +128,27 @@ Kommandozeilen-Modus nur mit einer kleinen lokalen Änderung an `SimulateMatch.j
 
 Ergebnis: Keiner der drei Forge-Bots spielt Combos. Damit die Simulation Bracket 4 und 5 erkennt, braucht der Bot
 eine eigene Combo-Steuerung, die den Siegplan des Decks kennt.
+
+### Zweiter Lauf mit Combo-Pilot (28.09.2026, je Probe 20 Partien)
+
+Der Pilot (`scripts/forge/pilot/`) greift nur bei Decks mit spielbeendender Combo – das sind unter den Test-Decks
+Muerra (B4) und drei der vier B5-Decks. B1 bis B3 spielen deshalb exakt wie im ersten Lauf (gleiche Seeds).
+
+| Probe       | ohne Pilot | mit Pilot | davon per Combo |
+| ----------- | ---------: | --------: | --------------: |
+| B2 gegen B1 |       35 % |      30 % |               0 |
+| B3 gegen B2 |       25 % |      25 % |               0 |
+| B4 gegen B3 |       15 % |      15 % |               0 |
+| B5 gegen B4 |        5 % |  **25 %** |               2 |
+
+B5 untereinander: Witherbloom 35 % (4 per Combo), Kinnan 30 % (3), Ishai/Rograkh 25 % (2), Thrasios/Tymna 5 %
+(keine Sieg-Combo nach der Definition, siehe unten). Insgesamt 13 Combo-Siege in 180 Partien, vorher 0.
+
+Befund: Der Pilot hebt B5 von 5 % auf 25 % – genau auf den fairen Anteil, noch nicht darüber. Zwischen B3 und B4
+trennt die Simulation weiterhin nicht; die B4-Decks der Gruppe gewinnen über Wert und Tutoren, nicht über Combos,
+und das spielt der Forge-Bot schlecht. Auffällige Test-Decks (Siegquote innerhalb der eigenen Stufe, fair 25 %):
+
+- B1 Ardbert 50 % – zu stark für Bracket 1, Vhal 5 % sehr schwach
+- B3 Celestial Toymaker 50 % und 4 von 5 gegen B2 – spielt wie Bracket 4; Ivy 0 % – der Bot kann das Deck nicht
+- B4 Muerra 0 % innerhalb von B4
+- B5 Thrasios/Tymna 5 % – seine Combos liefern nur „unendlich Mana/Karten“, der Pilot kennt keinen Sieg für ihn

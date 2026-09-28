@@ -4953,5 +4953,761 @@
   ],
   "dauerS": 53,
   "fehler": null
+ },
+ {
+  "probe": "innen",
+  "stufe": 5,
+  "sitz": [
+   "b5-thrasios-tymna-land-go-open.dck",
+   "b5-witherbloom-breach-the-bay-2.dck",
+   "b5-ishai-rograkh-cookout.dck",
+   "b5-kinnan-siege-10k.dck"
+  ],
+  "geprueft": null,
+  "sieger": "b5-ishai-rograkh-cookout.dck",
+  "runde": 7,
+  "remis": false,
+  "comboSieg": false,
+  "siegGrund": "all opponents have lost",
+  "verloren": [
+   {
+    "deck": "b5-thrasios-tymna-land-go-open.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-witherbloom-breach-the-bay-2.dck",
+    "grund": "effect of spell 'Pact of Negation'"
+   },
+   {
+    "deck": "b5-kinnan-siege-10k.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 90,
+  "fehler": null
+ },
+ {
+  "probe": "innen",
+  "stufe": 5,
+  "sitz": [
+   "b5-ishai-rograkh-cookout.dck",
+   "b5-kinnan-siege-10k.dck",
+   "b5-thrasios-tymna-land-go-open.dck",
+   "b5-witherbloom-breach-the-bay-2.dck"
+  ],
+  "geprueft": null,
+  "sieger": "b5-kinnan-siege-10k.dck",
+  "runde": 7,
+  "remis": false,
+  "comboSieg": true,
+  "siegGrund": "effect of 'Combo: Infinite storm count'",
+  "verloren": [
+   {
+    "deck": "b5-ishai-rograkh-cookout.dck",
+    "grund": "an opponent has won by spell 'Combo: Infinite storm count'"
+   },
+   {
+    "deck": "b5-thrasios-tymna-land-go-open.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-witherbloom-breach-the-bay-2.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 218,
+  "fehler": null
+ },
+ {
+  "probe": "innen",
+  "stufe": 5,
+  "sitz": [
+   "b5-witherbloom-breach-the-bay-2.dck",
+   "b5-ishai-rograkh-cookout.dck",
+   "b5-kinnan-siege-10k.dck",
+   "b5-thrasios-tymna-land-go-open.dck"
+  ],
+  "geprueft": null,
+  "sieger": "b5-kinnan-siege-10k.dck",
+  "runde": 6,
+  "remis": false,
+  "comboSieg": false,
+  "siegGrund": "all opponents have lost",
+  "verloren": [
+   {
+    "deck": "b5-witherbloom-breach-the-bay-2.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-ishai-rograkh-cookout.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-thrasios-tymna-land-go-open.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 123,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 5,
+  "sitz": [
+   "b5-ishai-rograkh-cookout.dck",
+   "b4-jodah-f-steht-fuer-freunde.dck",
+   "b4-muerra-ein-waschbaer.dck",
+   "b4-marwyn-elf-ramp.dck"
+  ],
+  "geprueft": 0,
+  "sieger": "b4-jodah-f-steht-fuer-freunde.dck",
+  "runde": 6,
+  "remis": false,
+  "comboSieg": false,
+  "siegGrund": "all opponents have lost",
+  "verloren": [
+   {
+    "deck": "b5-ishai-rograkh-cookout.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-muerra-ein-waschbaer.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-marwyn-elf-ramp.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 117,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 5,
+  "sitz": [
+   "b4-muerra-ein-waschbaer.dck",
+   "b5-kinnan-siege-10k.dck",
+   "b4-marwyn-elf-ramp.dck",
+   "b4-jodah-f-steht-fuer-freunde.dck"
+  ],
+  "geprueft": 1,
+  "sieger": "b4-jodah-f-steht-fuer-freunde.dck",
+  "runde": 6,
+  "remis": false,
+  "comboSieg": false,
+  "siegGrund": "all opponents have lost",
+  "verloren": [
+   {
+    "deck": "b4-muerra-ein-waschbaer.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-kinnan-siege-10k.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-marwyn-elf-ramp.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 147,
+  "fehler": null
+ },
+ {
+  "probe": "innen",
+  "stufe": 5,
+  "sitz": [
+   "b5-kinnan-siege-10k.dck",
+   "b5-thrasios-tymna-land-go-open.dck",
+   "b5-witherbloom-breach-the-bay-2.dck",
+   "b5-ishai-rograkh-cookout.dck"
+  ],
+  "geprueft": null,
+  "sieger": "b5-witherbloom-breach-the-bay-2.dck",
+  "runde": 7,
+  "remis": false,
+  "comboSieg": false,
+  "siegGrund": "all opponents have lost",
+  "verloren": [
+   {
+    "deck": "b5-kinnan-siege-10k.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-thrasios-tymna-land-go-open.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-ishai-rograkh-cookout.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 394,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 5,
+  "sitz": [
+   "b4-muerra-ein-waschbaer.dck",
+   "b4-marwyn-elf-ramp.dck",
+   "b5-thrasios-tymna-land-go-open.dck",
+   "b4-jodah-f-steht-fuer-freunde.dck"
+  ],
+  "geprueft": 2,
+  "sieger": "b5-thrasios-tymna-land-go-open.dck",
+  "runde": 6,
+  "remis": false,
+  "comboSieg": false,
+  "siegGrund": "all opponents have lost",
+  "verloren": [
+   {
+    "deck": "b4-muerra-ein-waschbaer.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-marwyn-elf-ramp.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-jodah-f-steht-fuer-freunde.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 80,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 5,
+  "sitz": [
+   "b4-jodah-f-steht-fuer-freunde.dck",
+   "b4-muerra-ein-waschbaer.dck",
+   "b4-marwyn-elf-ramp.dck",
+   "b5-witherbloom-breach-the-bay-2.dck"
+  ],
+  "geprueft": 3,
+  "sieger": "b5-witherbloom-breach-the-bay-2.dck",
+  "runde": 5,
+  "remis": false,
+  "comboSieg": true,
+  "siegGrund": "effect of 'Combo: Infinite storm count'",
+  "verloren": [
+   {
+    "deck": "b4-jodah-f-steht-fuer-freunde.dck",
+    "grund": "an opponent has won by spell 'Combo: Infinite storm count'"
+   },
+   {
+    "deck": "b4-muerra-ein-waschbaer.dck",
+    "grund": "an opponent has won by spell 'Combo: Infinite storm count'"
+   },
+   {
+    "deck": "b4-marwyn-elf-ramp.dck",
+    "grund": "an opponent has won by spell 'Combo: Infinite storm count'"
+   }
+  ],
+  "dauerS": 93,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 5,
+  "sitz": [
+   "b4-jodah-f-steht-fuer-freunde.dck",
+   "b4-muerra-ein-waschbaer.dck",
+   "b5-thrasios-tymna-land-go-open.dck",
+   "b4-marwyn-elf-ramp.dck"
+  ],
+  "geprueft": 2,
+  "sieger": "b4-muerra-ein-waschbaer.dck",
+  "runde": 4,
+  "remis": false,
+  "comboSieg": true,
+  "siegGrund": "effect of 'Combo: Infinite combat damage'",
+  "verloren": [
+   {
+    "deck": "b4-jodah-f-steht-fuer-freunde.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-thrasios-tymna-land-go-open.dck",
+    "grund": "an opponent has won by spell 'Combo: Infinite combat damage'"
+   },
+   {
+    "deck": "b4-marwyn-elf-ramp.dck",
+    "grund": "an opponent has won by spell 'Combo: Infinite combat damage'"
+   }
+  ],
+  "dauerS": 71,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 5,
+  "sitz": [
+   "b4-marwyn-elf-ramp.dck",
+   "b4-muerra-ein-waschbaer.dck",
+   "b4-hazezon-azir-in-dune.dck",
+   "b5-witherbloom-breach-the-bay-2.dck"
+  ],
+  "geprueft": 3,
+  "sieger": "b4-muerra-ein-waschbaer.dck",
+  "runde": 4,
+  "remis": false,
+  "comboSieg": true,
+  "siegGrund": "effect of 'Combo: Infinite combat damage'",
+  "verloren": [
+   {
+    "deck": "b4-marwyn-elf-ramp.dck",
+    "grund": "an opponent has won by spell 'Combo: Infinite combat damage'"
+   },
+   {
+    "deck": "b4-hazezon-azir-in-dune.dck",
+    "grund": "an opponent has won by spell 'Combo: Infinite combat damage'"
+   },
+   {
+    "deck": "b5-witherbloom-breach-the-bay-2.dck",
+    "grund": "an opponent has won by spell 'Combo: Infinite combat damage'"
+   }
+  ],
+  "dauerS": 50,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 5,
+  "sitz": [
+   "b5-ishai-rograkh-cookout.dck",
+   "b4-hazezon-azir-in-dune.dck",
+   "b4-jodah-f-steht-fuer-freunde.dck",
+   "b4-muerra-ein-waschbaer.dck"
+  ],
+  "geprueft": 0,
+  "sieger": "b4-muerra-ein-waschbaer.dck",
+  "runde": 6,
+  "remis": false,
+  "comboSieg": false,
+  "siegGrund": "all opponents have lost",
+  "verloren": [
+   {
+    "deck": "b5-ishai-rograkh-cookout.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-hazezon-azir-in-dune.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-jodah-f-steht-fuer-freunde.dck",
+    "grund": "trying to draw cards from empty library"
+   }
+  ],
+  "dauerS": 209,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 5,
+  "sitz": [
+   "b5-ishai-rograkh-cookout.dck",
+   "b4-jodah-f-steht-fuer-freunde.dck",
+   "b4-muerra-ein-waschbaer.dck",
+   "b4-hazezon-azir-in-dune.dck"
+  ],
+  "geprueft": 0,
+  "sieger": "b5-ishai-rograkh-cookout.dck",
+  "runde": 5,
+  "remis": false,
+  "comboSieg": false,
+  "siegGrund": "all opponents have lost",
+  "verloren": [
+   {
+    "deck": "b4-jodah-f-steht-fuer-freunde.dck",
+    "grund": "accumulation of 21 damage from generals"
+   },
+   {
+    "deck": "b4-muerra-ein-waschbaer.dck",
+    "grund": "accumulation of 21 damage from generals"
+   },
+   {
+    "deck": "b4-hazezon-azir-in-dune.dck",
+    "grund": "accumulation of 21 damage from generals"
+   }
+  ],
+  "dauerS": 62,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 5,
+  "sitz": [
+   "b4-marwyn-elf-ramp.dck",
+   "b5-kinnan-siege-10k.dck",
+   "b4-jodah-f-steht-fuer-freunde.dck",
+   "b4-hazezon-azir-in-dune.dck"
+  ],
+  "geprueft": 1,
+  "sieger": "b4-jodah-f-steht-fuer-freunde.dck",
+  "runde": 6,
+  "remis": false,
+  "comboSieg": false,
+  "siegGrund": "all opponents have lost",
+  "verloren": [
+   {
+    "deck": "b4-marwyn-elf-ramp.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-kinnan-siege-10k.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-hazezon-azir-in-dune.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 333,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 5,
+  "sitz": [
+   "b4-hazezon-azir-in-dune.dck",
+   "b4-jodah-f-steht-fuer-freunde.dck",
+   "b4-marwyn-elf-ramp.dck",
+   "b5-witherbloom-breach-the-bay-2.dck"
+  ],
+  "geprueft": 3,
+  "sieger": "b4-marwyn-elf-ramp.dck",
+  "runde": 5,
+  "remis": false,
+  "comboSieg": false,
+  "siegGrund": "all opponents have lost",
+  "verloren": [
+   {
+    "deck": "b4-hazezon-azir-in-dune.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-jodah-f-steht-fuer-freunde.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-witherbloom-breach-the-bay-2.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 108,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 5,
+  "sitz": [
+   "b5-ishai-rograkh-cookout.dck",
+   "b4-marwyn-elf-ramp.dck",
+   "b4-jodah-f-steht-fuer-freunde.dck",
+   "b4-hazezon-azir-in-dune.dck"
+  ],
+  "geprueft": 0,
+  "sieger": "b4-hazezon-azir-in-dune.dck",
+  "runde": 5,
+  "remis": false,
+  "comboSieg": false,
+  "siegGrund": "all opponents have lost",
+  "verloren": [
+   {
+    "deck": "b5-ishai-rograkh-cookout.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-marwyn-elf-ramp.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-jodah-f-steht-fuer-freunde.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 134,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 5,
+  "sitz": [
+   "b4-hazezon-azir-in-dune.dck",
+   "b5-kinnan-siege-10k.dck",
+   "b4-jodah-f-steht-fuer-freunde.dck",
+   "b4-marwyn-elf-ramp.dck"
+  ],
+  "geprueft": 1,
+  "sieger": null,
+  "runde": 5,
+  "remis": true,
+  "comboSieg": false,
+  "siegGrund": null,
+  "verloren": [
+   {
+    "deck": "b5-kinnan-siege-10k.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-jodah-f-steht-fuer-freunde.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 912,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 5,
+  "sitz": [
+   "b4-muerra-ein-waschbaer.dck",
+   "b5-kinnan-siege-10k.dck",
+   "b4-jodah-f-steht-fuer-freunde.dck",
+   "b4-marwyn-elf-ramp.dck"
+  ],
+  "geprueft": 1,
+  "sieger": "b4-jodah-f-steht-fuer-freunde.dck",
+  "runde": 5,
+  "remis": false,
+  "comboSieg": false,
+  "siegGrund": "all opponents have lost",
+  "verloren": [
+   {
+    "deck": "b4-muerra-ein-waschbaer.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-kinnan-siege-10k.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-marwyn-elf-ramp.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 149,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 5,
+  "sitz": [
+   "b4-muerra-ein-waschbaer.dck",
+   "b4-marwyn-elf-ramp.dck",
+   "b5-thrasios-tymna-land-go-open.dck",
+   "b4-jodah-f-steht-fuer-freunde.dck"
+  ],
+  "geprueft": 2,
+  "sieger": "b4-jodah-f-steht-fuer-freunde.dck",
+  "runde": 5,
+  "remis": false,
+  "comboSieg": false,
+  "siegGrund": "all opponents have lost",
+  "verloren": [
+   {
+    "deck": "b4-muerra-ein-waschbaer.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-marwyn-elf-ramp.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-thrasios-tymna-land-go-open.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 103,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 5,
+  "sitz": [
+   "b5-ishai-rograkh-cookout.dck",
+   "b4-muerra-ein-waschbaer.dck",
+   "b4-marwyn-elf-ramp.dck",
+   "b4-hazezon-azir-in-dune.dck"
+  ],
+  "geprueft": 0,
+  "sieger": "b4-marwyn-elf-ramp.dck",
+  "runde": 6,
+  "remis": false,
+  "comboSieg": false,
+  "siegGrund": "all opponents have lost",
+  "verloren": [
+   {
+    "deck": "b5-ishai-rograkh-cookout.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-muerra-ein-waschbaer.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-hazezon-azir-in-dune.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 88,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 5,
+  "sitz": [
+   "b4-hazezon-azir-in-dune.dck",
+   "b4-marwyn-elf-ramp.dck",
+   "b5-thrasios-tymna-land-go-open.dck",
+   "b4-muerra-ein-waschbaer.dck"
+  ],
+  "geprueft": 2,
+  "sieger": null,
+  "runde": 6,
+  "remis": true,
+  "comboSieg": false,
+  "siegGrund": null,
+  "verloren": [
+   {
+    "deck": "b4-hazezon-azir-in-dune.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 909,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 5,
+  "sitz": [
+   "b4-jodah-f-steht-fuer-freunde.dck",
+   "b5-kinnan-siege-10k.dck",
+   "b4-hazezon-azir-in-dune.dck",
+   "b4-muerra-ein-waschbaer.dck"
+  ],
+  "geprueft": 1,
+  "sieger": "b4-jodah-f-steht-fuer-freunde.dck",
+  "runde": 6,
+  "remis": false,
+  "comboSieg": false,
+  "siegGrund": "all opponents have lost",
+  "verloren": [
+   {
+    "deck": "b5-kinnan-siege-10k.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-hazezon-azir-in-dune.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-muerra-ein-waschbaer.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 115,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 5,
+  "sitz": [
+   "b4-marwyn-elf-ramp.dck",
+   "b4-hazezon-azir-in-dune.dck",
+   "b5-thrasios-tymna-land-go-open.dck",
+   "b4-jodah-f-steht-fuer-freunde.dck"
+  ],
+  "geprueft": 2,
+  "sieger": "b4-marwyn-elf-ramp.dck",
+  "runde": 6,
+  "remis": false,
+  "comboSieg": false,
+  "siegGrund": "all opponents have lost",
+  "verloren": [
+   {
+    "deck": "b4-hazezon-azir-in-dune.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-thrasios-tymna-land-go-open.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-jodah-f-steht-fuer-freunde.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 97,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 5,
+  "sitz": [
+   "b4-hazezon-azir-in-dune.dck",
+   "b4-marwyn-elf-ramp.dck",
+   "b4-muerra-ein-waschbaer.dck",
+   "b5-witherbloom-breach-the-bay-2.dck"
+  ],
+  "geprueft": 3,
+  "sieger": "b5-witherbloom-breach-the-bay-2.dck",
+  "runde": 4,
+  "remis": false,
+  "comboSieg": true,
+  "siegGrund": "effect of 'Combo: Infinite storm count'",
+  "verloren": [
+   {
+    "deck": "b4-hazezon-azir-in-dune.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-marwyn-elf-ramp.dck",
+    "grund": "an opponent has won by spell 'Combo: Infinite storm count'"
+   },
+   {
+    "deck": "b4-muerra-ein-waschbaer.dck",
+    "grund": "an opponent has won by spell 'Combo: Infinite storm count'"
+   }
+  ],
+  "dauerS": 69,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 5,
+  "sitz": [
+   "b4-hazezon-azir-in-dune.dck",
+   "b4-muerra-ein-waschbaer.dck",
+   "b4-jodah-f-steht-fuer-freunde.dck",
+   "b5-witherbloom-breach-the-bay-2.dck"
+  ],
+  "geprueft": 3,
+  "sieger": "b5-witherbloom-breach-the-bay-2.dck",
+  "runde": 7,
+  "remis": false,
+  "comboSieg": false,
+  "siegGrund": "all opponents have lost",
+  "verloren": [
+   {
+    "deck": "b4-hazezon-azir-in-dune.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-muerra-ein-waschbaer.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-jodah-f-steht-fuer-freunde.dck",
+    "grund": "trying to draw cards from empty library"
+   }
+  ],
+  "dauerS": 691,
+  "fehler": null
  }
 ]
