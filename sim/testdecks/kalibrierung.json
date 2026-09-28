@@ -4131,5 +4131,1090 @@
   ],
   "dauerS": 173,
   "fehler": null
+ },
+ {
+  "probe": "innen",
+  "stufe": 5,
+  "sitz": [
+   "b5-witherbloom-breach-the-bay-2.dck",
+   "b5-ishai-rograkh-cookout.dck",
+   "b5-kinnan-siege-10k.dck",
+   "b5-thrasios-tymna-land-go-open.dck"
+  ],
+  "geprueft": null,
+  "sieger": "b5-witherbloom-breach-the-bay-2.dck",
+  "runde": 8,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b5-ishai-rograkh-cookout.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-kinnan-siege-10k.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-thrasios-tymna-land-go-open.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 318,
+  "fehler": null
+ },
+ {
+  "probe": "innen",
+  "stufe": 5,
+  "sitz": [
+   "b5-thrasios-tymna-land-go-open.dck",
+   "b5-witherbloom-breach-the-bay-2.dck",
+   "b5-ishai-rograkh-cookout.dck",
+   "b5-kinnan-siege-10k.dck"
+  ],
+  "geprueft": null,
+  "sieger": "b5-witherbloom-breach-the-bay-2.dck",
+  "runde": 6,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b5-thrasios-tymna-land-go-open.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-ishai-rograkh-cookout.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-kinnan-siege-10k.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 545,
+  "fehler": null
+ },
+ {
+  "probe": "innen",
+  "stufe": 5,
+  "sitz": [
+   "b5-kinnan-siege-10k.dck",
+   "b5-thrasios-tymna-land-go-open.dck",
+   "b5-witherbloom-breach-the-bay-2.dck",
+   "b5-ishai-rograkh-cookout.dck"
+  ],
+  "geprueft": null,
+  "sieger": "b5-witherbloom-breach-the-bay-2.dck",
+  "runde": 6,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b5-kinnan-siege-10k.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-thrasios-tymna-land-go-open.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-ishai-rograkh-cookout.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 166,
+  "fehler": null
+ },
+ {
+  "probe": "innen",
+  "stufe": 5,
+  "sitz": [
+   "b5-ishai-rograkh-cookout.dck",
+   "b5-kinnan-siege-10k.dck",
+   "b5-thrasios-tymna-land-go-open.dck",
+   "b5-witherbloom-breach-the-bay-2.dck"
+  ],
+  "geprueft": null,
+  "sieger": "b5-thrasios-tymna-land-go-open.dck",
+  "runde": 7,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b5-ishai-rograkh-cookout.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-witherbloom-breach-the-bay-2.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 250,
+  "fehler": null
+ },
+ {
+  "probe": "innen",
+  "stufe": 5,
+  "sitz": [
+   "b5-ishai-rograkh-cookout.dck",
+   "b5-kinnan-siege-10k.dck",
+   "b5-thrasios-tymna-land-go-open.dck",
+   "b5-witherbloom-breach-the-bay-2.dck"
+  ],
+  "geprueft": null,
+  "sieger": null,
+  "runde": 6,
+  "remis": true,
+  "verloren": [],
+  "dauerS": 910,
+  "fehler": null
+ },
+ {
+  "probe": "innen",
+  "stufe": 5,
+  "sitz": [
+   "b5-witherbloom-breach-the-bay-2.dck",
+   "b5-ishai-rograkh-cookout.dck",
+   "b5-kinnan-siege-10k.dck",
+   "b5-thrasios-tymna-land-go-open.dck"
+  ],
+  "geprueft": null,
+  "sieger": "b5-ishai-rograkh-cookout.dck",
+  "runde": 6,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b5-witherbloom-breach-the-bay-2.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-kinnan-siege-10k.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-thrasios-tymna-land-go-open.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 226,
+  "fehler": null
+ },
+ {
+  "probe": "innen",
+  "stufe": 5,
+  "sitz": [
+   "b5-kinnan-siege-10k.dck",
+   "b5-thrasios-tymna-land-go-open.dck",
+   "b5-witherbloom-breach-the-bay-2.dck",
+   "b5-ishai-rograkh-cookout.dck"
+  ],
+  "geprueft": null,
+  "sieger": "b5-witherbloom-breach-the-bay-2.dck",
+  "runde": 5,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b5-kinnan-siege-10k.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-thrasios-tymna-land-go-open.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-ishai-rograkh-cookout.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 211,
+  "fehler": null
+ },
+ {
+  "probe": "innen",
+  "stufe": 5,
+  "sitz": [
+   "b5-ishai-rograkh-cookout.dck",
+   "b5-kinnan-siege-10k.dck",
+   "b5-thrasios-tymna-land-go-open.dck",
+   "b5-witherbloom-breach-the-bay-2.dck"
+  ],
+  "geprueft": null,
+  "sieger": "b5-kinnan-siege-10k.dck",
+  "runde": 7,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b5-ishai-rograkh-cookout.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-thrasios-tymna-land-go-open.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-witherbloom-breach-the-bay-2.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 514,
+  "fehler": null
+ },
+ {
+  "probe": "innen",
+  "stufe": 5,
+  "sitz": [
+   "b5-thrasios-tymna-land-go-open.dck",
+   "b5-witherbloom-breach-the-bay-2.dck",
+   "b5-ishai-rograkh-cookout.dck",
+   "b5-kinnan-siege-10k.dck"
+  ],
+  "geprueft": null,
+  "sieger": "b5-witherbloom-breach-the-bay-2.dck",
+  "runde": 7,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b5-thrasios-tymna-land-go-open.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-ishai-rograkh-cookout.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-kinnan-siege-10k.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 205,
+  "fehler": null
+ },
+ {
+  "probe": "innen",
+  "stufe": 5,
+  "sitz": [
+   "b5-thrasios-tymna-land-go-open.dck",
+   "b5-witherbloom-breach-the-bay-2.dck",
+   "b5-ishai-rograkh-cookout.dck",
+   "b5-kinnan-siege-10k.dck"
+  ],
+  "geprueft": null,
+  "sieger": "b5-ishai-rograkh-cookout.dck",
+  "runde": 6,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b5-thrasios-tymna-land-go-open.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-witherbloom-breach-the-bay-2.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-kinnan-siege-10k.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 756,
+  "fehler": null
+ },
+ {
+  "probe": "innen",
+  "stufe": 5,
+  "sitz": [
+   "b5-kinnan-siege-10k.dck",
+   "b5-thrasios-tymna-land-go-open.dck",
+   "b5-witherbloom-breach-the-bay-2.dck",
+   "b5-ishai-rograkh-cookout.dck"
+  ],
+  "geprueft": null,
+  "sieger": "b5-ishai-rograkh-cookout.dck",
+  "runde": 5,
+  "remis": false,
+  "verloren": [],
+  "dauerS": 34,
+  "fehler": null
+ },
+ {
+  "probe": "innen",
+  "stufe": 5,
+  "sitz": [
+   "b5-witherbloom-breach-the-bay-2.dck",
+   "b5-ishai-rograkh-cookout.dck",
+   "b5-kinnan-siege-10k.dck",
+   "b5-thrasios-tymna-land-go-open.dck"
+  ],
+  "geprueft": null,
+  "sieger": "b5-witherbloom-breach-the-bay-2.dck",
+  "runde": 6,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b5-ishai-rograkh-cookout.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-kinnan-siege-10k.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-thrasios-tymna-land-go-open.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 251,
+  "fehler": null
+ },
+ {
+  "probe": "innen",
+  "stufe": 5,
+  "sitz": [
+   "b5-thrasios-tymna-land-go-open.dck",
+   "b5-witherbloom-breach-the-bay-2.dck",
+   "b5-ishai-rograkh-cookout.dck",
+   "b5-kinnan-siege-10k.dck"
+  ],
+  "geprueft": null,
+  "sieger": "b5-witherbloom-breach-the-bay-2.dck",
+  "runde": 6,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b5-ishai-rograkh-cookout.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-kinnan-siege-10k.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 120,
+  "fehler": null
+ },
+ {
+  "probe": "innen",
+  "stufe": 5,
+  "sitz": [
+   "b5-ishai-rograkh-cookout.dck",
+   "b5-kinnan-siege-10k.dck",
+   "b5-thrasios-tymna-land-go-open.dck",
+   "b5-witherbloom-breach-the-bay-2.dck"
+  ],
+  "geprueft": null,
+  "sieger": "b5-kinnan-siege-10k.dck",
+  "runde": 6,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b5-ishai-rograkh-cookout.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-thrasios-tymna-land-go-open.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-witherbloom-breach-the-bay-2.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 144,
+  "fehler": null
+ },
+ {
+  "probe": "innen",
+  "stufe": 5,
+  "sitz": [
+   "b5-kinnan-siege-10k.dck",
+   "b5-thrasios-tymna-land-go-open.dck",
+   "b5-witherbloom-breach-the-bay-2.dck",
+   "b5-ishai-rograkh-cookout.dck"
+  ],
+  "geprueft": null,
+  "sieger": "b5-witherbloom-breach-the-bay-2.dck",
+  "runde": 7,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b5-kinnan-siege-10k.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-thrasios-tymna-land-go-open.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-ishai-rograkh-cookout.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 206,
+  "fehler": null
+ },
+ {
+  "probe": "innen",
+  "stufe": 5,
+  "sitz": [
+   "b5-ishai-rograkh-cookout.dck",
+   "b5-kinnan-siege-10k.dck",
+   "b5-thrasios-tymna-land-go-open.dck",
+   "b5-witherbloom-breach-the-bay-2.dck"
+  ],
+  "geprueft": null,
+  "sieger": "b5-thrasios-tymna-land-go-open.dck",
+  "runde": 6,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b5-ishai-rograkh-cookout.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-kinnan-siege-10k.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-witherbloom-breach-the-bay-2.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 642,
+  "fehler": null
+ },
+ {
+  "probe": "innen",
+  "stufe": 5,
+  "sitz": [
+   "b5-witherbloom-breach-the-bay-2.dck",
+   "b5-ishai-rograkh-cookout.dck",
+   "b5-kinnan-siege-10k.dck",
+   "b5-thrasios-tymna-land-go-open.dck"
+  ],
+  "geprueft": null,
+  "sieger": "b5-witherbloom-breach-the-bay-2.dck",
+  "runde": 6,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b5-ishai-rograkh-cookout.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-kinnan-siege-10k.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 71,
+  "fehler": null
+ },
+ {
+  "probe": "innen",
+  "stufe": 5,
+  "sitz": [
+   "b5-thrasios-tymna-land-go-open.dck",
+   "b5-witherbloom-breach-the-bay-2.dck",
+   "b5-ishai-rograkh-cookout.dck",
+   "b5-kinnan-siege-10k.dck"
+  ],
+  "geprueft": null,
+  "sieger": "b5-ishai-rograkh-cookout.dck",
+  "runde": 6,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b5-thrasios-tymna-land-go-open.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-witherbloom-breach-the-bay-2.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-kinnan-siege-10k.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 124,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 5,
+  "sitz": [
+   "b5-ishai-rograkh-cookout.dck",
+   "b4-jodah-f-steht-fuer-freunde.dck",
+   "b4-muerra-ein-waschbaer.dck",
+   "b4-marwyn-elf-ramp.dck"
+  ],
+  "geprueft": 0,
+  "sieger": "b4-jodah-f-steht-fuer-freunde.dck",
+  "runde": 6,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b5-ishai-rograkh-cookout.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-muerra-ein-waschbaer.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-marwyn-elf-ramp.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 111,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 5,
+  "sitz": [
+   "b4-muerra-ein-waschbaer.dck",
+   "b5-kinnan-siege-10k.dck",
+   "b4-marwyn-elf-ramp.dck",
+   "b4-jodah-f-steht-fuer-freunde.dck"
+  ],
+  "geprueft": 1,
+  "sieger": "b4-jodah-f-steht-fuer-freunde.dck",
+  "runde": 6,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b4-muerra-ein-waschbaer.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-kinnan-siege-10k.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-marwyn-elf-ramp.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 145,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 5,
+  "sitz": [
+   "b4-muerra-ein-waschbaer.dck",
+   "b4-marwyn-elf-ramp.dck",
+   "b5-thrasios-tymna-land-go-open.dck",
+   "b4-jodah-f-steht-fuer-freunde.dck"
+  ],
+  "geprueft": 2,
+  "sieger": "b4-marwyn-elf-ramp.dck",
+  "runde": 6,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b4-muerra-ein-waschbaer.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-thrasios-tymna-land-go-open.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-jodah-f-steht-fuer-freunde.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 92,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 5,
+  "sitz": [
+   "b4-jodah-f-steht-fuer-freunde.dck",
+   "b4-muerra-ein-waschbaer.dck",
+   "b4-marwyn-elf-ramp.dck",
+   "b5-witherbloom-breach-the-bay-2.dck"
+  ],
+  "geprueft": 3,
+  "sieger": "b4-marwyn-elf-ramp.dck",
+  "runde": 7,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b4-jodah-f-steht-fuer-freunde.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-muerra-ein-waschbaer.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-witherbloom-breach-the-bay-2.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 111,
+  "fehler": null
+ },
+ {
+  "probe": "innen",
+  "stufe": 5,
+  "sitz": [
+   "b5-witherbloom-breach-the-bay-2.dck",
+   "b5-ishai-rograkh-cookout.dck",
+   "b5-kinnan-siege-10k.dck",
+   "b5-thrasios-tymna-land-go-open.dck"
+  ],
+  "geprueft": null,
+  "sieger": null,
+  "runde": 4,
+  "remis": true,
+  "verloren": [],
+  "dauerS": 909,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 5,
+  "sitz": [
+   "b5-ishai-rograkh-cookout.dck",
+   "b4-hazezon-azir-in-dune.dck",
+   "b4-jodah-f-steht-fuer-freunde.dck",
+   "b4-muerra-ein-waschbaer.dck"
+  ],
+  "geprueft": 0,
+  "sieger": "b4-muerra-ein-waschbaer.dck",
+  "runde": 6,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b5-ishai-rograkh-cookout.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-hazezon-azir-in-dune.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 191,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 5,
+  "sitz": [
+   "b4-jodah-f-steht-fuer-freunde.dck",
+   "b4-muerra-ein-waschbaer.dck",
+   "b5-thrasios-tymna-land-go-open.dck",
+   "b4-marwyn-elf-ramp.dck"
+  ],
+  "geprueft": 2,
+  "sieger": "b4-muerra-ein-waschbaer.dck",
+  "runde": 4,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b4-jodah-f-steht-fuer-freunde.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-thrasios-tymna-land-go-open.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-marwyn-elf-ramp.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 95,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 5,
+  "sitz": [
+   "b4-marwyn-elf-ramp.dck",
+   "b4-muerra-ein-waschbaer.dck",
+   "b4-hazezon-azir-in-dune.dck",
+   "b5-witherbloom-breach-the-bay-2.dck"
+  ],
+  "geprueft": 3,
+  "sieger": "b4-hazezon-azir-in-dune.dck",
+  "runde": 5,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b4-marwyn-elf-ramp.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-muerra-ein-waschbaer.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-witherbloom-breach-the-bay-2.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 94,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 5,
+  "sitz": [
+   "b5-ishai-rograkh-cookout.dck",
+   "b4-jodah-f-steht-fuer-freunde.dck",
+   "b4-muerra-ein-waschbaer.dck",
+   "b4-hazezon-azir-in-dune.dck"
+  ],
+  "geprueft": 0,
+  "sieger": "b5-ishai-rograkh-cookout.dck",
+  "runde": 5,
+  "remis": false,
+  "verloren": [],
+  "dauerS": 54,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 5,
+  "sitz": [
+   "b4-marwyn-elf-ramp.dck",
+   "b5-kinnan-siege-10k.dck",
+   "b4-jodah-f-steht-fuer-freunde.dck",
+   "b4-hazezon-azir-in-dune.dck"
+  ],
+  "geprueft": 1,
+  "sieger": "b4-jodah-f-steht-fuer-freunde.dck",
+  "runde": 6,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b4-marwyn-elf-ramp.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-kinnan-siege-10k.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-hazezon-azir-in-dune.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 320,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 5,
+  "sitz": [
+   "b4-hazezon-azir-in-dune.dck",
+   "b4-jodah-f-steht-fuer-freunde.dck",
+   "b4-marwyn-elf-ramp.dck",
+   "b5-witherbloom-breach-the-bay-2.dck"
+  ],
+  "geprueft": 3,
+  "sieger": "b4-marwyn-elf-ramp.dck",
+  "runde": 5,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b4-hazezon-azir-in-dune.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-jodah-f-steht-fuer-freunde.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-witherbloom-breach-the-bay-2.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 101,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 5,
+  "sitz": [
+   "b5-ishai-rograkh-cookout.dck",
+   "b4-marwyn-elf-ramp.dck",
+   "b4-jodah-f-steht-fuer-freunde.dck",
+   "b4-hazezon-azir-in-dune.dck"
+  ],
+  "geprueft": 0,
+  "sieger": "b4-hazezon-azir-in-dune.dck",
+  "runde": 5,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b5-ishai-rograkh-cookout.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-marwyn-elf-ramp.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-jodah-f-steht-fuer-freunde.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 116,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 5,
+  "sitz": [
+   "b4-muerra-ein-waschbaer.dck",
+   "b5-kinnan-siege-10k.dck",
+   "b4-jodah-f-steht-fuer-freunde.dck",
+   "b4-marwyn-elf-ramp.dck"
+  ],
+  "geprueft": 1,
+  "sieger": "b4-marwyn-elf-ramp.dck",
+  "runde": 6,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b4-muerra-ein-waschbaer.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-kinnan-siege-10k.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-jodah-f-steht-fuer-freunde.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 132,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 5,
+  "sitz": [
+   "b4-hazezon-azir-in-dune.dck",
+   "b5-kinnan-siege-10k.dck",
+   "b4-jodah-f-steht-fuer-freunde.dck",
+   "b4-marwyn-elf-ramp.dck"
+  ],
+  "geprueft": 1,
+  "sieger": null,
+  "runde": 5,
+  "remis": true,
+  "verloren": [
+   {
+    "deck": "b5-kinnan-siege-10k.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-jodah-f-steht-fuer-freunde.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 909,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 5,
+  "sitz": [
+   "b4-muerra-ein-waschbaer.dck",
+   "b4-marwyn-elf-ramp.dck",
+   "b5-thrasios-tymna-land-go-open.dck",
+   "b4-jodah-f-steht-fuer-freunde.dck"
+  ],
+  "geprueft": 2,
+  "sieger": "b4-jodah-f-steht-fuer-freunde.dck",
+  "runde": 5,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b4-muerra-ein-waschbaer.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-marwyn-elf-ramp.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-thrasios-tymna-land-go-open.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 102,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 5,
+  "sitz": [
+   "b5-ishai-rograkh-cookout.dck",
+   "b4-muerra-ein-waschbaer.dck",
+   "b4-marwyn-elf-ramp.dck",
+   "b4-hazezon-azir-in-dune.dck"
+  ],
+  "geprueft": 0,
+  "sieger": "b4-marwyn-elf-ramp.dck",
+  "runde": 6,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b5-ishai-rograkh-cookout.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-muerra-ein-waschbaer.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-hazezon-azir-in-dune.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 86,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 5,
+  "sitz": [
+   "b4-hazezon-azir-in-dune.dck",
+   "b4-marwyn-elf-ramp.dck",
+   "b5-thrasios-tymna-land-go-open.dck",
+   "b4-muerra-ein-waschbaer.dck"
+  ],
+  "geprueft": 2,
+  "sieger": null,
+  "runde": 6,
+  "remis": true,
+  "verloren": [],
+  "dauerS": 911,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 5,
+  "sitz": [
+   "b4-hazezon-azir-in-dune.dck",
+   "b4-muerra-ein-waschbaer.dck",
+   "b4-jodah-f-steht-fuer-freunde.dck",
+   "b5-witherbloom-breach-the-bay-2.dck"
+  ],
+  "geprueft": 3,
+  "sieger": "b4-jodah-f-steht-fuer-freunde.dck",
+  "runde": 6,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b4-hazezon-azir-in-dune.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-muerra-ein-waschbaer.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-witherbloom-breach-the-bay-2.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 269,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 5,
+  "sitz": [
+   "b4-jodah-f-steht-fuer-freunde.dck",
+   "b5-kinnan-siege-10k.dck",
+   "b4-hazezon-azir-in-dune.dck",
+   "b4-muerra-ein-waschbaer.dck"
+  ],
+  "geprueft": 1,
+  "sieger": "b4-jodah-f-steht-fuer-freunde.dck",
+  "runde": 6,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b5-kinnan-siege-10k.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-hazezon-azir-in-dune.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-muerra-ein-waschbaer.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 125,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 5,
+  "sitz": [
+   "b4-marwyn-elf-ramp.dck",
+   "b4-hazezon-azir-in-dune.dck",
+   "b5-thrasios-tymna-land-go-open.dck",
+   "b4-jodah-f-steht-fuer-freunde.dck"
+  ],
+  "geprueft": 2,
+  "sieger": "b4-marwyn-elf-ramp.dck",
+  "runde": 6,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b4-hazezon-azir-in-dune.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-thrasios-tymna-land-go-open.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-jodah-f-steht-fuer-freunde.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 86,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 5,
+  "sitz": [
+   "b4-hazezon-azir-in-dune.dck",
+   "b4-marwyn-elf-ramp.dck",
+   "b4-muerra-ein-waschbaer.dck",
+   "b5-witherbloom-breach-the-bay-2.dck"
+  ],
+  "geprueft": 3,
+  "sieger": "b4-marwyn-elf-ramp.dck",
+  "runde": 4,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b4-hazezon-azir-in-dune.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-muerra-ein-waschbaer.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-witherbloom-breach-the-bay-2.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 55,
+  "fehler": null
  }
 ]

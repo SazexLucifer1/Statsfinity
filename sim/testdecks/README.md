@@ -83,4 +83,33 @@ Ishai + Rograkh hat 2026 drei große Turniere gewonnen (auch Misplay on the Lake
 - **innen:** die vier Decks einer Stufe gegeneinander – jedes sollte um 25 % liegen.
 - **stufe:** ein Deck der Stufe k gegen drei Decks der Stufe k−1 – sollte deutlich über 25 % liegen.
 
-Ergebnisse: siehe unten (werden nach dem Lauf eingetragen).
+### Erster Lauf (28.09.2026, Forge `2ccbbb0`, Standard-Bot, je Probe 20 Partien)
+
+Innerhalb der Stufe (fair wären 25 %):
+
+| Stufe | Decks und Siegquote                                                    | Ø Runde des Endes |
+| ----- | ---------------------------------------------------------------------- | ----------------: |
+| B1    | Ardbert 50 %, Ramos 20 %, Parnesse 15 %, Vhal 5 %                      |               7,0 |
+| B2    | Valgavoth 40 %, Atarka 25 %, Szarekh 25 %, Neyali 10 %                 |               5,3 |
+| B3    | Celestial Toymaker 50 %, Sorin 35 %, Choco 15 %, Ivy 0 %               |               6,1 |
+| B4    | Marwyn 40 %, Jodah 30 %, Hazezon 25 %, Muerra 5 %                      |               6,0 |
+| B5    | Witherbloom 45 %, Ishai/Rograkh 25 %, Kinnan 10 %, Thrasios/Tymna 10 % |               6,1 |
+
+Ein Deck der Stufe k gegen drei Decks der Stufe k−1 (soll deutlich über 25 %):
+
+| Probe       |  Siege | Quote |
+| ----------- | -----: | ----: |
+| B2 gegen B1 | 7 / 20 |  35 % |
+| B3 gegen B2 | 5 / 20 |  25 % |
+| B4 gegen B3 | 3 / 20 |  15 % |
+| B5 gegen B4 | 1 / 20 |   5 % |
+
+**Die Stufen trennen nicht – ab Bracket 3 kehrt sich das Verhältnis sogar um.** Der Grund steht in den
+Verlustgründen: In allen 180 Partien hat **kein einziges Deck per Combo gewonnen**, jede Partie endete über
+Lebenspunkte (einmal Gift). Der Standard-Bot von Forge spielt jedes Deck als Kreaturen-Deck; Tutoren, schnelles
+Mana und Combos – genau das, was Bracket 4 und 5 ausmacht – setzt er nicht in Siege um. cEDH-Listen mit wenigen
+Kreaturen verlieren dadurch gegen Bracket-4-Decks, die einfach angreifen.
+
+Folge: Mit dem Standard-Bot misst die Simulation, wie gut sich ein Deck als Kreaturen-Deck spielen lässt, nicht
+seine Stufe. Nächster Versuch: Forges vorausschauende Such-KI („full simulation“), die Züge durchrechnet und einen
+Spielsieg als besten Spielstand erkennt.
