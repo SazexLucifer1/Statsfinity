@@ -20,7 +20,9 @@ function forgeJar(forgeDir) {
     throw new Error(
       `Kein Forge-Jar in ${target} - erst scripts/forge/forge-setup.sh laufen lassen.`,
     );
-  return path.join(target, jar);
+  // Absolut: Java läuft mit cwd forge-gui/ (siehe unten), ein relativer Pfad zeigte von dort ins Leere
+  // und jede Partie endete nach 0 s als "Remis" (erster GitHub-Lauf, 28.09.2026).
+  return path.resolve(target, jar);
 }
 
 /**
@@ -95,7 +97,7 @@ function spielePartie({ forgeDir, deckDir, decks, zeitlimit = 600, seed, profile
     const start = Date.now();
     // Forge sucht res/ relativ zum Arbeitsverzeichnis.
     const p = spawn('java', args, {
-      cwd: path.join(forgeDir, 'forge-gui'),
+      cwd: path.resolve(forgeDir, 'forge-gui'),
       // Der Combo-Pilot liest <Deckname>.combos aus diesem Ordner (siehe scripts/forge/pilot).
       env: { ...process.env, FORGE_COMBO_DIR: path.resolve(deckDir) },
     });
@@ -104,9 +106,15 @@ function spielePartie({ forgeDir, deckDir, decks, zeitlimit = 600, seed, profile
     p.stderr.on('data', (d) => (ausgabe += d));
     // Sicherheitsnetz über Forges eigenem Zeitlimit: ein festgefahrener JVM-Prozess darf den Lauf nicht blockieren.
     const notbremse = setTimeout(() => p.kill('SIGKILL'), (zeitlimit + 120) * 1000);
-    p.on('close', () => {
+    p.on('error', (e) => (ausgabe += `\n${e.message}`));
+    p.on('close', (code) => {
       clearTimeout(notbremse);
-      const fehler = /Could not load deck[^\n]*/.exec(ausgabe)?.[0] ?? null;
+      // Ein Absturz ist kein Remis: ohne "Game Outcome" und mit Fehlercode hat Forge gar nicht gespielt.
+      const abgestuerzt =
+        code !== 0 && code !== null && !/Game Outcome/.test(ausgabe)
+          ? `Forge-Start fehlgeschlagen (Code ${code}): ${ausgabe.trim().split('\n').slice(-3).join(' | ')}`
+          : null;
+      const fehler = /Could not load deck[^\n]*/.exec(ausgabe)?.[0] ?? abgestuerzt;
       resolve({
         ...leseErgebnis(ausgabe, decks.length),
         dauerMs: Date.now() - start,
