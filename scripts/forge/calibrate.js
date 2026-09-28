@@ -119,6 +119,7 @@ console.log(
 );
 
 let fertig = 0;
+let fehlerAmAnfang = 0;
 parallel(
   offen.map(
     (p, i) => () =>
@@ -146,6 +147,13 @@ parallel(
     };
     ergebnisse.push(eintrag);
     fs.writeFileSync(AUS, JSON.stringify(ergebnisse, null, 1));
+    fehlerAmAnfang = fertig < 3 && r.fehler ? fehlerAmAnfang + 1 : fehlerAmAnfang;
+    if (fertig === 2 && fehlerAmAnfang === 3) {
+      // Die ersten drei Partien sind alle gescheitert: Forge läuft gar nicht. Lieber rot abbrechen, als
+      // hunderte leere Partien als Ergebnis auszugeben (so geschehen im ersten GitHub-Lauf).
+      console.error(`Abbruch, die ersten drei Partien sind gescheitert: ${r.fehler}`);
+      process.exit(1);
+    }
     fertig++;
     console.log(
       `[${fertig}/${offen.length}] ${p.probe} B${p.stufe}: ${eintrag.sieger ?? (r.fehler ? 'FEHLER ' + r.fehler : 'Remis')}` +
