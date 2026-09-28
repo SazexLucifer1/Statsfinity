@@ -1,0 +1,28 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index 4908a2b8..f83a4805 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -879,6 +879,10 @@ public class AiController {
+         if (!sa.canCastTiming(player)) {
+             return AiPlayDecision.TimingRestrictions;
+         }
++        // Statsfinity: Combo-Kreaturen legt der Combo-Pilot aus, wenn es sich lohnt - nicht der normale Bot
++        if (ComboPilot.zurueckhalten(player, sa)) {
++            return AiPlayDecision.AnotherTime;
++        }
+ 
+         final Card card = sa.getHostCard();
+ 
+@@ -1359,6 +1363,12 @@ public class AiController {
+         // Reset priority mana reservation that's meant to work for one spell only
+         memory.clearMemorySet(AiCardMemory.MemorySet.HELD_MANA_SOURCES_FOR_NEXT_SPELL);
+ 
++        // Statsfinity: Combo-Pilot (scripts/forge/pilot/ComboPilot.java) - Combos des Decks vor allem anderen
++        final List<SpellAbility> pilotWahl = ComboPilot.waehle(player);
++        if (pilotWahl != null) {
++            return pilotWahl;
++        }
++
+         if (usesFullSimulation()) {
+             return singleSpellAbilityList(simPicker.chooseSpellAbilityToPlay(null));
+         }

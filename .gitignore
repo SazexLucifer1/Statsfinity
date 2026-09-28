@@ -59,3 +59,5 @@ src/app/version.ts
 !.claude/commands/
 !.claude/settings.json
 .claude/settings.local.json
+.forge/
+sim/testdecks/.lauf/
