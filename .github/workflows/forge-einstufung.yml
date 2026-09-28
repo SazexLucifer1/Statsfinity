@@ -135,7 +135,9 @@ jobs:
       - name: Stufe ${{ matrix.stufe }} spielen
         env:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          AUFTRAG: ${{ needs.auftrag.outputs.auftrag_id }}
         # Ein Runner hat 4 Kerne; eine Forge-Partie belegt gut einen davon.
+        # Mit Auftrag aus der App meldet jede Partie den Stand dorthin (Fortschritt im Panel).
         run: >
           node scripts/forge/einstufen.js .forge/forge
           --deck '${{ needs.auftrag.outputs.deck_id }}'
@@ -143,6 +145,7 @@ jobs:
           --spiele '${{ inputs.spiele || '100' }}'
           --parallel 3
           --aus teil-b${{ matrix.stufe }}.json
+          ${AUFTRAG:+--auftrag "$AUFTRAG"}
       # Auch nach Zeitüberschreitung hochladen: die bis dahin gespielten Partien zählen.
       - uses: actions/upload-artifact@v4
         if: always()

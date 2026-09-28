@@ -6,6 +6,7 @@ import { ForgeAuftrag, ForgeEinstufungService, ForgeErgebnis } from '../forge-ei
 import { FAIRER_ANTEIL, SCHWELLE } from '../forge-einstufung';
 import { BarChart, BarChartDatum } from '../ui/bar-chart/bar-chart';
 import { BracketBadge } from '../ui/bracket-badge/bracket-badge';
+import { Meter } from '../ui/meter/meter';
 
 /**
  * Bracket-Einstufung aus der Forge-Simulation (echte 4er-Pods gegen die Test-Decks je Stufe) in der
@@ -20,7 +21,7 @@ import { BracketBadge } from '../ui/bracket-badge/bracket-badge';
  */
 @Component({
   selector: 'app-forge-einstufung-panel',
-  imports: [BarChart, BracketBadge, DatePipe],
+  imports: [BarChart, BracketBadge, DatePipe, Meter],
   templateUrl: './forge-einstufung-panel.html',
   styleUrl: './forge-einstufung-panel.scss',
 })
@@ -48,6 +49,20 @@ export class ForgeEinstufungPanel {
   readonly offen = computed(() => {
     const s = this.auftrag()?.status;
     return s === 'wartet' || s === 'laeuft';
+  });
+
+  /** Zwischenstand des laufenden Auftrags, eine Zeile je Stufe (nur gemeldete Stufen). */
+  readonly fortschritt = computed(() => {
+    const f = this.auftrag()?.fortschritt ?? {};
+    const stufen = Object.entries(f)
+      .map(([stufe, s]) => ({ stufe: Number(stufe), ...s! }))
+      .sort((a, b) => a.stufe - b.stufe);
+    if (!stufen.length) return null;
+    return {
+      stufen,
+      gespielt: stufen.reduce((summe, s) => summe + s.gespielt, 0),
+      geplant: stufen.reduce((summe, s) => summe + s.geplant, 0),
+    };
   });
 
   readonly spieleGesamt = computed(

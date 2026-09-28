@@ -24,7 +24,17 @@ export interface ForgeAuftrag {
   gestartetAt: string | null;
   runUrl: string | null;
   fehler: string | null;
+  /** Stand je Stufe, gemeldet nach jeder Partie (sql/forge-fortschritt-2026-09-28.sql). Leer vor dem Start. */
+  fortschritt: Partial<Record<BracketLevel, ForgeFortschritt>>;
 }
+
+export interface ForgeFortschritt {
+  gespielt: number;
+  geplant: number;
+  siege: number;
+}
+
+const AUFTRAG_SPALTEN = 'id, status, erstellt_at, gestartet_at, run_url, fehler';
 
 /**
  * Liest Einstufungen und Aufträge der Forge-Simulation und legt Aufträge an.
@@ -46,13 +56,16 @@ export class ForgeEinstufungService {
    */
   readonly verfuegbar = signal(true);
 
+  /** Fehlt sql/forge-fortschritt-2026-09-28.sql noch (42703), wird die Spalte nicht mehr angefragt. */
+  private fortschrittVerfuegbar = true;
+
   async laden(
     deckId: string,
   ): Promise<{ ergebnis: ForgeErgebnis | null; auftrag: ForgeAuftrag | null }> {
     const leer = { ergebnis: null, auftrag: null };
     if (!this.verfuegbar()) return leer;
 
-    const [erg, auf] = await Promise.all([
+    const [erg, auf0] = await Promise.all([
       supabase
         .from('forge_einstufungen')
         .select(
@@ -62,14 +75,13 @@ export class ForgeEinstufungService {
         .order('erstellt_at', { ascending: false })
         .limit(1)
         .maybeSingle(),
-      supabase
-        .from('forge_einstufung_auftraege')
-        .select('id, status, erstellt_at, gestartet_at, run_url, fehler')
-        .eq('deck_id', deckId)
-        .order('erstellt_at', { ascending: false })
-        .limit(1)
-        .maybeSingle(),
+      this.auftragLaden(deckId),
     ]);
+    let auf = auf0;
+    if (auf.error?.code === '42703' && this.fortschrittVerfuegbar) {
+      this.fortschrittVerfuegbar = false;
+      auf = await this.auftragLaden(deckId);
+    }
     for (const e of [erg.error, auf.error]) {
       if (!e) continue;
       if (this.tabelleFehlt(e)) return leer;
@@ -96,8 +108,19 @@ export class ForgeEinstufungService {
         gestartetAt: (a['gestartet_at'] as string | null) ?? null,
         runUrl: (a['run_url'] as string | null) ?? null,
         fehler: (a['fehler'] as string | null) ?? null,
+        fortschritt: (a['fortschritt'] as ForgeAuftrag['fortschritt'] | undefined) ?? {},
       },
     };
+  }
+
+  private auftragLaden(deckId: string) {
+    return supabase
+      .from('forge_einstufung_auftraege')
+      .select(this.fortschrittVerfuegbar ? `${AUFTRAG_SPALTEN}, fortschritt` : AUFTRAG_SPALTEN)
+      .eq('deck_id', deckId)
+      .order('erstellt_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
   }
 
   /** Legt einen Auftrag an. Steht für das Deck schon einer offen, verhindert das ein Unique-Index. */
