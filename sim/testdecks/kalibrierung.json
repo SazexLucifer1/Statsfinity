@@ -4041,5 +4041,95 @@
   ],
   "dauerS": 148,
   "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 4,
+  "sitz": [
+   "b3-celestial-toymaker.dck",
+   "b3-choco-chocobos.dck",
+   "b3-sorin-lurrus-inkasso.dck",
+   "b4-muerra-ein-waschbaer.dck"
+  ],
+  "geprueft": 3,
+  "sieger": "b3-sorin-lurrus-inkasso.dck",
+  "runde": 9,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b3-celestial-toymaker.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-choco-chocobos.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-muerra-ein-waschbaer.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 163,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 4,
+  "sitz": [
+   "b3-celestial-toymaker.dck",
+   "b3-choco-chocobos.dck",
+   "b4-marwyn-elf-ramp.dck",
+   "b3-ivy-x-creatures.dck"
+  ],
+  "geprueft": 2,
+  "sieger": "b3-celestial-toymaker.dck",
+  "runde": 5,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b3-choco-chocobos.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-marwyn-elf-ramp.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-ivy-x-creatures.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 298,
+  "fehler": null
+ },
+ {
+  "probe": "innen",
+  "stufe": 5,
+  "sitz": [
+   "b5-kinnan-siege-10k.dck",
+   "b5-thrasios-tymna-land-go-open.dck",
+   "b5-witherbloom-breach-the-bay-2.dck",
+   "b5-ishai-rograkh-cookout.dck"
+  ],
+  "geprueft": null,
+  "sieger": "b5-ishai-rograkh-cookout.dck",
+  "runde": 6,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b5-kinnan-siege-10k.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-thrasios-tymna-land-go-open.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b5-witherbloom-breach-the-bay-2.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 173,
+  "fehler": null
  }
 ]
