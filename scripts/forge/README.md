@@ -81,13 +81,32 @@ node scripts/forge/card-coverage.js .forge/forge/forge-gui/res oracle-cards.json
 
 Oder in GitHub: „Actions“ → „Forge card coverage“ → „Run workflow“; der Bericht hängt als Artefakt am Lauf.
 
+## Combo-Pilot
+
+Die erste Kalibrierung (`sim/testdecks/README.md`) zeigte: Forges Bots gewinnen nie per Combo, auch Forges
+Such-KI nicht. Deshalb bekommt jeder Bot die spielbeendenden Combos seines Decks:
+
+- `siegplan.js` holt sie von Commander Spellbook (`find-my-combos`), behält die, die `istSiegCombo()` aus
+  `src/app/goldfish-sim.ts` als Sieg zählt, und schreibt `<Deckname>.combos` plus `KeyCards=` in die `.dck`.
+- `pilot/ComboPilot.java` (GPL-3, wird von `forge-setup.sh` in Forge kopiert, `pilot/forge.patch` hängt ihn ein):
+  Liegen alle Teile und reicht das Mana, kommt ein Zauber „Combo: …“ auf den Stapel, der beim Auflösen das Spiel
+  gewinnt – Gegner können ihn kontern. Fehlt nur noch ein Teil aufs Spielfeld, wirkt er es; Kreaturen aber nur,
+  wenn danach im selben Zug vorgeführt werden kann oder per Flash vor dem eigenen Zug.
+- `forge-partie.js` setzt `FORGE_COMBO_DIR`; Combo-Siege stehen im Log als
+  `has won due to effect of 'Combo: …'` und werden je Stufe mitgezählt.
+
+Anlass für die Flash-Regel war die erste Pilot-Partie: Der Bot hatte Hullbreaker Horror im eigenen Zug gewirkt,
+sich dafür leergetappt (sogar mit Lotus Petal, einem Teil seiner zweiten Combo), und der nächste Gegner stahl ihn
+mit Gilded Drake.
+
 ## Stand
 
 1. ~~Durchstich + Abdeckung~~
 2. ~~Test-Decks je Bracket~~ (`sim/testdecks/`), Kalibrierungsturnier läuft (`calibrate.js`)
 3. ~~Runner und Einstufung~~: `einstufen.js`, `src/app/forge-einstufung.ts`, Workflow `forge-einstufung.yml`,
    Tabelle `forge_einstufungen`
-4. Offen: Siegplan-Analyse, Anbindung in der App (anfordern, Status, Ergebnis anzeigen)
+4. ~~Anbindung in der App~~ (nur Developer)
+5. ~~Combo-Pilot~~, Kalibrierung mit Pilot läuft
 
 Ein Deck von Hand einstufen (im Container, eine Stufe, wenige Partien zum Ausprobieren):
 
