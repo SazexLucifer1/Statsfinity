@@ -11,6 +11,8 @@
 //
 //   node scripts/forge/calibrate.js <forge-checkout> [--spiele 20] [--parallel 3] [--zeitlimit 600]
 //        [--nur innen|stufe] [--stufen 1,2,3] [--aus ergebnis.json]
+//   node scripts/forge/calibrate.js --nur-bericht [--stufen 3,4,5] [--aus ergebnis.json]
+//        (nur die Tabelle aus der JSON, spielt nichts - für den Workflow forge-kalibrierung.yml)
 //
 // Schreibt nach jeder Partie den Zwischenstand in die JSON-Datei (Standard: sim/testdecks/kalibrierung.json),
 // ein abgebrochener Lauf verliert also nichts. Am Ende eine Markdown-Tabelle auf der Konsole.
@@ -20,12 +22,13 @@ const path = require('path');
 const { spielePartie, parallel } = require('./forge-partie');
 
 const argv = process.argv.slice(2);
+const NUR_BERICHT = argv.includes('--nur-bericht');
 const forgeDir = argv[0];
 const opt = (name, std) => {
   const i = argv.indexOf(`--${name}`);
   return i > 0 ? argv[i + 1] : std;
 };
-if (!forgeDir || forgeDir.startsWith('--')) {
+if (!NUR_BERICHT && (!forgeDir || forgeDir.startsWith('--'))) {
   console.error(
     'Aufruf: node scripts/forge/calibrate.js <forge-checkout> [--spiele 20] [--parallel 3]',
   );
@@ -94,6 +97,10 @@ for (const s of STUFEN) {
 }
 
 const ergebnisse = fs.existsSync(AUS) ? JSON.parse(fs.readFileSync(AUS, 'utf8')) : [];
+if (NUR_BERICHT) {
+  console.log(bericht(ergebnisse));
+  process.exit(0);
+}
 // Gezählt, nicht als Menge: Dieselbe Aufstellung kommt mehrfach vor (die Sitzreihenfolge rotiert mit
 // Periode 4). Eine Menge hielte nach einer gespielten Partie alle gleichen für erledigt.
 const schon = new Map();
