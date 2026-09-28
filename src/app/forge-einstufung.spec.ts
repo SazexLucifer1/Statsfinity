@@ -58,6 +58,18 @@ describe('einstufen', () => {
     expect(e.regelMinimum).toBe(4);
   });
 
+  it('ohne B1-Partien: wer gegen B2 nicht mithält, ist Bracket 1', () => {
+    const ohneB1 = lauf(0, 10, 3, 0, 0).slice(1);
+    expect(einstufen(ohneB1).stufe).toBe(1);
+  });
+
+  it('eine 2 aus den Kartenregeln ist keine Untergrenze - sonst gäbe es kein Bracket 1', () => {
+    const ohneB1 = lauf(0, 10, 3, 0, 0).slice(1);
+    const e = einstufen(ohneB1, 2);
+    expect(e.stufe).toBe(1);
+    expect(e.regelMinimum).toBe(2);
+  });
+
   it('die Simulation hebt über die Kartenregeln hinaus an', () => {
     expect(einstufen(lauf(80, 60, 45, 30, 3), 2).stufe).toBe(4);
   });

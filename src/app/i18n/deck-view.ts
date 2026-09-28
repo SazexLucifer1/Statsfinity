@@ -249,7 +249,7 @@ export const deckView = {
     'deckView.forgeSiegeVon': '{{siege}} / {{spiele}}',
     'deckView.forgeSiegeVonCombo': '{{siege}} / {{spiele}}, {{combo}} per Combo',
     'deckView.forgeErklaerung':
-      'Winrate gegen je drei Test-Decks der Stufe, 4er-Pods, Bots von Forge. Fair wären {{fair}} %, ab {{schwelle}} % hält das Deck in der Stufe mit.',
+      'Winrate gegen je drei Test-Decks der Stufe, 4er-Pods, Bots von Forge. Fair wären {{fair}} %, ab {{schwelle}} % hält das Deck in der Stufe mit. Wer schon gegen B2 darunter bleibt, ist Bracket 1.',
     'deckView.forgeUnbekannt': 'Forge kennt diese Karten nicht, sie fehlten im Spiel: {{karten}}',
     'deckView.forgeKeinErgebnis': 'Für dieses Deck gibt es noch keine Simulation.',
     'deckView.forgeWartet': 'Angefordert am {{seit}} – wird innerhalb von 15 Minuten gestartet.',
@@ -261,7 +261,7 @@ export const deckView = {
     'deckView.forgeAnfordern': 'Simulation anfordern',
     'deckView.forgeNeuAnfordern': 'Neu simulieren',
     'deckView.forgeAktualisieren': 'Aktualisieren',
-    'deckView.forgeDauer': '500 Partien auf GitHub, dauert etwa 1–3 Stunden.',
+    'deckView.forgeDauer': '400 Partien auf GitHub, dauert etwa 1–3 Stunden.',
     'deckView.loadingAnalysis': 'Lade Analyse …',
     'deckView.avgCmcTile': 'Ø Manawert',
     'deckView.landsTile': 'Länder',
@@ -616,7 +616,7 @@ export const deckView = {
     'deckView.forgeSiegeVon': '{{siege}} / {{spiele}}',
     'deckView.forgeSiegeVonCombo': '{{siege}} / {{spiele}}, {{combo}} by combo',
     'deckView.forgeErklaerung':
-      'Win rate against three test decks of each bracket, 4-player pods, Forge bots. Fair share is {{fair}} %, from {{schwelle}} % the deck keeps up with the bracket.',
+      'Win rate against three test decks of each bracket, 4-player pods, Forge bots. Fair share is {{fair}} %, from {{schwelle}} % the deck keeps up with the bracket. Below that against B2 means bracket 1.',
     'deckView.forgeUnbekannt':
       'Forge does not know these cards, they were missing in play: {{karten}}',
     'deckView.forgeKeinErgebnis': 'No simulation for this deck yet.',
@@ -629,7 +629,7 @@ export const deckView = {
     'deckView.forgeAnfordern': 'Request simulation',
     'deckView.forgeNeuAnfordern': 'Simulate again',
     'deckView.forgeAktualisieren': 'Refresh',
-    'deckView.forgeDauer': '500 games on GitHub, takes about 1–3 hours.',
+    'deckView.forgeDauer': '400 games on GitHub, takes about 1–3 hours.',
     'deckView.loadingAnalysis': 'Loading analysis …',
     'deckView.avgCmcTile': 'Avg. mana value',
     'deckView.landsTile': 'Lands',

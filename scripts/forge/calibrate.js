@@ -35,7 +35,7 @@ const SPIELE = Number(opt('spiele', 20));
 const PARALLEL = Number(opt('parallel', 3));
 const ZEITLIMIT = Number(opt('zeitlimit', 600));
 const NUR = opt('nur', null);
-const STUFEN = opt('stufen', '1,2,3,4,5').split(',').map(Number);
+const STUFEN = opt('stufen', '2,3,4,5').split(',').map(Number);
 const DECKS_DIR = path.join(__dirname, '..', '..', 'sim', 'testdecks');
 const AUS = opt('aus', path.join(DECKS_DIR, 'kalibrierung.json'));
 
@@ -46,6 +46,11 @@ fs.mkdirSync(arbeit, { recursive: true });
 const decks = {};
 for (let s = 1; s <= 5; s++) {
   const ordner = path.join(DECKS_DIR, `b${s}`);
+  // Bracket 1 hat keine Test-Decks mehr (siehe sim/testdecks/README.md).
+  if (!fs.existsSync(ordner)) {
+    decks[s] = [];
+    continue;
+  }
   decks[s] = fs
     .readdirSync(ordner)
     .filter((f) => f.endsWith('.dck'))
@@ -76,7 +81,7 @@ for (const s of STUFEN) {
       partien.push({ probe: 'innen', stufe: s, sitz, geprueft: null });
     }
   }
-  if (NUR !== 'innen' && s > 1) {
+  if (NUR !== 'innen' && s > 1 && decks[s - 1].length >= 3) {
     for (let i = 0; i < SPIELE; i++) {
       const pruefling = decks[s][i % decks[s].length];
       const gegner = ziehe(decks[s - 1], 3);

@@ -212,7 +212,8 @@ if (!forgeDir || forgeDir.startsWith('--')) {
 const SPIELE = Number(opt('spiele', 100));
 const PARALLEL = Number(opt('parallel', 2));
 const ZEITLIMIT = Number(opt('zeitlimit', 900));
-const STUFEN = opt('stufen', '1,2,3,4,5').split(',').map(Number);
+// Ohne Stufe 1: Bracket 1 hat keine Test-Decks, es ist "hält gegen B2 nicht mit" (forge-einstufung.ts).
+const STUFEN = opt('stufen', '2,3,4,5').split(',').map(Number);
 
 // Das zu prüfende Deck holen und übersetzen.
 let quelle;

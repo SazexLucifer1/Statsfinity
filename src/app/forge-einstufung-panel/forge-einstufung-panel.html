@@ -63,7 +63,12 @@
     }
 
     @if (fehlerKey(); as key) {
-      <p class="hint forge-warnung">{{ i18n.t(key) }}</p>
+      <p class="hint forge-warnung">
+        {{ i18n.t(key) }}
+        @if (fehlerDetail(); as detail) {
+          ({{ detail }})
+        }
+      </p>
     }
 
     <div class="forge-knoepfe">

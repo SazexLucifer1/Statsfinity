@@ -95,14 +95,16 @@ create index if not exists forge_einstufung_auftraege_deck_idx
 
 alter table public.forge_einstufung_auftraege enable row level security;
 
+-- Developer-Prüfung über die SECURITY-DEFINER-Hilfsfunktion is_developer() (sql/roles-permissions-2026-09-01.sql),
+-- NICHT über eine eigene Unterabfrage auf profiles: Die lief in der ersten Fassung unter den RLS-Regeln von
+-- profiles und ließ das Anlegen eines Auftrags scheitern ("Simulation konnte nicht angefordert werden",
+-- 28.09.2026). Alle anderen Developer-Regeln im Projekt nehmen ebenfalls die Funktion.
 drop policy if exists "Developer lesen Forge-Aufträge" on public.forge_einstufung_auftraege;
 create policy "Developer lesen Forge-Aufträge"
 on public.forge_einstufung_auftraege
 for select
 to authenticated
-using (
-  exists (select 1 from public.profiles p where p.id = auth.uid() and coalesce(p.is_developer, false))
-);
+using (is_developer(auth.uid()));
 
 drop policy if exists "Developer legen Forge-Aufträge an" on public.forge_einstufung_auftraege;
 create policy "Developer legen Forge-Aufträge an"
@@ -112,5 +114,8 @@ to authenticated
 with check (
   angefordert_von = auth.uid()
   and status = 'wartet'
-  and exists (select 1 from public.profiles p where p.id = auth.uid() and coalesce(p.is_developer, false))
+  and is_developer(auth.uid())
 );
+
+grant select, insert on public.forge_einstufung_auftraege to authenticated;
+grant select on public.forge_einstufungen to anon, authenticated;

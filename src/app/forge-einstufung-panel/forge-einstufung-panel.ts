@@ -39,6 +39,7 @@ export class ForgeEinstufungPanel {
   readonly laedt = signal(false);
   readonly sendet = signal(false);
   readonly fehlerKey = signal<string | null>(null);
+  readonly fehlerDetail = signal<string | null>(null);
 
   readonly fairerAnteil = Math.round(FAIRER_ANTEIL * 100);
   readonly schwelle = Math.round(SCHWELLE * 100);
@@ -102,12 +103,16 @@ export class ForgeEinstufungPanel {
     if (this.offen() || this.sendet()) return;
     this.sendet.set(true);
     this.fehlerKey.set(null);
+    this.fehlerDetail.set(null);
     try {
       await this.service.anfordern(this.deckId());
       await this.laden();
     } catch (e) {
       console.error('Forge-Auftrag konnte nicht angelegt werden:', e);
       this.fehlerKey.set('deckView.forgeAnfordernFehler');
+      // Nur Developer sehen den Abschnitt - die Datenbank-Meldung spart hier den Umweg über die Konsole.
+      const f = e as { code?: string; message?: string };
+      this.fehlerDetail.set([f.code, f.message].filter(Boolean).join(': ') || null);
     } finally {
       this.sendet.set(false);
     }

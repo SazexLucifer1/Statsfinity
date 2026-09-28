@@ -28,38 +28,10 @@ const { QUELLEN, leseForgeNamen, zuForgeDeck } = require('./deck-quellen');
  * kuerzen:  Karten, von denen Exemplare entfernt werden, bis das Deck genau 100 Karten hat.
  */
 const TESTDECKS = [
-  // Bracket 1 - Archidekt, deren Primer ausdrücklich begründet, warum das Deck Bracket 1 ist.
-  {
-    stufe: 1,
-    datei: 'parnesse-bazaar',
-    quelle: 'archidekt',
-    id: 25085549,
-    plan: 'Exhibition, Gruppenspaß',
-  },
-  {
-    stufe: 1,
-    datei: 'ardbert-oops-all-orzhov',
-    quelle: 'archidekt',
-    id: 13186988,
-    plan: 'legendäre Kreaturen, Midrange',
-    ersatz: { "Wernog, Rider's Chaplain": 'Plains' },
-  },
-  {
-    stufe: 1,
-    datei: 'vhal-cosmic-horror',
-    quelle: 'archidekt',
-    id: 11556047,
-    plan: 'Diebstahl, Themen-Deck',
-    ersatz: { 'Arvinox, the Mind Flail': 'Swamp' },
-  },
-  {
-    stufe: 1,
-    datei: 'ramos-lucky-charms',
-    quelle: 'archidekt',
-    id: 22519265,
-    plan: 'Fünffarbig, Zaubersprüche',
-    ersatz: { 'Far Out': 'Plains' },
-  },
+  // Bracket 1 hat KEINE Test-Decks (Entscheidung des Users, 28.09.2026): Bracket-1-Decks sind Themen-Decks,
+  // die gar nicht auf Sieg gebaut sind - daran lässt sich nichts messen. Bracket 1 ist, was gegen die
+  // B2-Test-Decks deutlich zu oft verliert (src/app/forge-einstufung.ts). Die früheren B1-Decks und ihre
+  // Kalibrierung stehen in sim/testdecks/README.md.
 
   // Bracket 2 - unveränderte Precons (Michi)
   {
@@ -94,10 +66,10 @@ const TESTDECKS = [
   // Bracket 3 - aufgewertete Decks der Gruppe
   {
     stufe: 3,
-    datei: 'ivy-x-creatures',
+    datei: 'ghave-trueffel-time',
     quelle: 'statsfinity',
-    id: '26957e47-420b-4051-800d-3bea60e63253',
-    plan: 'Spellslinger, Value',
+    id: '85a5d2a5-6e24-4dfe-8435-1b0c49d8952f',
+    plan: 'Pilze, Tokens',
   },
   {
     stufe: 3,
@@ -116,10 +88,11 @@ const TESTDECKS = [
   },
   {
     stufe: 3,
-    datei: 'celestial-toymaker',
+    datei: 'aesi-moonfall',
     quelle: 'statsfinity',
-    id: 'beb6e950-9085-4e3c-bb22-2d900f98948e',
-    plan: 'Chaos, Control',
+    id: '9923c84d-6bf7-4950-ac3c-31432ab371f8',
+    plan: 'Länder, Ramp',
+    kuerzen: ['Forest', 'Island'],
   },
 
   // Bracket 4 - optimierte Decks der Gruppe
@@ -169,9 +142,9 @@ const TESTDECKS = [
   },
   {
     stufe: 5,
-    datei: 'thrasios-tymna-land-go-open',
+    datei: 'thrasios-vial-smasher-fish-bowl',
     quelle: 'edhtop16',
-    id: 'land-go-open-10k-cedh-tournament',
+    id: 'the-fishbowl-san-diego-copy-1767729472000',
     plan: 'cEDH, Midrange',
   },
   {

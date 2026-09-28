@@ -1,16 +1,23 @@
 # Test-Decks der Bracket-Simulation
 
-Jedes zu prüfende Deck spielt je 100 Partien in 4er-Pods gegen drei dieser Decks – erst Bracket 1,
-dann 2 … bis 5. Diese 20 Decks sind damit der Maßstab der ganzen Einstufung. Sie liegen deshalb **fest
+Jedes zu prüfende Deck spielt je 100 Partien in 4er-Pods gegen drei dieser Decks – gegen Bracket 2,
+3, 4 und 5 (Bracket 1 hat keine Test-Decks, siehe unten). Diese 16 Decks sind damit der Maßstab der ganzen Einstufung. Sie liegen deshalb **fest
 im Repo**: Ändert jemand sein Deck in Statsfinity oder auf Archidekt, verschieben sich nicht
 stillschweigend alle Ergebnisse.
 
 Erzeugt mit `scripts/forge/testdeck-export.js` (dort steht die Auswahl als Tabelle `TESTDECKS`).
 Jede Liste hat genau 100 Karten, und Forge kennt jede Karte (Stand Forge `2ccbbb0`).
 
-## Bracket 1 – Exhibition
+## Bracket 1 – Exhibition: keine Test-Decks mehr
 
-Nur Decks, deren **Primer ausdrücklich begründet, warum sie Bracket 1 sind**. Alle von Archidekt, alle
+**Seit dem 28.09.2026 gibt es für Bracket 1 keine Test-Decks** (Entscheidung des Users). Bracket-1-Decks sind
+Themen-Decks, die gar nicht auf Sieg gebaut sind – ein Maßstab lässt sich daraus nicht bauen. Die beiden
+Kalibrierungsläufe haben das bestätigt: Innerhalb von B1 gewann Ardbert 50 %, Vhal 5 %. **Bracket 1 ist jetzt,
+was gegen die B2-Test-Decks nicht mithält** (unter 20 %, `src/app/forge-einstufung.ts`). Eine Einstufung spielt
+deshalb nur noch gegen B2 bis B5 (400 Partien).
+
+Die früheren B1-Test-Decks zur Nachvollziehbarkeit – alle von Archidekt, der Primer begründet Bracket 1 jeweils
+ausdrücklich: Alle von Archidekt, alle
 ohne Game Changer, Tutoren, Extra-Züge und Combos (Commander Spellbook: „E“).
 
 | Deck                                                                                    | Commander                                             | Begründung im Primer (Zitat)                                                                                                                                                |
@@ -41,14 +48,17 @@ Unveränderte Precons aus Statsfinity (Michi), vier verschiedene Siegpläne.
 
 Aufgewertete Decks der Gruppe, höchstens drei Game Changer, keine frühen Zwei-Karten-Combos.
 
-| Deck                        | Besitzer | Commander                 | Game Changer |
-| --------------------------- | -------- | ------------------------- | -----------: |
-| X-Creatures                 | Bene     | Ivy, Gleeful Spellthief   |            2 |
-| Sorin & Lurrus Inkasso GmbH | Fabian   | Sorin of House Markov     |            1 |
-| Chocobos                    | Fabian   | Choco, Seeker of Paradise |            3 |
-| Guess the pill right or die | Fabian   | The Celestial Toymaker    |            3 |
+| Deck                        | Besitzer | Commander                   | Game Changer |
+| --------------------------- | -------- | --------------------------- | -----------: |
+| Trüffel Time                | Bene     | Ghave, Guru of Spores       |            1 |
+| Sorin & Lurrus Inkasso GmbH | Fabian   | Sorin of House Markov       |            1 |
+| Chocobos                    | Fabian   | Choco, Seeker of Paradise   |            3 |
+| Moonfall                    | Fabian   | Aesi, Tyrant of Gyre Strait |            1 |
 
-Sorin & Lurrus hatte 101 Karten; eine Plains weniger.
+Sorin & Lurrus hatte 101 Karten (eine Plains weniger), Moonfall 102 (ein Wald und eine Insel weniger).
+Am 28.09.2026 getauscht (Kalibrierung, siehe unten): „X-Creatures“ (Ivy, 0 % innerhalb B3, 0 von 5 gegen B2 – der
+Bot kann das Deck nicht) und „Guess the pill right or die“ (Celestial Toymaker, 50 % innerhalb B3, 4 von 5 gegen
+B2 – spielt wie Bracket 4).
 
 ## Bracket 4 – Optimized
 
@@ -67,14 +77,16 @@ Sorin & Lurrus hatte 101 Karten; eine Plains weniger.
 Turniersieger 2026, jeweils Platz 1 eines Turniers mit über 200 Spielern. Listen über die API von
 [EDHTop16](https://edhtop16.com).
 
-| Commander                 | Turnier                                                                                                                              | Spieler        | Bilanz |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | -------------- | ------ |
-| Witherbloom, the Balancer | [Breach the Bay 2](https://topdeck.gg/deck/breach-the-bay-2/WIpu1iugTsUeknwC5xs4h3Tul0U2) – 429 Spieler, 22.08.2026                  | Andrei Blanton | 7-2-0  |
-| Kinnan, Bonder Prodigy    | [SIEGE cEDH 10K](https://topdeck.gg/deck/level-7s-siege-at-the-castle-10k/10XZGpOw5vVlD7VeYRO1XvBv3Ft2) – 308 Spieler, 13.06.2026    | Janos Nado     | 5-0-3  |
-| Thrasios + Tymna          | [Land, Go Open 10k](https://topdeck.gg/deck/land-go-open-10k-cedh-tournament/ZlePjFOXYabVI36O3Ky5iyQ9uV43) – 212 Spieler, 23.05.2026 | Thack Chumpley | 5-2-2  |
-| Ishai + Rograkh           | [The Cookout 2026](https://topdeck.gg/deck/the-cookout-2026/yDmurQQALDMAZ5XelLf8KibSaaB3) – 238 Spieler, 29.08.2026                  | spuki          | 5-1-3  |
+| Commander                 | Turnier                                                                                                                                     | Spieler        | Bilanz |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | -------------- | ------ |
+| Witherbloom, the Balancer | [Breach the Bay 2](https://topdeck.gg/deck/breach-the-bay-2/WIpu1iugTsUeknwC5xs4h3Tul0U2) – 429 Spieler, 22.08.2026                         | Andrei Blanton | 7-2-0  |
+| Kinnan, Bonder Prodigy    | [SIEGE cEDH 10K](https://topdeck.gg/deck/level-7s-siege-at-the-castle-10k/10XZGpOw5vVlD7VeYRO1XvBv3Ft2) – 308 Spieler, 13.06.2026           | Janos Nado     | 5-0-3  |
+| Thrasios + Vial Smasher   | [The Fish Bowl 7](https://topdeck.gg/deck/the-fishbowl-san-diego-copy-1767729472000/EkjAv5v9icSG7jTKu4vBewlX6RO2) – 209 Spieler, 27.06.2026 | Joe Holland    | 6-2-1  |
+| Ishai + Rograkh           | [The Cookout 2026](https://topdeck.gg/deck/the-cookout-2026/yDmurQQALDMAZ5XelLf8KibSaaB3) – 238 Spieler, 29.08.2026                         | spuki          | 5-1-3  |
 
 Ishai + Rograkh hat 2026 drei große Turniere gewonnen (auch Misplay on the Lake und Summer Classic 3).
+Thrasios + Tymna (Land, Go Open 10k) am 28.09.2026 ersetzt: Seine Combos liefern nur „unendlich Mana/Karten“,
+der Combo-Pilot kennt dafür keinen Sieg – 5 % innerhalb B5.
 
 ## Kalibrierung
 
@@ -128,3 +140,27 @@ Kommandozeilen-Modus nur mit einer kleinen lokalen Änderung an `SimulateMatch.j
 
 Ergebnis: Keiner der drei Forge-Bots spielt Combos. Damit die Simulation Bracket 4 und 5 erkennt, braucht der Bot
 eine eigene Combo-Steuerung, die den Siegplan des Decks kennt.
+
+### Zweiter Lauf mit Combo-Pilot (28.09.2026, je Probe 20 Partien)
+
+Der Pilot (`scripts/forge/pilot/`) greift nur bei Decks mit spielbeendender Combo – das sind unter den Test-Decks
+Muerra (B4) und drei der vier B5-Decks. B1 bis B3 spielen deshalb exakt wie im ersten Lauf (gleiche Seeds).
+
+| Probe       | ohne Pilot | mit Pilot | davon per Combo |
+| ----------- | ---------: | --------: | --------------: |
+| B2 gegen B1 |       35 % |      30 % |               0 |
+| B3 gegen B2 |       25 % |      25 % |               0 |
+| B4 gegen B3 |       15 % |      15 % |               0 |
+| B5 gegen B4 |        5 % |  **25 %** |               2 |
+
+B5 untereinander: Witherbloom 35 % (4 per Combo), Kinnan 30 % (3), Ishai/Rograkh 25 % (2), Thrasios/Tymna 5 %
+(keine Sieg-Combo nach der Definition, siehe unten). Insgesamt 13 Combo-Siege in 180 Partien, vorher 0.
+
+Befund: Der Pilot hebt B5 von 5 % auf 25 % – genau auf den fairen Anteil, noch nicht darüber. Zwischen B3 und B4
+trennt die Simulation weiterhin nicht; die B4-Decks der Gruppe gewinnen über Wert und Tutoren, nicht über Combos,
+und das spielt der Forge-Bot schlecht. Auffällige Test-Decks (Siegquote innerhalb der eigenen Stufe, fair 25 %):
+
+- B1 Ardbert 50 % – zu stark für Bracket 1, Vhal 5 % sehr schwach
+- B3 Celestial Toymaker 50 % und 4 von 5 gegen B2 – spielt wie Bracket 4; Ivy 0 % – der Bot kann das Deck nicht
+- B4 Muerra 0 % innerhalb von B4
+- B5 Thrasios/Tymna 5 % – seine Combos liefern nur „unendlich Mana/Karten“, der Pilot kennt keinen Sieg für ihn
