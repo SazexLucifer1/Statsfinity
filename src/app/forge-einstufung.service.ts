@@ -11,7 +11,7 @@ export interface ForgeErgebnis {
   simStufe: BracketLevel;
   regelMinimum: BracketLevel | null;
   sicherheit: 'sicher' | 'knapp';
-  stufen: (StufenErgebnis & { siegRundeSchnitt: number | null })[];
+  stufen: (StufenErgebnis & { siegRundeSchnitt: number | null; comboSiege?: number })[];
   unbekannteKarten: string[];
 }
 

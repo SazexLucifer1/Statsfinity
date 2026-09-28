@@ -52,6 +52,7 @@ function zusammenfassen(partien) {
       stufe: p.stufe,
       spiele: 0,
       siege: 0,
+      comboSiege: 0,
       remis: 0,
       siegRunden: [],
       verlustGruende: {},
@@ -61,6 +62,7 @@ function zusammenfassen(partien) {
     if (p.remis) s.remis++;
     if (p.gewonnen) {
       s.siege++;
+      if (p.comboSieg) s.comboSiege++;
       if (p.runde) s.siegRunden.push(p.runde);
     }
     if (p.verlustGrund)
@@ -222,6 +224,7 @@ let info;
 if (quelle) {
   const f = zuForgeDeck(quelle, leseForgeNamen(path.join(forgeDir, 'forge-gui', 'res')), {
     name: 'pruefling',
+    siegplan: true,
   });
   if (!f.commander.length) {
     console.error('Das Deck hat keinen Commander.');
@@ -235,7 +238,10 @@ if (quelle) {
     );
   }
   fs.writeFileSync(path.join(arbeit, PRUEFLING), f.dck);
+  fs.writeFileSync(path.join(arbeit, 'pruefling.combos'), f.combos);
+  console.log(`Sieg-Combos für den Combo-Pilot: ${f.siegCombos}`);
   info = {
+    siegCombos: f.siegCombos,
     name: quelle.name,
     link: quelle.link,
     commander: f.commander,
@@ -262,6 +268,8 @@ for (const s of STUFEN) {
     .sort()
     .map((f) => {
       fs.copyFileSync(path.join(TESTDECKS, `b${s}`, f), path.join(arbeit, `b${s}-${f}`));
+      const combos = path.join(TESTDECKS, `b${s}`, f.replace(/\.dck$/, '.combos'));
+      if (fs.existsSync(combos)) fs.copyFileSync(combos, path.join(arbeit, path.basename(combos)));
       return `b${s}-${f}`;
     });
 }
@@ -311,6 +319,8 @@ parallel(
       gegner: p.sitz.filter((d) => d !== PRUEFLING),
       platz: p.platz,
       gewonnen: r.siegerPlatz === p.platz,
+      comboSieg: r.siegerPlatz === p.platz && r.comboSieg,
+      siegGrund: r.siegGrund,
       sieger: r.siegerPlatz == null ? null : p.sitz[r.siegerPlatz],
       remis: r.remis,
       runde: r.runde,

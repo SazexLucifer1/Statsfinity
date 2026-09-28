@@ -133,8 +133,14 @@ const QUELLEN = { statsfinity: ausStatsfinity, archidekt: ausArchidekt, edhtop16
  * @param {string[]} [o.kuerzen]              Karten, von denen Exemplare fallen, bis es 100 sind
  * @param {string} o.name                     Name in der .dck (Forge nennt den Spieler danach)
  * @param {string} [o.kommentar]
+ * @param {boolean} [o.siegplan]  Combos von Commander Spellbook holen: KeyCards in die .dck, Zeilen für die
+ *                                .combos-Datei des Combo-Piloten (siehe siegplan.js)
  */
-function zuForgeDeck(deck, forgeNamen, { ersatz = {}, kuerzen = [], name, kommentar = '' }) {
+function zuForgeDeck(
+  deck,
+  forgeNamen,
+  { ersatz = {}, kuerzen = [], name, kommentar = '', siegplan = false },
+) {
   const unbekannt = [];
   const uebersetze = (karte) => {
     const roh = bereinige(karte.name);
@@ -160,17 +166,33 @@ function zuForgeDeck(deck, forgeNamen, { ersatz = {}, kuerzen = [], name, kommen
     }
   }
 
+  // Erst nach der Übersetzung: Spellbook und der Pilot vergleichen mit Forges Kartennamen.
+  const plan = siegplan
+    ? require('./siegplan').siegplanFuer({
+        commander,
+        main: [...main.entries()].map(([n, a]) => ({ name: n, anzahl: a })),
+      })
+    : null;
+
   const dck = [
     '[metadata]',
     `Name=${name}`,
     ...(kommentar ? [`Comment=${kommentar}`] : []),
+    ...(plan?.keyCards.length ? [`KeyCards=${plan.keyCards.join(';')}`] : []),
     '[Commander]',
     ...commander.map((k) => `1 ${k.name}`),
     '[Main]',
     ...[...main.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([n, a]) => `${a} ${n}`),
     '',
   ].join('\n');
-  return { dck, commander: commander.map((k) => k.name), karten, unbekannt };
+  return {
+    dck,
+    combos: plan ? plan.zeilen.join('\n') + '\n' : null,
+    siegCombos: plan?.combos ?? 0,
+    commander: commander.map((k) => k.name),
+    karten,
+    unbekannt,
+  };
 }
 
 module.exports = { QUELLEN, leseForgeNamen, zuForgeDeck, holeJson, schluessel, SUPABASE_URL };

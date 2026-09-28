@@ -201,6 +201,7 @@ for (const t of TESTDECKS) {
     kuerzen: t.kuerzen,
     name: t.datei,
     kommentar: `Bracket ${t.stufe} · ${t.plan} · ${deck.name} · ${deck.link}`,
+    siegplan: true,
   });
   const probleme = [...f.unbekannt];
   if (!f.commander.length) probleme.push('kein Commander');
@@ -213,7 +214,11 @@ for (const t of TESTDECKS) {
   const ordner = path.join(zielDir, `b${t.stufe}`);
   fs.mkdirSync(ordner, { recursive: true });
   fs.writeFileSync(path.join(ordner, `${t.datei}.dck`), f.dck);
-  uebersicht.push(`B${t.stufe}  ${t.datei.padEnd(32)} ${f.commander.join(' + ')}`);
+  // Leere Datei statt keiner: So sieht man im Repo, dass das Deck geprüft wurde und keine Sieg-Combo hat.
+  fs.writeFileSync(path.join(ordner, `${t.datei}.combos`), f.combos);
+  uebersicht.push(
+    `B${t.stufe}  ${t.datei.padEnd(32)} ${String(f.siegCombos).padStart(3)} Sieg-Combos  ${f.commander.join(' + ')}`,
+  );
 }
 
 console.log(uebersicht.join('\n'));

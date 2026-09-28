@@ -53,6 +53,9 @@ for (let s = 1; s <= 5; s++) {
     .map((f) => {
       const ziel = `b${s}-${f}`;
       fs.copyFileSync(path.join(ordner, f), path.join(arbeit, ziel));
+      // Der Pilot sucht <Name aus der .dck>.combos - der Name ist der Dateiname ohne Stufen-Präfix.
+      const combos = path.join(ordner, f.replace(/\.dck$/, '.combos'));
+      if (fs.existsSync(combos)) fs.copyFileSync(combos, path.join(arbeit, path.basename(combos)));
       return ziel;
     });
 }
@@ -112,6 +115,8 @@ parallel(
       sieger: r.siegerPlatz == null ? null : p.sitz[r.siegerPlatz],
       runde: r.runde,
       remis: r.remis,
+      comboSieg: r.comboSieg,
+      siegGrund: r.siegGrund,
       verloren: r.verloren.map((v) => ({ deck: p.sitz[v.platz], grund: v.grund })),
       dauerS: Math.round(r.dauerMs / 1000),
       fehler: r.fehler,
@@ -130,8 +135,8 @@ parallel(
 
 function bericht(alle) {
   const zeilen = [
-    '| Probe | Stufe | Deck | Partien | Siege | Winrate | Remis |',
-    '| --- | ---: | --- | ---: | ---: | ---: | ---: |',
+    '| Probe | Stufe | Deck | Partien | Siege | davon Combo | Winrate | Remis |',
+    '| --- | ---: | --- | ---: | ---: | ---: | ---: | ---: |',
   ];
   const pct = (a, b) => (b ? `${Math.round((100 * a) / b)} %` : '–');
   for (const s of STUFEN) {
@@ -143,9 +148,10 @@ function bericht(alle) {
       for (const d of kandidaten) {
         const mit = probe === 'innen' ? teil : teil.filter((e) => e.sitz[e.geprueft] === d);
         const siege = mit.filter((e) => e.sieger === d).length;
+        const combo = mit.filter((e) => e.sieger === d && e.comboSieg).length;
         const remis = mit.filter((e) => e.remis).length;
         zeilen.push(
-          `| ${probe} | ${s} | ${d.replace(/\.dck$/, '')} | ${mit.length} | ${siege} | ${pct(siege, mit.length)} | ${remis} |`,
+          `| ${probe} | ${s} | ${d.replace(/\.dck$/, '')} | ${mit.length} | ${siege} | ${combo} | ${pct(siege, mit.length)} | ${remis} |`,
         );
       }
     }

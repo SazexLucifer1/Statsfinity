@@ -32,16 +32,24 @@ function forgeJar(forgeDir) {
  */
 function leseErgebnis(ausgabe, spielerzahl) {
   const zug = Number(/Game Outcome: Turn (\d+)/.exec(ausgabe)?.[1] ?? NaN);
-  const sieger = /Game Outcome: Ai\((\d+)\)-.* has won/.exec(ausgabe);
-  const verloren = [...ausgabe.matchAll(/Game Outcome: Ai\((\d+)\)-.* has lost because (.+)/g)].map(
-    (m) => ({
-      platz: Number(m[1]) - 1,
-      grund: m[2].trim(),
-    }),
-  );
-  const remis = /ended in a Draw|Stopping slow match as draw/.test(ausgabe) || !sieger;
+  // "has won because all opponents have lost", aber auch "... due to effect of spell 'Combo: ...'" - der
+  // Combo-Pilot (scripts/forge/pilot) gewinnt über einen Zauber dieses Namens.
+  const sieger = [
+    ...ausgabe.matchAll(/Game Outcome: Ai\((\d+)\)-.* has won (?:because |due to |by )?(.*)/g),
+  ];
+  const verloren = [
+    ...ausgabe.matchAll(/Game Outcome: Ai\((\d+)\)-.* has lost (?:because |due to )(.+)/g),
+  ].map((m) => ({
+    platz: Number(m[1]) - 1,
+    grund: m[2].trim(),
+  }));
+  // Mehr als ein Sieger ist kein Ergebnis, sondern ein Forge-Fehler (gesehen mit der Such-KI) - Remis.
+  const remis = /ended in a Draw|Stopping slow match as draw/.test(ausgabe) || sieger.length !== 1;
+  const siegGrund = remis ? null : sieger[0][2].trim();
   return {
-    siegerPlatz: remis ? null : Number(sieger[1]) - 1,
+    siegerPlatz: remis ? null : Number(sieger[0][1]) - 1,
+    siegGrund,
+    comboSieg: !!siegGrund && /Combo:/.test(siegGrund),
     zuege: Number.isFinite(zug) ? zug : null,
     runde: Number.isFinite(zug) ? Math.ceil(zug / spielerzahl) : null,
     verloren,
@@ -83,7 +91,11 @@ function spielePartie({ forgeDir, deckDir, decks, zeitlimit = 600, seed, profile
   return new Promise((resolve) => {
     const start = Date.now();
     // Forge sucht res/ relativ zum Arbeitsverzeichnis.
-    const p = spawn('java', args, { cwd: path.join(forgeDir, 'forge-gui') });
+    const p = spawn('java', args, {
+      cwd: path.join(forgeDir, 'forge-gui'),
+      // Der Combo-Pilot liest <Deckname>.combos aus diesem Ordner (siehe scripts/forge/pilot).
+      env: { ...process.env, FORGE_COMBO_DIR: path.resolve(deckDir) },
+    });
     let ausgabe = '';
     p.stdout.on('data', (d) => (ausgabe += d));
     p.stderr.on('data', (d) => (ausgabe += d));

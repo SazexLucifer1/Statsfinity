@@ -59,7 +59,14 @@ export class ForgeEinstufungPanel {
       return {
         label: this.i18n.t('deckView.forgeGegenStufe', { stufe: s.stufe }),
         value: winrate,
-        detail: this.i18n.t('deckView.forgeSiegeVon', { siege: s.siege, spiele: s.spiele }),
+        // Combo-Siege gibt es erst seit dem Combo-Pilot - ältere Läufe haben das Feld nicht.
+        detail: s.comboSiege
+          ? this.i18n.t('deckView.forgeSiegeVonCombo', {
+              siege: s.siege,
+              spiele: s.spiele,
+              combo: s.comboSiege,
+            })
+          : this.i18n.t('deckView.forgeSiegeVon', { siege: s.siege, spiele: s.spiele }),
         // Unter der Schwelle gedämpft: dort hält das Deck nicht mit.
         color: winrate >= this.schwelle ? undefined : 'var(--series-neutral)',
       };

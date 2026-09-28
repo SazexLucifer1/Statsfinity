@@ -247,6 +247,7 @@ export const deckView = {
     'deckView.forgePartien': '{{anzahl}} Partien',
     'deckView.forgeGegenStufe': 'gegen B{{stufe}}',
     'deckView.forgeSiegeVon': '{{siege}} / {{spiele}}',
+    'deckView.forgeSiegeVonCombo': '{{siege}} / {{spiele}}, {{combo}} per Combo',
     'deckView.forgeErklaerung':
       'Winrate gegen je drei Test-Decks der Stufe, 4er-Pods, Bots von Forge. Fair wären {{fair}} %, ab {{schwelle}} % hält das Deck in der Stufe mit.',
     'deckView.forgeUnbekannt': 'Forge kennt diese Karten nicht, sie fehlten im Spiel: {{karten}}',
@@ -613,6 +614,7 @@ export const deckView = {
     'deckView.forgePartien': '{{anzahl}} games',
     'deckView.forgeGegenStufe': 'vs. B{{stufe}}',
     'deckView.forgeSiegeVon': '{{siege}} / {{spiele}}',
+    'deckView.forgeSiegeVonCombo': '{{siege}} / {{spiele}}, {{combo}} by combo',
     'deckView.forgeErklaerung':
       'Win rate against three test decks of each bracket, 4-player pods, Forge bots. Fair share is {{fair}} %, from {{schwelle}} % the deck keeps up with the bracket.',
     'deckView.forgeUnbekannt':
