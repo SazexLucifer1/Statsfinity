@@ -574,5 +574,349 @@
   ],
   "dauerS": 92,
   "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 3,
+  "sitz": [
+   "b3-aesi-moonfall.dck",
+   "b2-szarekh-necron-dynasties.dck",
+   "b2-neyali-rebellion-rising.dck",
+   "b2-valgavoth-endless-punishment.dck"
+  ],
+  "geprueft": 0,
+  "sieger": "b2-valgavoth-endless-punishment.dck",
+  "runde": 6,
+  "remis": false,
+  "comboSieg": false,
+  "siegGrund": "all opponents have lost",
+  "verloren": [
+   {
+    "deck": "b3-aesi-moonfall.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b2-szarekh-necron-dynasties.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b2-neyali-rebellion-rising.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 115,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 3,
+  "sitz": [
+   "b2-valgavoth-endless-punishment.dck",
+   "b2-szarekh-necron-dynasties.dck",
+   "b2-atarka-draconic-destruction.dck",
+   "b3-sorin-lurrus-inkasso.dck"
+  ],
+  "geprueft": 3,
+  "sieger": "b2-valgavoth-endless-punishment.dck",
+  "runde": 6,
+  "remis": false,
+  "comboSieg": false,
+  "siegGrund": "all opponents have lost",
+  "verloren": [
+   {
+    "deck": "b2-szarekh-necron-dynasties.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b2-atarka-draconic-destruction.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-sorin-lurrus-inkasso.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 47,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 3,
+  "sitz": [
+   "b2-neyali-rebellion-rising.dck",
+   "b2-atarka-draconic-destruction.dck",
+   "b3-ghave-trueffel-time.dck",
+   "b2-szarekh-necron-dynasties.dck"
+  ],
+  "geprueft": 2,
+  "sieger": "b2-atarka-draconic-destruction.dck",
+  "runde": 5,
+  "remis": false,
+  "comboSieg": false,
+  "siegGrund": "all opponents have lost",
+  "verloren": [
+   {
+    "deck": "b2-neyali-rebellion-rising.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-ghave-trueffel-time.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b2-szarekh-necron-dynasties.dck",
+    "grund": "accumulation of 21 damage from generals"
+   }
+  ],
+  "dauerS": 148,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 3,
+  "sitz": [
+   "b2-szarekh-necron-dynasties.dck",
+   "b3-choco-chocobos.dck",
+   "b2-valgavoth-endless-punishment.dck",
+   "b2-atarka-draconic-destruction.dck"
+  ],
+  "geprueft": 1,
+  "sieger": "b2-atarka-draconic-destruction.dck",
+  "runde": 5,
+  "remis": false,
+  "comboSieg": false,
+  "siegGrund": "all opponents have lost",
+  "verloren": [
+   {
+    "deck": "b2-szarekh-necron-dynasties.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-choco-chocobos.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b2-valgavoth-endless-punishment.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 56,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 3,
+  "sitz": [
+   "b3-aesi-moonfall.dck",
+   "b2-szarekh-necron-dynasties.dck",
+   "b2-atarka-draconic-destruction.dck",
+   "b2-neyali-rebellion-rising.dck"
+  ],
+  "geprueft": 0,
+  "sieger": "b2-atarka-draconic-destruction.dck",
+  "runde": 6,
+  "remis": false,
+  "comboSieg": false,
+  "siegGrund": "all opponents have lost",
+  "verloren": [
+   {
+    "deck": "b3-aesi-moonfall.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b2-szarekh-necron-dynasties.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b2-neyali-rebellion-rising.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 107,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 3,
+  "sitz": [
+   "b2-szarekh-necron-dynasties.dck",
+   "b2-atarka-draconic-destruction.dck",
+   "b2-neyali-rebellion-rising.dck",
+   "b3-sorin-lurrus-inkasso.dck"
+  ],
+  "geprueft": 3,
+  "sieger": "b2-atarka-draconic-destruction.dck",
+  "runde": 7,
+  "remis": false,
+  "comboSieg": false,
+  "siegGrund": "all opponents have lost",
+  "verloren": [
+   {
+    "deck": "b2-szarekh-necron-dynasties.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b2-neyali-rebellion-rising.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-sorin-lurrus-inkasso.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 61,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 3,
+  "sitz": [
+   "b2-valgavoth-endless-punishment.dck",
+   "b2-szarekh-necron-dynasties.dck",
+   "b3-ghave-trueffel-time.dck",
+   "b2-neyali-rebellion-rising.dck"
+  ],
+  "geprueft": 2,
+  "sieger": "b2-valgavoth-endless-punishment.dck",
+  "runde": 8,
+  "remis": false,
+  "comboSieg": false,
+  "siegGrund": "all opponents have lost",
+  "verloren": [
+   {
+    "deck": "b2-szarekh-necron-dynasties.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-ghave-trueffel-time.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b2-neyali-rebellion-rising.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 152,
+  "fehler": null
+ },
+ {
+  "probe": "innen",
+  "stufe": 3,
+  "sitz": [
+   "b3-ghave-trueffel-time.dck",
+   "b3-sorin-lurrus-inkasso.dck",
+   "b3-aesi-moonfall.dck",
+   "b3-choco-chocobos.dck"
+  ],
+  "geprueft": null,
+  "sieger": "b3-choco-chocobos.dck",
+  "runde": 5,
+  "remis": false,
+  "comboSieg": false,
+  "siegGrund": "all opponents have lost",
+  "verloren": [
+   {
+    "deck": "b3-ghave-trueffel-time.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-sorin-lurrus-inkasso.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-aesi-moonfall.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 83,
+  "fehler": null
+ },
+ {
+  "probe": "innen",
+  "stufe": 3,
+  "sitz": [
+   "b3-choco-chocobos.dck",
+   "b3-ghave-trueffel-time.dck",
+   "b3-sorin-lurrus-inkasso.dck",
+   "b3-aesi-moonfall.dck"
+  ],
+  "geprueft": null,
+  "sieger": "b3-sorin-lurrus-inkasso.dck",
+  "runde": 6,
+  "remis": false,
+  "comboSieg": false,
+  "siegGrund": "all opponents have lost",
+  "verloren": [
+   {
+    "deck": "b3-choco-chocobos.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-ghave-trueffel-time.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-aesi-moonfall.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 142,
+  "fehler": null
+ },
+ {
+  "probe": "innen",
+  "stufe": 3,
+  "sitz": [
+   "b3-aesi-moonfall.dck",
+   "b3-choco-chocobos.dck",
+   "b3-ghave-trueffel-time.dck",
+   "b3-sorin-lurrus-inkasso.dck"
+  ],
+  "geprueft": null,
+  "sieger": "b3-sorin-lurrus-inkasso.dck",
+  "runde": 6,
+  "remis": false,
+  "comboSieg": false,
+  "siegGrund": "all opponents have lost",
+  "verloren": [
+   {
+    "deck": "b3-aesi-moonfall.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-choco-chocobos.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-ghave-trueffel-time.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 58,
+  "fehler": null
+ },
+ {
+  "probe": "innen",
+  "stufe": 3,
+  "sitz": [
+   "b3-sorin-lurrus-inkasso.dck",
+   "b3-aesi-moonfall.dck",
+   "b3-choco-chocobos.dck",
+   "b3-ghave-trueffel-time.dck"
+  ],
+  "geprueft": null,
+  "sieger": null,
+  "runde": 6,
+  "remis": true,
+  "comboSieg": false,
+  "siegGrund": null,
+  "verloren": [
+   {
+    "deck": "b3-sorin-lurrus-inkasso.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 161,
+  "fehler": null
  }
 ]

@@ -102,7 +102,7 @@ mit Gilded Drake.
 ## Stand
 
 1. ~~Durchstich + Abdeckung~~
-2. ~~Test-Decks je Bracket~~ (`sim/testdecks/`), Kalibrierungsturnier läuft (`calibrate.js`)
+2. ~~Test-Decks je Bracket~~ (`sim/testdecks/`), Kalibrierungsturnier läuft (`calibrate.js`); auf GitHub über den Workflow `forge-kalibrierung.yml` (nur von Hand, setzt bei der eingecheckten `kalibrierung.json` fort, Ergebnis als Artefakt, kein automatischer Commit)
 3. ~~Runner und Einstufung~~: `einstufen.js`, `src/app/forge-einstufung.ts`, Workflow `forge-einstufung.yml`,
    Tabelle `forge_einstufungen`
 4. ~~Anbindung in der App~~ (nur Developer)
