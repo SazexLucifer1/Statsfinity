@@ -7,6 +7,8 @@
 //   spielen:     node scripts/forge/einstufen.js <forge-checkout> --deck <statsfinity-deck-id>
 //                  [--stufen 1,2,3,4,5] [--spiele 100] [--parallel 2] [--zeitlimit 900] [--aus datei.json]
 //                (statt --deck auch --archidekt <id> oder --dck <datei>)
+//                  [--auftrag <id>]   (meldet nach jeder Partie den Stand in die Auftragszeile, braucht
+//                  SUPABASE_SERVICE_ROLE_KEY und sql/forge-fortschritt-2026-09-28.sql)
 //   auswerten:   node scripts/forge/einstufen.js --auswerten teil1.json teil2.json … [--regel-minimum 3]
 //                  [--speichern <statsfinity-deck-id>]   (schreibt nach forge_einstufungen, braucht
 //                  SUPABASE_SERVICE_ROLE_KEY; ohne --regel-minimum gilt decks.bracket_auto)
@@ -298,6 +300,31 @@ const schon = new Set(stand.partien.map((p) => `${p.stufe}-${p.nr}`));
 const offen = plan.filter((p) => !schon.has(`${p.stufe}-${p.nr}`));
 console.log(`${plan.length} Partien geplant, ${offen.length} offen, ${PARALLEL} parallel.`);
 
+// Stand je Stufe in die Auftragszeile, damit das Panel in der App "143 / 400 Partien" zeigen kann.
+// Nur eine Anzeige: Scheitert die Meldung (Migration fehlt, Netz), laufen die Partien weiter.
+const AUFTRAG = opt('auftrag', null);
+let meldungKaputt = false;
+function fortschrittMelden(stufe) {
+  if (!AUFTRAG || meldungKaputt) return;
+  const partien = stand.partien.filter((p) => p.stufe === stufe && !p.fehler);
+  try {
+    supabase('rpc/forge_auftrag_fortschritt', {
+      method: 'POST',
+      body: JSON.stringify({
+        p_id: AUFTRAG,
+        p_stufe: stufe,
+        p_gespielt: partien.length,
+        p_geplant: SPIELE,
+        p_siege: partien.filter((p) => p.gewonnen).length,
+      }),
+    });
+  } catch (e) {
+    meldungKaputt = true;
+    console.warn(`Fortschritt konnte nicht gemeldet werden, ab jetzt still: ${e.message}`);
+  }
+}
+for (const s of STUFEN) fortschrittMelden(s);
+
 let fertig = 0;
 parallel(
   offen.map(
@@ -330,6 +357,7 @@ parallel(
       fehler: r.fehler,
     });
     fs.writeFileSync(AUS, JSON.stringify(stand, null, 1));
+    fortschrittMelden(p.stufe);
     fertig++;
     const ergebnis = r.fehler
       ? `FEHLER ${r.fehler}`

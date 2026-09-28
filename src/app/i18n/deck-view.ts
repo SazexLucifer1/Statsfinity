@@ -255,6 +255,9 @@ export const deckView = {
     'deckView.forgeWartet': 'Angefordert am {{seit}} – wird innerhalb von 15 Minuten gestartet.',
     'deckView.forgeLaeuft': 'Läuft seit {{seit}}.',
     'deckView.forgeZumLauf': 'Zum Lauf',
+    'deckView.forgeFortschritt': '{{gespielt}} / {{geplant}} Partien gespielt',
+    'deckView.forgeFortschrittStufe':
+      'Gegen B{{stufe}}: {{gespielt}}/{{geplant}} · {{siege}} Siege',
     'deckView.forgeFehlgeschlagen': 'Letzter Lauf fehlgeschlagen: {{grund}}',
     'deckView.forgeLadeFehler': 'Simulation konnte nicht geladen werden.',
     'deckView.forgeAnfordernFehler': 'Simulation konnte nicht angefordert werden.',
@@ -623,6 +626,8 @@ export const deckView = {
     'deckView.forgeWartet': 'Requested on {{seit}} – starts within 15 minutes.',
     'deckView.forgeLaeuft': 'Running since {{seit}}.',
     'deckView.forgeZumLauf': 'Open run',
+    'deckView.forgeFortschritt': '{{gespielt}} / {{geplant}} games played',
+    'deckView.forgeFortschrittStufe': 'Vs B{{stufe}}: {{gespielt}}/{{geplant}} · {{siege}} wins',
     'deckView.forgeFehlgeschlagen': 'Last run failed: {{grund}}',
     'deckView.forgeLadeFehler': 'Could not load the simulation.',
     'deckView.forgeAnfordernFehler': 'Could not request the simulation.',
