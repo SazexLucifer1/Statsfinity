@@ -32,17 +32,20 @@ function forgeJar(forgeDir) {
  */
 function leseErgebnis(ausgabe, spielerzahl) {
   const zug = Number(/Game Outcome: Turn (\d+)/.exec(ausgabe)?.[1] ?? NaN);
-  // "has won because all opponents have lost", aber auch "... due to effect of spell 'Combo: ...'" - der
-  // Combo-Pilot (scripts/forge/pilot) gewinnt über einen Zauber dieses Namens.
-  const sieger = [
-    ...ausgabe.matchAll(/Game Outcome: Ai\((\d+)\)-.* has won (?:because |due to |by )?(.*)/g),
-  ];
-  const verloren = [
-    ...ausgabe.matchAll(/Game Outcome: Ai\((\d+)\)-.* has lost (?:because |due to )(.+)/g),
-  ].map((m) => ({
-    platz: Number(m[1]) - 1,
-    grund: m[2].trim(),
-  }));
+  // Zeile für Zeile: Eine Verlustzeile kann selbst "has won" enthalten ("has lost because an opponent has
+  // won by spell 'Combo: ...'") und darf dann nicht als Sieg zählen. Gewonnen wird "because all opponents
+  // have lost" oder "due to effect of 'Combo: ...'" (der Combo-Pilot, scripts/forge/pilot).
+  const zeilen = ausgabe.split('\n').filter((z) => z.startsWith('Game Outcome: Ai('));
+  const sieger = [];
+  const verloren = [];
+  for (const z of zeilen) {
+    const m = /^Game Outcome: Ai\((\d+)\)-.*? has (won|lost) (?:because |due to |by )?(.*)$/.exec(
+      z,
+    );
+    if (!m) continue;
+    if (m[2] === 'won') sieger.push([z, m[1], m[3]]);
+    else verloren.push({ platz: Number(m[1]) - 1, grund: m[3].trim() });
+  }
   // Mehr als ein Sieger ist kein Ergebnis, sondern ein Forge-Fehler (gesehen mit der Such-KI) - Remis.
   const remis = /ended in a Draw|Stopping slow match as draw/.test(ausgabe) || sieger.length !== 1;
   const siegGrund = remis ? null : sieger[0][2].trim();
