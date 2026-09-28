@@ -3,8 +3,8 @@ import type { BracketLevel } from './bracket';
 /**
  * Einstufung eines Decks aus der Forge-Simulation (echte 4er-Pods, Bot gegen Bot).
  *
- * Das Deck spielt je Stufe 100 Partien gegen drei Test-Decks dieser Stufe (sim/testdecks). Hier wird
- * aus den fünf Winrates eine Stufe. Reine Rechenfunktion wie bracket.ts - kein Netz, kein Angular -,
+ * Das Deck spielt je Stufe 100 Partien gegen drei Test-Decks dieser Stufe (sim/testdecks, Stufen 2 bis 5).
+ * Hier wird aus den Winrates eine Stufe. Reine Rechenfunktion wie bracket.ts - kein Netz, kein Angular -,
  * damit sie im Browser und im Simulations-Skript dieselbe ist und sich in forge-einstufung.spec.ts
  * festnageln lässt.
  *
@@ -19,14 +19,22 @@ import type { BracketLevel } from './bracket';
  * einen bestimmten Stil schlecht aussieht. Es zählt trotzdem die höchste Stufe: Wer Bracket-3-Decks
  * schlägt, gehört nicht an einen Bracket-2-Tisch.
  *
+ * BRACKET 1 HAT KEINE TEST-DECKS (Entscheidung des Users, 28.09.2026): Bracket-1-Decks sind Themen-Decks,
+ * die gar nicht auf Sieg gebaut sind - daran lässt sich nichts messen. Bracket 1 ist deshalb, was schon
+ * gegen die B2-Test-Decks nicht mithält. Das ist genau der Fall "hält nirgends mit" unten.
+ *
  * Die Kartenregeln (Game Changer, Tutoren, Combos - bracket.ts) setzen eine UNTERGRENZE: Ein Deck
  * mit vier Game Changern ist Bracket 4, auch wenn der Bot es schlecht spielt. Umgekehrt hebt die
  * Simulation ein regelkonformes Deck an, wenn es spielt wie eine höhere Stufe - genau die Lücke, die
- * das Zählen von Karten nicht schließt.
+ * das Zählen von Karten nicht schließt. Die Untergrenze zählt aber erst ab REGEL_MINIMUM_AB: Die
+ * Automatik in bracket.ts vergibt nie weniger als 2 (AUTO_BRACKET_MIN) - eine 2 heißt dort nur "nichts
+ * Verbotenes gefunden". Als Untergrenze genommen, käme kein Deck je auf Bracket 1.
  */
 
 export const FAIRER_ANTEIL = 0.25;
 export const SCHWELLE = 0.2;
+/** Ab dieser Stufe ist das Urteil der Kartenregeln eine echte Untergrenze (siehe oben). */
+export const REGEL_MINIMUM_AB = 3;
 
 /** Ergebnis gegen die Test-Decks EINER Stufe. Remis zählen als Partie ohne Sieg. */
 export interface StufenErgebnis {
@@ -86,7 +94,7 @@ export function einstufen(
       return { ...e, winrate, ...wilson(e.siege, e.spiele), haeltMit: winrate >= schwelle };
     });
 
-  // Hält es nirgends mit, ist es Bracket 1 - darunter gibt es nichts.
+  // Hält es nirgends mit - auch nicht gegen B2 -, ist es Bracket 1.
   const haelt = stufen.filter((s) => s.haeltMit);
   const simStufe: BracketLevel = haelt.length ? haelt[haelt.length - 1].stufe : 1;
 
@@ -97,8 +105,10 @@ export function einstufen(
   const untenKlar = simStufe === 1 || (hier != null && hier.unten >= schwelle);
   const obenKlar = darueber == null || darueber.oben < schwelle;
 
+  const untergrenze =
+    regelMinimum != null && regelMinimum >= REGEL_MINIMUM_AB ? regelMinimum : null;
   const stufe = (
-    regelMinimum != null && regelMinimum > simStufe ? regelMinimum : simStufe
+    untergrenze != null && untergrenze > simStufe ? untergrenze : simStufe
   ) as BracketLevel;
   return {
     stufe,
