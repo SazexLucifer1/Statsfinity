@@ -542,5 +542,37 @@
   ],
   "dauerS": 48,
   "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 3,
+  "sitz": [
+   "b2-szarekh-necron-dynasties.dck",
+   "b2-valgavoth-endless-punishment.dck",
+   "b3-ghave-trueffel-time.dck",
+   "b2-neyali-rebellion-rising.dck"
+  ],
+  "geprueft": 2,
+  "sieger": "b2-valgavoth-endless-punishment.dck",
+  "runde": 4,
+  "remis": false,
+  "comboSieg": false,
+  "siegGrund": "all opponents have lost",
+  "verloren": [
+   {
+    "deck": "b2-szarekh-necron-dynasties.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-ghave-trueffel-time.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b2-neyali-rebellion-rising.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 92,
+  "fehler": null
  }
 ]
