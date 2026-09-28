@@ -58,3 +58,59 @@ using (
       and (not d.is_private or d.user_id = auth.uid())
   )
 );
+
+-- =====================================================================================
+-- Aufträge: Developer fordern in der App eine Einstufung an, der Workflow holt sie ab.
+--
+-- WARUM EINE WARTESCHLANGE: Die App kann den GitHub-Workflow nicht selbst starten - dafür bräuchte
+-- sie einen GitHub-Schlüssel, und alles, was im Browser liegt, ist öffentlich. Stattdessen schreibt
+-- die App einen Auftrag, und der Workflow sieht alle 15 Minuten nach (schedule in
+-- .github/workflows/forge-einstufung.yml). Er arbeitet immer nur einen Auftrag zur Zeit ab.
+--
+-- Status: wartet -> laeuft -> fertig | fehler. Übergänge schreibt ausschließlich der Workflow
+-- (Service-Role), deshalb gibt es für Clients nur Lesen und Anlegen - und beides nur für Developer
+-- (profiles.is_developer), solange die Simulation im Aufbau ist.
+
+create table if not exists public.forge_einstufung_auftraege (
+  id uuid primary key default gen_random_uuid(),
+  deck_id uuid not null references public.decks (id) on delete cascade,
+  angefordert_von uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  erstellt_at timestamptz not null default now(),
+  status text not null default 'wartet' check (status in ('wartet', 'laeuft', 'fertig', 'fehler')),
+  gestartet_at timestamptz,
+  fertig_at timestamptz,
+  run_url text,
+  fehler text,
+  einstufung_id uuid references public.forge_einstufungen (id) on delete set null
+);
+
+-- Ein Deck steht höchstens einmal offen in der Schlange: Ein zweiter Klick soll nicht noch einmal
+-- 500 Partien kosten.
+create unique index if not exists forge_einstufung_auftraege_offen_idx
+  on public.forge_einstufung_auftraege (deck_id)
+  where status in ('wartet', 'laeuft');
+
+create index if not exists forge_einstufung_auftraege_deck_idx
+  on public.forge_einstufung_auftraege (deck_id, erstellt_at desc);
+
+alter table public.forge_einstufung_auftraege enable row level security;
+
+drop policy if exists "Developer lesen Forge-Aufträge" on public.forge_einstufung_auftraege;
+create policy "Developer lesen Forge-Aufträge"
+on public.forge_einstufung_auftraege
+for select
+to authenticated
+using (
+  exists (select 1 from public.profiles p where p.id = auth.uid() and coalesce(p.is_developer, false))
+);
+
+drop policy if exists "Developer legen Forge-Aufträge an" on public.forge_einstufung_auftraege;
+create policy "Developer legen Forge-Aufträge an"
+on public.forge_einstufung_auftraege
+for insert
+to authenticated
+with check (
+  angefordert_von = auth.uid()
+  and status = 'wartet'
+  and exists (select 1 from public.profiles p where p.id = auth.uid() and coalesce(p.is_developer, false))
+);

@@ -1,0 +1,47 @@
+// Gleicher Kasten wie die Bracket-Begründung darüber (.bracket-panel in deck-detail-view.bracket.scss),
+// damit der Abschnitt als Teil des Bracket-Blocks gelesen wird.
+.forge-panel {
+  margin-bottom: var(--sp-5);
+  padding: var(--sp-5);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--glass-border);
+  background: var(--surface-tile);
+
+  h4 {
+    margin: 0;
+  }
+
+  .hint {
+    margin: var(--sp-3) 0 0;
+  }
+}
+
+.forge-kopf,
+.forge-urteil,
+.forge-knoepfe {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+}
+
+.forge-kopf {
+  justify-content: space-between;
+  margin-bottom: var(--sp-3);
+}
+
+.forge-urteil .hint {
+  margin: 0;
+}
+
+.forge-knoepfe {
+  margin-top: var(--sp-4);
+}
+
+.forge-warnung {
+  color: var(--danger);
+}
+
+.forge-status a {
+  color: var(--accent);
+}

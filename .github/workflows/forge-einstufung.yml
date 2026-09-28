@@ -4,8 +4,12 @@ name: Forge bracket simulation
 # dieser Stufe (sim/testdecks), gespielt von den Bots der Regel-Engine Forge. Ablauf:
 # scripts/forge/einstufen.js, Regel: src/app/forge-einstufung.ts, Tabelle: sql/forge-einstufung-2026-09-28.sql
 #
-# Nur von Hand auslösbar: "Actions" -> "Forge bracket simulation" -> "Run workflow", Deck-ID eintragen
-# (steht in der Adresse hinter ?deck= , wenn man ein Deck teilt).
+# Zwei Wege hinein:
+#   - aus der App: Developer tippen in der Deck-Ansicht auf "Simulation anfordern". Das legt einen
+#     Auftrag in forge_einstufung_auftraege an; dieser Workflow sieht alle 15 Minuten nach und holt
+#     den ältesten offenen ab. Ist keiner da, endet er nach wenigen Sekunden.
+#   - von Hand: "Actions" -> "Forge bracket simulation" -> "Run workflow", Deck-ID eintragen
+#     (steht in der Adresse hinter ?deck= , wenn man ein Deck teilt).
 #
 # DAUER: Die fünf Stufen laufen auf fünf Runnern gleichzeitig. Eine Partie dauert je nach Stufe
 # 1-5 Minuten, drei laufen je Runner parallel - 100 Partien sind damit 1-3 Stunden. Bricht ein Runner
@@ -17,6 +21,8 @@ name: Forge bracket simulation
 # Zusammenfassung des Laufs.
 
 on:
+  schedule:
+    - cron: '*/15 * * * *'
   workflow_dispatch:
     inputs:
       deck_id:
@@ -32,8 +38,46 @@ on:
         type: boolean
         default: true
 
+# Immer nur ein Lauf zur Zeit: Ein Deck belegt fünf Runner für Stunden. Solange einer läuft, wartet
+# der nächste Zeitplan-Aufruf (GitHub hält davon genau einen zurück, weitere verfallen - sie hätten
+# ohnehin nur in die Warteschlange geschaut).
+concurrency:
+  group: forge-einstufung
+  cancel-in-progress: false
+
 jobs:
+  # Welches Deck? Von Hand: die eingetragene ID. Zeitplan: der älteste offene Auftrag aus der App.
+  auftrag:
+    runs-on: ubuntu-latest
+    outputs:
+      deck_id: ${{ steps.hole.outputs.deck_id }}
+      auftrag_id: ${{ steps.hole.outputs.auftrag_id }}
+    steps:
+      - name: Auftrag holen
+        id: hole
+        env:
+          KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          URL: https://jkkelwpnrgzbvopszwrl.supabase.co/rest/v1/forge_einstufung_auftraege
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -n "${{ inputs.deck_id }}" ]; then
+            echo "deck_id=${{ inputs.deck_id }}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ -z "$KEY" ]; then echo "SUPABASE_SERVICE_ROLE_KEY fehlt - keine Warteschlange."; exit 0; fi
+          H=(-H "apikey: $KEY" -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" -H "Prefer: return=representation")
+          ID=$(curl -sS "$URL?select=id&status=eq.wartet&order=erstellt_at.asc&limit=1" "${H[@]}" | jq -r '.[0].id // empty')
+          if [ -z "$ID" ]; then echo "Kein offener Auftrag."; exit 0; fi
+          # Nur übernehmen, wenn er noch wartet - sonst hat ihn schon jemand anderes.
+          DECK=$(curl -sS -X PATCH "$URL?id=eq.$ID&status=eq.wartet" "${H[@]}" \
+            -d "{\"status\":\"laeuft\",\"gestartet_at\":\"$(date -u +%FT%TZ)\",\"run_url\":\"$RUN_URL\"}" | jq -r '.[0].deck_id // empty')
+          echo "Auftrag $ID, Deck $DECK"
+          echo "deck_id=$DECK" >> "$GITHUB_OUTPUT"
+          echo "auftrag_id=$ID" >> "$GITHUB_OUTPUT"
+
   forge:
+    needs: auftrag
+    if: needs.auftrag.outputs.deck_id != ''
     runs-on: ubuntu-latest
     outputs:
       commit: ${{ steps.fassung.outputs.commit }}
@@ -63,7 +107,7 @@ jobs:
         run: scripts/forge/forge-setup.sh .forge
 
   spielen:
-    needs: forge
+    needs: [auftrag, forge]
     runs-on: ubuntu-latest
     timeout-minutes: 350
     strategy:
@@ -92,9 +136,9 @@ jobs:
         # Ein Runner hat 4 Kerne; eine Forge-Partie belegt gut einen davon.
         run: >
           node scripts/forge/einstufen.js .forge/forge
-          --deck '${{ inputs.deck_id }}'
+          --deck '${{ needs.auftrag.outputs.deck_id }}'
           --stufen ${{ matrix.stufe }}
-          --spiele '${{ inputs.spiele }}'
+          --spiele '${{ inputs.spiele || '100' }}'
           --parallel 3
           --aus teil-b${{ matrix.stufe }}.json
       # Auch nach Zeitüberschreitung hochladen: die bis dahin gespielten Partien zählen.
@@ -106,8 +150,8 @@ jobs:
           if-no-files-found: ignore
 
   auswerten:
-    needs: spielen
-    if: always()
+    needs: [auftrag, spielen]
+    if: always() && needs.auftrag.outputs.deck_id != ''
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -126,7 +170,10 @@ jobs:
         env:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
-          SPEICHERN=""
-          if [ "${{ inputs.speichern }}" = "true" ]; then SPEICHERN="--speichern ${{ inputs.deck_id }}"; fi
-          node scripts/forge/einstufen.js --auswerten teil-b*.json $SPEICHERN | tee ergebnis.md
+          # Aufträge aus der App werden immer gespeichert, von Hand nur mit Haken.
+          ARGS=""
+          if [ "${{ inputs.speichern }}" != "false" ]; then ARGS="--speichern ${{ needs.auftrag.outputs.deck_id }}"; fi
+          if [ -n "${{ needs.auftrag.outputs.auftrag_id }}" ]; then ARGS="$ARGS --auftrag ${{ needs.auftrag.outputs.auftrag_id }}"; fi
+          shopt -s nullglob
+          node scripts/forge/einstufen.js --auswerten teil-b*.json $ARGS | tee ergebnis.md
           cat ergebnis.md >> "$GITHUB_STEP_SUMMARY"

@@ -3411,5 +3411,635 @@
   ],
   "dauerS": 638,
   "fehler": null
+ },
+ {
+  "probe": "innen",
+  "stufe": 4,
+  "sitz": [
+   "b4-hazezon-azir-in-dune.dck",
+   "b4-jodah-f-steht-fuer-freunde.dck",
+   "b4-marwyn-elf-ramp.dck",
+   "b4-muerra-ein-waschbaer.dck"
+  ],
+  "geprueft": null,
+  "sieger": "b4-marwyn-elf-ramp.dck",
+  "runde": 6,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b4-hazezon-azir-in-dune.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-jodah-f-steht-fuer-freunde.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-muerra-ein-waschbaer.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 555,
+  "fehler": null
+ },
+ {
+  "probe": "innen",
+  "stufe": 4,
+  "sitz": [
+   "b4-marwyn-elf-ramp.dck",
+   "b4-muerra-ein-waschbaer.dck",
+   "b4-hazezon-azir-in-dune.dck",
+   "b4-jodah-f-steht-fuer-freunde.dck"
+  ],
+  "geprueft": null,
+  "sieger": "b4-hazezon-azir-in-dune.dck",
+  "runde": 5,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b4-marwyn-elf-ramp.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-muerra-ein-waschbaer.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-jodah-f-steht-fuer-freunde.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 403,
+  "fehler": null
+ },
+ {
+  "probe": "innen",
+  "stufe": 4,
+  "sitz": [
+   "b4-muerra-ein-waschbaer.dck",
+   "b4-hazezon-azir-in-dune.dck",
+   "b4-jodah-f-steht-fuer-freunde.dck",
+   "b4-marwyn-elf-ramp.dck"
+  ],
+  "geprueft": null,
+  "sieger": "b4-jodah-f-steht-fuer-freunde.dck",
+  "runde": 8,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b4-muerra-ein-waschbaer.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-hazezon-azir-in-dune.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-marwyn-elf-ramp.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 465,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 4,
+  "sitz": [
+   "b3-sorin-lurrus-inkasso.dck",
+   "b3-ivy-x-creatures.dck",
+   "b4-marwyn-elf-ramp.dck",
+   "b3-choco-chocobos.dck"
+  ],
+  "geprueft": 2,
+  "sieger": "b3-sorin-lurrus-inkasso.dck",
+  "runde": 6,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b3-ivy-x-creatures.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-marwyn-elf-ramp.dck",
+    "grund": "of obtaining 10 poison counters"
+   },
+   {
+    "deck": "b3-choco-chocobos.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 62,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 4,
+  "sitz": [
+   "b3-ivy-x-creatures.dck",
+   "b4-jodah-f-steht-fuer-freunde.dck",
+   "b3-choco-chocobos.dck",
+   "b3-sorin-lurrus-inkasso.dck"
+  ],
+  "geprueft": 1,
+  "sieger": "b3-choco-chocobos.dck",
+  "runde": 5,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b3-ivy-x-creatures.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-jodah-f-steht-fuer-freunde.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-sorin-lurrus-inkasso.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 135,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 4,
+  "sitz": [
+   "b4-hazezon-azir-in-dune.dck",
+   "b3-ivy-x-creatures.dck",
+   "b3-choco-chocobos.dck",
+   "b3-celestial-toymaker.dck"
+  ],
+  "geprueft": 0,
+  "sieger": "b3-celestial-toymaker.dck",
+  "runde": 8,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b4-hazezon-azir-in-dune.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-ivy-x-creatures.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-choco-chocobos.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 263,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 4,
+  "sitz": [
+   "b4-hazezon-azir-in-dune.dck",
+   "b3-ivy-x-creatures.dck",
+   "b3-choco-chocobos.dck",
+   "b3-sorin-lurrus-inkasso.dck"
+  ],
+  "geprueft": 0,
+  "sieger": "b3-choco-chocobos.dck",
+  "runde": 5,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b4-hazezon-azir-in-dune.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-ivy-x-creatures.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-sorin-lurrus-inkasso.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 99,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 4,
+  "sitz": [
+   "b3-sorin-lurrus-inkasso.dck",
+   "b4-jodah-f-steht-fuer-freunde.dck",
+   "b3-celestial-toymaker.dck",
+   "b3-ivy-x-creatures.dck"
+  ],
+  "geprueft": 1,
+  "sieger": "b3-celestial-toymaker.dck",
+  "runde": 5,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b3-sorin-lurrus-inkasso.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-jodah-f-steht-fuer-freunde.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-ivy-x-creatures.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 68,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 4,
+  "sitz": [
+   "b3-sorin-lurrus-inkasso.dck",
+   "b3-ivy-x-creatures.dck",
+   "b3-choco-chocobos.dck",
+   "b4-muerra-ein-waschbaer.dck"
+  ],
+  "geprueft": 3,
+  "sieger": "b3-choco-chocobos.dck",
+  "runde": 5,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b3-sorin-lurrus-inkasso.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-ivy-x-creatures.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-muerra-ein-waschbaer.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 54,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 4,
+  "sitz": [
+   "b3-celestial-toymaker.dck",
+   "b3-choco-chocobos.dck",
+   "b4-marwyn-elf-ramp.dck",
+   "b3-sorin-lurrus-inkasso.dck"
+  ],
+  "geprueft": 2,
+  "sieger": "b3-celestial-toymaker.dck",
+  "runde": 6,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b3-choco-chocobos.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-marwyn-elf-ramp.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-sorin-lurrus-inkasso.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 78,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 4,
+  "sitz": [
+   "b3-celestial-toymaker.dck",
+   "b3-choco-chocobos.dck",
+   "b3-sorin-lurrus-inkasso.dck",
+   "b4-muerra-ein-waschbaer.dck"
+  ],
+  "geprueft": 3,
+  "sieger": "b3-choco-chocobos.dck",
+  "runde": 9,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b3-celestial-toymaker.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-sorin-lurrus-inkasso.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-muerra-ein-waschbaer.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 263,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 4,
+  "sitz": [
+   "b4-hazezon-azir-in-dune.dck",
+   "b3-celestial-toymaker.dck",
+   "b3-choco-chocobos.dck",
+   "b3-ivy-x-creatures.dck"
+  ],
+  "geprueft": 0,
+  "sieger": "b4-hazezon-azir-in-dune.dck",
+  "runde": 5,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b3-celestial-toymaker.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-choco-chocobos.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-ivy-x-creatures.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 126,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 4,
+  "sitz": [
+   "b3-sorin-lurrus-inkasso.dck",
+   "b3-choco-chocobos.dck",
+   "b4-marwyn-elf-ramp.dck",
+   "b3-celestial-toymaker.dck"
+  ],
+  "geprueft": 2,
+  "sieger": "b3-celestial-toymaker.dck",
+  "runde": 5,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b3-sorin-lurrus-inkasso.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-choco-chocobos.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-marwyn-elf-ramp.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 63,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 4,
+  "sitz": [
+   "b3-sorin-lurrus-inkasso.dck",
+   "b4-jodah-f-steht-fuer-freunde.dck",
+   "b3-ivy-x-creatures.dck",
+   "b3-choco-chocobos.dck"
+  ],
+  "geprueft": 1,
+  "sieger": "b4-jodah-f-steht-fuer-freunde.dck",
+  "runde": 6,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b3-sorin-lurrus-inkasso.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-ivy-x-creatures.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-choco-chocobos.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 161,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 4,
+  "sitz": [
+   "b4-hazezon-azir-in-dune.dck",
+   "b3-ivy-x-creatures.dck",
+   "b3-celestial-toymaker.dck",
+   "b3-sorin-lurrus-inkasso.dck"
+  ],
+  "geprueft": 0,
+  "sieger": "b3-celestial-toymaker.dck",
+  "runde": 4,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b4-hazezon-azir-in-dune.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-ivy-x-creatures.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-sorin-lurrus-inkasso.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 51,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 4,
+  "sitz": [
+   "b3-ivy-x-creatures.dck",
+   "b3-sorin-lurrus-inkasso.dck",
+   "b3-choco-chocobos.dck",
+   "b4-muerra-ein-waschbaer.dck"
+  ],
+  "geprueft": 3,
+  "sieger": "b3-choco-chocobos.dck",
+  "runde": 9,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b3-ivy-x-creatures.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-sorin-lurrus-inkasso.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-muerra-ein-waschbaer.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 142,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 4,
+  "sitz": [
+   "b3-sorin-lurrus-inkasso.dck",
+   "b3-ivy-x-creatures.dck",
+   "b4-marwyn-elf-ramp.dck",
+   "b3-celestial-toymaker.dck"
+  ],
+  "geprueft": 2,
+  "sieger": "b3-sorin-lurrus-inkasso.dck",
+  "runde": 7,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b3-ivy-x-creatures.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-marwyn-elf-ramp.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-celestial-toymaker.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 87,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 4,
+  "sitz": [
+   "b4-hazezon-azir-in-dune.dck",
+   "b3-sorin-lurrus-inkasso.dck",
+   "b3-choco-chocobos.dck",
+   "b3-celestial-toymaker.dck"
+  ],
+  "geprueft": 0,
+  "sieger": "b3-celestial-toymaker.dck",
+  "runde": 5,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b4-hazezon-azir-in-dune.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-sorin-lurrus-inkasso.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-choco-chocobos.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 78,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 4,
+  "sitz": [
+   "b3-sorin-lurrus-inkasso.dck",
+   "b3-celestial-toymaker.dck",
+   "b3-choco-chocobos.dck",
+   "b4-muerra-ein-waschbaer.dck"
+  ],
+  "geprueft": 3,
+  "sieger": "b3-choco-chocobos.dck",
+  "runde": 6,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b3-sorin-lurrus-inkasso.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-celestial-toymaker.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b4-muerra-ein-waschbaer.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 97,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 4,
+  "sitz": [
+   "b3-choco-chocobos.dck",
+   "b4-jodah-f-steht-fuer-freunde.dck",
+   "b3-celestial-toymaker.dck",
+   "b3-sorin-lurrus-inkasso.dck"
+  ],
+  "geprueft": 1,
+  "sieger": "b4-jodah-f-steht-fuer-freunde.dck",
+  "runde": 6,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b3-choco-chocobos.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-celestial-toymaker.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-sorin-lurrus-inkasso.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 329,
+  "fehler": null
+ },
+ {
+  "probe": "stufe",
+  "stufe": 4,
+  "sitz": [
+   "b3-sorin-lurrus-inkasso.dck",
+   "b4-jodah-f-steht-fuer-freunde.dck",
+   "b3-ivy-x-creatures.dck",
+   "b3-choco-chocobos.dck"
+  ],
+  "geprueft": 1,
+  "sieger": "b3-sorin-lurrus-inkasso.dck",
+  "runde": 6,
+  "remis": false,
+  "verloren": [
+   {
+    "deck": "b4-jodah-f-steht-fuer-freunde.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-ivy-x-creatures.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-choco-chocobos.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 148,
+  "fehler": null
  }
 ]

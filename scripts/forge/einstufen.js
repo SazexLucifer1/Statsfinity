@@ -10,6 +10,7 @@
 //   auswerten:   node scripts/forge/einstufen.js --auswerten teil1.json teil2.json … [--regel-minimum 3]
 //                  [--speichern <statsfinity-deck-id>]   (schreibt nach forge_einstufungen, braucht
 //                  SUPABASE_SERVICE_ROLE_KEY; ohne --regel-minimum gilt decks.bracket_auto)
+//                  [--auftrag <id>]   (schließt den Auftrag aus der App-Warteschlange ab)
 //
 // "spielen" schreibt nach jeder Partie den Stand in die Ausgabedatei; ein zweiter Aufruf mit derselben
 // Datei spielt nur die fehlenden Partien. Am Ende (bzw. bei "auswerten") steht die Einstufung auf der
@@ -94,7 +95,7 @@ function drucke(stufen, einstufung) {
 
 // ---------------------------------------------------------------- auswerten
 if (argv[0] === '--auswerten') {
-  const mitWert = new Set(['--regel-minimum', '--speichern']);
+  const mitWert = new Set(['--regel-minimum', '--speichern', '--auftrag']);
   const dateien = argv
     .slice(1)
     .filter((a, i, l) => !a.startsWith('--') && !mitWert.has(l[i]) && !mitWert.has(l[i - 1]));
@@ -103,6 +104,16 @@ if (argv[0] === '--auswerten') {
   const unbekannt = [...new Set(teile.flatMap((t) => t.deck?.unbekannt ?? []))];
   const stufen = zusammenfassen(partien);
   const deckId = opt('speichern', null);
+  const auftragId = opt('auftrag', null);
+
+  // Kein einziges Ergebnis (alle Runner abgestürzt oder Deck nicht ladbar): Das ist ein Fehler, keine
+  // Einstufung - ohne Partien käme sonst "Bracket 1" heraus.
+  if (!stufen.some((st) => st.spiele > 0)) {
+    const grund = partien.find((pa) => pa.fehler)?.fehler ?? 'keine Partie gespielt';
+    console.error(`Keine auswertbaren Partien: ${grund}`);
+    if (auftragId) auftragAbschliessen(auftragId, { status: 'fehler', fehler: grund });
+    process.exit(1);
+  }
 
   // Untergrenze aus den Kartenregeln: die automatische Einstufung, die die App beim Öffnen des Decks
   // speichert (bracket.ts). Von Hand übergeben geht vor.
@@ -117,7 +128,7 @@ if (argv[0] === '--auswerten') {
     console.log(`Forge kannte nicht (fehlten im Spiel): ${unbekannt.join(', ')}`);
 
   if (deckId) {
-    supabase('forge_einstufungen', {
+    const [gespeichert] = supabase('forge_einstufungen', {
       method: 'POST',
       body: JSON.stringify({
         deck_id: deckId,
@@ -132,8 +143,18 @@ if (argv[0] === '--auswerten') {
       }),
     });
     console.log(`Gespeichert in forge_einstufungen (Deck ${deckId}).`);
+    if (auftragId)
+      auftragAbschliessen(auftragId, { status: 'fertig', einstufung_id: gespeichert.id });
   }
   process.exit(0);
+}
+
+/** Schließt einen Auftrag aus der App-Warteschlange ab (forge_einstufung_auftraege). */
+function auftragAbschliessen(id, felder) {
+  supabase(`forge_einstufung_auftraege?id=eq.${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ ...felder, fertig_at: new Date().toISOString() }),
+  });
 }
 
 /** REST-Aufruf mit dem Service-Role-Key - nur die GitHub Action darf in forge_einstufungen schreiben. */
