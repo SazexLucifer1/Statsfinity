@@ -164,3 +164,29 @@ und das spielt der Forge-Bot schlecht. Auffällige Test-Decks (Siegquote innerha
 - B3 Celestial Toymaker 50 % und 4 von 5 gegen B2 – spielt wie Bracket 4; Ivy 0 % – der Bot kann das Deck nicht
 - B4 Muerra 0 % innerhalb von B4
 - B5 Thrasios/Tymna 5 % – seine Combos liefern nur „unendlich Mana/Karten“, der Pilot kennt keinen Sieg für ihn
+
+### Dritter Lauf nach dem Tausch (28.09.2026, auf GitHub, je Probe 20 Partien)
+
+Neue Decks: B3 mit Trüffel Time und Moonfall statt Ivy und Celestial Toymaker, B5 mit Thrasios + Vial Smasher statt
+Thrasios/Tymna, B1 ohne Test-Decks. Gespielt über den Workflow `forge-kalibrierung.yml`
+([Lauf 36476633419](https://github.com/SazexLucifer1/Statsfinity/actions/runs/36476633419)), 91 Partien dort und 29
+vorher in einer Session. **`kalibrierung.json` im Repo enthält nur diese 29** – die vollständige Datei liegt als
+Artefakt „kalibrierung“ am Lauf.
+
+| Probe       |  Siege | Winrate | davon per Combo |
+| ----------- | -----: | ------: | --------------: |
+| B3 gegen B2 | 4 / 20 |    20 % |               0 |
+| B4 gegen B3 | 4 / 20 |    20 % |               0 |
+| B5 gegen B4 | 1 / 20 | **5 %** |               1 |
+
+Innerhalb der Stufen (fair 25 %):
+
+- B3: Sorin & Lurrus 68 %, Chocobos 21 %, Trüffel Time 5 %, Moonfall 0 % (19 Partien, eine Remis)
+- B4: Hazezon 25 %, Jodah 25 %, Marwyn 25 %, Muerra 20 % (3 per Combo)
+- B5: Kinnan 45 % (4 per Combo), Ishai/Rograkh 20 % (2), Witherbloom 20 % (3), Thrasios/Vial Smasher 15 % (2)
+
+Befund: **Die Stufen trennen nicht.** Keine Stufe gewinnt gegen die darunter öfter als den fairen Anteil, B5 gegen
+B4 sogar fast nie – obwohl die B5-Decks untereinander 11 ihrer 20 Siege per Combo holen. Innerhalb von B4 ist die
+Auswahl ausgeglichen, innerhalb von B3 nicht (Sorin & Lurrus dominiert, zwei Decks gewinnen praktisch nie).
+Einschränkung: 20 Partien je Probe haben ein 95-%-Intervall von etwa ±18 Punkten; einzelne Zeilen tragen nur grobe
+Aussagen, das Muster über alle drei Stufen aber mehr.
