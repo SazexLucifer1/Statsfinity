@@ -62,5 +62,197 @@
   ],
   "dauerS": 109,
   "fehler": null
+ },
+ {
+  "probe": "innen",
+  "stufe": 3,
+  "sitz": [
+   "b3-aesi-moonfall.dck",
+   "b3-choco-chocobos.dck",
+   "b3-ghave-trueffel-time.dck",
+   "b3-sorin-lurrus-inkasso.dck"
+  ],
+  "geprueft": null,
+  "sieger": "b3-sorin-lurrus-inkasso.dck",
+  "runde": 6,
+  "remis": false,
+  "comboSieg": false,
+  "siegGrund": "all opponents have lost",
+  "verloren": [
+   {
+    "deck": "b3-aesi-moonfall.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-choco-chocobos.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-ghave-trueffel-time.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 65,
+  "fehler": null
+ },
+ {
+  "probe": "innen",
+  "stufe": 3,
+  "sitz": [
+   "b3-choco-chocobos.dck",
+   "b3-ghave-trueffel-time.dck",
+   "b3-sorin-lurrus-inkasso.dck",
+   "b3-aesi-moonfall.dck"
+  ],
+  "geprueft": null,
+  "sieger": "b3-sorin-lurrus-inkasso.dck",
+  "runde": 6,
+  "remis": false,
+  "comboSieg": false,
+  "siegGrund": "all opponents have lost",
+  "verloren": [
+   {
+    "deck": "b3-choco-chocobos.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-ghave-trueffel-time.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-aesi-moonfall.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 176,
+  "fehler": null
+ },
+ {
+  "probe": "innen",
+  "stufe": 3,
+  "sitz": [
+   "b3-ghave-trueffel-time.dck",
+   "b3-sorin-lurrus-inkasso.dck",
+   "b3-aesi-moonfall.dck",
+   "b3-choco-chocobos.dck"
+  ],
+  "geprueft": null,
+  "sieger": "b3-sorin-lurrus-inkasso.dck",
+  "runde": 7,
+  "remis": false,
+  "comboSieg": false,
+  "siegGrund": "all opponents have lost",
+  "verloren": [
+   {
+    "deck": "b3-ghave-trueffel-time.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-aesi-moonfall.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-choco-chocobos.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 78,
+  "fehler": null
+ },
+ {
+  "probe": "innen",
+  "stufe": 3,
+  "sitz": [
+   "b3-sorin-lurrus-inkasso.dck",
+   "b3-aesi-moonfall.dck",
+   "b3-choco-chocobos.dck",
+   "b3-ghave-trueffel-time.dck"
+  ],
+  "geprueft": null,
+  "sieger": "b3-sorin-lurrus-inkasso.dck",
+  "runde": 7,
+  "remis": false,
+  "comboSieg": false,
+  "siegGrund": "all opponents have lost",
+  "verloren": [
+   {
+    "deck": "b3-aesi-moonfall.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-choco-chocobos.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-ghave-trueffel-time.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 71,
+  "fehler": null
+ },
+ {
+  "probe": "innen",
+  "stufe": 3,
+  "sitz": [
+   "b3-aesi-moonfall.dck",
+   "b3-choco-chocobos.dck",
+   "b3-ghave-trueffel-time.dck",
+   "b3-sorin-lurrus-inkasso.dck"
+  ],
+  "geprueft": null,
+  "sieger": "b3-sorin-lurrus-inkasso.dck",
+  "runde": 5,
+  "remis": false,
+  "comboSieg": false,
+  "siegGrund": "all opponents have lost",
+  "verloren": [
+   {
+    "deck": "b3-aesi-moonfall.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-choco-chocobos.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-ghave-trueffel-time.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 47,
+  "fehler": null
+ },
+ {
+  "probe": "innen",
+  "stufe": 3,
+  "sitz": [
+   "b3-choco-chocobos.dck",
+   "b3-ghave-trueffel-time.dck",
+   "b3-sorin-lurrus-inkasso.dck",
+   "b3-aesi-moonfall.dck"
+  ],
+  "geprueft": null,
+  "sieger": "b3-sorin-lurrus-inkasso.dck",
+  "runde": 6,
+  "remis": false,
+  "comboSieg": false,
+  "siegGrund": "all opponents have lost",
+  "verloren": [
+   {
+    "deck": "b3-choco-chocobos.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-ghave-trueffel-time.dck",
+    "grund": "life total reached 0"
+   },
+   {
+    "deck": "b3-aesi-moonfall.dck",
+    "grund": "life total reached 0"
+   }
+  ],
+  "dauerS": 109,
+  "fehler": null
  }
 ]
