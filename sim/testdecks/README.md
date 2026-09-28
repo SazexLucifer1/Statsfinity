@@ -113,3 +113,18 @@ Kreaturen verlieren dadurch gegen Bracket-4-Decks, die einfach angreifen.
 Folge: Mit dem Standard-Bot misst die Simulation, wie gut sich ein Deck als Kreaturen-Deck spielen lässt, nicht
 seine Stufe. Nächster Versuch: Forges vorausschauende Such-KI („full simulation“), die Züge durchrechnet und einen
 Spielsieg als besten Spielstand erkennt.
+
+### Such-KI von Forge (28.09.2026, je eine B5-Partie)
+
+Forge hat neben dem Standard-Bot eine vorausschauende KI, die Züge durchrechnet (in der Oberfläche wählbar, im
+Kommandozeilen-Modus nur mit einer kleinen lokalen Änderung an `SimulateMatch.java` – Umgebungsvariable
+`FORGE_AI_SIMULATION=full|hybrid`, **nicht** im Repo, weil sie nichts gebracht hat):
+
+- **full**: bei 3 GB Speicher `OutOfMemoryError` (jede geprüfte Aktion kopiert den ganzen Spielstand mit vier
+  Spielern). Mit 10 GB 4,5 Minuten für knapp drei Runden, dann bricht die Partie mit einem Forge-Fehler ab – alle
+  vier Spieler „gewinnen“ gleichzeitig. Keine Combo.
+- **hybrid**: schnell (30 s), aber zwei der vier cEDH-Bots verlieren an ihrem **eigenen Pact of Negation**, weil
+  sie die Kosten im nächsten Unterhalt nicht zahlen können. Gewonnen wird wieder über Lebenspunkte. Keine Combo.
+
+Ergebnis: Keiner der drei Forge-Bots spielt Combos. Damit die Simulation Bracket 4 und 5 erkennt, braucht der Bot
+eine eigene Combo-Steuerung, die den Siegplan des Decks kennt.
