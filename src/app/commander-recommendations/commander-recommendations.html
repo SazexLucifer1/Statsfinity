@@ -63,7 +63,7 @@
     } @else if (browseResults().length > 0) {
       <div class="card-pick-grid">
         @for (entry of pagedBrowseResults(); track entry.cards[0].name + (entry.cards[1]?.name ?? '')) {
-          <div class="card-pick-tile" (click)="selectCommander(entry.cards.map(c => c.name))">
+          <div class="card-pick-tile" (click)="pickBrowseEntry(entry.cards)">
             <div class="card-pick-image">
               <app-partner-card-image [cards]="entry.cards" [compact]="true" />
             </div>

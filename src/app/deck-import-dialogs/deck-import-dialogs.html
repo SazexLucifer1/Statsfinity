@@ -44,29 +44,31 @@
       ></textarea>
     </div>
 
-    <div class="import-field">
-      <label class="hint" for="deck-tag-select">{{ importService.i18n.t('importDialog.edhrecTagLabel') }}</label>
-      @if (importService.commanderTagsBusy()) {
-        <p class="hint">{{ importService.i18n.t('importDialog.loadingTags') }}</p>
-      } @else if (importService.availableCommanderTags().length === 0) {
-        <p class="hint">{{ importService.i18n.t('importDialog.noCommanderDetectedYet') }}</p>
-      } @else {
-        <select
-          id="deck-tag-select"
-          class="glass-input"
-          [ngModel]="importService.selectedCommanderTag()"
-          (ngModelChange)="importService.setSelectedCommanderTag($event)"
-        >
-          <option [ngValue]="null">{{ importService.i18n.t('deckView.noTag') }}</option>
-          @for (t of importService.availableCommanderTags(); track t.slug) {
-            <option [ngValue]="t.slug">{{ t.value }} ({{ t.count }})</option>
-          }
-        </select>
-      }
-      <p class="hint bracket-caveat">
-        {{ importService.i18n.t('importDialog.tagControlsHint') }}
-      </p>
-    </div>
+    @if (importService.edhrecEnabled()) {
+      <div class="import-field">
+        <label class="hint" for="deck-tag-select">{{ importService.i18n.t('importDialog.edhrecTagLabel') }}</label>
+        @if (importService.commanderTagsBusy()) {
+          <p class="hint">{{ importService.i18n.t('importDialog.loadingTags') }}</p>
+        } @else if (importService.availableCommanderTags().length === 0) {
+          <p class="hint">{{ importService.i18n.t('importDialog.noCommanderDetectedYet') }}</p>
+        } @else {
+          <select
+            id="deck-tag-select"
+            class="glass-input"
+            [ngModel]="importService.selectedCommanderTag()"
+            (ngModelChange)="importService.setSelectedCommanderTag($event)"
+          >
+            <option [ngValue]="null">{{ importService.i18n.t('deckView.noTag') }}</option>
+            @for (t of importService.availableCommanderTags(); track t.slug) {
+              <option [ngValue]="t.slug">{{ t.value }} ({{ t.count }})</option>
+            }
+          </select>
+        }
+        <p class="hint bracket-caveat">
+          {{ importService.i18n.t('importDialog.tagControlsHint') }}
+        </p>
+      </div>
+    }
 
     @if (importService.importMessage()) {
       <p class="error">{{ importService.importMessage() }}</p>
@@ -170,7 +172,7 @@
       </div>
     }
 
-    @if (importService.newDeckCommanderSelected()) {
+    @if (importService.newDeckCommanderSelected() && importService.edhrecEnabled()) {
       <div class="import-field">
         <label class="hint" for="empty-deck-tag-select">{{ importService.i18n.t('importDialog.edhrecTagLabel') }}</label>
         @if (importService.commanderTagsBusy()) {

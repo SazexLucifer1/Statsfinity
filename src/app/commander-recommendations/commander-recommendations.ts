@@ -5,6 +5,7 @@ import { PercentPipe } from '@angular/common';
 import { ScryfallCard, ScryfallService } from '../scryfall.service';
 import { EdhrecCardlist, EdhrecService, EdhrecTag } from '../edhrec.service';
 import { CardPreviewService } from '../card-preview.service';
+import { ProfileService } from '../profile.service';
 import { I18nService } from '../i18n.service';
 import { CardImage } from '../card-image/card-image';
 import { PartnerCardImage } from '../partner-card-image/partner-card-image';
@@ -44,6 +45,7 @@ export class CommanderRecommendations {
   private readonly scryfall = inject(ScryfallService);
   private readonly edhrec = inject(EdhrecService);
   private readonly cardPreview = inject(CardPreviewService);
+  private readonly profileService = inject(ProfileService);
   readonly i18n = inject(I18nService);
 
   readonly query = signal('');
@@ -169,9 +171,30 @@ export class CommanderRecommendations {
     }, 250);
   }
 
+  /**
+   * EDHREC-Empfehlungen nur für Alpha-Tester (siehe ProfileService.isAlphaTester). Alle anderen
+   * behalten das Stöbern (Scryfall) - ein Tipp auf einen Commander zeigt dann nur die Karte.
+   */
+  readonly edhrecEnabled = computed(() => this.profileService.isAlphaTester());
+
+  /** Tipp auf eine Kachel im Stöbern: mit Alpha-Zugang die Empfehlungen, sonst nur die Vorschau. */
+  pickBrowseEntry(cards: ScryfallCard[]): void {
+    if (this.edhrecEnabled()) {
+      this.selectCommander(cards.map((c) => c.name));
+    } else if (cards[0]) {
+      this.openCommanderPreview(cards[0]);
+    }
+  }
+
   /** Nimmt 1 Namen (Solo-Commander) oder 2 Namen (Partner-Paar, siehe searchCommanderPairs()). */
   async selectCommander(names: string[]): Promise<void> {
     this.suggestions.set([]);
+    if (!this.edhrecEnabled()) {
+      this.query.set(names.join(' + '));
+      const card = await this.scryfall.findCard(names[0]);
+      if (card) this.openCommanderPreview(card);
+      return;
+    }
     this.query.set(names.join(' + '));
     this.commanderNames.set(names);
     this.commanderCards.set([]);
