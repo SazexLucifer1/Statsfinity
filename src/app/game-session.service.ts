@@ -1,4 +1,3 @@
-// NEU (komplette Datei)
 import { Injectable, WritableSignal, computed, effect, inject, signal } from '@angular/core';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { DeckFormat, GameMode, MatchPlayer, TEAM_OPTIONS, TeamName } from './models';
@@ -219,7 +218,6 @@ export class GameSessionService {
     return this.deadPlayers()[key] ?? false;
   }
 
-  // NEU (ersetzt die bisherige toggleDead-Methode)
   toggleDead(key: string): void {
     const wasDead = this.isDead(key);
     this.deadPlayers.update((all) => ({ ...all, [key]: !wasDead }));
@@ -998,7 +996,7 @@ export class GameSessionService {
       }
 
       this.resetAll();
-      this.deadMessageMap.set({}); // NEU
+      this.deadMessageMap.set({});
     } finally {
       this.saving.set(false);
     }
@@ -1038,7 +1036,7 @@ export class GameSessionService {
     this.format.set('Commander');
     this.pinnedBottomKey.set(null);
     this.pinnedBottomKey.set(null);
-    this.manualOrder.set(null); // NEU // NEU
+    this.manualOrder.set(null);
     this.activeTournamentMatchId.set(null);
     this.activeTournamentCountsInStats.set(true);
   }

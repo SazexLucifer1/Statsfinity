@@ -1,4 +1,3 @@
-// NEU (komplette Datei)
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';

@@ -473,7 +473,7 @@ export class IngameTracker implements AfterViewInit, OnDestroy {
   ngOnDestroy(): void {
     this.stopAllHolds();
     this.cancelPinLongPress();
-    if (this.rouletteTimeout) clearTimeout(this.rouletteTimeout); // NEU
+    if (this.rouletteTimeout) clearTimeout(this.rouletteTimeout);
     this.resizeObserver?.disconnect();
     this.panelRefsSub?.unsubscribe();
   }

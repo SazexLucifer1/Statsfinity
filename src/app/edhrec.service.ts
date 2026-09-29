@@ -49,7 +49,7 @@ export class EdhrecService {
     return [`${slugs[0]}-${slugs[1]}`, `${slugs[1]}-${slugs[0]}`];
   }
 
-  // NEU - dauerhafter Cache mit 24h-TTL (anders als Scryfalls Tag-Cache, siehe ScryfallService,
+  // dauerhafter Cache mit 24h-TTL (anders als Scryfalls Tag-Cache, siehe ScryfallService,
   // ändern sich EDHRECs Empfehlungen mit der Zeit - deshalb TTL statt für immer). Hält die
   // Zusage aus der Erlaubnis-Anfrage an EDHREC ein ("cache all responses for 24 hours") und
   // reduziert die Anfragelast deutlich, da dieselbe Commander-Seite bei jedem Deck-Öffnen bzw.

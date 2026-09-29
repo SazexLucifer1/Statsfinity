@@ -1,4 +1,3 @@
-// NEU (komplette Datei)
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -1464,7 +1463,6 @@ export class StatsTab {
     this.importPreview.set([]);
     this.importMessage.set('');
   }
-  // NEU (ans Ende der Klasse anfügen, vor der letzten schließenden Klammer)
 
   // --- Hard-Reset (Danger Zone) ---
 

@@ -79,30 +79,23 @@ export interface GameChangerEntry {
 }
 
 /**
- * Eine Zwei-Karten-Combo, wie das Combo-Fenster sie zeigt - aus der Live-Auswertung von Commander
- * Spellbook oder aus dem nächtlichen Abgleich zusammengeführt (siehe analysisCombos). produces und
- * description sind leer, wenn die Combo aus dem Nachtlauf stammt; extraMana und bracketLabel sind
- * umgekehrt nur dort bekannt.
+ * Eine Combo im Combo-Fenster, aus Spellbook-Live-Auswertung oder Nachtlauf. produces/steps fehlen
+ * beim Nachtlauf, extraMana/bracketLabel gibt es nur dort.
  */
 export interface AnalysisCombo {
   id: string;
   cardNames: string[];
   produces: string[];
   /**
-   * Der Ablauf als einzelne Schritte, jeder schon in Manasymbole und Text zerlegt (siehe
-   * comboSteps). Spellbook liefert ihn als einen Text mit einem Zeilenumbruch je Schritt;
-   * aufgeteilt ist er als nummerierte Liste zu lesen, und die Beschreibungen verweisen selbst auf
-   * Schrittnummern ("Repeat from step 4").
+   * Ablauf als Schritte (siehe comboSteps), jeder in Manasymbole und Text zerlegt - die
+   * Beschreibungen verweisen selbst auf Schrittnummern.
    */
   steps: ManaPart[][];
   extraMana: number | null;
   bracketLabel: string | null;
 }
 
-/**
- * Eine Karte, die das Deck noch NICHT hat und die dort neue Combos ergäbe - ein Eintrag des
- * Combo-Finders, fertig für die Anzeige.
- */
+/** Eine Karte, die das Deck noch nicht hat und neue Combos ergäbe (Eintrag des Combo-Finders). */
 export interface ComboFinderSuggestion {
   /** Normalisierter Vorderseiten-Name - Schlüssel gegen die Combo-Tabelle. */
   key: string;
@@ -117,22 +110,13 @@ export interface ComboFinderSuggestion {
 /** Eine einzelne Combo, der genau diese eine Karte fehlt. */
 export interface ComboFinderCombo {
   id: string;
-  /**
-   * Die Karten der Combo, die schon im Deck liegen - als Anzeigenamen, damit sie im Karten-Raster
-   * mit Bild erscheinen können.
-   */
+  /** Schon vorhandene Combo-Karten als Anzeigenamen (für das Bildraster). */
   presentCardNames: string[];
   /** Was die Combo am Ende erzeugt ("Infinite mana", ...). Leer, wenn die Quelle nichts nennt. */
   produces: string[];
-  /**
-   * Der Ablauf als nummerierbare Schritte, jeder in Manasymbole und Text zerlegt - Grundlage des
-   * "Ablauf anzeigen"-Fensters.
-   */
+  /** Ablauf als Schritte in Manasymbolen und Text ("Ablauf anzeigen"). */
   steps: ManaPart[][];
-  /**
-   * Zusätzlich nötiges Mana, zerlegt in Symbole und erklärenden Text - leer, wenn keins nötig
-   * ist. Als Symbole angezeigt, nicht als Zahl: so steht dort dasselbe wie auf der Karte.
-   */
+  /** Zusätzlich nötiges Mana als Symbole (wie auf der Karte), leer wenn keins. */
   extraMana: ManaPart[];
 }
 
@@ -153,15 +137,11 @@ interface PendingCardChange {
 }
 
 /**
- * Hält den Zustand der Deck-Detail-Vollbildansicht global (statt lokal in DeckList), damit die
- * Ansicht als eigene, root-level gerenderte Komponente existieren kann (analog IngameTracker in
- * app.html) - nur so lässt sich echtes position:fixed über den ganzen Viewport erreichen, ohne von
- * einem `.glass-card`-Vorfahren mit backdrop-filter eingefangen zu werden (backdrop-filter/filter/
- * transform auf einem Ahnen macht diesen zum Containing Block für fixed-Kinder).
+ * Zustand der Deck-Detailansicht, global statt in DeckList: Die Ansicht wird root-level gerendert,
+ * damit position:fixed nicht von einem Vorfahren mit backdrop-filter eingefangen wird.
  */
 /**
- * Zeitlicher Abstand, ab dem zwei aufeinanderfolgende Verlaufseinträge als zwei getrennte
- * Bearbeitungen gelten - siehe DeckViewerService.changeLogGroups().
+ * Abstand, ab dem zwei Verlaufseinträge als getrennte Bearbeitungen gelten (siehe changeLogGroups).
  */
 const CHANGE_GROUP_GAP_MS = 2 * 60 * 1000;
 
@@ -175,10 +155,7 @@ export interface DeckChangeGroup {
   removedCount: number;
 }
 
-/**
- * Welches Einzelurteil im Bracket-Kasten gerade seinen Rechenweg zeigt. Jedes Urteil hat
- * sein eigenes ⓘ direkt neben der Zahl - vorher stand die ganze Kette in einem einzigen Popup.
- */
+/** Welches Einzelurteil im Bracket-Kasten seinen Rechenweg zeigt (je Urteil ein eigenes ⓘ). */
 export type BracketMathTopic = 'rules' | 'spellbook' | 'tuning' | 'price' | 'power';
 
 @Injectable({ providedIn: 'root' })
@@ -200,10 +177,8 @@ export class DeckViewerService {
   readonly viewingDeck = signal<Deck | null>(null);
 
   /**
-   * Die Deck-Detailansicht ist kein Popup mehr, sondern eine eigene Seite im Inhaltsbereich
-   * (siehe app.html). Damit sie sich auch mit der Zurück-Geste/-Taste des Browsers schließen
-   * lässt - die App hat bewusst keinen Router und damit keine echten URLs - legt open() einen
-   * zusätzlichen History-Eintrag an, den close() wieder entfernt.
+   * Die Detailansicht ist eine eigene Seite; open() legt einen History-Eintrag an, damit die
+   * Zurück-Geste sie schließt (die App hat keinen Router).
    */
   private historyEntryOpen = false;
   /** Setzt close() vor dem selbst ausgelösten history.back(), damit der eigene Pop nicht doppelt schließt. */
@@ -224,15 +199,9 @@ export class DeckViewerService {
   }
 
   /**
-   * Ob das gerade angesehene Deck bearbeitet werden darf - entweder weil es dem eingeloggten User
-   * selbst gehört, oder weil es einem virtuellen Spieler ohne Account gehört UND der eingeloggte
-   * User der Admin ("owner") von GENAU DER GRUPPE ist, in der dieser Spieler steckt (nicht
-   * irgendeiner beliebigen anderen Gruppe, die er zufällig auch leitet). Alle Bearbeiten-Aktionen
-   * (Karten hinzufügen/entfernen, Commander markieren, Name/Tag ändern, neu einfügen) sind sonst
-   * gesperrt. Wichtig für "Profil ansehen" bei anderen Usern: die Deckliste dort ist zwar
-   * readonlyMode (kein Stift/Löschen-Button) für Nicht-Admins, aber "Ansehen" öffnet dieselbe
-   * Detailansicht wie bei eigenen Decks - ohne diesen Check ließe sich darüber trotzdem fremde
-   * Decks bearbeiten.
+   * Darf das angesehene Deck bearbeitet werden? Ja für eigene Decks und für Decks virtueller
+   * Spieler, wenn der Nutzer Owner GENAU DER Gruppe dieses Spielers ist. Wichtig, weil "Profil
+   * ansehen" dieselbe Detailansicht öffnet.
    */
   readonly canEditViewingDeck = computed(() => {
     const deck = this.viewingDeck();
@@ -250,9 +219,10 @@ export class DeckViewerService {
     return false;
   });
 
-  /** Ob die Spiel-Statistiken (Gespielt/Siege/Winrate) des gerade angesehenen Decks ausgeblendet
-   * werden müssen, weil der Host dem eingeloggten Viewer in der Sichtbarkeits-Matrix alle Modi
-   * gesperrt hat - eigene Decks und der Host sind ausgenommen. */
+  /**
+   * Spielstatistik ausblenden, wenn der Host dem Betrachter alle Modi gesperrt hat (eigene Decks
+   * und Host ausgenommen).
+   */
   readonly hideViewingDeckStats = computed(() => {
     if (this.canEditViewingDeck()) return false;
     return this.mtg.allModesHiddenForMe() && !this.groupService.isOwner();
@@ -260,16 +230,9 @@ export class DeckViewerService {
   readonly viewingDeckCards = signal<DeckCard[]>([]);
   readonly viewingChangeLog = signal<DeckChangeEntry[]>([]);
   /**
-   * Verlauf nach Bearbeitungen gruppiert statt als eine lange Liste einzelner Zeilen.
-   *
-   * Nicht nach exakt gleichem Zeitstempel: Nur der Listen-Neuimport (DeckService.saveDeck)
-   * schreibt alle Änderungen in EINEM insert und damit mit identischem changed_at. Der normale
-   * Bearbeiten-Speichern-Weg (saveEdits -> addCardToDeck/removeCardFromDeck) schreibt dagegen pro
-   * Karte eine eigene Zeile, jede mit ihrem eigenen now() - Millisekunden bis wenige Sekunden
-   * auseinander. Exakte Gleichheit würde einen einzigen Speichervorgang deshalb in lauter
-   * Ein-Karten-Reiter zerlegen. Stattdessen gehören aufeinanderfolgende Einträge zusammen, solange
-   * zwischen ihnen höchstens CHANGE_GROUP_GAP_MS liegen - das fasst beide Schreibwege korrekt
-   * zusammen und trennt zwei wirklich getrennte Bearbeitungen weiterhin.
+   * Verlauf nach Bearbeitungen gruppiert. Nicht nach gleichem Zeitstempel: Der Neuimport schreibt
+   * alles in einem insert, saveEdits() aber je Karte eine Zeile mit eigenem now(). Deshalb gehören
+   * Einträge zusammen, solange höchstens CHANGE_GROUP_GAP_MS dazwischen liegen.
    */
   readonly changeLogGroups = computed<DeckChangeGroup[]>(() => {
     const groups: DeckChangeGroup[] = [];
@@ -314,10 +277,9 @@ export class DeckViewerService {
   readonly changeGroupPrintBusy = signal(false);
   readonly viewingDeckGameStats = signal<DeckGameStats | null>(null);
   /**
-   * "mine" = nur Partien, in denen der BESITZER des Decks selbst Pilot war (siehe ownerPlayerIds()),
-   * "all" = alle Partien mit diesem Deck, also auch die, in denen es jemand ausgeliehen hat. Bewusst
-   * nicht der eingeloggte Nutzer: wer ein fremdes Deck ansieht, bekäme sonst nur seine eigenen
-   * Leih-Partien damit gezählt - bei Theos "Lorehold Spirit" stand für Fabian "1" statt Theos "3".
+   * "mine" = nur Partien, in denen der BESITZER selbst spielte (ownerPlayerIds), "all" = auch
+   * verliehene. Bewusst nicht der eingeloggte Nutzer - sonst sähe man bei fremden Decks nur die
+   * eigenen Leih-Partien.
    */
   readonly deckStatsScope = signal<'mine' | 'all'>('mine');
   /** Beschriftung des "mine"-Knopfs: beim eigenen Deck "Meine Spiele", sonst "Vom Besitzer". */
@@ -329,10 +291,8 @@ export class DeckViewerService {
   readonly detailBusy = signal(false);
   readonly viewMode = signal<'text' | 'visual'>('visual');
   /**
-   * Offener Reiter der Deck-Ansicht: die Kartenliste samt Statistik und Analyse ('cards'), der
-   * Steckbrief zum Teilen ('steckbrief') oder der Primer, also die selbst geschriebene
-   * Beschreibung des Decks ('primer'). Kopfbereich (Name, Format, Bracket) und Kommentare stehen
-   * außerhalb und bleiben in allen Reitern sichtbar.
+   * Offener Reiter: Kartenliste mit Analyse, Steckbrief oder Primer. Kopf und Kommentare stehen
+   * außerhalb und bleiben sichtbar.
    */
   readonly deckTab = signal<'cards' | 'steckbrief' | 'primer'>('cards');
   readonly showChangeLog = signal(false);
@@ -340,9 +300,7 @@ export class DeckViewerService {
   readonly showDeckAnalysis = signal(false);
   readonly showDeckAnalysisInfo = signal(false);
 
-  // NEU - Name/Tag sind immer (nicht nur im Bearbeitungsmodus) im Kopfbereich der Detailansicht
-  // änderbar, damit dafür kein separater Dialog mehr nötig ist (siehe deck-list.ts, der frühere
-  // Stift-Button wurde entfernt).
+  // Name/Tag sind im Kopfbereich immer änderbar, ohne eigenen Dialog.
   readonly deckNameDraft = signal('');
   readonly deckTagDraft = signal<string | null>(null);
   readonly deckFormatDraft = signal<DeckFormat | null>(null);
@@ -440,21 +398,15 @@ export class DeckViewerService {
   readonly landCount = computed(() => landCount(this.analyseKarten()));
   readonly nonBasicLandPercent = computed<number | null>(() => nonBasicLandPercent(this.analyseKarten()));
 
-  // Ein Land kommt bedingungslos getappt, wenn sein Regeltext "enters tapped" sagt und die Karte
-  // keinen Ausweg anbietet. Die Ausnahmen trennen genau die Premium-Länder ab, die formal denselben
-  // Satz tragen: Schockländer ("unless you pay 2 life"), Check- und Slowlands ("unless you control
-  // ...") und Fastlands ("unless you control two or fewer other lands"). Die alte Scryfall-Formel
-  // "enters the battlefield tapped" ist mit abgedeckt, falls einzelne Karten noch nicht auf die
-  // neue Schablone umgestellt sind.
+  // Bedingungslos getappt = "enters tapped" ohne Ausweg. Die Ausnahme trennt Schock-, Check-, Slow-
+  // und Fastlands ab ("unless ...", "you may pay"). Die alte Formel "enters the battlefield tapped"
+  // ist mit abgedeckt.
   private static readonly ENTERS_TAPPED_RE = /enters (?:the battlefield )?tapped/i;
   private static readonly TAPPED_AUSNAHME_RE = /unless|you may pay/i;
 
   /**
-   * Anteil Länder, die nicht bedingungslos getappt ins Spiel kommen (0-100), null ohne Länder.
-   *
-   * Das ist das Tempo-Maß der Manabasis - nicht der Nichtbasis-Anteil: Ein Precon steckt voller
-   * Guildgates, Triomes und Tempel, also Nichtbasisländern, die das Deck gerade langsam machen.
-   * Gemessen an echten Decks liegen Precons hier bei 70-80 %.
+   * Anteil nicht bedingungslos getappter Länder (0-100), null ohne Länder - das Tempo-Maß der
+   * Manabasis (Precons liegen bei 70-80 %).
    */
   readonly untappedLandPercent = computed<number | null>(() => {
     const lands = this.landCards();
@@ -481,10 +433,8 @@ export class DeckViewerService {
   readonly totalDeckPrice = signal<number | null>(null);
   readonly priceBusy = signal(false);
   /**
-   * Ob mindestens eine Preisabfrage gescheitert ist und die Summe deshalb zu niedrig steht - dann
-   * zeigt die Kachel "ab X €" statt "X €". Bewusst KEIN Fehlerhinweis: Die Zahl ist nicht falsch,
-   * sie ist nur eine Untergrenze, und genau das sagt "ab". Nicht gesetzt, wenn eine Karte
-   * schlicht keinen Preis hat - das ist der Normalfall (siehe ScryfallService.cheapestPrices()).
+   * Mindestens eine Preisabfrage scheiterte, die Summe ist also eine Untergrenze ("ab X €"). Karten
+   * ganz ohne Preis setzen das nicht.
    */
   readonly deckPriceIncomplete = signal(false);
 
@@ -501,12 +451,7 @@ export class DeckViewerService {
     this.effectCategoryPopup.set(null);
   }
 
-  // --- Fertige Diagramm-Reihen für <app-bar-chart> ---
-  //
-  // Die Abbildung selbst liegt in ui/bar-chart/deck-chart-data.ts, weil precon-browser und
-  // public-deck-browser dieselben drei Diagramme aus eigenen Signalen speisen. Vorher hatte jede
-  // der drei Komponenten eigene curveBarHeight/pipBarWidth/typeBarWidth-Methoden mit identischem
-  // Rumpf - dreimal dieselbe Skalierungsformel.
+  // --- Diagramm-Reihen für <app-bar-chart> (Abbildung in ui/bar-chart/deck-chart-data.ts) ---
   readonly manaCurveChart = computed<BarChartDatum[]>(() => manaCurveChartData(this.manaCurve()));
   readonly pipDistributionChart = computed<BarChartDatum[]>(() =>
     pipChartData(this.pipDistribution()),
@@ -542,12 +487,8 @@ export class DeckViewerService {
   });
 
   /**
-   * Gegenstück zur Pip-Verteilung: nicht was das Deck an Mana *kostet*, sondern was es an Mana
-   * *erzeugt*. Gezählt werden Karten (mit ihrer Anzahl), nicht Manasymbole - eine Karte, die
-   * mehrere Farben erzeugen kann (Triom, Sol-Ring-artige Länder, "Mana jeder Farbe"), zählt
-   * deshalb bei jeder dieser Farben mit; die Balkensumme ist entsprechend größer als die Zahl der
-   * Manaquellen. Grundlage ist Scryfalls produced_mana, das Länder, Manasteine und Manadorks
-   * gleichermaßen abdeckt.
+   * Gegenstück zur Pip-Verteilung: welche Farben das Deck ERZEUGT (Scryfalls produced_mana).
+   * Gezählt werden Karten, eine mehrfarbige Quelle zählt bei jeder Farbe.
    */
   readonly manaSourceDistribution = computed<ManaSourceCount[]>(() => {
     const details = this.viewingCardDetails();
@@ -589,11 +530,8 @@ export class DeckViewerService {
   );
 
   /**
-   * Grobe Einordnung ausschließlich anhand der offiziellen Game-Changer-Grenzwerte
-   * (Bracket 1-2: keine, Bracket 3: bis zu 3, Bracket 4-5: unbegrenzt). Ergänzt durch die
-   * Commander-Spellbook-Auswertung (Mass Land Denial, Extra-Turns, Combos) weiter unten -
-   * Tutor-Dichte lässt sich damit immer noch nicht scharf gewichten, deshalb bleibt das ein
-   * Richtwert statt einer verbindlichen Einstufung.
+   * Grobe Einordnung nur nach den Game-Changer-Grenzen (B1-2: keine, B3: bis 3, B4-5: beliebig) -
+   * ein Richtwert, keine Einstufung.
    */
   readonly estimatedBracketHint = computed(() => {
     const count = this.gameChangerCount();
@@ -603,33 +541,21 @@ export class DeckViewerService {
   });
 
   /**
-   * Kuratierte Kartenmarkierungen von Commander Spellbook (Mass Land Denial, Extra-Turns,
-   * Tutoren), gespiegelt vom Nachtlauf - siehe CardDataService.spellbookCardFlags(). Leer, solange
-   * die Migration nicht ausgeführt oder der erste Lauf nicht durch ist.
+   * Kuratierte Spellbook-Markierungen (MLD, Extra-Turns, Tutoren) aus dem Nachtlauf; leer ohne
+   * Migration oder vor dem ersten Lauf.
    */
   readonly spellbookCardFlags = signal<Map<string, SpellbookCardFlags>>(new Map());
 
-  /**
-   * Rückfall-Erkennung für Tutoren, solange spellbookCardFlags() noch leer ist. Reine
-   * Texterkennung im Oracle-Text und damit nur eine Näherung ("search your library for ...") -
-   * genau deshalb hat die kuratierte Liste sie abgelöst. Sie steht hier nur noch, damit die
-   * Tutoren-Anzeige zwischen Merge und erstem Nachtlauf nicht kommentarlos leer bleibt.
-   */
+  /** Rückfall-Texterkennung für Tutoren, solange spellbookCardFlags() leer ist. */
   private static readonly TUTOR_RE =
     /search(?:es)?\s+(?:your|a|their|that player'?s)\s+library\s+for/i;
-  // Erfasst neben "... for a land card" auch Karten, die eine Basisland-Art direkt beim Namen
-  // nennen statt "land" zu schreiben (z.B. Farseek: "... for a Plains, Island, Swamp, or
-  // Mountain card"; Landcycling-Karten: "... for a Forest card").
+  // Auch Karten, die Basisland-Arten beim Namen nennen (Farseek, Landcycling).
   private static readonly LAND_TUTOR_RE =
     /search(?:es)?\s+(?:your|a|their|that player'?s)\s+library\s+for\s+(?:up to \w+\s+)?(?:an?|the|\d+)?\s*(?:[a-z]+\s+){0,2}(?:lands?|plains|islands?|swamps?|mountains?|forests?)\b/i;
 
   /**
-   * Tutoren (außer für Länder, wie im offiziellen Bracket-Kriterium).
-   *
-   * Quelle ist Commander Spellbooks kuratierte Liste, die der Nachtlauf spiegelt - das offizielle
-   * Kriterium meint genau diese Auswahl, und Scryfall hat dafür kein eigenes Flag (anders als bei
-   * Game Changers). Solange die Liste noch nicht da ist, greift die Textnäherung von oben, damit
-   * die Anzeige nicht still leer läuft.
+   * Tutoren außer für Länder (wie das offizielle Kriterium), aus Spellbooks kuratierter Liste; ohne
+   * Liste die Textnäherung.
    */
   readonly tutorCards = computed<GameChangerEntry[]>(() => {
     const flags = this.spellbookCardFlags();
@@ -649,12 +575,8 @@ export class DeckViewerService {
   });
 
   /**
-   * Mass Land Denial, Extra-Turns und Zwei-Karten-Combos kommen von Commander Spellbooks
-   * Bracket-API (über unseren eigenen Server-Proxy, siehe commander-spellbook.service.ts) - das
-   * ist die einzige praktikable Quelle dafür, eine reine Kartenlisten-Heuristik wäre hier zu
-   * unzuverlässig. Bleibt null, wenn der Aufruf fehlschlägt (z.B. lokale Entwicklung ohne
-   * Cloudflare Pages Functions, oder Commander Spellbook nicht erreichbar) - die übrige Analyse
-   * bleibt davon unberührt.
+   * MLD, Extra-Turns und Combos von Spellbooks Bracket-API (über unseren Proxy). null bei Fehler,
+   * z. B. lokal ohne Pages Functions - der Rest der Analyse bleibt.
    */
   readonly bracketEstimate = signal<BracketEstimate | null>(null);
   readonly bracketEstimateBusy = signal(false);
@@ -662,9 +584,7 @@ export class DeckViewerService {
   readonly bracketEstimateErrorDetail = signal<string | null>(null);
 
   /**
-   * Mass Land Denial und Extra-Turn-Karten kommen aus der gespiegelten, kuratierten Liste - damit
-   * sind sie ohne Netzwerkaufruf verfügbar und stehen auch dann, wenn Commander Spellbook gerade
-   * nicht erreichbar ist. Solange der Nachtlauf noch nichts geliefert hat, greift die bisherige
+   * MLD und Extra-Turns aus der gespiegelten Liste (ohne Netzwerk); vor dem ersten Nachtlauf die
    * Live-Auswertung als Rückfall.
    */
   private cardsWithFlag(
@@ -700,27 +620,17 @@ export class DeckViewerService {
   );
 
   /**
-   * Zwei-Karten-Combos aus der gespiegelten Tabelle, gefiltert auf die Karten dieses Decks.
-   * Grundlage der Bracket-Einstufung (siehe bracketAnalysis) - bewusst getrennt von
-   * analysisCombos(), das für die Anzeige die Live-Auswertung bevorzugt, weil dort auch steht,
-   * WAS eine Combo erzeugt.
+   * Zwei-Karten-Combos aus der gespiegelten Tabelle, gefiltert aufs Deck - Grundlage der Einstufung
+   * (analysisCombos bevorzugt für die Anzeige die Live-Daten).
    */
   readonly spellbookCombos = signal<SpellbookTwoCardCombo[]>([]);
-  /**
-   * Zahl der spielbeendenden Combos, die vollständig im Deck stecken - Grundlage von Urteil F in
-   * bracket.ts. 0, solange nichts geladen ist.
-   */
+  /** Spielbeendende Combos, vollständig im Deck (Urteil F), 0 solange nicht geladen. */
   readonly winningCombos = signal(0);
 
   /**
-   * ALLE im Deck gefundenen Combos für die Anzeige, aus beiden Quellen auf eine Form gebracht:
-   * bevorzugt die Live-Auswertung (die als einzige weiß, WAS eine Combo erzeugt und wie sie
-   * abläuft), sonst die Paare aus dem Nachtlauf.
-   *
-   * Bewusst ohne Spellbooks Zwei-Karten-Kennzeichen vorgefiltert: das zählt eine Combo auch dann
-   * als "arguably two-card", wenn eine der drei Karten der Commander ist - unter der Überschrift
-   * "Zwei-Karten-Combos" standen dadurch Combos mit drei Karten. Die Aufteilung macht jetzt
-   * schlicht die Anzahl der beteiligten Karten (siehe twoCardComboList/moreCardComboList).
+   * Alle Combos des Decks für die Anzeige: bevorzugt live (kennt Ergebnis und Ablauf), sonst
+   * Nachtlauf. Aufgeteilt nach Anzahl der Karten, nicht nach Spellbooks Zwei-Karten-Kennzeichen
+   * (das zählt den Commander nicht mit).
    */
   readonly analysisCombos = computed<AnalysisCombo[]>(() => {
     const live = this.bracketEstimate()?.combos ?? [];
@@ -755,10 +665,7 @@ export class DeckViewerService {
     this.analysisCombos().filter((c) => c.cardNames.length > 2),
   );
 
-  /**
-   * Welche der beiden Combo-Listen das Fenster gerade zeigt - null heißt zu. Die Combos stehen
-   * nicht mehr ausgeklappt in der Analyse, dort steht nur noch ihre Anzahl.
-   */
+  /** Welche Combo-Liste das Fenster zeigt, null = zu. */
   readonly comboPopupKind = signal<'two' | 'more' | null>(null);
 
   readonly comboPopupCombos = computed(() =>
@@ -776,13 +683,8 @@ export class DeckViewerService {
   // --- Combo-Finder: welche Karte würde neue Combos freischalten? (siehe src/app/combo-finder.ts) ---
 
   /**
-   * Höchstens so viele Vorschläge werden angezeigt.
-   *
-   * Nicht als Sparmaßnahme, sondern weil eine ungekürzte Liste nutzlos wäre: Ein
-   * durchschnittliches Commander-Deck berührt so viele der rund 108.500 Combos, dass leicht
-   * dreistellig viele Karten "irgendeine" Combo ergäben. Die Suche sortiert das Beste nach vorn
-   * (meiste Combos, dann Beliebtheit); alles dahinter ist Rauschen. Die Gesamtzahl steht trotzdem
-   * unter der Liste, damit die Kürzung sichtbar ist.
+   * Höchstens so viele Vorschläge: Ein Deck berührt so viele der ~108.500 Combos, dass der Rest
+   * Rauschen ist. Die Gesamtzahl steht unter der Liste.
    */
   private static readonly COMBO_FINDER_MAX = 40;
 
@@ -792,17 +694,14 @@ export class DeckViewerService {
   /** Wie viele passende Vorschläge es insgesamt gab - kann größer sein als die angezeigte Liste. */
   readonly comboFinderTotal = signal(0);
   /**
-   * false = die Combo-Daten stehen noch gar nicht bereit (Migration nicht ausgeführt oder
-   * Nachtlauf noch nicht gelaufen). Bewusst getrennt von "nichts gefunden": die Oberfläche sagt
-   * dann, woran es liegt, statt fälschlich zu behaupten, es gäbe keine Vorschläge.
+   * false = Combo-Daten fehlen noch (Migration/Nachtlauf) - getrennt von "nichts gefunden", damit
+   * die Oberfläche den Grund nennt.
    */
   readonly comboFinderAvailable = signal(true);
 
   /**
-   * Scryfall-Daten der vorgeschlagenen Karten, Schlüssel wie viewingCardDetails (Name in
-   * Kleinschreibung). Bewusst eine eigene Signalgröße statt eines Zusatzeintrags in
-   * viewingCardDetails: dort stehen ausschließlich Karten, die wirklich im Deck liegen, und
-   * genau darauf verlassen sich Manakurve, Pip-Verteilung und Bracket-Rechnung.
+   * Scryfall-Daten der Vorschläge. Eigenes Signal, weil viewingCardDetails nur echte Deckkarten
+   * enthalten darf (Kurve, Pips, Bracket).
    */
   private readonly comboFinderCardDetails = signal<Map<string, ScryfallCard>>(new Map());
 
@@ -821,13 +720,8 @@ export class DeckViewerService {
   private comboFinderLoaded = false;
 
   /**
-   * Die Farben, in denen ein Vorschlag liegen darf.
-   *
-   * Erste Wahl ist die Farbidentität des Commanders - das ist im Commander die Regel, an der eine
-   * Karte im Deck erlaubt ist oder nicht. Ohne gesetzten Commander (andere Formate, unvollständig
-   * gepflegtes Deck) bleibt als Näherung die Vereinigung der Farbidentitäten aller Deckkarten:
-   * schwächer, aber immer noch die Antwort auf "welche Farben spielt dieses Deck eigentlich".
-   * null heißt "noch nicht bekannt" und schaltet die Filterung ganz ab (siehe fitsColorIdentity).
+   * Erlaubte Farben der Vorschläge: Farbidentität des Commanders, sonst die Vereinigung aller
+   * Deckkarten. null = unbekannt, Filter aus.
    */
   private readonly comboFinderColorIdentity = computed<string[] | null>(() => {
     const vomCommander = this.deckColorIdentitySubset();
@@ -845,11 +739,8 @@ export class DeckViewerService {
   });
 
   /**
-   * Öffnet den Combo-Finder und lädt beim ersten Mal seine Daten nach.
-   *
-   * Bewusst erst auf Klick statt beim Öffnen des Decks: die Suche geht über 350.000 Kartenzeilen
-   * und zieht danach noch die Kartendaten aller Vorschläge nach. Wer ein Deck nur anschaut, soll
-   * das nicht bezahlen.
+   * Öffnet den Combo-Finder und lädt beim ersten Mal nach - erst auf Klick, weil die Suche teuer
+   * ist.
    */
   async openComboFinder(): Promise<void> {
     this.comboFinderOpen.set(true);
@@ -916,12 +807,9 @@ export class DeckViewerService {
           presentCardNames: c.present.map((key) => anzeigename.get(key) ?? key),
           produces: c.produces,
           steps: comboSteps(c.description),
-          // Bewusst OHNE Rückfall auf die blosse Zahl aus manaValueNeeded: Diese als generisches
-          // Symbol zu zeigen macht aus "Manawert 3" ein {3}, und das heisst in der Schreibweise
-          // der Karten "drei GENERISCHES Mana" - bei einer Combo, die in Wahrheit {1}{B}{B}
-          // verlangt, ist das schlicht falsch. Nachgemessen an 382 Combos: Wo ein Manabedarf
-          // besteht, liefert die Quelle immer auch die Kartenschreibweise; der Rückfall hätte also
-          // nie etwas gerettet und nur diesen einen Fehler erzeugen können.
+          // Kein Rückfall auf manaValueNeeded: "3" als {3} hieße drei generische Mana, auch wenn
+          // die Combo {1}{B}{B} braucht. Geprüft an 382 Combos: die Quelle liefert immer auch die
+          // Schreibweise.
           extraMana: parseManaCost(c.manaNeeded ?? ''),
         })),
       })),
@@ -941,16 +829,10 @@ export class DeckViewerService {
   readonly showsBracket = computed(() => this.viewingDeck()?.format === 'Commander');
 
   /**
-   * Die automatische Einstufung des gerade offenen Decks.
-   *
-   * null, solange die Kartendetails noch laden: ohne sie wären weder Game Changer noch Manabeträge
-   * bekannt, und das Ergebnis wäre verlässlich "Bracket 2" - was dann auch noch zurückgeschrieben
-   * würde. Lieber kurz "wird berechnet" anzeigen als eine falsche Zahl festschreiben.
+   * Automatische Einstufung. null solange Kartendetails laden - sonst käme verlässlich "Bracket 2"
+   * heraus und würde zurückgeschrieben.
    */
-  /**
-   * Die Deck-Karten in der Form, die die Bracket-Rechnung braucht. Eigener computed, weil außer der
-   * Einstufung selbst auch die Combo-Liste in der Analyse-Sektion darauf zugreift.
-   */
+  /** Deckkarten in der Form der Bracket-Rechnung (auch für die Combo-Liste gebraucht). */
   private readonly bracketCards = computed<BracketCard[]>(() => {
     const details = this.viewingCardDetails();
     if (details.size === 0) return [];
@@ -969,17 +851,10 @@ export class DeckViewerService {
   });
 
   /**
-   * Die im Deck vollständig vorhandenen Zwei-Karten-Combos aus der gespiegelten Tabelle.
-   *
-   * Deckt in der Analyse-Sektion den Fall ab, dass Commander Spellbook gerade nicht erreichbar ist:
-   * dann fehlt zwar die Angabe, WAS eine Combo erzeugt, aber welche Combos im Deck stecken, wissen
-   * wir aus dem Nachtlauf trotzdem.
+   * Vollständig vorhandene Zwei-Karten-Combos aus dem Nachtlauf - Anzeige-Rückfall, wenn Spellbook
+   * nicht erreichbar ist.
    */
-  /**
-   * Gemessene Schwellen der Einstufung (Tuning-Spannen, Urteil F) aus der Tabelle bracket_benchmark.
-   * Lädt zusammen mit den Kartendetails, also bevor bracketAnalysis überhaupt rechnet - bis dahin
-   * und ohne Tabelle gelten die Startwerte.
-   */
+  /** Gemessene Schwellen aus bracket_benchmark; bis zum Laden und ohne Tabelle die Startwerte. */
   private readonly bracketBenchmark = signal<BracketBenchmark>(DEFAULT_BRACKET_BENCHMARK);
 
   readonly localTwoCardCombos = computed(() =>
@@ -1012,9 +887,8 @@ export class DeckViewerService {
   });
 
   /**
-   * Was tatsächlich angezeigt wird: die selbst gewählte Stufe schlägt immer die Automatik. Ist
-   * noch nichts gewählt, gilt die frisch gerechnete Einstufung - und solange die noch läuft, der
-   * beim letzten Öffnen gespeicherte Wert, damit das Abzeichen nicht kurz verschwindet.
+   * Angezeigte Stufe: manuell schlägt automatisch; während die Rechnung läuft, der zuletzt
+   * gespeicherte Wert.
    */
   readonly effectiveBracket = computed<{ level: number; source: 'manual' | 'auto' } | null>(() => {
     const deck = this.viewingDeck();
@@ -1027,13 +901,7 @@ export class DeckViewerService {
 
   readonly bracketSaving = signal(false);
 
-  /**
-   * Setzt die Stufe von Hand. null = wieder automatisch bestimmen.
-   *
-   * Speichert sofort statt über einen Entwurf mit Speichern-Knopf - gleiche Begründung wie bei
-   * setArchetype(): es ist ein einzelner Wert aus einer festen Auswahl, ein zweiter Klick zum
-   * Bestätigen wäre reine Reibung.
-   */
+  /** Stufe von Hand setzen (null = automatisch). Speichert sofort, wie setArchetype(). */
   async setBracket(bracket: number | null): Promise<void> {
     const deck = this.viewingDeck();
     if (!deck || !this.canEditViewingDeck()) return;
@@ -1045,14 +913,9 @@ export class DeckViewerService {
   }
 
   /**
-   * Schreibt das Ergebnis der Automatik zurück, sobald es sich geändert hat.
-   *
-   * Nötig, damit Deck-Liste und Match-Auswahl ein Abzeichen zeigen können, ohne für jedes Deck die
-   * Kartenliste nachzuladen. Bewusst an einen effect() gehängt statt an das Ende einer Ladefunktion:
-   * die Einstufung hängt an mehreren unabhängig eintreffenden Quellen (Kartendetails, Markierungen,
-   * Combos, Live-Zweitmeinung), und erst wenn die letzte davon da ist, steht der endgültige Wert.
-   * Der Vergleich mit dem gespeicherten Wert sorgt dafür, dass daraus trotzdem höchstens ein
-   * Schreibvorgang je Deck-Öffnung wird.
+   * Schreibt das Automatik-Ergebnis zurück, damit Listen ein Abzeichen ohne Kartenliste zeigen
+   * können. Als effect(), weil die Einstufung an mehreren unabhängig eintreffenden Quellen hängt;
+   * der Vergleich mit dem gespeicherten Wert hält es bei einem Schreibvorgang je Öffnung.
    */
   private readonly autoBracketPersist = effect(() => {
     const deck = this.viewingDeck();
@@ -1079,13 +942,8 @@ export class DeckViewerService {
   }
 
   /**
-   * Welches Einzelurteil gerade als Rechenweg-Popup offen ist - null heißt: keins.
-   *
-   * Die Zahlen der Einstufung erklären sich nicht von selbst: dass "Skala 70 → 95" heißt "70 gibt
-   * 0 Punkte, 95 gibt 1 Punkt", dass die vier Messgrößen gemittelt werden, dass beim Manawert die
-   * Skala absichtlich rückwärts läuft - nichts davon steht im Kasten. Jedes Urteil bekommt deshalb
-   * ein ⓘ, das genau seine Rechnung vorrechnet, statt wie früher alle vier in einem einzigen,
-   * seitenlangen Popup zu bündeln.
+   * Welches Urteil als Rechenweg-Popup offen ist (null = keins). Die Zahlen erklären sich nicht
+   * selbst (Skalen, Mittelung, umgekehrte Manawert-Skala), deshalb je Urteil ein ⓘ.
    */
   readonly bracketMathTopic = signal<BracketMathTopic | null>(null);
 
@@ -1103,11 +961,7 @@ export class DeckViewerService {
   /** Kartenwert, ab dem mindestens Bracket 3 gilt - für die Erklärtexte. */
   readonly priceThresholdEur = PREIS_SCHWELLE_EUR;
 
-  /**
-   * Was das Popup an fertigen Zahlen braucht und die Vorlage nicht selbst ausrechnen soll: die
-   * Punkte als ausgeschriebene Summe, deren Teiler, und die Power-Spanne des Brackets samt Breite.
-   * Alles Übrige steht schon in bracketAnalysis().
-   */
+  /** Fertige Zahlen fürs Rechenweg-Popup: Punktsumme, Teiler, Power-Spanne. */
   readonly bracketMath = computed(() => {
     const analysis = this.bracketAnalysis();
     if (!analysis) return null;
@@ -1125,9 +979,7 @@ export class DeckViewerService {
       /** true, wenn der Kartenwert die Schwelle erreicht und damit mindestens Bracket 3 erzwingt. */
       pricePushed: analysis.reasons.some((r) => r.key === 'price'),
       /**
-       * Die Befunde aus Schritt 1 - ohne die Anhebung durch die Feinbewertung (eigener Schritt im
-       * Popup) und ohne den Kartenwert: der ist Statsfinitys eigene Regel und hat im Rechenweg
-       * "offizielle Kriterien" nichts zu suchen (siehe PREIS_SCHWELLE_EUR in bracket.ts).
+       * Befunde aus Schritt 1 ohne Tuning-Anhebung und ohne Kartenwert (keine offizielle Regel).
        */
       rulesReasons: analysis.reasons.filter((r) => r.key !== 'tuning' && r.key !== 'price'),
       /** Stufe nach den beiden Urteilen, aber VOR einer möglichen Anhebung durch die Feinbewertung. */
@@ -1135,10 +987,7 @@ export class DeckViewerService {
     };
   });
 
-  /**
-   * Beschriftung des "Automatisch"-Eintrags im Auswahlfeld. Zeigt die berechnete Stufe gleich mit
-   * an, damit beim Aufklappen sichtbar ist, wogegen man sich entscheidet.
-   */
+  /** Beschriftung "Automatisch" samt berechneter Stufe. */
   readonly bracketAutoOptionLabel = computed(() => {
     const level = this.bracketAnalysis()?.bracket ?? this.viewingDeck()?.bracketAuto;
     return level == null
@@ -1147,12 +996,9 @@ export class DeckViewerService {
   });
 
   /**
-   * True bei Doppelkarten (Transform/Modal-DFC), deren VORDERSEITE woanders einsortiert wird (meist
-   * Spontanzauber/Hexerei bei den "ZNR-Pathway"-artigen MDFCs), deren RÜCKSEITE aber ein Land ist -
-   * typeLine ist bei Scryfall für solche Karten immer "Vorderseite // Rückseite" kombiniert. Die
-   * Einsortierung selbst bleibt bewusst bei der Vorderseite (typeSection prüft der Reihe nach, Land
-   * steht dort zuletzt), sonst würde z.B. eine hauptsächlich als Spontanzauber gespielte Karte in der
-   * Land-Sektion landen - nur die Land-ANZAHL soll diese verstecken Länder trotzdem mitzählen.
+   * Doppelkarte mit Land auf der Rückseite, die vorne anders einsortiert wird (MDFCs wie Pathways).
+   * Die Karte bleibt in ihrer Vorderseiten-Sektion, zählt aber für den "+X"-Zusatz der
+   * Land-Sektion.
    */
   private isHiddenMdfcLand(card: DeckCard): boolean {
     if (typeSection(card.typeLine) === 'Land') return false;
@@ -1220,9 +1066,8 @@ export class DeckViewerService {
   });
 
   /**
-   * Karten gruppiert nach eigenem Tag statt Kartentyp - eine Karte mit mehreren Tags erscheint in
-   * mehreren Sektionen (bewusst so gewünscht, im Gegensatz zur Typ-Gruppierung wo jede Karte nur in
-   * einer Sektion landet). Karten ganz ohne Tag landen gesammelt in "Ohne Tag".
+   * Gruppiert nach eigenen Tags; Karten mit mehreren Tags erscheinen mehrfach, ohne Tag unter "Ohne
+   * Tag".
    */
   readonly groupedDeckCardsByTag = computed(() => {
     const commander = this.editedDeckCards().filter((c) => c.isCommander);
@@ -1376,11 +1221,8 @@ export class DeckViewerService {
   }
 
   /**
-   * Tutor/Extra-Runde/Mass Land Denial haben keine Scryfall-Abfrage in effectFilters (query: '') -
-   * sie laufen wie in effectCategoryStats über die zuverlässigeren, lokal längst vorhandenen Quellen
-   * (Texterkennung bzw. Commander-Spellbook, siehe tutorCards()/extraTurnCards()/
-   * massLandDenialCards()), damit Filter und Analyse-Kacheln für dieselbe Kategorie dieselben Karten
-   * zeigen statt zweier unabhängig ermittelter (und potenziell abweichender) Ergebnisse.
+   * Tutor/Extra-Runde/MLD haben keine Scryfall-Abfrage (query ''), sie nutzen dieselben lokalen
+   * Quellen wie die Analyse-Kacheln, damit beide dieselben Karten zeigen.
    */
   private static readonly LOCAL_EFFECT_FILTERS = new Set(['tutor', 'extraturn', 'mld']);
 
@@ -1409,17 +1251,14 @@ export class DeckViewerService {
     }
     this.effectFilterBusy.set(true);
     const names = this.viewingDeckCards().map((c) => c.cardName);
-    // classifyCards() statt der alten filterNamesByQuery() - teilt sich den dauerhaften
-    // localStorage-Cache mit den Analyse-Kacheln (effectCategoryStats, siehe dort) und hat alle
-    // Bugfixes aus der Verifikationsrunde (DFC-Namens-Split, längenbasiertes Chunking, korrekte
-    // 404-Behandlung) - die alte Methode hatte keinen davon und lieferte deshalb bei jedem Öffnen
-    // potenziell andere Ergebnisse als die Analyse.
+    // classifyCards() teilt sich den Cache mit den Analyse-Kacheln - Filter und Kacheln zeigen so
+    // dieselben Karten.
     const matched = await this.scryfall.classifyCards(effect, tagQuery, names);
     this.effectMatchNames.set(matched);
     this.effectFilterBusy.set(false);
   }
 
-  // NEU - Bearbeitungsmodus: Karten hinzufügen/entfernen
+  // Bearbeitungsmodus: Karten hinzufügen/entfernen
   readonly editMode = signal(false);
   /** Blendet die Kronen-Buttons auf den Kartenkacheln ein/aus - standardmäßig aus, da sie sonst auf jeder einzelnen Karte stören, obwohl man sie nur selten braucht. */
   readonly showCommanderToggle = signal(false);
@@ -1437,11 +1276,7 @@ export class DeckViewerService {
   readonly addCardMessage = signal('');
   private addCardSearchTimer: ReturnType<typeof setTimeout> | null = null;
 
-  /**
-   * Suchergebnisse können deutlich mehr als eine Bildschirmseite füllen (Scryfall liefert bis zu
-   * 175 Treffer) - werden hier seitenweise angezeigt, statt wie vorher hart bei 30 abgeschnitten
-   * zu werden (dann waren weitere Treffer schlicht unsichtbar, ohne Möglichkeit weiterzublättern).
-   */
+  /** Suchergebnisse (bis 175) seitenweise statt hart abgeschnitten. */
   private static readonly ADD_CARD_PAGE_SIZE = 30;
   readonly addCardResultsPage = signal(0);
 
@@ -1467,16 +1302,11 @@ export class DeckViewerService {
   }
 
   /**
-   * Funktions-Kategorien (was eine Karte TUT) über Scryfalls community-gepflegte Oracle-Tags
-   * (otag:) - viel zuverlässiger als eine eigene Texterkennung. Bewusst getrennt von den
-   * Fähigkeits-Keywords unten (keywordFilters): Lifelink z.B. ist eine feste Eigenschaft der
-   * Karte, kein Effekt wie "Lebenspunkte gewinnen" (otag:lifegain, eigene Kategorie). "Marken
-   * erzeugen" nutzt mangels passendem Tag eine Oracle-Text-Näherung.
+   * Funktions-Kategorien (was eine Karte TUT) über Scryfalls Oracle-Tags (otag:). Getrennt von den
+   * Keywords unten: Lifelink ist eine Eigenschaft, kein Effekt wie otag:lifegain.
    */
-  // Abfragen 1:1 aus EFFECT_TAG_CATEGORIES übernommen (siehe dort) - dieselben Kategorie-Keys +
-  // Abfragen sorgen dafür, dass sich Filter und Analyse-Kacheln denselben persistenten Cache teilen
-  // und für dieselbe Kategorie immer dieselben Karten zeigen. query: '' = lokale Quelle statt
-  // Scryfall-Abfrage (siehe LOCAL_EFFECT_FILTERS/loadEffectMatches()).
+  // Gleiche Keys und Abfragen wie EFFECT_TAG_CATEGORIES, damit Filter und Kacheln einen Cache
+  // teilen. query '' = lokale Quelle (LOCAL_EFFECT_FILTERS).
   readonly effectFilters: { value: string; label: string; query: string }[] = [
     { value: 'tokens', label: 'Marken erzeugen', query: 'o:create o:token' },
     { value: 'draw', label: 'Kartenziehen', query: 'otag:draw' },
@@ -1550,10 +1380,8 @@ export class DeckViewerService {
   };
 
   /**
-   * Farbidentität des/der Commander (für die "id<="-Teilmengen-Beschränkung der Add-Karten-Suche,
-   * damit nur wirklich regelkonform ins Deck passende Karten vorgeschlagen werden). null, solange
-   * die Scryfall-Zusatzdaten (viewingCardDetails) noch nicht geladen sind oder kein Commander
-   * gesetzt ist - dann bleibt die Suche unbeschränkt.
+   * Farbidentität der Commander für die id<=-Beschränkung der Kartensuche; null (unbeschränkt)
+   * solange unbekannt.
    */
   readonly deckColorIdentitySubset = computed<string[] | null>(() => {
     const commanders = this.viewingDeckCards().filter((c) => c.isCommander);
@@ -1567,11 +1395,8 @@ export class DeckViewerService {
   });
 
   /**
-   * Alles, was der Steckbrief-Reiter über das Deck selbst braucht (siehe deck-steckbrief/).
-   *
-   * Steht hier und nicht in der Komponente, weil die Angaben aus einem halben Dutzend Quellen
-   * dieses Service stammen - Deck-Zeile, markierte Commander samt aufgelöstem Kartenbild und die
-   * Farbidentität, die erst aus den nachgeladenen Kartendetails entsteht.
+   * Deck-Angaben für den Steckbrief-Reiter; hier, weil sie aus vielen Quellen dieses Service
+   * stammen.
    */
   readonly steckbriefDeck = computed<SteckbriefDeckinfo | null>(() => {
     const deck = this.viewingDeck();
@@ -1594,11 +1419,7 @@ export class DeckViewerService {
     };
   });
 
-  /**
-   * Die Karten des geöffneten Decks für den Steckbrief - ohne Maybeboard und Marken, wie jede
-   * andere Deck-Analyse auch. Er zählt daraus, wie viel Entfernung, Rampe, Kartenziehen und
-   * Bretträumung das Deck mitbringt.
-   */
+  /** Deckkarten ohne Maybeboard/Marken für die Wirkungs-Kacheln des Steckbriefs. */
   readonly steckbriefKarten = computed<SteckbriefKarte[]>(() =>
     this.viewingDeckCards()
       .filter((c) => !c.isMaybeboard && !c.isToken)
@@ -1606,10 +1427,8 @@ export class DeckViewerService {
   );
 
   /**
-   * Änderungen im Bearbeitungsmodus (Karten hinzufügen/entfernen, Anzahl anpassen) werden NUR
-   * lokal in pendingChanges gesammelt - erst saveEdits() schreibt sie in die Datenbank. So
-   * verwirft cancelEdits() (oder Schließen der Ansicht/App ohne zu speichern) sie einfach wieder,
-   * ohne dass vorher irgendetwas gespeichert wurde.
+   * Änderungen im Bearbeitungsmodus sammeln sich nur lokal, erst saveEdits() schreibt;
+   * cancelEdits() verwirft sie.
    */
   readonly pendingChanges = signal<Map<string, PendingCardChange>>(new Map());
   /** Kartenname (lowercase) -> neuer Commander-Status, ebenfalls nur lokal bis saveEdits(). */
@@ -1753,14 +1572,8 @@ export class DeckViewerService {
   readonly tokenScanMessage = signal<string | null>(null);
 
   /**
-   * Durchsucht alle "echten" Deckkarten (kein Maybeboard, keine bereits vorhandenen Marken) nach
-   * Scryfalls all_parts-Feld auf component "token" und legt neu gefundene Marken als eigene Zeilen
-   * im Deck an. Dedupliziert bewusst NICHT nach Namen, sondern nach Scryfalls oracleId (erst nach
-   * dem Nachladen der vollen Kartendaten bekannt) - viele VERSCHIEDENE Marken teilen sich denselben
-   * schlichten Namen (z.B. rote/blaue/schwarze "Wizard"-Marken mit unterschiedlichen Werten je nach
-   * erzeugender Karte), eine Namens-Dedupe würde diese fälschlich zu einer einzigen Zeile
-   * zusammenwerfen. Schreibt direkt (nicht über pendingChanges), da es eine eigenständige Aktion
-   * ist statt einer einzelnen Karten-Bearbeitung.
+   * Legt Marken aus Scryfalls all_parts als eigene Deckzeilen an. Dedupliziert nach oracleId statt
+   * Name, weil viele verschiedene Marken gleich heißen. Schreibt direkt, nicht über pendingChanges.
    */
   async scanForTokens(): Promise<void> {
     const deck = this.viewingDeck();
@@ -1774,9 +1587,8 @@ export class DeckViewerService {
     const existingTokenOracleIds = new Set(
       existingTokens.filter((c) => c.scryfallOracleId).map((c) => c.scryfallOracleId!),
     );
-    // Vor diesem Fix gescannte Marken haben noch keine oracleId - über Name+Bild lassen sie sich
-    // trotzdem der richtigen neu gefundenen Marke zuordnen, um sie nachträglich zu befüllen statt
-    // eine doppelte Zeile für dieselbe Marke anzulegen.
+    // Ältere Marken ohne oracleId über Name+Bild zuordnen und nachfüllen, statt sie doppelt
+    // anzulegen.
     const legacyTokensByNameAndImage = new Map<string, DeckCard>();
     for (const t of existingTokens) {
       if (t.scryfallOracleId) continue;
@@ -1843,11 +1655,8 @@ export class DeckViewerService {
     await this.reloadDeckCards();
   }
 
-  // --- Archetyp/Kreaturtyp: vom Spieler selbst gewählte Einordnung (siehe DeckService.updateDeckArchetype())
-  // fürs Filtern im öffentlichen Decks-Suchreiter - unabhängig von der automatisch aus der
-  // Commander-Farbidentität gepflegten color_identity-Spalte. Speichert (wie toggleOutdated()) sofort
-  // bei Auswahl, ohne eigenen Save/Discard-Schritt, da es sich um zwei einzelne, unabhängig
-  // wählbare Werte handelt statt einer zusammenhängenden Änderung wie beim Karten-Editor.
+  // --- Archetyp/Kreaturtyp: selbst gewählte Einordnung fürs öffentliche Stöbern (unabhängig von
+  // color_identity). Speichert sofort, wie toggleOutdated(). ---
   readonly archetypeOptions = COMMANDER_ARCHETYPE_FILTERS;
   readonly creatureTypeOptions = signal<string[]>([]);
   readonly creatureTypeOptionsLoading = signal(false);
@@ -1889,12 +1698,8 @@ export class DeckViewerService {
   readonly commanderMarkError = signal<string | null>(null);
 
   /**
-   * Grobe Prüfung, ob eine Karte überhaupt als Commander infrage kommt - blendet die Krone auf
-   * offensichtlich ungeeigneten Karten (Zaubersprüche, normale Kreaturen, Länder, ...) aus, statt
-   * sie auf jeder einzelnen Karte anzuzeigen. Legendäre Kreaturen sind der Regelfall, manche
-   * Planeswalker/Sagas haben zusätzlich explizit "can be your commander" im Kartentext stehen.
-   * Background-Karten zählen ebenfalls dazu - die wandern bei "Choose a background" mit in die
-   * Kommandozone und sind damit genauso markierbar (siehe canBeSecondCommander()).
+   * Grobe Prüfung, ob eine Karte Commander sein kann (für die Krone): legendäre Kreaturen, "can be
+   * your commander" und Backgrounds.
    */
   isCommanderEligible(card: DeckCard): boolean {
     const typeLine = card.typeLine ?? '';
@@ -1905,10 +1710,8 @@ export class DeckViewerService {
   }
 
   /**
-   * Prüft, ob zwei Karten zusammen als Commander-Paar erlaubt wären: Partner (inkl. "Partner
-   * with" und "Friends forever" - Scryfall führt beide unter dem Keyword "Partner"), "Choose a
-   * Background" + eine Background-Karte, oder Doctor Who "Doctor's companion" + ein Time Lord
-   * Doctor.
+   * Erlaubtes Commander-Paar: Partner (inkl. "Partner with", "Friends forever"), Choose a
+   * Background + Background, Doctor's companion + Time Lord Doctor.
    */
   private canBeSecondCommander(existing: DeckCard, candidate: DeckCard): boolean {
     const details = this.viewingCardDetails();
@@ -1931,10 +1734,8 @@ export class DeckViewerService {
   }
 
   /**
-   * Markiert/entmarkiert eine Karte im Bearbeitungsmodus als Commander - nur lokal, bis
-   * saveEdits(). Entmarkieren geht immer; ein zweiter Commander nur, wenn er mit dem
-   * bestehenden zusammen als Partner/Background/Doctor's companion gültig wäre, ein dritter
-   * gar nicht.
+   * Commander-Markierung umschalten (lokal bis saveEdits()). Ein zweiter nur als gültiges Paar, ein
+   * dritter nie.
    */
   toggleCommanderMark(card: DeckCard): void {
     if (!this.canEditViewingDeck()) return;
@@ -1970,7 +1771,7 @@ export class DeckViewerService {
     );
   }
 
-  // NEU - Artwork/Edition einer Karte wechseln (Bearbeitungsmodus)
+  // Artwork/Edition einer Karte wechseln (Bearbeitungsmodus)
   readonly artworkPickerCard = signal<DeckCard | null>(null);
   readonly artworkOptions = signal<ScryfallPrinting[]>([]);
   readonly artworkPickerBusy = signal(false);
@@ -2020,9 +1821,7 @@ export class DeckViewerService {
     this.viewingDeckCards.update((cards) =>
       cards.map((c) => (c.cardName.toLowerCase() === key ? { ...c, imageUrl } : c)),
     );
-    // Kurze Rückmeldung, da das Artwork sofort gespeichert wird (unabhängig vom
-    // Speichern-Button für Karten hinzufügen/entfernen) - ohne die dachte man leicht, es sei noch
-    // nicht gespeichert.
+    // Rückmeldung, weil das Artwork sofort gespeichert wird.
     this.addCardMessage.set(this.i18n.t('deckViewer.msg.artworkSaved', { name: card.cardName }));
     this.closeArtworkPicker();
   }
@@ -2044,7 +1843,7 @@ export class DeckViewerService {
     await this.selectArtwork(url);
   }
 
-  // NEU - eigene Sortier-Tags einer Karte bearbeiten (Bearbeitungsmodus)
+  // eigene Sortier-Tags einer Karte bearbeiten (Bearbeitungsmodus)
   readonly tagEditorCard = signal<DeckCard | null>(null);
   readonly tagEditorNewTag = signal('');
   readonly tagEditorBusy = signal(false);
@@ -2153,11 +1952,8 @@ export class DeckViewerService {
   }
 
   /**
-   * Nur die Vorderseite eines Doppelkarten-Namens ("Barkchannel Pathway // Tidechannel Pathway" ->
-   * "barkchannel pathway") - EDHREC listet MDFCs/Transform-Karten nur mit dem Namen einer Seite,
-   * während Scryfalls aufgelöster Kartenname immer den vollen "A // B"-Kombi-Namen führt. Ohne
-   * diese Normalisierung erkennt weder das Klick-Feedback noch "schon im Deck" eine gerade erst
-   * hinzugefügte Doppelkarte wieder (siehe isFlashing/isCardInDeck).
+   * Nur die Vorderseite eines Doppelkarten-Namens, kleingeschrieben - EDHREC nennt nur eine Seite,
+   * Scryfall "A // B".
    */
   private static frontFaceKey(name: string): string {
     return name.split(' // ')[0].trim().toLowerCase();
@@ -2179,12 +1975,7 @@ export class DeckViewerService {
     return DeckViewerService.frontFaceKey(state.key) === DeckViewerService.frontFaceKey(cardName);
   }
 
-  /**
-   * Zeigt für Doppelkarten (Transform/Modal-DFC) im "Karte hinzufügen"-Suchergebnis wahlweise die
-   * Rückseite (siehe ScryfallCard.backImageUrl) - rein lokaler Anzeige-Zustand, nichts wird
-   * gespeichert. Betrifft nur die Suchergebnis-Vorschau vor dem Hinzufügen; einmal im Deck landet
-   * ohnehin nur ein einzelnes Bild in deck_cards.image_url.
-   */
+  /** Rückseite von Doppelkarten im Suchergebnis zeigen (nur Anzeige). */
   private readonly flippedAddCardKeys = signal<Set<string>>(new Set());
 
   isAddCardFlipped(cardName: string): boolean {
@@ -2201,13 +1992,7 @@ export class DeckViewerService {
     });
   }
 
-  /**
-   * Wie flippedAddCardKeys, aber für Karten, die bereits im geöffneten Deck stecken (eigenes,
-   * unabhängiges Signal - ein Flip im Suchergebnis soll die Anzeige im Deck selbst nicht
-   * beeinflussen und umgekehrt). Wird beim Öffnen/Schließen eines Decks zurückgesetzt (siehe
-   * open()/close()), sonst bliebe ein Flip-Zustand fälschlich bestehen, falls ein anderes Deck
-   * zufällig eine gleichnamige Karte enthält.
-   */
+  /** Wie flippedAddCardKeys, aber für Karten im Deck; wird bei open()/close() zurückgesetzt. */
   private readonly flippedDeckCardKeys = signal<Set<string>>(new Set());
 
   isDeckCardFlipped(cardName: string): boolean {
@@ -2275,16 +2060,9 @@ export class DeckViewerService {
       commanderChanged = true;
     }
 
-    // Farb-Metadaten für den öffentlichen Decks-Suchreiter nachpflegen (siehe
-    // sql/public-deck-browse-2026-08-26.sql) - nur wenn sich die Commander-Markierung tatsächlich
-    // geändert hat, sonst unnötiger Schreibzugriff bei jedem Speichern. editedDeckCards() spiegelt
-    // an dieser Stelle noch den fertig gemergten Zustand wider (pendingCommanderChanges wird erst
-    // unten zurückgesetzt). viewingCardDetails() liefert die schon geladenen ScryfallCard-Daten
-    // (colorIdentity) der Commander-Karten - kein zusätzlicher Netzwerk-Call nötig. Der Kreaturtyp
-    // (commander_types) wird HIER bewusst nicht mehr angefasst - das ist seit dem Archetyp-/
-    // Kreaturtyp-Dropdown im Bearbeiten-Modus ein eigenständiges, rein manuelles Feld (siehe
-    // setArchetype()/setCreatureType() unten), das nicht bei jedem Commander-Wechsel überschrieben
-    // werden soll.
+    // Farb-Metadaten fürs öffentliche Stöbern nur bei geänderten Commandern nachpflegen (Daten aus
+    // viewingCardDetails, kein Netzwerk). commander_types bleibt unangetastet - das setzt der
+    // Nutzer selbst.
     if (commanderChanged) {
       const commanderCards = this.editedDeckCards()
         .filter((c) => c.isCommander)
@@ -2297,10 +2075,8 @@ export class DeckViewerService {
       await this.deckService.updateDeckCommanderMetadata(deck.id, colorIdentity);
     }
 
-    // Für Karten, die im selben Speichervorgang brandneu hinzugefügt wurden, wurde der
-    // Maybeboard-Status oben schon beim Insert gesetzt (addCardToDeck) - dieser Lauf setzt ihn hier
-    // nochmal auf denselben Wert (harmlos) und deckt zusätzlich bereits vorhandene Karten ab, die
-    // nur verschoben wurden, ohne dass sich ihre Menge geändert hat (kein Eintrag in pendingChanges).
+    // Setzt den Maybeboard-Status auch für Karten, die nur verschoben wurden (für neue Karten
+    // doppelt, harmlos).
     const savedMaybeboard = this.savedMaybeboardByKey();
     for (const [key, isMaybeboard] of maybeboardChanges) {
       if (isMaybeboard === (savedMaybeboard.get(key) ?? false)) continue;
@@ -2443,10 +2219,7 @@ export class DeckViewerService {
   }
 
   /**
-   * Fügt eine Karte aus den Suchergebnissen/EDHREC-Vorschlägen nur lokal zu pendingChanges hinzu -
-   * noch nicht gespeichert. addCardToMaybeboard() entscheidet nur bei komplett NEUEN Karten, ob sie
-   * ins Maybeboard statt direkt ins Deck wandern - bei bereits vorhandenen Karten (nur Menge erhöht)
-   * bleibt ihr bisheriger Maybeboard-Status unangetastet.
+   * Karte nur lokal zu pendingChanges hinzufügen. addCardToMaybeboard() gilt nur für neue Karten.
    */
   addCard(card: ScryfallCard): void {
     if (!this.canEditViewingDeck()) return;
@@ -2472,15 +2245,14 @@ export class DeckViewerService {
         new Map(map).set(key, this.addCardToMaybeboard()),
       );
     }
-    // Direkt mit in viewingCardDetails übernehmen, damit z.B. die Partner-Prüfung beim
-    // Commander-Markieren auch für gerade erst (noch ungespeichert) hinzugefügte Karten
-    // funktioniert, ohne auf den nächsten vollen Reload zu warten.
+    // Sofort in viewingCardDetails übernehmen, damit z. B. die Partner-Prüfung auch ungespeicherte
+    // Karten kennt.
     this.viewingCardDetails.update((map) => new Map(map).set(key, card));
     this.addCardMessage.set(this.i18n.t('deckViewer.msg.cardAdded', { name: card.name }));
     this.triggerFlash(card.name, 'add');
   }
 
-  // NEU - EDHREC-Vorschläge im Add-Karten-Panel
+  // EDHREC-Vorschläge im Add-Karten-Panel
   readonly addCardMode = signal<'search' | 'edhrec'>('search');
 
   /** EDHREC-Vorschläge und -Tags nur für Alpha-Tester (siehe ProfileService.isAlphaTester). */
@@ -2491,22 +2263,16 @@ export class DeckViewerService {
   /** Kartenname (lowercase) -> Scryfall-Daten (Bild, Typenzeile) für alle EDHREC-Vorschläge, damit man die Karte ansehen kann. */
   readonly edhrecCardDetails = signal<Map<string, ScryfallCard>>(new Map());
   /**
-   * Alle markierten Commander (0-2, z.B. Partner- oder Background-Paar). Liest bewusst aus
-   * editedDeckCards() (nicht viewingDeckCards()), damit eine noch ungespeicherte Krone-Markierung
-   * im Bearbeitungsmodus sofort neue Vorschläge/Tags nachlädt, ohne erst Speichern + neu öffnen
-   * zu erfordern.
+   * Alle markierten Commander (0-2) aus editedDeckCards(), damit eine ungespeicherte Markierung
+   * sofort neue Vorschläge lädt.
    */
   readonly edhrecCommanderNames = computed(
     () =>
       this.editedDeckCards()
         .filter((c) => c.isCommander)
         .map((c) => c.cardName),
-    // Ohne inhaltlichen Vergleich liefert .filter()/.map() bei JEDER Änderung von editedDeckCards()
-    // (also auch beim Hinzufügen einer ganz normalen, nicht-Commander-Karte) ein neues Array-Objekt.
-    // edhrecListsAutoLoad() unten reagiert darauf, obwohl sich die Commander gar nicht geändert
-    // haben - setzt dabei edhrecLists() auf null und lädt neu, was die gesamte Vorschlagsliste kurz
-    // kollabieren und wieder aufklappen lässt (sichtbar als Scroll-Sprung beim Karten-Hinzufügen aus
-    // den Vorschlägen, abhängig davon, wie lange der Netzwerk-Reload dauert).
+    // Inhaltlicher Vergleich, sonst lädt edhrecListsAutoLoad bei jeder Kartenänderung neu
+    // (sichtbarer Scroll-Sprung).
     { equal: (a, b) => a.length === b.length && a.every((name, i) => name === b[i]) },
   );
   /** Anzeige-Name für die EDHREC-Hinweistexte - bei einem Paar beide Namen kombiniert. */
@@ -2517,9 +2283,7 @@ export class DeckViewerService {
   /** Beim Deck-Anlegen gewählter EDHREC-Theme-Tag (z.B. "ramp") - kombiniert die Vorschläge mit dem Commander statt nur Commander allein. */
   readonly edhrecTagSlug = computed(() => this.viewingDeck()?.edhrecTag ?? null);
 
-  // Temporärer Tag-Wechsel nur zum Durchstöbern anderer Vorschlagslisten - ändert NICHT den
-  // dauerhaft gespeicherten Deck-Tag, nur was gerade angezeigt wird. Setzt sich beim erneuten
-  // Öffnen des Decks/Bearbeitungsmodus automatisch zurück auf den gespeicherten Tag.
+  // Tag-Wechsel nur zum Stöbern, ändert nicht den gespeicherten Deck-Tag.
   readonly edhrecBrowseTagActive = signal(false);
   readonly edhrecBrowseTag = signal<string | null>(null);
   readonly edhrecAvailableTags = signal<EdhrecTag[]>([]);
@@ -2545,21 +2309,12 @@ export class DeckViewerService {
   }
 
   /**
-   * Reiner Auslöser-Zähler (kein echter Zustand) - wird bei jedem Reset der EDHREC-Anzeige
-   * (open()/close()/toggleEditMode()) hochgezählt, damit die beiden Auto-Load-Effekte unten
-   * GARANTIERT neu auswerten, auch wenn sich der Commander-Name dabei textlich nicht geändert hat.
-   * Vorherige Version verglich stattdessen mit einem einfachen (nicht-reaktiven) Klassenfeld - das
-   * hat effect() nie zum Neu-Laufen gebracht, wenn NUR dieses Feld von außen zurückgesetzt wurde,
-   * ohne dass sich ein tatsächlich gelesenes Signal änderte. Ergebnis war eine dauerhaft leere
-   * EDHREC-Anzeige nach Speichern + erneutem Bearbeiten.
+   * Auslöser-Zähler: wird bei jedem Reset der EDHREC-Anzeige erhöht, damit die Auto-Load-Effekte
+   * sicher neu laufen (ein nicht-reaktives Feld tat das nicht).
    */
   private readonly edhrecRefreshTick = signal(0);
 
-  /**
-   * Lädt EDHREC-Vorschläge automatisch (neu), sobald der EDHREC-Tab offen ist und sich der (ggf.
-   * noch ungespeicherte) Commander ändert - deckt sowohl das erste Öffnen des Tabs als auch eine
-   * Krone-Markierung währenddessen einheitlich ab.
-   */
+  /** Lädt EDHREC-Vorschläge neu, sobald der Tab offen ist und sich der Commander ändert. */
   private readonly edhrecListsAutoLoad = effect(() => {
     const mode = this.addCardMode();
     const commanders = this.edhrecCommanderNames();
@@ -2581,10 +2336,7 @@ export class DeckViewerService {
     this.loadEdhrecRecommendations();
   });
 
-  /**
-   * Lädt die verfügbaren EDHREC-Tags unabhängig vom EDHREC-Tab, sobald sich der Commander ändert -
-   * wird auch für die immer sichtbare Tag-Auswahl im Kopfbereich der Detailansicht gebraucht.
-   */
+  /** Lädt die EDHREC-Tags bei Commander-Wechsel (auch für die Tag-Auswahl im Kopf). */
   private readonly edhrecTagsAutoLoad = effect(() => {
     const commanders = this.edhrecCommanderNames();
     this.edhrecRefreshTick();
@@ -2618,9 +2370,7 @@ export class DeckViewerService {
     this.edhrecTagsBusy.set(false);
 
     let list = tags ?? [];
-    // Aktuell gespeicherten/im Entwurf stehenden Tag immer als Option anbieten, auch falls er in
-    // der frisch geladenen Liste fehlen sollte (z.B. EDHREC hat ihn seither umbenannt) - sonst
-    // würde die Kopfbereich-Auswahl unsichtbar auf "nichts ausgewählt" zurückfallen.
+    // Gespeicherten Tag immer anbieten, auch wenn EDHREC ihn umbenannt hat.
     const keepTag = this.deckTagDraft() ?? this.viewingDeck()?.edhrecTag ?? null;
     if (keepTag && !list.some((t) => t.slug === keepTag)) {
       list = [{ slug: keepTag, value: keepTag, count: 0 }, ...list];
@@ -2654,10 +2404,8 @@ export class DeckViewerService {
     this.edhrecLists.set(lists);
     this.edhrecFailed.set(lists === null);
     this.edhrecBusy.set(false);
-    // Bilder werden bewusst NICHT hier für alle ~300 Vorschläge auf einmal geladen - das machte
-    // das Öffnen des EDHREC-Tabs spürbar langsam, obwohl die meisten Kategorien eingeklappt bleiben
-    // und ihre Bilder nie zu sehen sind. Stattdessen holt loadEdhrecCategoryImages() sie erst,
-    // wenn eine Kategorie tatsächlich aufgeklappt wird (siehe toggleEdhrecCategory im Component).
+    // Bilder lädt erst loadEdhrecCategoryImages() beim Aufklappen einer Kategorie - alle ~300 auf
+    // einmal machten den Tab langsam.
   }
 
   readonly edhrecCategoryImagesBusy = signal<Set<string>>(new Set());
@@ -2697,11 +2445,7 @@ export class DeckViewerService {
     );
   }
 
-  /**
-   * Bild einer Deck-Karte - fällt auf die frisch geladenen Scryfall-Zusatzdaten zurück, falls in
-   * deck_cards.image_url nichts (mehr) gespeichert ist (z.B. weil der Bild-Lookup beim ursprünglichen
-   * Anlegen fehlschlug). Heilt die Anzeige dadurch von selbst, ohne die Datenbank zu reparieren.
-   */
+  /** Kartenbild, mit Rückfall auf die Scryfall-Daten, falls deck_cards.image_url fehlt. */
   resolvedCardImage(card: DeckCard): string | null {
     return (
       card.imageUrl ?? this.viewingCardDetails().get(card.cardName.toLowerCase())?.imageUrl ?? null
@@ -2709,25 +2453,16 @@ export class DeckViewerService {
   }
 
   /**
-   * Rückseite einer Doppelkarte (Transform/Modal-DFC), die schon im Deck steckt - deck_cards
-   * speichert nur ein einziges Bild, die Rückseite kommt deshalb ausschließlich aus den ohnehin
-   * geladenen Scryfall-Zusatzdaten (viewingCardDetails), nie aus der DB.
+   * Rückseite einer Doppelkarte im Deck, nur aus viewingCardDetails (deck_cards speichert ein
+   * Bild).
    */
   resolvedCardBackImage(card: DeckCard): string | null {
     return this.viewingCardDetails().get(card.cardName.toLowerCase())?.backImageUrl ?? null;
   }
 
   /**
-   * Druckvariante für den PDF-Export - nutzt IMMER das für die Karte tatsächlich
-   * hinterlegte/ausgewählte Artwork (resolvedCardImage()), unverändert. Ein früherer Versuch,
-   * die URL selbst auf eine höher aufgelöste Scryfall-Variante umzuschreiben (Pfadsegment
-   * .../normal/... -> .../png/...), beruhte auf einer nicht verifizierten Annahme über Scryfalls
-   * CDN-URL-Struktur und hat in der Praxis dazu geführt, dass ALLE Kartenbilder beim Export
-   * fehlschlugen (vermutlich weil die geratene png-URL nicht existierte und der anschließende
-   * Rückfall-Versuch die Anfragenzahl verdoppelt und offenbar ein Rate-Limit ausgelöst hat) -
-   * deshalb bewusst wieder auf die normale, zuverlässig funktionierende Auflösung zurückgestuft.
-   * recompressForPrint() (deck-pdf.service.ts) sorgt trotzdem für eine für den Druck passend
-   * zugeschnittene, gleichmäßige Bildgröße.
+   * Bild für den PDF-Export: immer das gewählte Artwork, unverändert. Ein Umschreiben auf Scryfalls
+   * png-URL ließ alle Bilder scheitern; recompressForPrint() gleicht die Größe an.
    */
   resolvedCardPrintImage(card: DeckCard): string | null {
     return this.resolvedCardImage(card);
@@ -2739,11 +2474,8 @@ export class DeckViewerService {
   }
 
   /**
-   * Kartenname, der gerade groß angezeigt wird - für die Analyse-Listen (Game Changer, Tutoren,
-   * Mass Land Denial, Extra-Turns, Combos), die bislang nur reiner Text ohne Kartenbild waren.
-   * Nur der Name statt eines DeckCard-Objekts, weil Combo-Karten nicht zwingend selbst schon als
-   * DeckCard vorliegen (viewingCardDetails wird trotzdem für das ganze Deck geladen und reicht
-   * als Bildquelle).
+   * Kartenname für die große Vorschau aus den Analyse-Listen (Combo-Karten sind nicht immer
+   * DeckCards).
    */
   readonly previewCardName = signal<string | null>(null);
 
@@ -2756,12 +2488,8 @@ export class DeckViewerService {
   }
 
   /**
-   * Bild-URLs zu einem bloßen Kartennamen aus den ohnehin geladenen Kartendetails des Decks.
-   *
-   * Die Analyse-Abschnitte zeigen ihre Karten als kleine Vorschaubilder statt als Textlinks; sie
-   * kennen aber - genau wie die große Vorschau - nur den Namen, weil Combo-Karten nicht zwingend
-   * als DeckCard vorliegen. null heißt "kein Bild bekannt", der Aufrufer zeigt dann wie überall
-   * sonst den Namen als Platzhalter.
+   * Bild-URLs zu einem Kartennamen aus den geladenen Kartendetails; null = unbekannt, der Aufrufer
+   * zeigt den Namen.
    */
   cardImageUrlFor(name: string): string | null {
     return this.cardDetailFor(name)?.imageUrl ?? null;
@@ -2771,11 +2499,7 @@ export class DeckViewerService {
     return this.cardDetailFor(name)?.backImageUrl ?? null;
   }
 
-  /**
-   * Erst im Deck nachsehen, dann bei den Combo-Finder-Vorschlägen: deren Karten liegen
-   * naturgemäß NICHT im Deck (das ist ja der Punkt), sollen aber dasselbe Vorschaubild und
-   * dieselbe Großansicht bekommen wie jede andere Karte der Analyse.
-   */
+  /** Erst im Deck, dann bei den Combo-Finder-Vorschlägen nachsehen. */
   private cardDetailFor(name: string): ScryfallCard | undefined {
     const key = name.toLowerCase();
     return this.viewingCardDetails().get(key) ?? this.comboFinderCardDetails().get(key);
@@ -2825,8 +2549,8 @@ export class DeckViewerService {
   }
 
   /**
-   * Spiel-Statistik eines Decks für den gewählten Umfang. Ein Besitzer ohne Spieler-Eintrag hat das
-   * Deck nie selbst gespielt - getDeckStats() würde eine leere Liste aber als "kein Filter" lesen.
+   * Spielstatistik für den Umfang. Besitzer ohne Spieler-Eintrag hat nie gespielt - eine leere
+   * Liste hieße sonst "kein Filter".
    */
   private async deckStatsFor(deck: Deck, scope: 'mine' | 'all'): Promise<DeckGameStats> {
     if (scope === 'all') return this.deckService.getDeckStats(deck.id);
@@ -2836,9 +2560,7 @@ export class DeckViewerService {
   }
 
   async open(deck: Deck): Promise<void> {
-    // Nur beim erstmaligen Öffnen einen History-Eintrag anlegen: open() wird auch zum Neuladen
-    // desselben Decks aufgerufen (z.B. nach dem Neu-Einfügen der Liste), sonst stapelten sich
-    // mehrere Einträge und man müsste mehrfach zurück.
+    // History-Eintrag nur beim ersten Öffnen (open() lädt auch neu).
     if (!this.historyEntryOpen) {
       this.historyEntryOpen = true;
       history.pushState({ ...history.state, deckDetail: true }, '');
@@ -2945,9 +2667,7 @@ export class DeckViewerService {
   /** Lädt Manakosten/Farbidentität/Game-Changer-Flag/Oracle-Text nach - unabhängig vom Kartenbild-Laden, da für die Deck-Analyse (Kurve/Pips/Tutoren) benötigt. */
   private async loadCardDetails(cards: DeckCard[]): Promise<void> {
     this.analysisBusy.set(true);
-    // Hier statt in open(), damit die Vorschläge auch nach einer Deck-Bearbeitung neu gerechnet
-    // werden (reloadDeckCards() ruft ebenfalls hier herein) - sonst stünde nach dem Einfügen der
-    // vorgeschlagenen Karte immer noch der Vorschlag, sie einzufügen.
+    // Hier statt in open(), damit die Vorschläge auch nach einer Bearbeitung neu gerechnet werden.
     this.comboFinderLoaded = false;
     this.comboFinderOpen.set(false);
     this.comboFinderDetail.set(null);
@@ -2956,9 +2676,7 @@ export class DeckViewerService {
     this.comboFinderAvailable.set(true);
     this.comboFinderCardDetails.set(new Map());
     const names = [...new Set(cards.map((c) => c.cardName))];
-    // Parallel: Markierungen (eine kleine Abfrage, danach je Sitzung zwischengespeichert) und
-    // Combos sind die Grundlage der Bracket-Einstufung und sollen die Kartendetails nicht
-    // verzögern.
+    // Markierungen und Combos parallel, damit sie die Kartendetails nicht verzögern.
     const commanderNames = cards.filter((c) => c.isCommander).map((c) => c.cardName);
     const [found, flags, combos, gewinnCombos, benchmark] = await Promise.all([
       this.cardData.findCardsBulk(names),
@@ -2976,22 +2694,16 @@ export class DeckViewerService {
   }
 
   /**
-   * Wartet, falls gerade noch Scryfall-Zusatzdaten (u.a. Rückseiten-Bilder) nachgeladen werden -
-   * für den PDF-Export, der sonst Rückseiten verpassen würde, wenn direkt nach dem Öffnen eines
-   * Decks exportiert wird, bevor loadCardDetails() im Hintergrund fertig ist.
+   * Wartet auf laufende Scryfall-Zusatzdaten (Rückseiten) - für den PDF-Export direkt nach dem
+   * Öffnen.
    */
   async ensureCardDetailsLoaded(): Promise<void> {
     if (this.cardDetailsPromise) await this.cardDetailsPromise;
   }
 
   /**
-   * Zieht den Preis schon beim Öffnen nach, aber nur bei Commander-Decks: Nur dort gibt es ein
-   * Bracket, und nur dort ist der Kartenwert ein Kriterium dafür. In allen anderen Formaten bleibt
-   * es beim bisherigen Verhalten - der Preis wird erst geholt, wenn jemand die Analyse aufklappt.
-   *
-   * Bewusst ohne await: Die Einstufung hängt ohnehin schon an mehreren unabhängig eintreffenden
-   * Quellen und rechnet sich neu, sobald der Preis da ist (bracketAnalysis ist ein computed über
-   * totalDeckPrice).
+   * Preis schon beim Öffnen laden, aber nur bei Commander-Decks (Kriterium fürs Bracket); sonst
+   * erst beim Aufklappen der Analyse. Ohne await - bracketAnalysis rechnet sich nach.
    */
   private loadPriceForBracket(cards: DeckCard[]): void {
     if (this.showsBracket()) void this.ensureCardPricesLoaded(cards);
@@ -3000,14 +2712,7 @@ export class DeckViewerService {
   /** Laufender/abgeschlossener Preisabruf dieser Deck-Öffnung - siehe ensureCardPricesLoaded(). */
   private pricePromise: Promise<void> | null = null;
 
-  /**
-   * Startet den Preisabruf höchstens einmal je Deck-Öffnung.
-   *
-   * Nötig, seit der Preis an zwei Stellen gebraucht wird: beim Öffnen eines Commander-Decks für die
-   * Bracket-Einstufung (der Kartenwert ist dort ein Kriterium, siehe PREIS_SCHWELLE_EUR) und beim
-   * Aufklappen der Analyse-Sektion für die Anzeige. Ohne diese Klammer liefe derselbe Abruf zweimal
-   * gegen Scryfall, nur um dieselbe Zahl noch einmal zu holen.
-   */
+  /** Preisabruf höchstens einmal je Öffnung (gebraucht für Bracket und Analyse-Anzeige). */
   private ensureCardPricesLoaded(cards: DeckCard[]): Promise<void> {
     this.pricePromise ??= this.loadCardPrices(cards);
     return this.pricePromise;
@@ -3030,35 +2735,14 @@ export class DeckViewerService {
   }
 
   /**
-   * Die 12 Effekt-Kategorien, die sich nur über eine Scryfall-Tag-/Text-Suche ermitteln lassen (im
-   * Gegensatz zu Tutor/Extra-Runde/Mass Land Denial, die bereits über andere, zuverlässigere Wege
-   * geladen werden - siehe effectCategoryStats). Ramp schließt Länder explizit aus (-t:land).
+   * Die 12 Effekt-Kategorien per Scryfall-Tag/Text (Tutor/Extra-Runde/MLD laufen lokal). Ramp ohne
+   * Länder.
    *
-   * KEINE Unter-Tags aufzählen. Konter, Rampe und Wiederbelebung führten früher alle bekannten
-   * Unter-Tags einzeln auf ("otag:counterspell or otag:counterspell-noncreature or ..."), weil
-   * Scryfalls Tagger Dovin's Veto seinerzeit nur als "counterspell-noncreature" führte. Das gilt
-   * nicht mehr: Scryfalls otag:-Suche ist hierarchisch, jede Karte mit einem Unter-Tag matcht auch
-   * das Eltern-Tag. Nachgeprüft, jeweils null Treffer:
-   *
-   *   (otag:counterspell-noncreature or ... or otag:counterspell-free) -otag:counterspell
-   *   (otag:reanimate-creature or ... or otag:reanimate-permanent)     -otag:reanimate
-   *   (otag:land-ramp or otag:extra-land or otag:play-additional-land) -otag:ramp
-   *
-   * Dovin's Veto selbst ist inzwischen ebenfalls unter "otag:counterspell" zu finden. Die
-   * Trefferzahlen sind vor und nach dem Kürzen identisch (546 / 1064 / 2166). Die Aufzählung
-   * brachte also nichts, machte die Abfrage aber 349 Zeichen lang - und presste damit im
-   * Rückfallpfad (filterNamesByQueryChecked(), 800-Zeichen-Limit) unnötig wenige Kartennamen in
-   * jede Anfrage.
-   *
-   * NICHT zu verwechseln mit den ODER-Listen in commander-archetype-filters.ts: Die fassen
-   * VERSCHIEDENE Tags zu einem Archetyp zusammen (z.B. blink or flicker) und duerfen nicht
-   * gekuerzt werden.
+   * Keine Unter-Tags aufzählen: otag: ist hierarchisch, Unter-Tags matchen das Eltern-Tag (geprüft,
+   * Trefferzahlen gleich). Die Aufzählung machte die Abfrage nur länger und drückte die Namen je
+   * Anfrage im Rückfallpfad (800 Zeichen). Die ODER-Listen in commander-archetype-filters.ts sind
+   * etwas anderes und bleiben.
    */
-  // NEU - Verifikationsrunde: nur eine Kategorie gleichzeitig neu aktiv, bis sie über mehrere
-  // Wiederholungen hinweg stabil und korrekt ist (siehe Plan), danach die nächste einkommentieren.
-  // Bereits verifiziert: Konter, Rampe, Entfernung, Kartenziehen, Bretträumung, Marken,
-  // Lebenspunkte gewinnen, +1/+1-Zähler, Proliferate, Wiederbelebung, Opferung.
-  // Aktuell in Prüfung (letzte der 12): Extra-Kampfphase.
   private static readonly EFFECT_TAG_CATEGORIES: {
     key: string;
     labelKey: string;
@@ -3104,14 +2788,9 @@ export class DeckViewerService {
     {
       key: 'counters',
       labelKey: 'deckView.countersTile',
-      // Oracle-Text-Näherung statt Tagger-Tag, wie schon bei "Marken erzeugen": Das früher
-      // hier genutzte "otag:gives-1-1-counters" existiert bei Scryfall NICHT MEHR und lieferte
-      // null Treffer - die Kachel stand dadurch dauerhaft auf 0, ohne dass irgendwo ein Fehler
-      // sichtbar war. "otag:counters-matter" ist kein Ersatz: das ist die Payoff-Kategorie und
-      // verfehlt geprüft sogar Cathars' Crusade. Die Oracle-Suche trifft dagegen alle
-      // gegengeprüften Marken-Karten (Cathars' Crusade, Hardened Scales, Rishkar, Ozolith) und
-      // schließt Sol Ring/Lightning Bolt korrekt aus. Sie hängt zudem an Scryfalls eigenem
-      // Kartentext statt an einem Community-Tag, das wieder verschwinden kann.
+      // Oracle-Text statt Tag: otag:gives-1-1-counters gibt es nicht mehr (Kachel stand still auf
+      // 0), otag:counters-matter ist die Payoff-Kategorie. Die Textsuche trifft die geprüften
+      // Karten und hängt nicht an einem Community-Tag.
       query: 'o:"+1/+1 counter"',
     },
     {
@@ -3122,9 +2801,6 @@ export class DeckViewerService {
     {
       key: 'reanimate',
       labelKey: 'deckView.reanimateTile',
-      // Oberkategorie + bekannte Unter-Tags (wie bei Konter) - Scryfalls Tagger rollt Karten, die
-      // nur mit einem spezifischeren Unter-Tag getaggt sind, nicht automatisch in die Oberkategorie
-      // hoch (recherchiert, siehe reanimate-creature/-artifact/-enchantment/-planeswalker).
       query: 'otag:reanimate',
     },
     {
@@ -3146,12 +2822,8 @@ export class DeckViewerService {
   readonly effectCategoryProgress = signal<{ done: number; total: number } | null>(null);
 
   /**
-   * Alle 15 Effekt-Kategorien für die Anzeige - die 12 Scryfall-Tag-Kategorien plus Tutor/
-   * Extra-Runde/Mass Land Denial, die bereits über zuverlässigere, längst geladene Quellen laufen
-   * (lokale Texterkennung bzw. Commander-Spellbook-Daten, siehe tutorCards()/extraTurnCards()/
-   * massLandDenialCards()). Als computed() statt einmaligem Snapshot, damit sich die drei
-   * wiederverwendeten Kategorien automatisch aktualisieren, sobald ihre - unabhängig ladenden -
-   * Datenquellen fertig sind (die liefen zum Zeitpunkt von loadEffectCategoryCounts() oft noch).
+   * Alle 15 Kategorien: 12 per Scryfall-Tag plus Tutor/Extra-Runde/MLD aus lokalen Quellen.
+   * computed, damit die lokalen Kategorien nachziehen, sobald ihre Daten da sind.
    */
   readonly effectCategoryStats = computed<EffectCategoryStat[] | null>(() => {
     const tagStats = this.tagBasedEffectStats();
@@ -3182,18 +2854,9 @@ export class DeckViewerService {
   });
 
   /**
-   * Klassifiziert das Deck in die 12 Scryfall-Tag-Kategorien nach - jetzt aus dem eigenen
-   * Kartenbestand (CardDataService, gefüllt vom nächtlichen Abgleich) statt live bei Scryfall.
-   *
-   * Vorher lief hier eine Schleife über alle 12 Kategorien, jede über classifyCards() in Chunks von
-   * ~15 Kartennamen mit 300 ms Zwangspause - bei kaltem Cache rund 100 aufeinander folgende
-   * Suchanfragen und damit etwa eine Minute Wartezeit, und das auf jedem Gerät erneut, weil der
-   * Cache im localStorage liegt. Jetzt sind es zwei Datenbankabfragen.
-   *
-   * Der Weg über Scryfall bleibt als Rückfallebene erhalten, aber nur noch für Karten, die der
-   * Abgleich nicht kennt - also frische Spoiler, die seit dem letzten Nachtlauf erschienen sind.
-   * Fällt die Datenbank ganz aus, gilt jede Karte als unbekannt und es läuft exakt das alte
-   * Verhalten: dann ist die App so langsam wie vorher, aber nicht kaputt.
+   * Klassifiziert das Deck in die 12 Tag-Kategorien aus dem eigenen Bestand (CardDataService,
+   * Nachtlauf) - zwei Abfragen statt früher ~100 Scryfall-Suchen. Scryfall bleibt Rückfall für
+   * unbekannte Karten (frische Spoiler) und bei DB-Ausfall.
    */
   private async loadEffectCategoryCounts(cards: DeckCard[]): Promise<void> {
     this.effectCategoryCountsBusy.set(true);
@@ -3201,9 +2864,7 @@ export class DeckViewerService {
       ...new Set(cards.filter((c) => !c.isMaybeboard && !c.isToken).map((c) => c.cardName)),
     ];
 
-    // Vorderseiten-Name für den Abgleich - sowohl der Abgleich als auch classifyCards()
-    // klassifizieren Doppelkarten unter ihrem Vorderseiten-Namen, der volle Deck-Kartenname
-    // ("A // B") würde hier nie matchen.
+    // Doppelkarten werden unter ihrem Vorderseiten-Namen klassifiziert.
     const entriesFromMatched = (matched: Set<string>): GameChangerEntry[] =>
       cards
         .filter(
@@ -3360,10 +3021,8 @@ export class DeckViewerService {
   }
 
   /**
-   * Die in EINER Bearbeitung hinzugefügten Karten als Druckliste für den PDF-Export. Karten, die
-   * inzwischen wieder aus dem Deck geflogen sind, haben kein Bild mehr im Deck - für die wird es
-   * über den Kartennamen bei Scryfall nachgeladen, sonst wären genau die alten Bearbeitungen (der
-   * eigentliche Zweck der Reiter) nicht druckbar.
+   * Die in einer Bearbeitung hinzugefügten Karten als PDF-Druckliste; fehlende Bilder (Karte schon
+   * wieder raus) über Scryfall nachladen.
    */
   async addedCardsForPrint(group: DeckChangeGroup): Promise<PdfSourceCard[]> {
     this.changeGroupPrintBusy.set(true);
@@ -3406,11 +3065,8 @@ export class DeckViewerService {
   }
 
   /**
-   * Ob Preis/Effekt-Kategorien für das aktuell offene Deck schon (angestoßen) geladen wurden - erst
-   * beim ersten Aufklappen der Analyse-Sektion, siehe toggleDeckAnalysis(). Verhindert unnötige
-   * Scryfall-Anfragen für den (häufigen) Fall, dass die Analyse nie aufgeklappt wird, UND vermeidet,
-   * dass diese Anfragen mit den beim Deck-Öffnen ohnehin schon laufenden (Kartendetails, Bracket-
-   * Schätzung) um Scryfalls Rate-Limit konkurrieren.
+   * Ob Preis/Effekt-Kategorien schon angestoßen sind - erst beim ersten Aufklappen der Analyse, um
+   * Scryfall-Anfragen und Rate-Limit-Konkurrenz zu sparen.
    */
   private analysisExtrasLoaded = false;
 
@@ -3435,10 +3091,8 @@ export class DeckViewerService {
   readonly reanalyzeBusy = signal(false);
 
   /**
-   * Lädt die komplette Deck-Analyse (Kartendetails/Manakurve, Bracket-Schätzung, Preis, Effekt-
-   * Kategorien) für den aktuellen Kartenbestand neu - nötig, weil sich Karten +/- oder ein
-   * Reimport NICHT automatisch auf die Analyse auswirken (die lädt sonst nur einmalig beim
-   * Öffnen des Decks bzw. ersten Aufklappen der Sektion, siehe open()/toggleDeckAnalysis()).
+   * Lädt die komplette Analyse für den aktuellen Kartenbestand neu (Änderungen wirken sich nicht
+   * automatisch aus).
    */
   async reanalyzeDeck(): Promise<void> {
     if (!this.viewingDeck()) return;
