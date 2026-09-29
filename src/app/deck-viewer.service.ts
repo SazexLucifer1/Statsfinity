@@ -2740,8 +2740,7 @@ export class DeckViewerService {
    *
    * Keine Unter-Tags aufzählen: otag: ist hierarchisch, Unter-Tags matchen das Eltern-Tag (geprüft,
    * Trefferzahlen gleich). Die Aufzählung machte die Abfrage nur länger und drückte die Namen je
-   * Anfrage im Rückfallpfad (800 Zeichen). Die ODER-Listen in commander-archetype-filters.ts sind
-   * etwas anderes und bleiben.
+   * Anfrage im Rückfallpfad (800 Zeichen).
    */
   private static readonly EFFECT_TAG_CATEGORIES: {
     key: string;
