@@ -1,0 +1,48 @@
+.benchmark h3 {
+  margin: var(--sp-5) 0 var(--sp-2);
+  font-size: 1rem;
+}
+
+.benchmark-anzahl {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: var(--sp-3) 0;
+}
+
+.benchmark-tabelle {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+
+  th,
+  td {
+    padding: var(--sp-2) var(--sp-1);
+    text-align: right;
+    border-bottom: 1px solid var(--glass-border);
+  }
+
+  th:first-child,
+  td:first-child {
+    text-align: left;
+  }
+
+  th {
+    font-weight: 600;
+    opacity: 0.8;
+  }
+}
+
+.benchmark-fehler {
+  color: var(--danger);
+}
+
+.benchmark-loeschen {
+  background: none;
+  border: none;
+  color: var(--text-muted, currentColor);
+  font-size: 1.1rem;
+  cursor: pointer;
+}
