@@ -12,7 +12,8 @@
 --
 -- SECURITY DEFINER, weil auch private Decks mitzählen sollen - deshalb prüft sie selbst, dass nur
 -- Developer sie aufrufen. Der Schlüssel der Kartennamen ist derselbe wie in normalizeCardName()
--- (array-utils.ts): Vorderseite, klein, typografische Apostrophe gerade.
+-- (array-utils.ts): Vorderseite, klein, typografische Apostrophe gerade (als chr()-Codes, damit
+-- beim Kopieren in den SQL-Editor keine Sonderzeichen verloren gehen).
 
 create or replace function public.bracket_benchmark_merkmale()
 returns table (
@@ -31,11 +32,11 @@ language plpgsql
 stable
 security definer
 set search_path = public
-as $$
+as $fn$
 #variable_conflict use_column
 begin
   if not public.is_developer(auth.uid()) then
-    raise exception 'nur für Developer' using errcode = '42501';
+    raise exception 'nur fuer Developer' using errcode = '42501';
   end if;
 
   return query
@@ -51,15 +52,16 @@ begin
            c.quantity,
            c.is_commander,
            coalesce(c.type_line, '') as type_line,
-           coalesce(c.cmc, 0) as cmc,
-           translate(lower(split_part(c.card_name, ' // ', 1)), '’‘´`', '''''''''') as schluessel
+           coalesce(c.cmc, 0)::numeric as cmc,
+           translate(lower(split_part(c.card_name, ' // ', 1)),
+                     chr(8217) || chr(8216) || chr(180) || chr(96), repeat(chr(39), 4)) as schluessel
     from public.deck_cards c
     join deck on deck.id = c.deck_id
     where not coalesce(c.is_maybeboard, false)
       and not coalesce(c.is_token, false)
   ),
-  -- front_name_normalized ist nicht eindeutig (Playtest-Karten u. ä.) - je Name zusammenfassen,
-  -- sonst zählt eine Karte doppelt.
+  -- front_name_normalized ist nicht eindeutig (Playtest-Karten u. a.) - je Name zusammenfassen,
+  -- sonst zaehlt eine Karte doppelt.
   gc as (
     select s.front_name_normalized as schluessel, bool_or(s.game_changer) as ist_gc
     from public.scryfall_cards s
@@ -105,14 +107,14 @@ begin
          j.avg_cmc
   from deck
   join je_deck j on j.deck_id = deck.id;
-end $$;
+end $fn$;
 
 revoke execute on function public.bracket_benchmark_merkmale() from public, anon;
 grant execute on function public.bracket_benchmark_merkmale() to authenticated;
 
 -- ---------------------------------------------------------------------------------------------
--- Gespeicherte Stände: ein Knopf in der Developer-Liste legt den aktuellen Stand ab, damit sich
--- zeigen lässt, wie sich die Zahlen mit wachsender Deckzahl verändern. Eine Zeile je Stand, das
+-- Gespeicherte Staende: ein Knopf in der Developer-Liste legt den aktuellen Stand ab, damit sich
+-- zeigen laesst, wie sich die Zahlen mit wachsender Deckzahl veraendern. Eine Zeile je Stand, das
 -- Ergebnis als jsonb (Anzahl je Stufe, AUC je Merkmal) - keine Zeile je Deck.
 -- ---------------------------------------------------------------------------------------------
 create table if not exists public.bracket_benchmark_staende (
@@ -124,18 +126,18 @@ create table if not exists public.bracket_benchmark_staende (
 
 alter table public.bracket_benchmark_staende enable row level security;
 
-drop policy if exists "Developer lesen Benchmark-Stände" on public.bracket_benchmark_staende;
-create policy "Developer lesen Benchmark-Stände"
+drop policy if exists "Developer lesen Benchmark-Staende" on public.bracket_benchmark_staende;
+create policy "Developer lesen Benchmark-Staende"
 on public.bracket_benchmark_staende for select to authenticated
 using (is_developer(auth.uid()));
 
-drop policy if exists "Developer speichern Benchmark-Stände" on public.bracket_benchmark_staende;
-create policy "Developer speichern Benchmark-Stände"
+drop policy if exists "Developer speichern Benchmark-Staende" on public.bracket_benchmark_staende;
+create policy "Developer speichern Benchmark-Staende"
 on public.bracket_benchmark_staende for insert to authenticated
 with check (erstellt_von = auth.uid() and is_developer(auth.uid()));
 
-drop policy if exists "Developer löschen Benchmark-Stände" on public.bracket_benchmark_staende;
-create policy "Developer löschen Benchmark-Stände"
+drop policy if exists "Developer loeschen Benchmark-Staende" on public.bracket_benchmark_staende;
+create policy "Developer loeschen Benchmark-Staende"
 on public.bracket_benchmark_staende for delete to authenticated
 using (is_developer(auth.uid()));
 
