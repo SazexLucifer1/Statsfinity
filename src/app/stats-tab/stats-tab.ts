@@ -147,17 +147,14 @@ export class StatsTab {
   /** Kartenname (lowercase) -> Scryfall-Daten oder null (nicht gefunden). Nur für aktuell sichtbare Einträge geladen. */
   private readonly cardDetails = signal<Record<string, ScryfallCard | null>>({});
   /**
-   * Deck-ID -> im Deck selbst hinterlegter Commander + Bild (deck_cards.is_commander/image_url) -
-   * hat Vorrang vor dem in Partien hinterlegten Namen (siehe deckStats()), da der markierte
-   * Commander die aktuelle Wahrheit ist und sich seit alten Matches geändert haben kann, und weil
-   * der in Matches erfasste Name manchmal fehlt (z.B. Deck nie über den Match-Tab zugewiesen).
+   * Deck-ID → im Deck markierter Commander + Bild. Hat Vorrang vor dem Namen aus den Partien
+   * (aktueller, und dort fehlt er manchmal).
    */
   private readonly storedDeckCommanders = signal<Map<string, { name: string; imageUrl: string | null }>>(new Map());
 
   /**
-   * Deck-IDs, hinter denen nur noch ein Grabstein steht (der Besitzer hat das Deck gelöscht, siehe
-   * DeckService.deleteDeck()). Die Partien zählen unverändert weiter - die Rangliste kennzeichnet
-   * solche Einträge nur und bietet kein "Ansehen" mehr an, da es keine Kartenliste mehr gibt.
+   * Deck-IDs, hinter denen nur ein Grabstein steht: Partien zählen weiter, die Rangliste bietet
+   * kein "Ansehen" an.
    */
   private readonly deletedDeckIds = signal<Set<string>>(new Set());
 
@@ -167,9 +164,8 @@ export class StatsTab {
 
   constructor() {
     effect(() => {
-      // Vereinigung aus der echten aktiven Gruppe (bedient playerDeckStats() im Spieler-Details-
-      // Bereich) und der lokal betrachteten Gruppe (bedient deckStats() unten) - reiner Bildcache,
-      // ein Zuviel an geladenen IDs schadet nicht.
+      // Aktive und lokal betrachtete Gruppe zusammen - reiner Bildcache, zu viele IDs schaden
+      // nicht.
       const deckIds = [
         ...new Set([
           ...this.filteredMatches().flatMap((m) =>
@@ -186,10 +182,7 @@ export class StatsTab {
     });
 
     effect(() => {
-      // Precons bewusst außen vor - dieselbe Begründung wie im Profil-Tab (CardAndColorStats):
-      // sie sind nicht selbst zusammengestellt, sollen also nicht in die Lieblingsfarben einfließen.
-      // Liest viewedFilteredMatches() statt filteredMatches(), da groupColorAndComboStats() jetzt
-      // dort hängt (folgt der lokal gewählten Gruppe, siehe "Lokaler Gruppen-Wechsler" oben).
+      // Ohne Precons (nicht selbst gebaut), aus viewedFilteredMatches() (lokal gewählte Gruppe).
       const deckIds = [
         ...new Set(
           this.viewedFilteredMatches().flatMap((m) =>
@@ -204,10 +197,8 @@ export class StatsTab {
     });
 
     effect(() => {
-      // Lädt viewedMatches() - siehe "Lokaler Gruppen-Wechsler" oben. mtg.history() wird in jedem
-      // Zweig gelesen (auch wenn im global-/Fremdgruppen-Zweig nicht direkt verwendet), damit ein
-      // neu erfasstes Match in der echten aktiven Gruppe die lokal betrachtete Fremdgruppe/Global-
-      // Ansicht durch Neuladen ebenfalls aktuell hält.
+      // Lädt viewedMatches(). mtg.history() wird in jedem Zweig gelesen, damit ein neues Match auch
+      // die fremde/globale Ansicht auffrischt.
       const activeGroupId = this.groupService.groupId();
       const activeHistory = this.mtg.history();
       const groupId = this.effectiveViewedGroupId();
@@ -279,9 +270,7 @@ export class StatsTab {
     return this.cardDetails()[name.toLowerCase()]?.backImageUrl ?? null;
   }
 
-  // --- Sortierung der Ranglisten: nach Siegen, Winrate oder Spielanzahl umschaltbar ---
-  // compareBySortMode/barValue/barMax/medal kommen aus rank-sort.ts - dieselbe Sortier- und
-  // Balkenlogik braucht auch die eigenständige GlobalStats-Komponente (weltweit, ohne Login).
+  // --- Sortierung der Ranglisten (Logik in rank-sort.ts, geteilt mit GlobalStats) ---
 
   readonly playerSortMode = signal<RankSortMode>('winRate');
   /** Gemeinsamer Sortier-Modus für die vereinte Decks&Commander-Rangliste. */
@@ -289,22 +278,15 @@ export class StatsTab {
   readonly playerDeckSortMode = signal<RankSortMode>('winRate');
   readonly playerCommanderSortMode = signal<RankSortMode>('winRate');
 
-  // --- Balken der Ranglisten ---
-  //
-  // Die Balken hingen bisher fest an der Winrate, auch wenn nach Siegen oder Spielen sortiert war.
-  // Die Liste war dann nach der einen Größe geordnet und der Balken zeigte eine andere - dadurch
-  // sahen die Balken willkürlich aus, mal länger, mal kürzer, ohne erkennbaren Bezug zur
-  // Reihenfolge. Jetzt zeigt der Balken immer die Größe, nach der gerade sortiert wird.
+  // --- Balken der Ranglisten: zeigen immer die Größe, nach der sortiert wird ---
   readonly barValue = barValueFor;
   readonly barMax = barMaxFor;
 
   // --- Stats-Sichtbarkeit ---
 
   /**
-   * Ob der aktuell eingeloggte Account (der Viewer) die Stats für `mode` überhaupt sehen darf.
-   * Das legt der Host pro Account und Modus in "Sichtbarkeit verwalten" fest - auch für sich
-   * selbst, z.B. als Selbst-Spoilerschutz. Ohne verknüpften Spieler oder ohne explizite
-   * Einstellung ist der Zugriff standardmäßig erlaubt.
+   * Darf der Viewer die Stats für `mode` sehen? Legt der Host je Account und Modus fest; ohne
+   * Spieler oder Einstellung erlaubt.
    */
   canViewMode(mode: GameMode): boolean {
     const myName = this.mtg.myPlayerName();
@@ -337,9 +319,7 @@ export class StatsTab {
     this.selectedDeckDetail.set(null);
   }
 
-  /** Jahres-Filter als reine Funktion, damit sowohl die echte aktive Gruppe (yearFilteredMatches)
-   * als auch die im Stats-Tab lokal gewählte Gruppe (viewedYearFilteredMatches) dieselbe Logik
-   * benutzen, ohne sie zu duplizieren. */
+  /** Jahresfilter als reine Funktion für aktive und lokal gewählte Gruppe. */
   private applyYearFilter(matches: Match[]): Match[] {
     const year = this.selectedYear();
     // countsInGeneralStats=false (Turnier-Einstellung) blendet ein Match hier aus allen Stats-Tab-
@@ -367,10 +347,8 @@ export class StatsTab {
   });
 
   /**
-   * Übernimmt die Auswahl aus dem Mehrfachauswahl-Menü (app-multi-select liefert ein Set<string>).
-   * Gesperrte Modi werden hier nochmal herausgefiltert - das Menü sperrt sie zwar schon, aber die
-   * Sichtbarkeitsregel darf nicht allein an der Oberfläche hängen (applyModeFilter() erzwingt sie
-   * zusätzlich ein drittes Mal auf den Daten).
+   * Übernimmt die Mehrfachauswahl. Gesperrte Modi werden trotz gesperrtem Menü nochmals gefiltert
+   * (und in applyModeFilter() ein drittes Mal).
    */
   setSelectedModes(next: Set<string>): void {
     const allowed = GAME_MODES.filter((m) => next.has(m) && this.canViewMode(m));
@@ -385,20 +363,14 @@ export class StatsTab {
     return matches.filter((m) => modes.has(m.mode) && this.canViewMode(m.mode));
   }
 
-  // --- Format-Filter (Mehrfachauswahl, orthogonal zum Modus-Filter - beide lassen sich frei
-  // kombinieren, z.B. nur "Cube" + nur "Modern"). Keine Sichtbarkeitssperre wie beim Modus-Filter -
-  // das Format ist reine Statistik-Ansicht, keine Berechtigung. ---
+  // --- Format-Filter, frei kombinierbar mit dem Modus-Filter; reine Ansicht, keine Berechtigung
+  // ---
 
   readonly deckFormats = DECK_FORMATS;
 
   /**
-   * Genau EIN Format oder "Alle" - anders als beim Modus-Filter bewusst keine Mehrfachauswahl:
-   * Deck-Ranglisten sind nur innerhalb eines Formats vergleichbar (siehe deckComparisonAvailable).
-   *
-   * Startet auf "Commander" statt auf "Alle" - dieselbe Begründung wie in der Global-Ansicht
-   * (global-stats.ts): mit "Alle" bleibt die Rangliste "Decks & Commander" beim ersten Aufruf
-   * leer, weil Decks über Formate hinweg nicht vergleichbar sind. Commander ist zudem das
-   * Format, in dem hier praktisch alles gespielt wird.
+   * Genau EIN Format oder "Alle" - Deck-Ranglisten sind nur innerhalb eines Formats vergleichbar.
+   * Start auf Commander, sonst wäre "Decks & Commander" beim ersten Aufruf leer.
    */
   readonly selectedFormat = signal<DeckFormat | 'Alle'>('Commander');
 
@@ -409,11 +381,7 @@ export class StatsTab {
   }
 
   /**
-   * Format-Filter als reine Funktion, siehe applyYearFilter() für die Begründung.
-   *
-   * Matches ohne Format (Spezialevent) fallen bei einer konkreten Formatwahl heraus: wer sich
-   * "Modern" ansieht, will keine formatlosen Spezialevents mitgezählt bekommen. Unter "Alle
-   * Spielformate" laufen sie ganz normal mit.
+   * Format-Filter als reine Funktion. Matches ohne Format (Spezialevent) zählen nur unter "Alle".
    */
   private applyFormatFilter(matches: Match[]): Match[] {
     const format = this.selectedFormat();
@@ -422,9 +390,8 @@ export class StatsTab {
   }
 
   /**
-   * Ob Deck-/Commander-Vergleiche sinnvoll sind - nur innerhalb EINES Formats. Über alle Formate
-   * hinweg stünde ein Commander-Deck gegen ein Modern-Deck in derselben Rangliste, was nichts
-   * aussagt. Die betroffenen Abschnitte weichen dann einem Hinweis (stats.chooseFormatForDecksHint).
+   * Deck-/Commander-Vergleiche nur innerhalb eines Formats; sonst ein Hinweis
+   * (stats.chooseFormatForDecksHint).
    */
   readonly deckComparisonAvailable = computed(() => this.selectedFormat() !== 'Alle');
 
@@ -432,16 +399,11 @@ export class StatsTab {
     this.applyFormatFilter(this.applyModeFilter(this.yearFilteredMatches())),
   );
 
-  // --- Lokaler Gruppen-Wechsler (nur Stats-Tab, betrifft NICHT die echte aktive Gruppe) ---
+  // --- Lokaler Gruppen-Wechsler (nur Stats-Tab) ---
   //
-  // filteredMatches() oben bleibt UNVERÄNDERT an der echten aktiven Gruppe (groupService.groupId(),
-  // über mtg.history()) - das bedient weiterhin Spieler-Details und Head-to-Head, die bewusst nicht
-  // von diesem Wechsler betroffen sind (siehe CLAUDE.md/Absprache: Berechtigungen und Host-Aktionen
-  // bleiben an der echten Gruppe). Die reinen Auswertungs-Sektionen (Übersicht, Spieler-Rangliste,
-  // Decks & Commander, Lieblingsfarben/Farbkombinationen) lesen stattdessen viewedFilteredMatches()
-  // unten - das ist standardmäßig identisch zu filteredMatches() (folgt der echten aktiven Gruppe),
-  // kann aber lokal auf eine andere eigene Gruppe umgeschaltet werden, ohne den Rest der App (Match-
-  // /Gruppen-Tab) zu beeinflussen.
+  // filteredMatches() bleibt an der echten aktiven Gruppe (Spieler-Details, Head-to-Head,
+  // Berechtigungen). Die Auswertungen (Übersicht, Ranglisten, Farben) lesen
+  // viewedFilteredMatches(), das sich lokal auf eine andere eigene Gruppe umschalten lässt.
 
   /** null = folgt der echten aktiven Gruppe (Default, entspricht dem bisherigen Verhalten). */
   private readonly viewedGroupId = signal<string | null>(null);
@@ -466,12 +428,8 @@ export class StatsTab {
   );
 
   /**
-   * "Echte" Match-Anzahl statt roher Datensatz-Anzahl: der Excel-Import legt
-   * pro real gespieltem Match mehrere Datensätze an (1x Sieger + 1x pro
-   * Verlierer mit Platzhalter-Gewinner). Diese Verlierer-Duplikate zählen hier
-   * nicht mit, sonst wäre "Spiele gesamt" ein Vielfaches der echten Zahl.
-   * Betrifft nur Commander/Cube/Archenemy-Team-Import; bei live getrackten
-   * Matches gibt's diese Duplikate ohnehin nicht (1 Match = 1 Datensatz).
+   * Echte Match-Zahl: der Excel-Import legt je Match mehrere Datensätze an (Sieger + je Verlierer
+   * mit Platzhalter); diese Duplikate zählen nicht.
    */
   readonly totalGames = computed(
     () =>
@@ -496,20 +454,15 @@ export class StatsTab {
       .sort((a, b) => b.wins - a.wins || b.winRate - a.winRate);
   });
 
-  /**
-   * Von Host konfigurierter Override der Mindestspielzahl für die aktuelle Modus-Auswahl (vom
-   * Host pro Modus bzw. für die Aggregat-Ansicht "Alle Modi" in "Qualifikationsschwellen
-   * verwalten" einstellbar), oder null ohne explizite Einstellung.
-   */
+  /** Vom Host eingestellte Mindestspielzahl für die aktuelle Modus-Auswahl, sonst null. */
   private readonly qualificationOverride = computed<number | null>(() => {
     const key = this.isSingleMode() ?? 'Alle';
     return this.mtg.qualificationSettings().get(key) ?? null;
   });
 
   /**
-   * Mindestanzahl Spiele (innerhalb des aktuellen Jahr+Modus-Filters), ab der ein Spieler in
-   * der Rangliste nach Winrate auftaucht. Ohne Host-Override: bei "Alle Modi" eine höhere
-   * Schwelle als bei einem einzelnen Modus.
+   * Mindestanzahl Spiele (im aktuellen Filter) für die Winrate-Rangliste; ohne Override bei "Alle
+   * Modi" höher.
    */
   readonly qualificationThreshold = computed(
     () => this.qualificationOverride() ?? (this.isSingleMode() === null ? 10 : 3)
@@ -586,11 +539,8 @@ export class StatsTab {
   }
 
   /**
-   * Fasst Commander-Spiele ohne eigenständiges (Nicht-Precon-)Deck zusammen: sowohl gar nicht
-   * verlinkte Matches als auch mit einem Precon-Deck gespielte, da Precons austauschbar sind und
-   * hier nicht "das beste Deck von Spieler X" abgefragt wird, sondern der Commander allgemein.
-   * Eigenständige Decks (keine Precons) laufen bewusst getrennt in deckStats(), da zwei
-   * verschiedene Spieler mit demselben Commander in der Praxis unterschiedliche Decks bauen.
+   * Commander-Spiele ohne eigenes (Nicht-Precon-)Deck, zusammengefasst je Commander - Precons sind
+   * austauschbar. Eigene Decks laufen getrennt in deckStats().
    */
   readonly commanderStats = computed<CommanderStats[]>(() => {
     const stats = new Map<string, { games: number; wins: number; playedBy: Set<string> }>();
@@ -629,9 +579,7 @@ export class StatsTab {
   }
 
   /**
-   * Stats pro eigenständigem (Nicht-Precon-)Deck (unabhängig davon, wer es in welchem Match
-   * gespielt hat - z.B. bei geliehenen Decks). Precon-Decks laufen bewusst NICHT hier, sondern
-   * gesammelt in commanderStats() - siehe Kommentar dort.
+   * Statistik je eigenem (Nicht-Precon-)Deck, egal wer es spielte. Precons siehe commanderStats().
    */
   readonly deckStats = computed<DeckStats[]>(() => {
     const stats = new Map<
@@ -692,9 +640,8 @@ export class StatsTab {
   });
 
   /**
-   * Verschiedene Commander insgesamt (eigenständige Decks + Precons/Unverlinkte). Steht bewusst
-   * NICHT mehr in der Übersicht - dort zählt jetzt distinctDeckCount() -, sondern nur noch an der
-   * "Decks & Commander"-Rangliste, wo die Commander auch tatsächlich aufgelistet werden.
+   * Verschiedene Commander (eigene Decks + Precons/Unverlinkte), angezeigt an der "Decks &
+   * Commander"-Rangliste.
    */
   readonly distinctCommanderCount = computed(() => {
     const names = new Set<string>();
@@ -706,17 +653,13 @@ export class StatsTab {
   });
 
   /**
-   * Verschiedene gespielte Decks für die Übersichts-Kachel: jedes eigenständige Deck einmal, dazu
-   * jeder Precon/unverlinkte Commander als ein Deck (für diese Partien gibt es kein angelegtes
-   * Deck, gespielt wurde aber trotzdem eins). Das ist genau die Zeilenzahl der
-   * "Decks & Commander"-Rangliste - die Kachel und die Liste darunter sagen damit dasselbe.
+   * Verschiedene gespielte Decks für die Übersicht = Zeilenzahl der "Decks & Commander"-Rangliste
+   * (Precon/unverlinkter Commander zählt als ein Deck).
    */
   readonly distinctDeckCount = computed(() => this.combinedDeckCommanderStats().length);
 
   /**
-   * Decks und Commander in EINER gemeinsamen Rangliste: eigenständige (Nicht-Precon-)Decks
-   * bleiben als einzelne Einträge erhalten, Precons/unverlinkte Matches sind pro Commander
-   * zusammengefasst (siehe commanderStats()).
+   * Decks und Commander in einer Rangliste: eigene Decks einzeln, Precons/Unverlinkte je Commander.
    */
   readonly combinedDeckCommanderStats = computed<CombinedRankEntry[]>(() => [
     ...this.deckStats().map((d) => ({
@@ -751,12 +694,7 @@ export class StatsTab {
     if (deck && !deck.deletedAt) this.viewer.open(deck);
   }
 
-  /**
-   * Commander-Name -> im jeweiligen Deck hinterlegtes Bild, aus storedDeckCommanders abgeleitet -
-   * für commanderStats() (Precons/unverlinkte Matches), die pro Commander-NAME statt pro Deck-ID
-   * zusammengefasst werden und deshalb sonst nie von einem individuell gewählten Artwork
-   * profitieren würden.
-   */
+  /** Commander-Name → hinterlegtes Bild, damit auch commanderStats() gewählte Artworks zeigt. */
   private readonly storedCommanderImageByName = computed(() => {
     const map = new Map<string, string>();
     for (const { name, imageUrl } of this.storedDeckCommanders().values()) {
@@ -858,14 +796,9 @@ export class StatsTab {
     this.colorStatsWeightMode() === 'games' ? entry.gameCount : entry.deckCount;
 
   /**
-   * Farb- und Farbkombinations-Zählung über ALLE (Nicht-Precon-)Decks der lokal betrachteten
-   * Gruppe hinweg (siehe "Lokaler Gruppen-Wechsler" oben - Default: echte aktive Gruppe), die in
-   * den aktuell gefilterten Matches (Zeitraum/Modus) vorkommen - Partien-Teilnahmen und Deck-Anzahl
-   * parallel gezählt, wie DeckService.getCardAndColorStats() für den Profil-Tab. Anders als dort
-   * läuft hier keine eigene DB-Abfrage: die Matches sind über viewedFilteredMatches() schon
-   * geladen, nur die Farbidentität der beteiligten Decks kommt separat aus deckColorIdentities()
-   * (siehe Effect oben) - Decks, deren Farbidentität noch nicht geladen ist oder wegen is_private
-   * nicht lesbar war, fließen einfach nicht mit ein.
+   * Farben und Farbkombinationen aller (Nicht-Precon-)Decks der betrachteten Gruppe in den
+   * gefilterten Matches, nach Partien und nach Decks gezählt. Ohne eigene DB-Abfrage: die
+   * Farbidentität kommt aus deckColorIdentities(); nicht lesbare (private) Decks fehlen.
    */
   private readonly groupColorAndComboStats = computed(() => {
     const identities = this.deckColorIdentities();
@@ -953,9 +886,7 @@ export class StatsTab {
   readonly colorComboLabel = (colors: string[]): string => colorComboLabel(this.i18n, colors);
   readonly comboColors = (colors: string[]): string[] => sortColors(colors);
 
-  /** Umschalter Gruppe/Global - "Global" wird von der eigenständigen GlobalStats-Komponente
-   * gerendert (siehe stats-tab.html), die auch ohne Login funktioniert und deshalb bewusst nicht
-   * Teil dieser (komplett login-pflichtigen) Komponente ist. */
+  /** Umschalter Gruppe/Global; "Global" rendert GlobalStats (funktioniert ohne Login). */
   readonly viewScope = signal<StatsScope>('group');
 
   setViewScope(scope: StatsScope): void {
@@ -1226,10 +1157,8 @@ export class StatsTab {
   }
 
   /**
-   * Head-to-Head bezieht sich bewusst nur auf live getrackte Spiele (ab LIVE_TRACKING_START_DATE),
-   * nicht auf die per Excel importierten historischen Partien - die Import-Datensätze bilden
-   * echte Gruppenrunden ab (oft >2 Spieler gleichzeitig) und eignen sich nicht für eine saubere
-   * 1-gegen-1-Bilanz zwischen zwei bestimmten Spielern.
+   * Head-to-Head nur mit live getrackten Spielen (ab LIVE_TRACKING_START_DATE) - Excel-Importe
+   * bilden Gruppenrunden ab und taugen nicht für 1-gegen-1.
    */
   private readonly h2hMatches = computed<Match[]>(() => {
     const a = this.h2hPlayerA();
@@ -1263,11 +1192,7 @@ export class StatsTab {
   );
 
   /**
-   * Der Direktvergleich als ein geteilter Balken.
-   *
-   * Vorher standen hier drei getrennte Zahlenkacheln (Spiele, Siege A, Siege B) plus ein Satz für
-   * die übrigen Sieger. Drei Kacheln nebeneinander zeigen aber nicht, was die Frage ist: wer liegt
-   * vorn und wie deutlich. Als ein Balken mit drei Abschnitten ist genau das der erste Eindruck.
+   * Direktvergleich als ein geteilter Balken: zeigt auf einen Blick, wer wie deutlich vorn liegt.
    */
   readonly h2hSegments = computed<SplitSegment[]>(() => [
     { label: this.h2hPlayerA() ?? '', value: this.h2hWinsA(), color: 'var(--series-1)' },
@@ -1335,9 +1260,7 @@ export class StatsTab {
   }
 
   /**
-   * Jahr, dem die importierten (synthetischen) Spiele zugeordnet werden.
-   * Datum wird beim Import fix auf den 31.12. dieses Jahres gesetzt – so
-   * fließen die Alt-Statistiken korrekt in den Jahr-Filter des Stats-Tabs ein.
+   * Jahr der importierten Spiele; Datum wird auf den 31.12. gesetzt, damit der Jahresfilter greift.
    */
   readonly importYear = signal<number>(new Date().getFullYear() - 1);
 
