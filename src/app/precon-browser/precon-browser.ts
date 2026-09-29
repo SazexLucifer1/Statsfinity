@@ -109,7 +109,7 @@ function sortByCmc(a: PreconCardEntry, b: PreconCardEntry): number {
  * (DeckImportService.openPreconDialog()), hier aber zum Anzeigen statt Importieren. Hält den
  * Zustand komplett lokal statt DeckViewerService zu injizieren - der ist viel zu groß und an
  * Deck-Schreiboperationen gebunden, unpassend für diese anonyme Route (gleiche Entscheidung wie
- * commander-recommendations.ts/public-card-search.ts).
+ * public-card-search.ts).
  *
  * Die Deck-Detailansicht portiert dieselbe schlanke Analyse-/Filter-Logik wie
  * public-deck-browser.ts (Manakurve, Pip-Verteilung, Typ-Verteilung, Kennzahlen, Filter) - siehe

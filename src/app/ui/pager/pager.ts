@@ -5,7 +5,7 @@ import { I18nService } from '../../i18n.service';
  * Seitenblätterer "◀ 1-10 von 42 ▶".
  *
  * Dieselben zwölf Zeilen standen vorher siebenmal in der App (viermal allein im Statistik-Tab,
- * dazu in deck-list, commander-stat-list, public-card-search, commander-recommendations und
+ * dazu in deck-list, commander-stat-list, public-card-search und
  * public-deck-browser), jedes Mal mit eigenen prev/next/effectivePage-Methoden daneben.
  */
 @Component({
