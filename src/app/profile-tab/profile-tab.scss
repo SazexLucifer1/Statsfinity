@@ -551,16 +551,20 @@
 // wichtiger als das letzte bisschen Dichte.
 
 // Sprachwahl für die Kartenbilder - eigene Zeile unter den Profil-Spalten.
-.art-language-row {
+.art-language-block {
   margin-top: var(--sp-6);
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--sp-4);
 
   .art-language-label {
+    display: block;
     font-weight: 600;
+    margin-bottom: var(--sp-2);
   }
+}
+
+.art-language-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
 
   // Die Sprachnamen sind kurz - das Feld soll nicht über die ganze Kartenbreite laufen.
   .art-language-select {
