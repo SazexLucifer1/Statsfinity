@@ -2,7 +2,6 @@ import { Component, computed, effect, inject, signal, viewChild } from '@angular
 import { FormsModule } from '@angular/forms';
 import { DatePipe, DecimalPipe, NgTemplateOutlet } from '@angular/common';
 import QRCode from 'qrcode';
-import { ArchidektPoolService } from '../archidekt-pool.service';
 import { ProfileService } from '../profile.service';
 import { Match } from '../models';
 import { MtgService } from '../mtg.service';
@@ -73,7 +72,6 @@ export class ProfileTab {
   showArtLanguageInfo(): void {
     void this.dialog.alert(this.i18n.t('profile.artLanguageHint'));
   }
-  readonly archidektPool = inject(ArchidektPoolService);
   readonly mtg = inject(MtgService);
   readonly groupService = inject(GroupService);
   private readonly deckService = inject(DeckService);

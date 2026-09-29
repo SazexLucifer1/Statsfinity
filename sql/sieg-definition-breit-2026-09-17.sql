@@ -4,7 +4,7 @@
 -- gelöschte Tabelle spellbook_combo_cards.
 -- WEITERHIN MASSGEBLICH sind die drei Muster-Funktionen am Anfang dieser Datei
 -- (spellbook_winning_combo_muster, spellbook_sofort_sieg_muster, spellbook_sieg_ausnahme).
--- scripts/simulate-deck-pool.js vergleicht sie vor jedem Lauf gegen src/app/goldfish-sim.ts.
+-- (Die TypeScript-Kopie in goldfish-sim.ts ist am 29.09.2026 mit dem Stapel-Simulator entfernt worden.)
 -- Auf der PRODUKTIVEN Datenbank diese Datei nicht mehr am Stück ausführen; bei einem
 -- NEUAUFBAU in Datumsreihenfolge laufen lassen, die Array-Migration räumt danach auf.
 --
@@ -185,13 +185,7 @@ comment on function public.winning_combos_in_deck(text[], text[]) is
 grant execute on function public.winning_combos_in_deck(text[], text[]) to anon, authenticated;
 
 -- =====================================================================================
--- 4. Die neue Spalte des Stapellaufs: Combos nach der WEITEN Definition.
---
---    Beide Zahlen nebeneinander, damit sich messen lässt, welche die Bracket-Stufen besser trennt -
---    statt die Definition auf Verdacht auszutauschen. gewinn_combos zaehlt weiter eng.
+-- 4. (Entfernt am 29.09.2026) Hier stand die Spalte deck_sim_results.sieg_combos des
+--    Stapellaufs. Die Tabelle ist mit sql/forge-archidekt-entfernen-2026-09-29.sql gelöscht,
+--    die Ergebnisse stehen in docs/bracket-benchmark-archidekt-2026-09.md.
 -- =====================================================================================
-alter table public.deck_sim_results
-  add column if not exists sieg_combos smallint not null default 0;
-
-comment on column public.deck_sim_results.sieg_combos is
-  'Vollstaendig im Deck liegende Combos nach der WEITEN Sieg-Definition (Endpunkt eines Decks). gewinn_combos daneben zaehlt weiter eng (beendet das Spiel unmittelbar) - so laesst sich vergleichen, welche der beiden die Stufen besser trennt.';

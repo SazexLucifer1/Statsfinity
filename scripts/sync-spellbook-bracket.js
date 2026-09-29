@@ -171,7 +171,7 @@ async function ladeAlleSeiten(startUrl, aufZeile) {
 // =====================================================================================
 // Supabase: Wiederholungen bei Netzaussetzern
 //
-// Übernommen aus scripts/import-archidekt-decks.js, samt der dort teuer gelernten Lehre: Die
+// Übernommen aus dem früheren Archidekt-Import (am 29.09.2026 entfernt), samt der dort teuer gelernten Lehre: Die
 // Spellbook-Seite hatte längst Wiederholungen, die Supabase-Seite nicht - und ein Lauf über gut
 // eine Stunde starb an einem einzigen Aussetzer ("Upsert in spellbook_combos fehlgeschlagen:
 // Gateway Timeout", Nachtlauf vom 14.09.2026, nach 150 von 1.085 Seiten).
@@ -455,7 +455,7 @@ async function hatManaSpalte() {
  * Hunderttausende Nachschlag-Abfragen zusammen. Die Tabelle wächst nur, wenn eine Combo eine
  * Karte enthält, die noch nie vorkam - nach den ersten paar hundert Combos ist das die Ausnahme.
  *
- * Gleiche Bauart wie Kartennamen in scripts/import-archidekt-decks.js, aber bewusst eine eigene
+ * Gleiche Bauart wie die Kartennamen des früheren Archidekt-Imports, aber bewusst eine eigene
  * Tabelle: Die beiden Läufe sind voneinander unabhängig (Spellbook nächtlich, Archidekt von
  * Hand), und eine gemeinsame Namenstabelle würde sie aneinanderketten.
  */

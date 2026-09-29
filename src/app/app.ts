@@ -26,8 +26,6 @@ import { GameSessionService } from './game-session.service';
 import { ProfileService } from './profile.service';
 import { AuthService } from './auth.service';
 import { NavigationService, AppTab } from './navigation.service';
-import { ArchidektPoolBrowser } from './archidekt-pool-browser/archidekt-pool-browser';
-import { ArchidektPoolService } from './archidekt-pool.service';
 import { DeckViewerService } from './deck-viewer.service';
 import { DeckCommentInboxService } from './deck-comment-inbox.service';
 import { I18nService } from './i18n.service';
@@ -61,7 +59,6 @@ import { APP_VERSION, APP_COMMIT } from './version';
     Dialog,
     LegalFooter,
     LegalPageView,
-    ArchidektPoolBrowser,
     SearchTab,
     LoginRequired,
     GlobalStats,
@@ -82,7 +79,6 @@ export class App {
   readonly deckViewer = inject(DeckViewerService);
   /** Nur fuer das Abzeichen an der Profil-Schaltflaeche der Tab-Leiste (ungelesene Deck-Kommentare). */
   readonly inbox = inject(DeckCommentInboxService);
-  readonly archidektPool = inject(ArchidektPoolService);
 
   /** Nur injiziert, damit der Dienst überhaupt existiert: er hängt sich an den Tab-Wechsel und holt
    * die Ansicht zurück, falls nach dem Zurückkommen nichts mehr gerendert wird (weißer Bildschirm). */
