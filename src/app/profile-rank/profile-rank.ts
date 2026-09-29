@@ -41,6 +41,10 @@ export class ProfileRank {
   readonly modeChange = output<GameMode>();
   readonly formatChange = output<DeckFormat>();
 
+  onFormatSelect(event: Event): void {
+    this.formatChange.emit((event.target as HTMLSelectElement).value as DeckFormat);
+  }
+
   /** "Normal · Commander" - welcher Rang gerade zu sehen ist. */
   readonly choiceLabel = computed(() => {
     const format = this.format();

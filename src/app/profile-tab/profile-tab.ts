@@ -147,13 +147,13 @@ export class ProfileTab {
     );
   });
 
-  /** Formate, in denen der Spieler im gewählten Modus gewertet ist, plus das gewählte. */
-  readonly rankFormats = computed<DeckFormat[]>(() => {
-    const { mode, format } = this.rankChoice();
-    const name = this.rankPlayerName();
-    const rated = name ? ratedFormatsFor(this.rankMatches(), mode, name, DECK_FORMATS) : [];
-    return DECK_FORMATS.filter((f) => f === format || rated.includes(f));
-  });
+  /**
+   * Alle Formate zur Auswahl - auch die ohne Partien, die zeigen dann "Nicht eingerankt". Nur für
+   * einen Modus ohne Format (Spezialevent, format null) gibt es nichts zu wählen.
+   */
+  readonly rankFormats = computed<DeckFormat[]>(() =>
+    this.rankChoice().format === null ? [] : DECK_FORMATS,
+  );
 
   readonly rankEntry = computed<EloEntry | null>(() => {
     const name = this.rankPlayerName();
@@ -183,7 +183,9 @@ export class ProfileTab {
       rated.length === 0 &&
       eloRanking(matches, mode, { format: null }).some((e) => e.name === name);
     const format =
-      current && rated.includes(current) ? current : (rated[0] ?? (formatlos ? null : current));
+      current && rated.includes(current)
+        ? current
+        : (rated[0] ?? (formatlos ? null : (current ?? ProfileService.DEFAULT_RANK_CHOICE.format)));
     this.saveRankChoice({ mode, format });
   }
 

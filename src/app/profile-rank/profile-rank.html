@@ -47,7 +47,7 @@
     </div>
   </div>
 
-  @if (editable() && (modes().length > 1 || formats().length > 1)) {
+  @if (editable()) {
     <div class="rank-modes">
       @if (modes().length > 1) {
         <div class="chip-row" role="group" [attr.aria-label]="i18n.t('profile.rank.modeAria')">
@@ -62,18 +62,18 @@
           }
         </div>
       }
-      @if (formats().length > 1) {
-        <div class="chip-row" role="group" [attr.aria-label]="i18n.t('profile.rank.formatAria')">
+      <!-- Formate als Auswahlfeld statt als Chips: es sind alle Formate der App wählbar, auch
+           die ohne Partien (die zeigen dann "Nicht eingerankt"). null = Modus ohne Format. -->
+      @if (format() !== null && formats().length > 0) {
+        <select
+          class="glass-input small rank-format-select"
+          [attr.aria-label]="i18n.t('profile.rank.formatAria')"
+          (change)="onFormatSelect($event)"
+        >
           @for (f of formats(); track f) {
-            <button
-              class="glass-chip small"
-              [class.active]="f === format()"
-              (click)="formatChange.emit(f)"
-            >
-              {{ f }}
-            </button>
+            <option [value]="f" [selected]="f === format()">{{ f }}</option>
           }
-        </div>
+        </select>
       }
     </div>
   } @else {
