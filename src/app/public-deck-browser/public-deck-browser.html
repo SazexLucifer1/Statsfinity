@@ -223,25 +223,25 @@
         <app-deck-steckbrief
           [deck]="steckbrief"
           [karten]="steckbriefKarten()"
-          [schnittMv]="averageCmc()"
+          [schnittMv]="analyse.averageCmc()"
         />
       }
     } @else if (deckBusy()) {
       <p class="hint">{{ i18n.t('login.pleaseWait') }}</p>
     } @else {
-      <p class="hint">{{ i18n.t('deckView.cardsCount', { count: sectionCardCount(allCards()) }) }}</p>
+      <p class="hint">{{ i18n.t('deckView.cardsCount', { count: analyse.sectionCardCount(allCards()) }) }}</p>
 
       <div class="stat-tiles">
         <div class="stat-tile">
-          <span class="stat-value">{{ averageCmc() != null ? (averageCmc() | number: '1.1-2') : '–' }}</span>
+          <span class="stat-value">{{ analyse.averageCmc() != null ? (analyse.averageCmc() | number: '1.1-2') : '–' }}</span>
           <span class="stat-label">{{ i18n.t('deckView.avgCmcTile') }}</span>
         </div>
         <div class="stat-tile">
-          <span class="stat-value">{{ landCount() }}</span>
+          <span class="stat-value">{{ analyse.landCount() }}</span>
           <span class="stat-label">{{ i18n.t('deckView.landsTile') }}</span>
         </div>
         <div class="stat-tile">
-          <span class="stat-value">{{ nonBasicLandPercent() != null ? (nonBasicLandPercent() + '%') : '–' }}</span>
+          <span class="stat-value">{{ analyse.nonBasicLandPercent() != null ? (analyse.nonBasicLandPercent() + '%') : '–' }}</span>
           <span class="stat-label">{{ i18n.t('deckView.nonBasicLandTile') }}</span>
         </div>
         <div class="stat-tile">
@@ -257,54 +257,54 @@
       </div>
 
       <h4 class="deck-section-title">{{ i18n.t('deckView.manaCurveTitle') }}</h4>
-      <app-bar-chart [data]="manaCurveChart()" orientation="vertical" />
+      <app-bar-chart [data]="analyse.manaCurveChart()" orientation="vertical" />
 
       <h4 class="deck-section-title">{{ i18n.t('deckView.pipDistTitle') }}</h4>
-      <app-bar-chart [data]="pipDistributionChart()" labelWidth="22px" />
+      <app-bar-chart [data]="analyse.pipDistributionChart()" labelWidth="22px" />
 
       <h4 class="deck-section-title">{{ i18n.t('deckView.typeBreakdownTitle') }}</h4>
-      <app-bar-chart [data]="typeBreakdownChart()" labelWidth="110px" />
+      <app-bar-chart [data]="analyse.typeBreakdownChart()" labelWidth="110px" />
 
       <input
         class="glass-input"
         type="text"
         [placeholder]="i18n.t('deckView.searchCardPlaceholder')"
-        [ngModel]="cardSearchQuery()"
-        (ngModelChange)="cardSearchQuery.set($event)"
+        [ngModel]="analyse.cardSearchQuery()"
+        (ngModelChange)="analyse.cardSearchQuery.set($event)"
       />
       <div class="chip-row card-filter-row">
-        <select class="glass-input small" [ngModel]="cmcFilter()" (ngModelChange)="cmcFilter.set($event)">
+        <select class="glass-input small" [ngModel]="analyse.cmcFilter()" (ngModelChange)="analyse.cmcFilter.set($event)">
           <option [ngValue]="'all'">{{ i18n.t('deckView.cmcAll') }}</option>
           @for (n of [0, 1, 2, 3, 4, 5, 6, 7]; track n) {
             <option [ngValue]="n">{{ n === 7 ? '7+' : n }}</option>
           }
         </select>
-        <select class="glass-input small" [ngModel]="typeFilterValue()" (ngModelChange)="typeFilterValue.set($event)">
+        <select class="glass-input small" [ngModel]="analyse.typeFilterValue()" (ngModelChange)="analyse.typeFilterValue.set($event)">
           <option [ngValue]="'all'">{{ i18n.t('deckView.typeAll') }}</option>
-          @for (label of availableTypeSections(); track label) {
-            <option [ngValue]="label">{{ translateLabel(label) }}</option>
+          @for (label of analyse.availableTypeSections(); track label) {
+            <option [ngValue]="label">{{ analyse.translateLabel(label) }}</option>
           }
         </select>
-        @if (availableCreatureTypes().length > 0) {
-          <select class="glass-input small" [ngModel]="creatureTypeFilter()" (ngModelChange)="creatureTypeFilter.set($event)">
+        @if (analyse.availableCreatureTypes().length > 0) {
+          <select class="glass-input small" [ngModel]="analyse.creatureTypeFilter()" (ngModelChange)="analyse.creatureTypeFilter.set($event)">
             <option [ngValue]="'all'">{{ i18n.t('deckView.creatureTypeAll') }}</option>
-            @for (t of availableCreatureTypes(); track t) {
+            @for (t of analyse.availableCreatureTypes(); track t) {
               <option [ngValue]="t">{{ t }}</option>
             }
           </select>
         }
-        <app-color-filter [(value)]="colorFilter" />
-        @if (hasActiveCardFilters()) {
-          <button class="glass-chip small" (click)="resetCardFilters()">{{ i18n.t('deckView.resetFilters') }}</button>
+        <app-color-filter [(value)]="analyse.colorFilter" />
+        @if (analyse.hasActiveCardFilters()) {
+          <button class="glass-chip small" (click)="analyse.resetCardFilters()">{{ i18n.t('deckView.resetFilters') }}</button>
         }
       </div>
 
-      @if (hasActiveCardFilters() && filteredGroupedCards().length === 0) {
+      @if (analyse.hasActiveCardFilters() && analyse.filteredGroupedCards().length === 0) {
         <p class="hint">{{ i18n.t('deckView.noCardsFound') }}</p>
       }
 
-      @for (section of filteredGroupedCards(); track section.label) {
-        <h4 class="deck-section-title">{{ translateLabel(section.label) }} ({{ sectionCardCount(section.cards) }})</h4>
+      @for (section of analyse.filteredGroupedCards(); track section.label) {
+        <h4 class="deck-section-title">{{ analyse.translateLabel(section.label) }} ({{ analyse.sectionCardCount(section.cards) }})</h4>
         <div class="card-pick-grid">
           @for (entry of section.cards; track entry.card.name) {
             <div class="card-pick-tile" (click)="openPreview(entry.card)">

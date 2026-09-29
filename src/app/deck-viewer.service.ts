@@ -46,18 +46,25 @@ import {
 import type { SteckbriefDeckinfo, SteckbriefKarte } from './deck-steckbrief/deck-steckbrief';
 import { BarChartDatum } from './ui/bar-chart/bar-chart';
 import { manaCurveChartData, pipChartData, typeChartData } from './ui/bar-chart/deck-chart-data';
+import {
+  AnalyseKarte,
+  ManaCurveBucket,
+  PipCount,
+  TypeBreakdownEntry,
+  averageCmc,
+  cmcBucket,
+  groupByTypeSection,
+  isLand,
+  landCount,
+  manaCurve,
+  nonBasicLandPercent,
+  parseSubtypes,
+  pipDistribution,
+  translateSectionLabel,
+  typeBreakdown,
+  typeSection,
+} from './deck-analyse';
 import { DeckFormat, DECK_FORMATS } from './models';
-
-export interface ManaCurveBucket {
-  label: string;
-  count: number;
-}
-
-export interface PipCount {
-  color: 'W' | 'U' | 'B' | 'R' | 'G';
-  label: string;
-  count: number;
-}
 
 /** Wie viele Deckkarten Mana dieser Farbe erzeugen können (Manaquellen-Verteilung). */
 export interface ManaSourceCount {
@@ -127,12 +134,6 @@ export interface ComboFinderCombo {
    * ist. Als Symbole angezeigt, nicht als Zahl: so steht dort dasselbe wie auf der Karte.
    */
   extraMana: ManaPart[];
-}
-
-export interface TypeBreakdownEntry {
-  type: string;
-  label: string;
-  count: number;
 }
 
 export interface EffectCategoryStat {
@@ -414,46 +415,30 @@ export class DeckViewerService {
 
   /** Nicht-Land-Karten - Basis für Manakurve, Pip-Verteilung und Game-Changer-Auswertung. */
   private readonly nonLandCards = computed(() =>
-    this.analysisDeckCards().filter((c) => !(c.typeLine ?? '').includes('Land')),
+    this.analysisDeckCards().filter((c) => !isLand(c.typeLine)),
   );
 
-  readonly manaCurve = computed<ManaCurveBucket[]>(() => {
-    const buckets = [0, 1, 2, 3, 4, 5, 6].map((cmc) => ({ label: `${cmc}`, count: 0 }));
-    const sevenPlus = { label: '7+', count: 0 };
-    for (const card of this.nonLandCards()) {
-      const bucket =
-        card.cmc >= 7 ? sevenPlus : buckets[Math.min(6, Math.max(0, Math.round(card.cmc)))];
-      bucket.count += card.quantity;
-    }
-    return [...buckets, sevenPlus];
+  /** Analyse-Karten samt Manakosten aus den Scryfall-Zusatzdaten (siehe deck-analyse.ts). */
+  private readonly analyseKarten = computed<AnalyseKarte[]>(() => {
+    const details = this.viewingCardDetails();
+    return this.analysisDeckCards().map((c) => ({
+      quantity: c.quantity,
+      cmc: c.cmc,
+      typeLine: c.typeLine,
+      manaCost: details.get(c.cardName.toLowerCase())?.manaCost,
+    }));
   });
 
-  /** Durchschnittliche Manakosten ohne Länder (die würden mit ihren 0 Manakosten den Schnitt künstlich nach unten verfälschen). */
-  readonly averageCmc = computed<number | null>(() => {
-    const cards = this.nonLandCards();
-    const totalQty = cards.reduce((sum, c) => sum + c.quantity, 0);
-    if (totalQty === 0) return null;
-    const totalCmc = cards.reduce((sum, c) => sum + c.cmc * c.quantity, 0);
-    return totalCmc / totalQty;
-  });
+  readonly manaCurve = computed<ManaCurveBucket[]>(() => manaCurve(this.analyseKarten()));
+  readonly averageCmc = computed<number | null>(() => averageCmc(this.analyseKarten()));
 
   /** Land-Karten (inkl. Basisländer) - Basis für Landzahl und Nichtbasis-Land-Anteil. */
   private readonly landCards = computed(() =>
-    this.analysisDeckCards().filter((c) => (c.typeLine ?? '').includes('Land')),
+    this.analysisDeckCards().filter((c) => isLand(c.typeLine)),
   );
 
-  readonly landCount = computed(() => this.landCards().reduce((sum, c) => sum + c.quantity, 0));
-
-  /** Anteil Nichtbasisländer an allen Ländern (0-100), null ohne Länder im Deck. */
-  readonly nonBasicLandPercent = computed<number | null>(() => {
-    const lands = this.landCards();
-    const total = lands.reduce((sum, c) => sum + c.quantity, 0);
-    if (total === 0) return null;
-    const nonBasic = lands
-      .filter((c) => !(c.typeLine ?? '').includes('Basic'))
-      .reduce((sum, c) => sum + c.quantity, 0);
-    return Math.round((nonBasic / total) * 100);
-  });
+  readonly landCount = computed(() => landCount(this.analyseKarten()));
+  readonly nonBasicLandPercent = computed<number | null>(() => nonBasicLandPercent(this.analyseKarten()));
 
   // Ein Land kommt bedingungslos getappt, wenn sein Regeltext "enters tapped" sagt und die Karte
   // keinen Ausweg anbietet. Die Ausnahmen trennen genau die Premium-Länder ab, die formal denselben
@@ -488,38 +473,9 @@ export class DeckViewerService {
     return Math.round(((total - getappt) / total) * 100);
   });
 
-  /**
-   * Genau eine Kategorie pro Karte (nach fester Priorität, mehrfachtypige Karten wie "Artifact
-   * Creature" landen bei der spielrelevanteren Kategorie) - Summe der Balken ergibt so immer die
-   * Gesamtkartenzahl, anders als eine Mehrfachzählung über alle Typen einer Karte.
-   */
-  private static readonly TYPE_PRIORITY: { type: string; test: RegExp }[] = [
-    { type: 'creature', test: /Creature/ },
-    { type: 'planeswalker', test: /Planeswalker/ },
-    { type: 'battle', test: /Battle/ },
-    { type: 'land', test: /Land/ },
-    { type: 'artifact', test: /Artifact/ },
-    { type: 'enchantment', test: /Enchantment/ },
-    { type: 'instant', test: /Instant/ },
-    { type: 'sorcery', test: /Sorcery/ },
-  ];
-
-  readonly typeBreakdown = computed<TypeBreakdownEntry[]>(() => {
-    const counts: Record<string, number> = {};
-    for (const t of DeckViewerService.TYPE_PRIORITY) counts[t.type] = 0;
-
-    for (const card of this.analysisDeckCards()) {
-      const typeLine = card.typeLine ?? '';
-      const match = DeckViewerService.TYPE_PRIORITY.find((t) => t.test.test(typeLine));
-      if (match) counts[match.type] += card.quantity;
-    }
-
-    return DeckViewerService.TYPE_PRIORITY.map((t) => ({
-      type: t.type,
-      label: this.i18n.t(`deckView.type.${t.type}`),
-      count: counts[t.type],
-    }));
-  });
+  readonly typeBreakdown = computed<TypeBreakdownEntry[]>(() =>
+    typeBreakdown(this.analyseKarten(), this.i18n),
+  );
 
   /** Gesamtpreis (USD, billigste Druckvariante je Karte) - null solange noch nicht geladen. */
   readonly totalDeckPrice = signal<number | null>(null);
@@ -564,28 +520,9 @@ export class DeckViewerService {
     pipChartData(this.manaSourceDistribution()),
   );
 
-  private static readonly PIP_COLORS: PipCount['color'][] = ['W', 'U', 'B', 'R', 'G'];
-
-  readonly pipDistribution = computed<PipCount[]>(() => {
-    const details = this.viewingCardDetails();
-    const counts: Record<string, number> = { W: 0, U: 0, B: 0, R: 0, G: 0 };
-    for (const card of this.nonLandCards()) {
-      const manaCost = details.get(card.cardName.toLowerCase())?.manaCost;
-      if (!manaCost) continue;
-      const symbols = manaCost.match(/\{([^}]+)\}/g) ?? [];
-      for (const symbol of symbols) {
-        const parts = symbol.slice(1, -1).split('/');
-        for (const part of parts) {
-          if (part in counts) counts[part] += card.quantity;
-        }
-      }
-    }
-    return DeckViewerService.PIP_COLORS.map((color) => ({
-      color,
-      label: this.i18n.t(`pip.${color}`),
-      count: counts[color],
-    }));
-  });
+  readonly pipDistribution = computed<PipCount[]>(() =>
+    pipDistribution(this.analyseKarten(), this.i18n),
+  );
 
   private static readonly MANA_SOURCE_COLORS: ManaSourceCount['color'][] = [
     'W',
@@ -1209,33 +1146,16 @@ export class DeckViewerService {
       : this.i18n.t('deckView.bracketAutoOption', { level: String(level) });
   });
 
-  /** Reihenfolge der Typ-Abschnitte (Commander steht immer separat ganz vorn). */
-  private static readonly TYPE_ORDER: { label: string; test: (typeLine: string) => boolean }[] = [
-    { label: 'Planeswalker', test: (t) => t.includes('Planeswalker') },
-    { label: 'Battle', test: (t) => t.includes('Battle') },
-    { label: 'Kreatur', test: (t) => t.includes('Creature') },
-    { label: 'Spontanzauber', test: (t) => t.includes('Instant') },
-    { label: 'Hexerei', test: (t) => t.includes('Sorcery') },
-    { label: 'Artefakt', test: (t) => t.includes('Artifact') },
-    { label: 'Verzauberung', test: (t) => t.includes('Enchantment') },
-    { label: 'Land', test: (t) => t.includes('Land') },
-  ];
-
-  private categoryFor(card: DeckCard): string {
-    const type = card.typeLine ?? '';
-    return DeckViewerService.TYPE_ORDER.find((c) => c.test(type))?.label ?? 'Sonstiges';
-  }
-
   /**
    * True bei Doppelkarten (Transform/Modal-DFC), deren VORDERSEITE woanders einsortiert wird (meist
    * Spontanzauber/Hexerei bei den "ZNR-Pathway"-artigen MDFCs), deren RÜCKSEITE aber ein Land ist -
    * typeLine ist bei Scryfall für solche Karten immer "Vorderseite // Rückseite" kombiniert. Die
-   * Einsortierung selbst bleibt bewusst bei der Vorderseite (categoryFor prüft der Reihe nach, Land
+   * Einsortierung selbst bleibt bewusst bei der Vorderseite (typeSection prüft der Reihe nach, Land
    * steht dort zuletzt), sonst würde z.B. eine hauptsächlich als Spontanzauber gespielte Karte in der
    * Land-Sektion landen - nur die Land-ANZAHL soll diese verstecken Länder trotzdem mitzählen.
    */
   private isHiddenMdfcLand(card: DeckCard): boolean {
-    if (this.categoryFor(card) === 'Land') return false;
+    if (typeSection(card.typeLine) === 'Land') return false;
     const backType = (card.typeLine ?? '').split(' // ')[1];
     return !!backType?.includes('Land');
   }
@@ -1247,32 +1167,9 @@ export class DeckViewerService {
       .reduce((sum, c) => sum + c.quantity, 0),
   );
 
-  /**
-   * Übersetzt einen internen Sektions-/Typ-Label-Schlüssel (z.B. "Kreatur", "Sonstiges", "Ohne
-   * Tag") für die Anzeige - die Labels selbst bleiben intern immer deutsch, da sie zugleich als
-   * Gruppierungs-/Filter-Schlüssel dienen (categoryFor, typeFilterValue, TYPE_TO_SCRYFALL). Nur
-   * diese Anzeige-Übersetzung ist sprachabhängig.
-   */
-  private static readonly LABEL_KEYS: Record<string, string> = {
-    Planeswalker: 'deckViewer.type.Planeswalker',
-    Battle: 'deckViewer.type.Battle',
-    Kreatur: 'deckViewer.type.Kreatur',
-    'Legendäre Kreatur': 'deckViewer.type.LegendaereKreatur',
-    Spontanzauber: 'deckViewer.type.Spontanzauber',
-    Hexerei: 'deckViewer.type.Hexerei',
-    Artefakt: 'deckViewer.type.Artefakt',
-    Verzauberung: 'deckViewer.type.Verzauberung',
-    Land: 'deckViewer.type.Land',
-    Commander: 'deckViewer.type.Commander',
-    Sonstiges: 'deckViewer.type.Sonstiges',
-    'Ohne Tag': 'deckViewer.type.OhneTag',
-    Maybeboard: 'deckViewer.type.Maybeboard',
-    Tokens: 'deckViewer.type.Tokens',
-  };
-
+  /** Interne Abschnitts-Schlüssel sind deutsch (auch Filter-Schlüssel), übersetzt wird nur die Anzeige. */
   translateLabel(label: string): string {
-    const key = DeckViewerService.LABEL_KEYS[label];
-    return key ? this.i18n.t(key) : label;
+    return translateSectionLabel(this.i18n, label);
   }
 
   private static sortByCmc(a: DeckCard, b: DeckCard): number {
@@ -1288,14 +1185,6 @@ export class DeckViewerService {
     const maybe = this.editedDeckCards().filter((c) => !c.isCommander && c.isMaybeboard);
     const tokens = this.editedDeckCards().filter((c) => c.isToken);
 
-    const groups = new Map<string, DeckCard[]>();
-    for (const card of rest) {
-      const category = this.categoryFor(card);
-      const list = groups.get(category) ?? [];
-      list.push(card);
-      groups.set(category, list);
-    }
-
     const sections: { label: string; cards: DeckCard[] }[] = [];
     if (commander.length > 0) {
       sections.push({
@@ -1303,15 +1192,7 @@ export class DeckViewerService {
         cards: [...commander].sort(DeckViewerService.sortByCmc),
       });
     }
-    for (const { label } of DeckViewerService.TYPE_ORDER) {
-      const cards = groups.get(label);
-      if (cards?.length)
-        sections.push({ label, cards: [...cards].sort(DeckViewerService.sortByCmc) });
-    }
-    const other = groups.get('Sonstiges');
-    if (other?.length) {
-      sections.push({ label: 'Sonstiges', cards: [...other].sort(DeckViewerService.sortByCmc) });
-    }
+    sections.push(...groupByTypeSection(rest, (c) => c.typeLine, DeckViewerService.sortByCmc));
     if (maybe.length > 0) {
       sections.push({ label: 'Maybeboard', cards: [...maybe].sort(DeckViewerService.sortByCmc) });
     }
@@ -1403,18 +1284,12 @@ export class DeckViewerService {
     const types = new Set<string>();
     for (const card of this.viewingDeckCards()) {
       if (!(card.typeLine ?? '').includes('Creature')) continue;
-      for (const t of DeckViewerService.parseSubtypes(card.typeLine)) types.add(t);
+      for (const t of parseSubtypes(card.typeLine)) types.add(t);
     }
     return [...types].sort((a, b) => a.localeCompare(b));
   });
 
   readonly availableTypeSections = computed(() => this.groupedDeckCards().map((s) => s.label));
-
-  private static parseSubtypes(typeLine: string | null): string[] {
-    const parts = (typeLine ?? '').split('—');
-    if (parts.length < 2) return [];
-    return parts[1].trim().split(/\s+/).filter(Boolean);
-  }
 
   private cardMatchesFilters(card: DeckCard): boolean {
     const query = this.cardSearchQuery().trim().toLowerCase();
@@ -1422,14 +1297,13 @@ export class DeckViewerService {
 
     const cmc = this.cmcFilter();
     if (cmc !== 'all') {
-      const bucket = card.cmc >= 7 ? 7 : Math.round(card.cmc);
-      if (bucket !== cmc) return false;
+      if (cmcBucket(card.cmc) !== cmc) return false;
     }
 
     const creatureType = this.creatureTypeFilter();
     if (
       creatureType !== 'all' &&
-      !DeckViewerService.parseSubtypes(card.typeLine).includes(creatureType)
+      !parseSubtypes(card.typeLine).includes(creatureType)
     ) {
       return false;
     }

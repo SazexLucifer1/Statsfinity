@@ -9,7 +9,7 @@ import { NavigationService } from '../navigation.service';
 import { CardImage } from '../card-image/card-image';
 import { PartnerCardImage } from '../partner-card-image/partner-card-image';
 import { normalizeCardName } from '../array-utils';
-import { BarChart, BarChartDatum } from '../ui/bar-chart/bar-chart';
+import { BarChart } from '../ui/bar-chart/bar-chart';
 import { ColorFilter } from '../ui/color-filter/color-filter';
 import { DeckComments } from '../deck-comments/deck-comments';
 import { DeckPrimer } from '../deck-primer/deck-primer';
@@ -20,123 +20,18 @@ import {
   SteckbriefKarte,
 } from '../deck-steckbrief/deck-steckbrief';
 import { DeckSteckbriefService } from '../deck-steckbrief.service';
-import {
-  ColorSelection,
-  EMPTY_COLOR_SELECTION,
-  FILTER_COLORS,
-  matchesColorSelection,
-} from '../color-filter-match';
-import {
-  manaCurveChartData,
-  pipChartData,
-  typeChartData,
-} from '../ui/bar-chart/deck-chart-data';
+import { ColorSelection, EMPTY_COLOR_SELECTION, FILTER_COLORS } from '../color-filter-match';
+import { ReadonlyDeckAnalysis, ReadonlyDeckEntry, averageCmc } from '../deck-analyse';
 import { DeckSocial } from '../deck-social/deck-social';
 import { DeckSocialService } from '../deck-social.service';
 import { BanlistService } from '../banlist.service';
 import { ProfileService } from '../profile.service';
 import { Icon } from '../ui/icon/icon';
 
-interface PublicDeckCardEntry {
-  card: ScryfallCard;
-  quantity: number;
-  isCommander: boolean;
-}
-
-interface ManaCurveBucket {
-  label: string;
-  count: number;
-}
-
-interface PipCount {
-  color: 'W' | 'U' | 'B' | 'R' | 'G';
-  label: string;
-  count: number;
-}
-
-interface TypeBreakdownEntry {
-  type: string;
-  label: string;
-  count: number;
-}
-
-interface CardSection {
-  label: string;
-  cards: PublicDeckCardEntry[];
-}
-
 /**
- * Reihenfolge der Typ-Abschnitte - dieselben internen (deutschen) Label-Schlüssel wie
- * DeckViewerService.TYPE_ORDER, damit dieselben i18n.service.ts-Übersetzungs-Keys
- * (deckViewer.type.*) ohne Duplikate wiederverwendet werden können.
- */
-const TYPE_ORDER: { label: string; test: (typeLine: string) => boolean }[] = [
-  { label: 'Planeswalker', test: (t) => t.includes('Planeswalker') },
-  { label: 'Battle', test: (t) => t.includes('Battle') },
-  { label: 'Kreatur', test: (t) => t.includes('Creature') },
-  { label: 'Spontanzauber', test: (t) => t.includes('Instant') },
-  { label: 'Hexerei', test: (t) => t.includes('Sorcery') },
-  { label: 'Artefakt', test: (t) => t.includes('Artifact') },
-  { label: 'Verzauberung', test: (t) => t.includes('Enchantment') },
-  { label: 'Land', test: (t) => t.includes('Land') },
-];
-
-const TYPE_PRIORITY: { type: string; test: RegExp }[] = [
-  { type: 'creature', test: /Creature/ },
-  { type: 'planeswalker', test: /Planeswalker/ },
-  { type: 'battle', test: /Battle/ },
-  { type: 'land', test: /Land/ },
-  { type: 'artifact', test: /Artifact/ },
-  { type: 'enchantment', test: /Enchantment/ },
-  { type: 'instant', test: /Instant/ },
-  { type: 'sorcery', test: /Sorcery/ },
-];
-
-const PIP_COLORS: PipCount['color'][] = ['W', 'U', 'B', 'R', 'G'];
-
-/** Wie DeckViewerService.LABEL_KEYS - dieselben (deutschen) Sektions-Label-Schlüssel auf dieselben i18n-Keys gemappt. */
-const LABEL_KEYS: Record<string, string> = {
-  Planeswalker: 'deckViewer.type.Planeswalker',
-  Battle: 'deckViewer.type.Battle',
-  Kreatur: 'deckViewer.type.Kreatur',
-  Spontanzauber: 'deckViewer.type.Spontanzauber',
-  Hexerei: 'deckViewer.type.Hexerei',
-  Artefakt: 'deckViewer.type.Artefakt',
-  Verzauberung: 'deckViewer.type.Verzauberung',
-  Land: 'deckViewer.type.Land',
-  Sonstiges: 'deckViewer.type.Sonstiges',
-};
-
-function categoryFor(card: ScryfallCard): string {
-  const type = card.typeLine ?? '';
-  return TYPE_ORDER.find((c) => c.test(type))?.label ?? 'Sonstiges';
-}
-
-function parseSubtypes(typeLine: string | undefined): string[] {
-  const parts = (typeLine ?? '').split('—');
-  if (parts.length < 2) return [];
-  return parts[1].trim().split(/\s+/).filter(Boolean);
-}
-
-function sortByCmc(a: PublicDeckCardEntry, b: PublicDeckCardEntry): number {
-  return (a.card.cmc ?? 0) - (b.card.cmc ?? 0) || a.card.name.localeCompare(b.card.name);
-}
-
-/**
- * Öffentliche Decks anderer Nutzer durchsuchen (Name/Farbe/Archetyp/Kreaturtyp, sortiert nach
- * "neu"/Winrate) und rein lesend ansehen - ohne Account nutzbar, eigener Umschalter im Suche-Tab
- * (siehe sql/public-deck-browse-2026-08-26.sql für die zugrundeliegende RLS-/Schema-Änderung).
- * Hält den Zustand komplett lokal statt DeckViewerService zu injizieren - gleiche Entscheidung wie
- * precon-browser.ts.
- *
- * Die Deck-Detailansicht (nach openDeck()) portiert bewusst nur einen SCHLANKEN Ausschnitt der
- * Analyse-/Filter-Logik aus DeckViewerService (Manakurve, Pip-Verteilung, Typ-Verteilung,
- * Land-/Ø-Manawert-/Preis-Kennzahlen, Such-/Manawert-/Typ-/Kreaturtyp-/Farb-Filter) - direkt hier
- * neu berechnet aus ScryfallCard-Feldern (cmc/typeLine/manaCost/colorIdentity liegen bei
- * PublicDeckCardEntry.card bereits direkt vor, anders als bei DeckViewerService, das dafür extra
- * eine viewingCardDetails-Zusatzabfrage braucht). Bewusst NICHT portiert: Tag-Sortiermodus (keine
- * eigenen Tags auf fremden Decks), Keyword-/Effekt-Filter sowie Game-Changer/Tutor/Spellbook-
- * Auswertung (alle an DeckViewerServices große, Auth-/Mutation-lastige Maschinerie gekoppelt).
+ * Öffentliche Decks anderer Nutzer durchsuchen (Name, Farbe, Archetyp, Kreaturtyp; sortiert nach
+ * neu/Winrate) und lesend ansehen, auch ohne Account. Bewusst ohne DeckViewerService (Auth- und
+ * Schreiblogik); Analyse und Filter kommen aus ReadonlyDeckAnalysis.
  */
 @Component({
   selector: 'app-public-deck-browser',
@@ -188,7 +83,7 @@ export class PublicDeckBrowser {
 
   readonly selectedDeck = signal<PublicDeck | null>(null);
   readonly selectedDeckCommanderCards = signal<ScryfallCard[]>([]);
-  readonly allCards = signal<PublicDeckCardEntry[]>([]);
+  readonly allCards = signal<ReadonlyDeckEntry[]>([]);
 
   /** Bannliste und Bauregeln für das geöffnete Deck: rot markierte Karten und Hinweiszeilen. */
   readonly pruefung = computed(() =>
@@ -212,12 +107,7 @@ export class PublicDeckBrowser {
   readonly totalDeckPrice = signal<number | null>(null);
   readonly priceBusy = signal(false);
 
-  // --- Deck-interne Filter/Sortierung (nur die schlanke Untermenge, siehe Klassenkommentar) ---
-  readonly cardSearchQuery = signal('');
-  readonly cmcFilter = signal<'all' | number>('all');
-  readonly typeFilterValue = signal<'all' | string>('all');
-  readonly creatureTypeFilter = signal<'all' | string>('all');
-  readonly colorFilter = signal<ColorSelection>(EMPTY_COLOR_SELECTION);
+  readonly analyse = new ReadonlyDeckAnalysis(this.allCards, this.i18n);
 
   /**
    * Deck, dessen Steckbrief gerade als Popup über der Trefferliste liegt (Klick aufs
@@ -238,7 +128,7 @@ export class PublicDeckBrowser {
    * Liegt aus demselben Grund hier wie partnerFront: Der Umdreh-Knopf sitzt in der Leiste.
    */
   readonly flipped = signal<ReadonlySet<string>>(new Set());
-  readonly passportCards = signal<PublicDeckCardEntry[]>([]);
+  readonly passportCards = signal<ReadonlyDeckEntry[]>([]);
   readonly passportBusy = signal(false);
 
   /** Gesetzt, wenn ein über den Deck-Link geöffnetes Deck nicht (mehr) öffentlich erreichbar ist. */
@@ -394,13 +284,13 @@ export class PublicDeckBrowser {
     this.selectedDeckCommanderCards.set(this.commanderCardsFor(deck.id));
     this.allCards.set([]);
     this.totalDeckPrice.set(null);
-    this.resetCardFilters();
+    this.analyse.resetCardFilters();
     this.deckBusy.set(true);
 
     const entries = await this.publicDecks.loadDeckCards(deck.id);
     const cardMap = await this.scryfall.findCardsBulk(entries.map((e) => e.name));
 
-    const all: PublicDeckCardEntry[] = [];
+    const all: ReadonlyDeckEntry[] = [];
     for (const entry of entries) {
       const card = cardMap.get(entry.name.toLowerCase());
       if (card) all.push({ card, quantity: entry.quantity, isCommander: entry.isCommander });
@@ -412,7 +302,7 @@ export class PublicDeckBrowser {
     this.loadCardPrices(all);
   }
 
-  private async loadCardPrices(cards: PublicDeckCardEntry[]): Promise<void> {
+  private async loadCardPrices(cards: ReadonlyDeckEntry[]): Promise<void> {
     this.priceBusy.set(true);
     const names = [...new Set(cards.map((c) => c.card.name))];
     // Nur die Preise; das incomplete-Flag wertet bislang allein die Deck-Ansicht aus ("ab X €",
@@ -445,7 +335,7 @@ export class PublicDeckBrowser {
     // Inzwischen geschlossen oder ein anderes Deck geöffnet - diese Antwort gehört nicht mehr hierher.
     if (this.passportDeck()?.id !== deck.id) return;
 
-    const all: PublicDeckCardEntry[] = [];
+    const all: ReadonlyDeckEntry[] = [];
     for (const entry of entries) {
       const card = cardMap.get(entry.name.toLowerCase());
       if (card) all.push({ card, quantity: entry.quantity, isCommander: entry.isCommander });
@@ -525,162 +415,6 @@ export class PublicDeckBrowser {
     this.cardPreview.open(card.imageUrl, card.backImageUrl, card.name);
   }
 
-  // --- Deck-Analyse (Manakurve/Pips/Typ-Verteilung/Kennzahlen) - über ALLE Karten inkl. Commander,
-  // wie DeckViewerService.analysisDeckCards() (dort ebenfalls nicht commander-ausgeschlossen). ---
-
-  private readonly nonLandCards = computed(() => ohneLaender(this.allCards()));
-
-  readonly manaCurve = computed<ManaCurveBucket[]>(() => {
-    const buckets = [0, 1, 2, 3, 4, 5, 6].map((cmc) => ({ label: `${cmc}`, count: 0 }));
-    const sevenPlus = { label: '7+', count: 0 };
-    for (const e of this.nonLandCards()) {
-      const cmc = e.card.cmc ?? 0;
-      const bucket = cmc >= 7 ? sevenPlus : buckets[Math.min(6, Math.max(0, Math.round(cmc)))];
-      bucket.count += e.quantity;
-    }
-    return [...buckets, sevenPlus];
-  });
-
-  readonly averageCmc = computed<number | null>(() => durchschnittMv(this.nonLandCards()));
-
-  private readonly landCards = computed(() => this.allCards().filter((e) => (e.card.typeLine ?? '').includes('Land')));
-  readonly landCount = computed(() => this.landCards().reduce((sum, e) => sum + e.quantity, 0));
-
-  readonly nonBasicLandPercent = computed<number | null>(() => {
-    const lands = this.landCards();
-    const total = lands.reduce((sum, e) => sum + e.quantity, 0);
-    if (total === 0) return null;
-    const nonBasic = lands.filter((e) => !(e.card.typeLine ?? '').includes('Basic')).reduce((sum, e) => sum + e.quantity, 0);
-    return Math.round((nonBasic / total) * 100);
-  });
-
-  readonly typeBreakdown = computed<TypeBreakdownEntry[]>(() => {
-    const counts: Record<string, number> = {};
-    for (const t of TYPE_PRIORITY) counts[t.type] = 0;
-    for (const e of this.allCards()) {
-      const typeLine = e.card.typeLine ?? '';
-      const match = TYPE_PRIORITY.find((t) => t.test.test(typeLine));
-      if (match) counts[match.type] += e.quantity;
-    }
-    return TYPE_PRIORITY.map((t) => ({ type: t.type, label: this.i18n.t(`deckView.type.${t.type}`), count: counts[t.type] }));
-  });
-
-  readonly pipDistribution = computed<PipCount[]>(() => {
-    const counts: Record<string, number> = { W: 0, U: 0, B: 0, R: 0, G: 0 };
-    for (const e of this.nonLandCards()) {
-      const manaCost = e.card.manaCost;
-      if (!manaCost) continue;
-      const symbols = manaCost.match(/\{([^}]+)\}/g) ?? [];
-      for (const symbol of symbols) {
-        const parts = symbol.slice(1, -1).split('/');
-        for (const part of parts) {
-          if (part in counts) counts[part] += e.quantity;
-        }
-      }
-    }
-    return PIP_COLORS.map((color) => ({ color, label: this.i18n.t(`pip.${color}`), count: counts[color] }));
-  });
-
-  // --- Diagramm-Reihen für <app-bar-chart> ---
-  // Abbildung geteilt mit deck-detail-view und der jeweils anderen Browser-Ansicht.
-  readonly manaCurveChart = computed<BarChartDatum[]>(() => manaCurveChartData(this.manaCurve()));
-  readonly pipDistributionChart = computed<BarChartDatum[]>(() =>
-    pipChartData(this.pipDistribution()),
-  );
-  readonly typeBreakdownChart = computed<BarChartDatum[]>(() =>
-    typeChartData(this.typeBreakdown()),
-  );
-
-
-
-
-  // --- Karten-Filter/Gruppierung für die Kartenliste (Commander bewusst ausgeschlossen - der wird
-  // schon prominent im Kopfbereich gezeigt, siehe public-deck-browser.html). ---
-
-  private readonly sectionSourceCards = computed(() => this.allCards().filter((e) => !e.isCommander));
-
-  readonly groupedCards = computed<CardSection[]>(() => {
-    const groups = new Map<string, PublicDeckCardEntry[]>();
-    for (const e of this.sectionSourceCards()) {
-      const category = categoryFor(e.card);
-      const list = groups.get(category) ?? [];
-      list.push(e);
-      groups.set(category, list);
-    }
-
-    const sections: CardSection[] = [];
-    for (const { label } of TYPE_ORDER) {
-      const cards = groups.get(label);
-      if (cards?.length) sections.push({ label, cards: [...cards].sort(sortByCmc) });
-    }
-    const other = groups.get('Sonstiges');
-    if (other?.length) sections.push({ label: 'Sonstiges', cards: [...other].sort(sortByCmc) });
-    return sections;
-  });
-
-  readonly availableTypeSections = computed(() => this.groupedCards().map((s) => s.label));
-
-  readonly availableCreatureTypes = computed(() => {
-    const types = new Set<string>();
-    for (const e of this.sectionSourceCards()) {
-      if (!(e.card.typeLine ?? '').includes('Creature')) continue;
-      for (const t of parseSubtypes(e.card.typeLine)) types.add(t);
-    }
-    return [...types].sort((a, b) => a.localeCompare(b));
-  });
-
-  private cardMatchesFilters(e: PublicDeckCardEntry): boolean {
-    const query = this.cardSearchQuery().trim().toLowerCase();
-    if (query && !e.card.name.toLowerCase().includes(query)) return false;
-
-    const cmc = this.cmcFilter();
-    if (cmc !== 'all') {
-      const bucket = (e.card.cmc ?? 0) >= 7 ? 7 : Math.round(e.card.cmc ?? 0);
-      if (bucket !== cmc) return false;
-    }
-
-    const creatureType = this.creatureTypeFilter();
-    if (creatureType !== 'all' && !parseSubtypes(e.card.typeLine).includes(creatureType)) return false;
-
-    if (!matchesColorSelection(e.card.colorIdentity ?? [], this.colorFilter())) return false;
-
-    return true;
-  }
-
-  readonly filteredGroupedCards = computed<CardSection[]>(() => {
-    const typeFilter = this.typeFilterValue();
-    return this.groupedCards()
-      .filter((section) => typeFilter === 'all' || section.label === typeFilter)
-      .map((section) => ({ label: section.label, cards: section.cards.filter((e) => this.cardMatchesFilters(e)) }))
-      .filter((section) => section.cards.length > 0);
-  });
-
-  readonly hasActiveCardFilters = computed(
-    () =>
-      this.cardSearchQuery().trim() !== '' ||
-      this.cmcFilter() !== 'all' ||
-      this.typeFilterValue() !== 'all' ||
-      this.creatureTypeFilter() !== 'all' ||
-      this.colorFilter().colors.length > 0
-  );
-
-  resetCardFilters(): void {
-    this.cardSearchQuery.set('');
-    this.cmcFilter.set('all');
-    this.typeFilterValue.set('all');
-    this.creatureTypeFilter.set('all');
-    this.colorFilter.set(EMPTY_COLOR_SELECTION);
-  }
-
-  translateLabel(label: string): string {
-    const key = LABEL_KEYS[label];
-    return key ? this.i18n.t(key) : label;
-  }
-
-  sectionCardCount(cards: PublicDeckCardEntry[]): number {
-    return cards.reduce((sum, e) => sum + e.quantity, 0);
-  }
-
   // --- Steckbrief (siehe deck-steckbrief/) ---
 
   /**
@@ -703,7 +437,7 @@ export class PublicDeckBrowser {
     return deck ? alsSteckbrief(deck) : null;
   });
   readonly passportKarten = computed<SteckbriefKarte[]>(() => alsSteckbriefKarten(this.passportCards()));
-  readonly passportAverageCmc = computed<number | null>(() => durchschnittMv(ohneLaender(this.passportCards())));
+  readonly passportAverageCmc = computed<number | null>(() => averageCmc(this.passportCards().map(alsAnalyseKarte)));
 }
 
 function alsSteckbrief(deck: PublicDeck): SteckbriefDeckinfo {
@@ -722,18 +456,10 @@ function alsSteckbrief(deck: PublicDeck): SteckbriefDeckinfo {
   };
 }
 
-function alsSteckbriefKarten(entries: PublicDeckCardEntry[]): SteckbriefKarte[] {
+function alsSteckbriefKarten(entries: ReadonlyDeckEntry[]): SteckbriefKarte[] {
   return entries.map((e) => ({ name: e.card.name, quantity: e.quantity }));
 }
 
-function ohneLaender(entries: PublicDeckCardEntry[]): PublicDeckCardEntry[] {
-  return entries.filter((e) => !(e.card.typeLine ?? '').includes('Land'));
-}
-
-/** Ø Manawert ohne Länder, nach Anzahl gewichtet - null bei einem Deck ohne Nichtländer. */
-function durchschnittMv(nonLands: PublicDeckCardEntry[]): number | null {
-  const totalQty = nonLands.reduce((sum, e) => sum + e.quantity, 0);
-  if (totalQty === 0) return null;
-  const totalCmc = nonLands.reduce((sum, e) => sum + (e.card.cmc ?? 0) * e.quantity, 0);
-  return totalCmc / totalQty;
+function alsAnalyseKarte(e: ReadonlyDeckEntry) {
+  return { quantity: e.quantity, cmc: e.card.cmc ?? 0, typeLine: e.card.typeLine };
 }

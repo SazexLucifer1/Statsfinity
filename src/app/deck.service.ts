@@ -4,6 +4,7 @@ import { ScryfallService, ScryfallCard } from './scryfall.service';
 import { CardDataService } from './card-data.service';
 import { isPlayerWinner } from './match-utils';
 import { sleep } from './array-utils';
+import { parseSubtypes } from './deck-analyse';
 import { GroupService } from './group.service';
 import { PreconService } from './precon.service';
 import { COLORLESS, FILTER_COLORS } from './color-filter-match';
@@ -449,12 +450,6 @@ export interface ParsedDecklistEntry {
   setCode: string | null;
   /** Sammelnummer zum Set-Kürzel ("Sol Ring (SOC) 128" -> "128") - nur zusammen mit setCode brauchbar. */
   collectorNumber: string | null;
-}
-
-function parseSubtypes(typeLine: string | undefined): string[] {
-  const parts = (typeLine ?? '').split('—');
-  if (parts.length < 2) return [];
-  return parts[1].trim().split(/\s+/).filter(Boolean);
 }
 
 /** Für den Precon-Namensabgleich in backfillPreconReleaseYears - fängt zumindest Whitespace-Abweichungen zwischen gespeichertem Decknamen und MTGJSON-Katalogeintrag ab (echte Umbenennungen bleiben davon unberührt, dafür gibt es keine zuverlässige Heuristik). */
