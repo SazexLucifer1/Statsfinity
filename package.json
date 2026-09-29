@@ -28,8 +28,7 @@
     "mana-font": "^1.18.0",
     "qrcode": "^1.5.4",
     "rxjs": "~7.8.0",
-    "tslib": "^2.3.0",
-    "xlsx": "^0.18.5"
+    "tslib": "^2.3.0"
   },
   "devDependencies": {
     "@angular/build": "^21.2.18",

@@ -12,11 +12,6 @@ import { DeckService } from '../deck.service';
 import { DeckViewerService } from '../deck-viewer.service';
 import { CardImage } from '../card-image/card-image';
 import {
-  ExcelImportService,
-  IMPORT_LOSS_PLACEHOLDER,
-  IMPORT_ARCHENEMY_LOSS_PLACEHOLDER,
-} from '../excel-import.service';
-import {
   CommanderStats,
   DeckStats,
   DECK_FORMATS,
@@ -29,7 +24,7 @@ import {
 } from '../models';
 import { I18nService } from '../i18n.service';
 import { TournamentHistory } from '../tournament-history/tournament-history';
-import { isPlayerWinner as isMatchWinner } from '../match-utils';
+import { isImportLossDuplicate, isPlayerWinner as isMatchWinner } from '../match-utils';
 import { Meter } from '../ui/meter/meter';
 import { Pager } from '../ui/pager/pager';
 import { SplitBar, SplitSegment } from '../ui/split-bar/split-bar';
@@ -87,13 +82,6 @@ interface CombinedRankEntry {
   isDeleted?: boolean;
 }
 
-interface ImportMappingRow {
-  sheetName: string;
-  /** '' = überspringen, '__NEW__' = neuer Spieler (siehe newName), sonst ein Name aus mtg.allPlayers() */
-  selection: string;
-  newName: string;
-}
-
 @Component({
   selector: 'app-stats-tab',
   imports: [
@@ -117,7 +105,6 @@ interface ImportMappingRow {
 export class StatsTab {
   readonly mtg = inject(MtgService);
   readonly groupService = inject(GroupService);
-  private readonly excelImport = inject(ExcelImportService);
   private readonly scryfall = inject(ScryfallService);
   private readonly deckService = inject(DeckService);
   private readonly viewer = inject(DeckViewerService);
@@ -432,11 +419,7 @@ export class StatsTab {
    * mit Platzhalter); diese Duplikate zählen nicht.
    */
   readonly totalGames = computed(
-    () =>
-      this.viewedFilteredMatches().filter(
-        (m) =>
-          m.winner !== IMPORT_LOSS_PLACEHOLDER && m.winner !== IMPORT_ARCHENEMY_LOSS_PLACEHOLDER
-      ).length
+    () => this.viewedFilteredMatches().filter((m) => !isImportLossDuplicate(m)).length,
   );
 
   readonly playerStats = computed<PlayerStats[]>(() => {
@@ -1236,134 +1219,6 @@ export class StatsTab {
 
   readonly medal = medalFor;
 
-  // --- Excel-Import ---
-
-  readonly showImportDialog = signal(false);
-
-  openImportDialog(): void {
-    this.showImportDialog.set(true);
-  }
-
-  closeImportDialog(): void {
-    this.showImportDialog.set(false);
-  }
-
-  readonly importPreview = signal<ImportMappingRow[]>([]);
-  readonly importBusy = signal(false);
-  readonly importMessage = signal('');
-
-  /** '' = keine Zuordnung (Cube-Spiele bleiben ohne konkreten Cube-Bezug). */
-  readonly importCubeId = signal<string>('');
-
-  setImportCubeId(event: Event): void {
-    this.importCubeId.set((event.target as HTMLSelectElement).value);
-  }
-
-  /**
-   * Jahr der importierten Spiele; Datum wird auf den 31.12. gesetzt, damit der Jahresfilter greift.
-   */
-  readonly importYear = signal<number>(new Date().getFullYear() - 1);
-
-  readonly importYearOptions = computed<number[]>(() => {
-    const current = new Date().getFullYear();
-    const years: number[] = [];
-    for (let y = current; y >= current - 10; y--) years.push(y);
-    return years;
-  });
-
-  async onExcelSelected(event: Event): Promise<void> {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-    input.value = '';
-    if (!file) return;
-
-    this.importMessage.set('');
-    this.importBusy.set(true);
-    try {
-      const detected = await this.excelImport.loadFile(file);
-      this.importPreview.set(
-        detected.map((d) => {
-          const existing = this.mtg
-            .allPlayers()
-            .find((p) => p.toLowerCase() === d.guessedPlayer.toLowerCase());
-          return existing
-            ? { sheetName: d.sheetName, selection: existing, newName: '' }
-            : { sheetName: d.sheetName, selection: '__NEW__', newName: d.guessedPlayer };
-        })
-      );
-    } catch {
-      this.importMessage.set(this.i18n.t('stats.msg.fileReadError'));
-    } finally {
-      this.importBusy.set(false);
-    }
-  }
-
-  updateImportSelection(sheetName: string, value: string): void {
-    this.importPreview.update((rows) =>
-      rows.map((r) =>
-        r.sheetName === sheetName
-          ? { ...r, selection: value, newName: value === '__NEW__' ? r.newName : '' }
-          : r
-      )
-    );
-  }
-
-  updateImportNewName(sheetName: string, value: string): void {
-    this.importPreview.update((rows) =>
-      rows.map((r) => (r.sheetName === sheetName ? { ...r, newName: value } : r))
-    );
-  }
-
-  private effectivePlayer(row: ImportMappingRow): string {
-    return row.selection === '__NEW__' ? row.newName.trim() : row.selection;
-  }
-
-  async confirmImport(): Promise<void> {
-    const mapping = this.importPreview()
-      .map((r) => ({ sheetName: r.sheetName, player: this.effectivePlayer(r) }))
-      .filter((r) => r.player.length > 0);
-
-    if (mapping.length === 0) {
-      this.importMessage.set(this.i18n.t('stats.msg.noMappingSelected'));
-      return;
-    }
-
-    const importDate = `${this.importYear()}-12-31T00:00:00.000Z`;
-    const selectedCube = this.mtg.cubes().find((c) => c.id === this.importCubeId());
-
-    this.importBusy.set(true);
-    this.importMessage.set(this.i18n.t('stats.msg.recognizingCommanders'));
-    this.importPreview.set([]);
-
-    const matches = await this.excelImport.buildMatches(
-      mapping,
-      importDate,
-      selectedCube
-        ? { id: selectedCube.id, name: selectedCube.name, isCommander: selectedCube.isCommander }
-        : undefined,
-      (done, total) =>
-        this.importMessage.set(this.i18n.t('stats.msg.recognizingProgress', { done, total }))
-    );
-
-    this.importMessage.set(this.i18n.t('stats.msg.importingGames', { count: matches.length }));
-
-    await this.mtg.importMatches(matches);
-
-    this.importBusy.set(false);
-    this.importMessage.set(
-      this.i18n.t('stats.msg.importDone', {
-        games: matches.length,
-        sheets: mapping.length,
-        year: this.importYear(),
-      })
-    );
-  }
-
-  cancelImport(): void {
-    this.importPreview.set([]);
-    this.importMessage.set('');
-  }
-
   // --- Hard-Reset (Danger Zone) ---
 
   readonly showResetConfirm = signal(false);
@@ -1407,6 +1262,5 @@ export class StatsTab {
     this.selectedPlayer.set(null);
     this.selectedCommanderDetail.set(null);
     this.selectedDeckDetail.set(null);
-    this.importMessage.set('');
   }
 }

@@ -2,36 +2,9 @@
 export const stats = {
   de: {
     // --- Stats-Tab: Import-Dialog ---
-    'stats.importDialogTitle': 'Alte Stats importieren',
-    'stats.importDialogHint':
-      'Importiert Commander-Statistiken aus einer Excel-Datei (ein Tab pro Spieler mit Deck-Name und Gespielt/Gewonnen je Modus). Die erzeugten Spiele bekommen das Datum 31.12. des unten gewählten Jahres.',
-    'stats.importYearLabel': 'Jahr für die importierten Spiele',
-    'stats.importCubeLabel': 'Alle importierten Cube-Spiele zuordnen zu',
-    'stats.importCubeNone': 'Kein Cube (allgemein, ohne Zuordnung)',
-    'stats.importChooseFile': 'Excel-Datei wählen',
-    'stats.importReading': 'Datei wird gelesen …',
-    'stats.importCheckMapping': 'Zuordnung prüfen',
-    'stats.importMappingHint':
-      '"-- Überspringen --" für Tabs, die du nicht importieren willst (z.B. veraltete Duplikate). Bei "Neuer Spieler" bitte den Namen exakt eintragen.',
-    'stats.importSkip': '-- Überspringen --',
-    'stats.importNewPlayer': 'Neuer Spieler',
-    'stats.importNewPlayerNamePlaceholder': 'Name des neuen Spielers',
-    'stats.importing': 'Importiere …',
-    'stats.import': 'Importieren',
     'stats.cancel': 'Abbrechen',
-    'stats.close': 'Schließen',
-    'stats.importOpenAria': 'Alte Stats importieren',
 
     // --- Stats-Tab: Meldungen (aus stats-tab.ts) ---
-    'stats.msg.fileReadError':
-      'Datei konnte nicht gelesen werden. Ist es eine gültige .xlsx-Datei?',
-    'stats.msg.noMappingSelected': 'Keine Zuordnung ausgewählt – nichts importiert.',
-    'stats.msg.recognizingCommanders': 'Erkenne Commander aus den Deck-Kommentaren …',
-    'stats.msg.recognizingProgress': 'Erkenne Commander … {{done}} / {{total}}',
-    'stats.msg.importingGames':
-      'Importiere {{count}} Spiele … das kann etwas dauern, bitte warten.',
-    'stats.msg.importDone':
-      '{{games}} Spiele aus {{sheets}} Deck-Tab(s) importiert (Jahr {{year}}).',
     'stats.msg.unknownDeleteError': 'Unbekannter Fehler beim Löschen.',
 
     // --- Stats-Tab: Übersicht/Filter ---
@@ -166,33 +139,9 @@ export const stats = {
   },
   en: {
     // --- Stats tab: import dialog ---
-    'stats.importDialogTitle': 'Import old stats',
-    'stats.importDialogHint':
-      'Imports commander stats from an Excel file (one tab per player, with deck name and played/won per mode). The generated games get the date Dec 31 of the year chosen below.',
-    'stats.importYearLabel': 'Year for the imported games',
-    'stats.importCubeLabel': 'Assign all imported cube games to',
-    'stats.importCubeNone': 'No cube (general, unassigned)',
-    'stats.importChooseFile': 'Choose Excel file',
-    'stats.importReading': 'Reading file …',
-    'stats.importCheckMapping': 'Check mapping',
-    'stats.importMappingHint':
-      '"-- Skip --" for tabs you don\'t want to import (e.g. outdated duplicates). For "New player" please enter the name exactly.',
-    'stats.importSkip': '-- Skip --',
-    'stats.importNewPlayer': 'New player',
-    'stats.importNewPlayerNamePlaceholder': 'Name of the new player',
-    'stats.importing': 'Importing …',
-    'stats.import': 'Import',
     'stats.cancel': 'Cancel',
-    'stats.close': 'Close',
-    'stats.importOpenAria': 'Import old stats',
 
     // --- Stats tab: messages (from stats-tab.ts) ---
-    'stats.msg.fileReadError': 'File could not be read. Is it a valid .xlsx file?',
-    'stats.msg.noMappingSelected': 'No mapping selected – nothing imported.',
-    'stats.msg.recognizingCommanders': 'Recognizing commanders from deck comments …',
-    'stats.msg.recognizingProgress': 'Recognizing commanders … {{done}} / {{total}}',
-    'stats.msg.importingGames': 'Importing {{count}} games … this may take a while, please wait.',
-    'stats.msg.importDone': '{{games}} games from {{sheets}} deck tab(s) imported (year {{year}}).',
     'stats.msg.unknownDeleteError': 'Unknown error while deleting.',
 
     // --- Stats tab: overview/filters ---

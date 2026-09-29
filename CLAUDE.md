@@ -62,7 +62,7 @@ weil die Hauptdatei sonst über das harte Style-Budget von 12 kB liefe.
 
 | Domäne                | Dateien                                                                                                                                                                                                                                             |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Decks                 | `deck.service.ts`, `deck-viewer.service.ts`, `deck-comment.service.ts`, `deck-comment-inbox.service.ts`, `deck-primer.service.ts`, `deck-social.service.ts`, `deck-steckbrief.service.ts`, `deck-import.service.ts`, `deck-pdf.service.ts`, `public-deck.service.ts`, `manual-deck-link.service.ts`, `excel-import.service.ts`, `banlist.service.ts`                                                                    |
+| Decks                 | `deck.service.ts`, `deck-viewer.service.ts`, `deck-comment.service.ts`, `deck-comment-inbox.service.ts`, `deck-primer.service.ts`, `deck-social.service.ts`, `deck-steckbrief.service.ts`, `deck-import.service.ts`, `deck-pdf.service.ts`, `public-deck.service.ts`, `manual-deck-link.service.ts`, `banlist.service.ts`                                                                    |
 | Karten & externe APIs | `scryfall.service.ts`, `card-data.service.ts`, `edhrec.service.ts`, `commander-spellbook.service.ts`, `mtg.service.ts`, `precon.service.ts`, `card-preview.service.ts`                                                                             |
 | Spiel & Turnier       | `game-session.service.ts`, `goldfish.service.ts`, `tournament.service.ts`                                                                                                                                                                           |
 | Konto & Gruppe        | `auth.service.ts`, `profile.service.ts`, `group.service.ts`, `group-permissions.ts`, `login-overlay.service.ts`                                                                                                                                     |
@@ -165,13 +165,11 @@ Bei diesen Dateien grundsätzlich `grep`/`Glob` vor `Read`; wenn doch gelesen we
 | 3109   | `src/app/deck-viewer.service.ts`                 |
 | 1770   | `src/app/tournament.service.ts`                  |
 | 2459   | `src/app/deck.service.ts`                        |
-| 1492   | `src/app/mtg.service.ts`                         |
+| 1315   | `src/app/mtg.service.ts`                         |
 | 1386   | `src/app/stats-tab/stats-tab.ts`                 |
 | 1111   | `src/app/game-session.service.ts`                |
 | 1154   | `src/app/profile-tab/profile-tab.ts`             |
 | 1727   | `src/app/deck-detail-view/deck-detail-view.html` |
-
-`src/app/excel-import.service.ts` wird von grep als binär erkannt (eingebettete Daten) — nicht am Stück lesen.
 
 ### Reihenfolge beim Suchen
 
