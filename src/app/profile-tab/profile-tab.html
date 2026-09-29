@@ -1,6 +1,6 @@
 @if (profileService.viewingUserId()) {
 <div class="profile-grid">
-  <section class="glass-card span-full">
+  <section class="glass-card span-full" [class.rank-frame]="!!rankFrameStyle()" [style]="rankFrameStyle()">
     @if (profileService.viewingBusy()) {
       <p class="hint">{{ i18n.t('profile.loadingProfile') }}</p>
       <button class="glass-button small" (click)="profileService.stopViewingProfile()">{{ i18n.t('profile.backToMyProfile') }}</button>
@@ -26,6 +26,7 @@
           <button class="glass-button small" (click)="profileService.stopViewingProfile()">{{ i18n.t('profile.backToMyProfile') }}</button>
         </div>
       </div>
+      <app-profile-rank [entry]="rankEntry()" [mode]="rankMode()" />
 
       @if (viewed.favoriteCommanders.length > 0) {
         <div class="favorite-commanders-col" data-tutorial="profile-favorites">
@@ -121,7 +122,7 @@
 } @else if (profileService.viewingPlayerId(); as npcPlayerId) {
 
 <div class="profile-grid">
-<section class="glass-card span-full">
+<section class="glass-card span-full" [class.rank-frame]="!!rankFrameStyle()" [style]="rankFrameStyle()">
   <div class="viewing-profile-header-row">
     <div class="avatar-row">
       <div class="avatar-circle">
@@ -139,6 +140,7 @@
       <button class="glass-button small" (click)="profileService.stopViewingProfile()">{{ i18n.t('profile.backToMyProfile') }}</button>
     </div>
   </div>
+  <app-profile-rank [entry]="rankEntry()" [mode]="rankMode()" />
 
   @if (viewingNpcFavoriteCommanders().length > 0 || groupService.hasPermission('npc.favoriteCommanders')) {
     <div class="favorite-commanders-col" data-tutorial="profile-favorites">
@@ -240,7 +242,7 @@
      nichts zu tun. -->
 <app-comment-inbox />
 
-<section class="glass-card span-full">
+<section class="glass-card span-full" [class.rank-frame]="!!rankFrameStyle()" [style]="rankFrameStyle()">
     <div class="profile-main-row">
       <div class="profile-left" data-tutorial="profile-header">
         <h2>{{ i18n.t('profile.myProfile') }}</h2>
@@ -325,6 +327,19 @@
           </ul>
         }
       </div>
+
+      <!-- Eigene Rasterzelle statt in .profile-left: dort ist neben den Icon-Knöpfen auf dem Handy
+           kaum Platz, der Rang bräche Wort für Wort um. -->
+      @if (profileService.profile()) {
+        <app-profile-rank
+          class="profile-rank-cell"
+          [entry]="rankEntry()"
+          [mode]="rankMode()"
+          [modes]="rankModes()"
+          [editable]="true"
+          (modeChange)="setRankMode($event)"
+        />
+      }
 
       <div class="favorite-commanders-col" data-tutorial="profile-favorites">
         <h3>{{ i18n.t(mtg.myPlayerName() === 'Adrian' ? 'profile.myFavoriteGliederAdrian' : 'profile.myFavoriteCommanders') }}</h3>

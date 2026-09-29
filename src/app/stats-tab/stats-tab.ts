@@ -25,7 +25,8 @@ import {
 import { I18nService } from '../i18n.service';
 import { TournamentHistory } from '../tournament-history/tournament-history';
 import { isImportLossDuplicate, isPlayerWinner as isMatchWinner } from '../match-utils';
-import { EloEntry, eloRanking, ratedModes } from '../elo';
+import { EloEntry, divisionLabel, eloRanking, rankFromLp, ratedModes } from '../elo';
+import { RankBadge } from '../ui/rank-badge/rank-badge';
 import { Meter } from '../ui/meter/meter';
 import { Pager } from '../ui/pager/pager';
 import { SplitBar, SplitSegment } from '../ui/split-bar/split-bar';
@@ -86,6 +87,7 @@ interface CombinedRankEntry {
 @Component({
   selector: 'app-stats-tab',
   imports: [
+    RankBadge,
     DecimalPipe,
     PlayerAvatar,
     FormsModule,
@@ -286,12 +288,19 @@ export class StatsTab {
       .map((e, i) => ({
         ...e,
         place: start + i,
-        rating: Math.round(e.rating),
+        lp: Math.round(e.lp),
+        rank: rankFromLp(e.lp),
         peak: Math.round(e.peak),
         lastChange: Math.round(e.lastChange),
       }));
   });
   readonly showEloInfo = signal(false);
+
+  /** "Gold III" - Rangname für Abzeichen und Tooltip in der Elo-Liste. */
+  rankLabel(rank: ReturnType<typeof rankFromLp>): string {
+    const tier = this.i18n.t('profile.rank.tier.' + rank.tier);
+    return rank.division == null ? tier : `${tier} ${divisionLabel(rank.division)}`;
+  }
 
   setEloMode(mode: GameMode): void {
     this.eloModeChoice.set(mode);

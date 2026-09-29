@@ -2,6 +2,25 @@
 export const profile = {
   de: {
     // --- Profil-Tab ---
+    'profile.rank.infoAria': 'Wie das Rangsystem funktioniert',
+    'profile.rank.info':
+      'Jeder startet je Spielmodus in Holz II (800 LP). Jeder Rang hat fünf Divisionen (V bis I) zu je 100 LP: Holz, Eisen, Bronze, Silber, Gold, Platin, Diamant und ganz oben Planeswalker. Ein Sieg gegen gleich starke Gegner bringt rund 50 LP. Je schlechter die Platzierung, desto mehr LP gehen verloren – als Vierter mehr als als Zweiter. Gegen stärkere Gegner gibt es mehr, gegen schwächere weniger. Dazu kommen 5 LP für jede gewertete Partie: Wer im Commander-Pod im Schnitt jedes vierte Spiel gewinnt, steigt langsam auf. Die ersten 10 Partien sind die Einstufung und zählen stärker.',
+    'profile.rank.tier.wood': 'Holz',
+    'profile.rank.tier.iron': 'Eisen',
+    'profile.rank.tier.bronze': 'Bronze',
+    'profile.rank.tier.silver': 'Silber',
+    'profile.rank.tier.gold': 'Gold',
+    'profile.rank.tier.platinum': 'Platin',
+    'profile.rank.tier.diamond': 'Diamant',
+    'profile.rank.tier.planeswalker': 'Planeswalker',
+    'profile.rank.unranked': 'Ungewertet',
+    'profile.rank.unrankedHint': 'Noch keine gewertete Partie im Modus {{mode}}.',
+    'profile.rank.lp': '{{lp}} LP',
+    'profile.rank.toNext': 'Noch {{lp}} LP bis {{next}}',
+    'profile.rank.detail': '{{games}} Partien · {{wins}} Siege · Bestwert {{peak}}',
+    'profile.rank.placement': 'Einstufung {{games}}/{{total}}',
+    'profile.rank.modeAria': 'Spielmodus für den Rang',
+    'profile.rank.modeLabel': 'Rang im Modus {{mode}}',
     'profile.artLanguage': 'Sprache der Kartenbilder',
     'profile.artLanguageInfoAria': 'Was bewirkt diese Einstellung?',
     'profile.artLanguageHint':
@@ -179,6 +198,25 @@ export const profile = {
     'inbox.subjectReply': '{{name}} hat dir bei „{{deck}}“ geantwortet',
   },
   en: {
+    'profile.rank.infoAria': 'How the rank system works',
+    'profile.rank.info':
+      'Everyone starts in Wood II (800 LP) per game mode. Each rank has five divisions (V to I) of 100 LP each: Wood, Iron, Bronze, Silver, Gold, Platinum, Diamond and, at the top, Planeswalker. A win against equally strong opponents earns about 50 LP. The worse your placement, the more LP you lose – fourth place loses more than second. Stronger opponents give more, weaker ones less. On top of that, every rated game adds 5 LP: winning one game in four in a Commander pod slowly moves you up. The first 10 games are placements and count more.',
+    'profile.rank.tier.wood': 'Wood',
+    'profile.rank.tier.iron': 'Iron',
+    'profile.rank.tier.bronze': 'Bronze',
+    'profile.rank.tier.silver': 'Silver',
+    'profile.rank.tier.gold': 'Gold',
+    'profile.rank.tier.platinum': 'Platinum',
+    'profile.rank.tier.diamond': 'Diamond',
+    'profile.rank.tier.planeswalker': 'Planeswalker',
+    'profile.rank.unranked': 'Unranked',
+    'profile.rank.unrankedHint': 'No rated game in {{mode}} yet.',
+    'profile.rank.lp': '{{lp}} LP',
+    'profile.rank.toNext': '{{lp}} LP to {{next}}',
+    'profile.rank.detail': '{{games}} games · {{wins}} wins · peak {{peak}}',
+    'profile.rank.placement': 'Placements {{games}}/{{total}}',
+    'profile.rank.modeAria': 'Game mode for the rank',
+    'profile.rank.modeLabel': 'Rank in {{mode}}',
     // --- Profile tab ---
     'profile.artLanguage': 'Card image language',
     'profile.artLanguageInfoAria': 'What does this setting do?',

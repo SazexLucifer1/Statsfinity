@@ -89,10 +89,16 @@
   border-radius: 14px;
 }
 
-.favorite-commanders-col {
-  // Handy: eigene Zeile über die volle Breite, unter Überschrift und Icon-Spalte.
+.profile-rank-cell {
   grid-column: 1 / -1;
   grid-row: 2;
+  margin-top: 0;
+}
+
+.favorite-commanders-col {
+  // Handy: eigene Zeile über die volle Breite, unter Überschrift, Icon-Spalte und Rang.
+  grid-column: 1 / -1;
+  grid-row: 3;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -163,7 +169,11 @@
 
   .favorite-commanders-col {
     grid-column: 2;
-    grid-row: 1;
+    grid-row: 1 / span 2;
+  }
+
+  .profile-rank-cell {
+    grid-column: 1;
   }
 
   .header-icon-col {

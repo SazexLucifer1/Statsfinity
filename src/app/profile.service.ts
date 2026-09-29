@@ -3,6 +3,7 @@ import { supabase } from './supabase.client';
 import { AuthService } from './auth.service';
 import { NavigationService } from './navigation.service';
 import { ArtLang, istArtLang } from './art-languages';
+import { GAME_MODES, GameMode } from './models';
 
 export interface Profile {
   id: string;
@@ -244,6 +245,65 @@ export class ProfileService {
 
     this.profile.update((p) => (p ? { ...p, artLanguage } : p));
     return true;
+  }
+
+  // --- Elo-Rang: welcher Spielmodus im Profil gezeigt wird (sql/elo-rang-modus-2026-09-29.sql) ---
+
+  /** Standard, solange nichts gewählt ist: 'Normal' = Commander. */
+  static readonly DEFAULT_RANK_MODE: GameMode = 'Normal';
+  private static readonly RANK_MODE_KEY = 'statsfinity.rankMode';
+  /** Einmal je Sitzung umgelegt, wenn die Migration fehlt - danach nur noch der Gerätewert. */
+  private static rankModeVerfuegbar = true;
+
+  /**
+   * Gewählter Rang-Modus eines Accounts - eigenes wie fremdes Profil, auch ohne Login (über die
+   * SECURITY-DEFINER-Funktion profile_rank_mode()). Fehlt die Migration, gilt fürs eigene Profil
+   * der Wert aus dem localStorage, für fremde der Standard.
+   */
+  async loadRankMode(userId: string): Promise<GameMode> {
+    const lokal = userId === this.profile()?.id ? ProfileService.lokalerRankMode() : null;
+    if (!ProfileService.rankModeVerfuegbar) return lokal ?? ProfileService.DEFAULT_RANK_MODE;
+
+    const { data, error } = await supabase.rpc('profile_rank_mode', { p_user_id: userId });
+    if (error) {
+      if (error.code === 'PGRST202' || error.code === '42883') {
+        console.warn('Funktion profile_rank_mode fehlt noch - sql/elo-rang-modus-2026-09-29.sql im Supabase-SQL-Editor ausführen. Der Rang-Modus gilt solange nur auf diesem Gerät.');
+        ProfileService.rankModeVerfuegbar = false;
+      } else {
+        console.error('Konnte Rang-Modus nicht laden:', error);
+      }
+      return lokal ?? ProfileService.DEFAULT_RANK_MODE;
+    }
+    return ProfileService.istGameMode(data) ? data : ProfileService.DEFAULT_RANK_MODE;
+  }
+
+  /** Speichert den Rang-Modus am eigenen Account und immer auch auf dem Gerät. */
+  async saveRankMode(mode: GameMode): Promise<void> {
+    try {
+      localStorage.setItem(ProfileService.RANK_MODE_KEY, mode);
+    } catch {
+      // Privater Modus o. ä. - dann eben nur am Account.
+    }
+    const current = this.profile();
+    if (!current || !ProfileService.rankModeVerfuegbar) return;
+    const { error } = await supabase.from('profiles').update({ rank_mode: mode }).eq('id', current.id);
+    if (error) {
+      if (error.code === '42703' || error.code === 'PGRST204') ProfileService.rankModeVerfuegbar = false;
+      else console.error('Konnte Rang-Modus nicht speichern:', error);
+    }
+  }
+
+  private static lokalerRankMode(): GameMode | null {
+    try {
+      const wert = localStorage.getItem(ProfileService.RANK_MODE_KEY);
+      return ProfileService.istGameMode(wert) ? wert : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private static istGameMode(wert: unknown): wert is GameMode {
+    return typeof wert === 'string' && (GAME_MODES as string[]).includes(wert);
   }
 
   /** Speichert die bevorzugte Sprache am Account, damit sie geräteübergreifend gilt. */

@@ -1,0 +1,75 @@
+:host {
+  display: block;
+  margin-top: var(--sp-3, 12px);
+}
+
+.rank-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.badge-muted {
+  filter: grayscale(1);
+  opacity: 0.45;
+}
+
+.rank-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+
+.rank-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  .icon-button {
+    color: inherit;
+  }
+}
+
+.rank-name {
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  color: var(--rank-light, inherit);
+  text-shadow: 0 0 12px color-mix(in srgb, var(--rank-light, transparent) 45%, transparent);
+}
+
+.unranked .rank-name {
+  color: inherit;
+  opacity: 0.8;
+}
+
+.rank-lp {
+  font-weight: 700;
+}
+
+.rank-change {
+  margin-left: 4px;
+  font-weight: 600;
+
+  &.up {
+    color: var(--success, #4ade80);
+  }
+
+  &.down {
+    color: var(--danger, #f87171);
+  }
+}
+
+.rank-meter {
+  max-width: 220px;
+}
+
+.rank-info {
+  margin: 8px 0 0;
+}
+
+.rank-modes {
+  margin-top: 8px;
+}
