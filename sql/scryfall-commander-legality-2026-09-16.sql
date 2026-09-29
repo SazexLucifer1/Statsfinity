@@ -6,9 +6,9 @@
 -- Commander sind die moeglichen Werte "legal", "not_legal" und "banned". Bisher wurde davon nichts
 -- uebernommen - die Tabelle haelt bewusst nur, was die App braucht, und die Frage kam nie auf.
 --
--- Jetzt kommt sie auf: Der Archidekt-Deckvorrat enthaelt Decks mit Karten, die im Commander nicht
--- spielbar sind (Silberrand-Scherzkarten, gebannte Karten). Ohne diese Spalte laesst sich das gar
--- nicht feststellen, und die Bracket-Eichung rechnet mit Decks, die an keinem Tisch existieren
+-- Jetzt kommt sie auf: Decks koennen Karten enthalten, die im Commander nicht spielbar sind
+-- (Silberrand-Scherzkarten, gebannte Karten). Ohne diese Spalte laesst sich das gar nicht
+-- feststellen, und eine Bracket-Eichung rechnet mit Decks, die an keinem Tisch existieren
 -- koennen.
 --
 -- Als boolean und nicht als Text: Fuer die Frage "darf dieses Deck in den Vergleich" ist der

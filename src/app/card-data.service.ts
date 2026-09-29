@@ -3,6 +3,12 @@ import { supabase } from './supabase.client';
 import { chunk, normalizeCardName } from './array-utils';
 import { ScryfallService, ScryfallCard } from './scryfall.service';
 import type { SpellbookBracketTag } from './commander-spellbook.service';
+import {
+  BracketBenchmark,
+  BracketBenchmarkRow,
+  DEFAULT_BRACKET_BENCHMARK,
+  bracketBenchmarkFromRows,
+} from './bracket';
 
 /**
  * Die drei kuratierten Markierungen von Commander Spellbook, die es bei Scryfall nicht gibt und
@@ -321,6 +327,35 @@ export class CardDataService {
     })();
 
     return this.spellbookFlagsPromise;
+  }
+
+  private bracketBenchmarkPromise: Promise<BracketBenchmark> | null = null;
+
+  /**
+   * Die gemessenen Schwellen der Bracket-Einstufung (Tuning-Spannen, Urteil F), einmal je Sitzung
+   * geladen - die Tabelle ändert sich nur nachts.
+   *
+   * Fehlt die Tabelle (Migration sql/bracket-benchmark-2026-09-29.sql noch nicht ausgeführt) oder
+   * gibt es kein Netz, kommen die Startwerte zurück - dieselben Werte, die vorher fest im Code
+   * standen. Die Einstufung läuft also genauso weiter wie bisher.
+   */
+  bracketBenchmark(): Promise<BracketBenchmark> {
+    this.bracketBenchmarkPromise ??= (async () => {
+      const { data, error } = await supabase
+        .from('bracket_benchmark')
+        .select(
+          'bracket, tutor_density, avg_cmc, untapped_land_percent, game_changers, combo_tutor_min',
+        );
+
+      if (error) {
+        console.warn('Bracket-Benchmark nicht verfügbar, es gelten die Startwerte:', error.message);
+        this.bracketBenchmarkPromise = null;
+        return DEFAULT_BRACKET_BENCHMARK;
+      }
+      return bracketBenchmarkFromRows((data ?? []) as BracketBenchmarkRow[]);
+    })();
+
+    return this.bracketBenchmarkPromise;
   }
 
   /** Schlüssel, unter dem eine Karte in spellbookCardFlags() steht. */

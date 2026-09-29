@@ -45,7 +45,7 @@
 --
 -- DIESE KARTENLISTE IST EIN ARRAY JE DECK, KEINE ZEILE JE KARTE. Das ist hier keine Stilfrage: Die
 -- Form "eine Zeile je Karte" hat diese Datenbank schon zweimal an die 500-MB-Grenze gebracht
--- (archidekt_deck_pool_cards: 72 MB allein für den Primärschlüssel; spellbook_combo_cards: 33 MB).
+-- (früherer Deckvorrat: 72 MB allein für den Primärschlüssel; spellbook_combo_cards: 33 MB).
 -- Gerettet werden nur die Namen der Karten, die die Statistik auch zählt - ohne Länder, Marken und
 -- Maybeboard, ohne Mengen (getCardAndColorStats() zählt je Deck 1x, unabhängig von quantity) und
 -- ohne Bild-URL (die ist der Platzfresser; das Profil holt das Bild sonst über den Namen von
@@ -57,7 +57,7 @@
 -- BEWUSST KEIN INDEX auf deleted_at: Die Deck-Listen filtern immer zusätzlich über user_id bzw.
 -- player_id, die öffentliche Suche über is_private - dafür reichen die vorhandenen Indizes. Ein
 -- eigener Index wäre hier genau der Fehler, der diese Datenbank schon zweimal an die 500-MB-Grenze
--- gebracht hat (siehe archidekt_deck_pool_cards und spellbook_combo_cards).
+-- gebracht hat (siehe spellbook_combo_cards).
 -- =====================================================================================
 
 -- =====================================================================================

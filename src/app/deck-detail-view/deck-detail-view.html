@@ -221,7 +221,7 @@
                 @for (reason of analysis.reasons; track reason.key) {
                   <div class="bracket-reason">
                     <p class="bracket-reason-head">
-                      {{ viewer.i18n.t('deckView.bracketReason.' + reason.key) }}
+                      {{ viewer.i18n.t('deckView.bracketReason.' + reason.key, { tutors: analysis.verdicts.comboTutorMin }) }}
                       @if (reason.key !== 'nothing') {
                         <span class="hint"> · {{ viewer.i18n.t('deckView.bracketReasonMinimum', { level: reason.minimum }) }}</span>
                       }

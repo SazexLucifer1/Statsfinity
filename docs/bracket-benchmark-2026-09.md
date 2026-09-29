@@ -1,17 +1,17 @@
-# Bracket-Benchmark: Auswertung am Archidekt-Vorrat (September 2026)
+# Bracket-Benchmark (September 2026)
 
-Ergebnisse einer abgeschlossenen Untersuchung. Die Daten dahinter (Archidekt-Decks, Simulationsläufe, Forge-Partien)
-sind am 29.09.2026 aus Repo und Datenbank entfernt worden (`sql/forge-archidekt-entfernen-2026-09-29.sql`). Hier
-stehen **nur Kennzahlen** – keine Decklisten, keine Decknamen, keine Verweise auf einzelne fremde Decks.
+Ergebnisse einer abgeschlossenen Untersuchung. Die Daten dahinter (eine externe Deck-Stichprobe, Simulationsläufe,
+Forge-Partien) sind am 29.09.2026 aus Repo und Datenbank entfernt worden. Hier stehen **nur Kennzahlen** – keine
+Decklisten, keine Decknamen, keine Verweise auf einzelne Decks.
 
-Wozu es diese Datei gibt: als **Vergleichsmaßstab** für die spätere Auswertung an Decks, die in Statsfinity selbst
-gebaut werden. Deshalb steht die Methode genau dabei – die zweite Liste muss gleich gerechnet werden, sonst sind die
-Zahlen nicht vergleichbar.
+Wozu es diese Datei gibt: Sie ist der **Ausgangspunkt** des Benchmarks, den die App seit dem 29.09.2026 selbst
+fortschreibt (siehe „Ab jetzt: der Benchmark lernt aus Statsfinity-Decks“ ganz unten). Die Startwerte dort stammen
+von hier.
 
 ## Grundlage
 
-- **48.638 Commander-Decks** von Archidekt, jedes mit der Bracket-Stufe, die sein Ersteller selbst angegeben hat
-  (Stand 17.09.2026). Das ist eine Selbstauskunft, keine gemessene Stärke.
+- **48.638 Commander-Decks** einer externen Stichprobe, jedes mit der Bracket-Stufe, die sein Ersteller selbst
+  angegeben hat (Stand 17.09.2026). Das ist eine Selbstauskunft, keine gemessene Stärke.
 - Die Merkmale je Deck kamen aus Kartenauswertung und einem Goldfish-Simulator (ein Spieler, kein Gegner).
 
 ## Methode: AUC
@@ -103,7 +103,7 @@ Combo-Pilot, der erkannte Sieg-Combos vorführt.
 
 Je 20 Partien (95-%-Intervall etwa ±18 Punkte). Ohne Pilot gab es in 180 Partien keinen einzigen Combo-Sieg.
 
-### Probe am Vorrat: 45 Decks, 2.104 Partien, je Deck gegen drei feste B4-Test-Decks
+### Probe an der Stichprobe: 45 Decks, 2.104 Partien, je Deck gegen drei feste B4-Test-Decks
 
 | angegebene Stufe | Decks | Partien | Winrate | Combo-Siege |
 | ---------------: | ----: | ------: | ------: | ----------: |
@@ -122,5 +122,25 @@ gelassen, zwei kleinere doppelt geblockt). **Als Bracket-Maßstab untauglich** �
 
 ## Was daraus folgt
 
-Die Einstufung bleibt bei den Kartenregeln (`bracket.ts`). Die nächste Messung läuft an Decks aus Statsfinity mit
-**vom Besitzer selbst gewählter** Stufe und mit derselben AUC-Rechnung wie oben.
+Die Einstufung bleibt bei den Kartenregeln (`bracket.ts`). Die gemessenen Teile – die Spannen des Tuning-Grads und
+die Tutorenschwelle von Urteil F – lernt die App seitdem an eigenen Decks weiter.
+
+## Ab jetzt: der Benchmark lernt aus Statsfinity-Decks
+
+Seit dem 29.09.2026 (`sql/bracket-benchmark-2026-09-29.sql`):
+
+- **Stichprobe:** jedes Commander-Deck (nicht gelöscht, mindestens 60 Karten), dessen Besitzer das Bracket **selbst
+  gewählt** hat – auch private Decks. Je Deck werden nur fünf Zahlen gespeichert (Tutoren je 100 Karten, Game
+  Changer, spielbeendende Combos, Ø Manawert, Anteil ungetappter Länder) in `bracket_benchmark_decks`, die für
+  Clients nicht lesbar ist.
+- **Täglich:** Am Ende des nächtlichen Spellbook-Abgleichs misst `bracket_benchmark_aktualisieren()` alle Decks neu
+  und schreibt je Bracket die Mediane nach `bracket_benchmark`.
+- **100er-Regel:** Die Werte eines Brackets werden erst überschrieben, wenn **mindestens 100 Decks dieses Brackets**
+  in der Stichprobe liegen. Darunter bleibt stehen, was vorher dort stand – anfangs die Startwerte aus dieser Datei.
+- **Tuning-Spannen:** je Merkmal von Median Bracket 2 (zählt 0) bis Median Bracket 5 (zählt 1).
+- **Urteil F:** die kleinste Tutorenzahl, bei der unter den Decks mit Gewinn-Combo mindestens 90 % Bracket 4 oder 5
+  gewählt haben (mindestens 20 solche Decks). Neu bestimmt erst, wenn Bracket 2, 3 und 4 je 100 Decks haben.
+- **Nicht gelernt:** die offiziellen Kriterien (Game Changer, Mass Land Denial, Extra-Turn-Schleifen, Combos).
+
+Wer die Messung ändert, ändert sie an **beiden** Stellen: SQL-Funktion und die Merkmale im Client
+(`deck-viewer.service.ts`) müssen dasselbe messen, sonst vergleicht der Tuning-Grad Äpfel mit Birnen.
