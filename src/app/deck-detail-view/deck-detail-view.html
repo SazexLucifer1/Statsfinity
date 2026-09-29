@@ -370,10 +370,6 @@
             <p class="hint bracket-caveat bracket-why-sources">{{ viewer.i18n.t('deckView.bracketSources') }}</p>
           </div>
         }
-
-        <!-- Einstufung aus der Forge-Simulation (echte 4er-Pods gegen Test-Decks je Stufe).
-             Vorerst nur für Developer - die Komponente rendert für alle anderen nichts. -->
-        <app-forge-einstufung-panel [deckId]="deck.id" />
       }
 
       <!-- Reiter-Umschalter (Vorbild Moxfield): Kopfbereich - Name, Format, Bracket - steht
