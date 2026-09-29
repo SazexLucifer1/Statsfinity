@@ -38,19 +38,9 @@ import { ManaSymbol } from '../ui/mana-symbol/mana-symbol';
 import { Podium, PodiumEntry, PODIUM_SIZE } from '../ui/podium/podium';
 import { PlayerMatchHistory } from '../player-match-history/player-match-history';
 import { splitPodium } from '../rank-sort';
-import { colorComboName, sortColors } from '../color-combo-names';
-import { COLORLESS, FILTER_COLORS } from '../color-filter-match';
+import { colorComboLabel, colorLabel, colorRadarData, colorVar, sortColors } from '../color-combo-names';
 import { Icon } from '../ui/icon/icon';
 import { CommentInbox } from '../comment-inbox/comment-inbox';
-
-/**
- * Achsen des Farb-Netzdiagramms: die fünf Manafarben in WUBRG-Reihenfolge, farblos als sechste.
- *
- * Bewusst fest und NIE nach Häufigkeit sortiert - ein Netz, dessen Achsen die Plätze tauschen,
- * ist weder mit dem eigenen Diagramm von letzter Woche noch mit dem eines anderen Spielers
- * vergleichbar, und genau die Form ist der Punkt an dieser Darstellung.
- */
-const COLOR_RADAR_AXES: readonly string[] = [...FILTER_COLORS, COLORLESS];
 
 @Component({
   selector: 'app-profile-tab',
@@ -376,33 +366,10 @@ export class ProfileTab {
    * crossGroupStats bewusst nur fürs eigene Profil. Precons fließen dort bewusst nicht mit ein. */
   readonly cardAndColorStats = signal<CardAndColorStats | null>(null);
 
-  /** CSS-Farbe einer Manafarbe, für Farbtupfer und Balken.
-   *
-   * Kommt aus den globalen --pip-*-Tokens (styles.scss). Hier stand vorher eine eigene Hex-Tabelle
-   * mit exakt denselben fünf Werten - dieselbe Palette ein zweites Mal zu pflegen ist genau die
-   * Duplizierung, die die Tokens abschaffen. Farblos bekommt den neutralen Serienton. */
-  readonly colorVar = (color: string): string =>
-    'WUBRG'.includes(color) ? `var(--pip-${color.toLowerCase()})` : 'var(--series-neutral)';
-
-  /** Anzeigename einer Achse. Farblos hat bewusst keinen pip-Schlüssel, sondern denselben Namen
-   * wie im Farbfilter und in der Farbkombinations-Rangliste. */
-  readonly colorLabel = (color: string): string =>
-    color === COLORLESS ? this.i18n.t('deckView.colorless') : this.i18n.t(`pip.${color}`);
-
-  /**
-   * Anzeigename einer Farbkombination: der Eigenname aus dem Spiel ("Azorius", "Grixis",
-   * "Yore-Tiller"). Vorher standen hier die aneinandergereihten Farbnamen ("Blau / Schwarz /
-   * Rot") - die sagen neben den Symbolen dasselbe zweimal, während der Eigenname etwas
-   * hinzufügt. Für die Fälle ohne Eigennamen (eine Farbe, farblos, fünffarbig) bleibt Text.
-   */
-  readonly colorComboLabel = (colors: string[]): string => {
-    if (colors.length === 0) return this.i18n.t('deckView.colorless');
-    if (colors.length === 1) return this.i18n.t('colorCombo.mono', { color: this.colorLabel(colors[0]) });
-    if (colors.length >= 5) return this.i18n.t('colorCombo.fiveColor');
-    return colorComboName(colors) ?? colors.map((c) => this.colorLabel(c)).join(' / ');
-  };
-
-  /** Farben einer Kombination in der üblichen WUBRG-Reihenfolge - so, wie der Eigenname sie liest. */
+  // Farb-Hilfen für die Vorlage, Logik in color-combo-names.ts.
+  readonly colorVar = colorVar;
+  readonly colorLabel = (color: string): string => colorLabel(this.i18n, color);
+  readonly colorComboLabel = (colors: string[]): string => colorComboLabel(this.i18n, colors);
   readonly comboColors = (colors: string[]): string[] => sortColors(colors);
 
   /** Umschalter für Karten-/Farb-/Farbkombinations-Statistik: "games" gewichtet nach tatsächlich
@@ -431,18 +398,9 @@ export class ProfileTab {
    * Rangliste durchzureichen: die kommt nach Häufigkeit sortiert aus dem Service, und genau diese
    * Reihenfolge darf hier nicht durchschlagen. Eine Achse ohne Daten steht mit 0 im Netz.
    */
-  readonly colorRadarChart = computed<RadarChartDatum[]>(() => {
-    const stats = this.cardAndColorStats()?.colorRanking ?? [];
-    return COLOR_RADAR_AXES.map((color) => {
-      const stat = stats.find((c) => c.color === color);
-      return {
-        label: this.colorLabel(color),
-        value: stat ? this.countFor(stat) : 0,
-        color: this.colorVar(color),
-        symbol: color,
-      };
-    });
-  });
+  readonly colorRadarChart = computed<RadarChartDatum[]>(() =>
+    colorRadarData(this.i18n, this.cardAndColorStats()?.colorRanking ?? [], this.countFor),
+  );
 
   readonly rankedColorComboRanking = computed(() => {
     const combos = this.cardAndColorStats()?.colorComboRanking ?? [];

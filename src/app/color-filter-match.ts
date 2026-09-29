@@ -13,6 +13,12 @@ export const FILTER_COLORS = ['W', 'U', 'B', 'R', 'G'] as const;
 export const COLORLESS = 'C';
 
 /**
+ * Achsen der Farbstatistik: WUBRG, farblos als sechste. Fest und nie nach Häufigkeit sortiert,
+ * damit dieselbe Farbe immer an derselben Stelle des Netzdiagramms liegt.
+ */
+export const COLOR_AXES = [...FILTER_COLORS, COLORLESS] as const;
+
+/**
  * Wie die gewählten Farben zu lesen sind:
  *
  * - 'exact'   - die Farbidentität ist GENAU diese Auswahl. Blau allein findet nur einfarbig blaue

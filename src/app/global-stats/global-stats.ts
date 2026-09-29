@@ -21,8 +21,7 @@ import { Pager } from '../ui/pager/pager';
 import { RadarChart, RadarChartDatum } from '../ui/radar-chart/radar-chart';
 import { ManaSymbol } from '../ui/mana-symbol/mana-symbol';
 import { MultiSelect } from '../ui/multi-select/multi-select';
-import { colorComboName, sortColors } from '../color-combo-names';
-import { COLORLESS, FILTER_COLORS } from '../color-filter-match';
+import { colorComboLabel, colorLabel, colorRadarData, colorVar, sortColors } from '../color-combo-names';
 import {
   RankSortMode,
   compareBySortMode,
@@ -44,8 +43,6 @@ const PAGE_SIZE = 10;
  * Winrate-Liste sonst anführen).
  */
 const QUALIFICATION_THRESHOLD = 10;
-
-const COLOR_RADAR_AXES: readonly ColorStat['color'][] = [...FILTER_COLORS, COLORLESS];
 
 /**
  * Bündelt Sortierung, Winrate-Qualifikation und Pagination für EINE Rangliste (Decks oder
@@ -295,32 +292,14 @@ export class GlobalStats {
   readonly colorCountFor = (entry: { gameCount: number; deckCount: number }): number =>
     this.colorStatsWeightMode() === 'games' ? entry.gameCount : entry.deckCount;
 
-  readonly colorVar = (color: string): string =>
-    'WUBRG'.includes(color) ? `var(--pip-${color.toLowerCase()})` : 'var(--series-neutral)';
-
-  readonly colorLabel = (color: string): string =>
-    color === COLORLESS ? this.i18n.t('deckView.colorless') : this.i18n.t(`pip.${color}`);
-
-  readonly colorComboLabel = (colors: string[]): string => {
-    if (colors.length === 0) return this.i18n.t('deckView.colorless');
-    if (colors.length === 1)
-      return this.i18n.t('colorCombo.mono', { color: this.colorLabel(colors[0]) });
-    if (colors.length >= 5) return this.i18n.t('colorCombo.fiveColor');
-    return colorComboName(colors) ?? colors.map((c) => this.colorLabel(c)).join(' / ');
-  };
-
+  // Farb-Hilfen für die Vorlage, Logik in color-combo-names.ts.
+  readonly colorVar = colorVar;
+  readonly colorLabel = (color: string): string => colorLabel(this.i18n, color);
+  readonly colorComboLabel = (colors: string[]): string => colorComboLabel(this.i18n, colors);
   readonly comboColors = (colors: string[]): string[] => sortColors(colors);
 
   readonly colorRadarChart = computed<RadarChartDatum[]>(() =>
-    COLOR_RADAR_AXES.map((color) => {
-      const stat = this.colorAndCombo().colorRanking.find((c) => c.color === color);
-      return {
-        label: this.colorLabel(color),
-        value: stat ? this.colorCountFor(stat) : 0,
-        color: this.colorVar(color),
-        symbol: color,
-      };
-    }),
+    colorRadarData(this.i18n, this.colorAndCombo().colorRanking, this.colorCountFor),
   );
 
   readonly rankedColorCombos = computed(() =>

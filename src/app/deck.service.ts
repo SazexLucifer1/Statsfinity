@@ -7,7 +7,7 @@ import { sleep } from './array-utils';
 import { parseSubtypes } from './deck-analyse';
 import { GroupService } from './group.service';
 import { PreconService } from './precon.service';
-import { COLORLESS, FILTER_COLORS } from './color-filter-match';
+import { COLORLESS, COLOR_AXES, FILTER_COLORS } from './color-filter-match';
 import { DeckFormat, GameMode } from './models';
 
 export interface Deck {
@@ -2046,7 +2046,6 @@ export class DeckService {
 
     if (!rows) return empty;
 
-    const COLOR_AXES: readonly ColorStat['color'][] = [...FILTER_COLORS, COLORLESS];
     const colorRanking: ColorStat[] = COLOR_AXES.map((color) => {
       const row = rows.find((r) => r.kind === 'axis' && r.colors?.[0] === color);
       return { color, gameCount: Number(row?.games ?? 0), deckCount: Number(row?.decks ?? 0) };
@@ -2330,7 +2329,6 @@ export class DeckService {
     /**
      * Achsen der Farbstatistik. 'C' = Decks ohne Farbidentität; mehrfarbige Decks zählen mehrfach.
      */
-    const COLOR_AXES: readonly ColorStat['color'][] = [...FILTER_COLORS, COLORLESS];
     const colorCounts = new Map<string, { gameCount: number; deckCount: number }>();
     const comboCounts = new Map<string, { colors: string[]; gameCount: number; deckCount: number }>();
     for (const row of nonPreconDeckRows) {

@@ -36,8 +36,8 @@ import { SplitBar, SplitSegment } from '../ui/split-bar/split-bar';
 import { RadarChart, RadarChartDatum } from '../ui/radar-chart/radar-chart';
 import { ManaSymbol } from '../ui/mana-symbol/mana-symbol';
 import { MultiSelect } from '../ui/multi-select/multi-select';
-import { colorComboName, sortColors } from '../color-combo-names';
-import { COLORLESS, FILTER_COLORS } from '../color-filter-match';
+import { colorComboLabel, colorLabel, colorRadarData, colorVar, sortColors } from '../color-combo-names';
+import { COLORLESS, COLOR_AXES, FILTER_COLORS } from '../color-filter-match';
 import {
   RankSortMode,
   compareBySortMode,
@@ -57,17 +57,9 @@ export type StatsScope = 'group' | 'global';
 
 const PAGE_SIZE = 10;
 
-/**
- * Achsen des Farb-Netzdiagramms: die fünf Manafarben in WUBRG-Reihenfolge, farblos als sechste.
- * Bewusst fest und NIE nach Häufigkeit sortiert - dieselbe Begründung wie in profile-tab.ts, von
- * wo diese Konstante 1:1 übernommen ist (Komponenten-Styles/Konstanten sind gekapselt, eine
- * gemeinsame Datei für eine Zeile wäre hier Overengineering).
- */
-const COLOR_RADAR_AXES: readonly string[] = [...FILTER_COLORS, COLORLESS];
-
 /** Farb- und Kombinations-Zählung für die Gruppen-Statistik - siehe groupColorAndComboStats(). */
 interface GroupColorEntry {
-  color: (typeof COLOR_RADAR_AXES)[number];
+  color: (typeof COLOR_AXES)[number];
   gameCount: number;
   deckCount: number;
 }
@@ -920,7 +912,7 @@ export class StatsTab {
     }
 
     // Immer alle sechs Achsen, auch mit 0 - das Netzdiagramm braucht eine feste Achsenmenge.
-    const colorRanking: GroupColorEntry[] = COLOR_RADAR_AXES.map((color) => ({
+    const colorRanking: GroupColorEntry[] = COLOR_AXES.map((color) => ({
       color,
       gameCount: colorCounts.get(color)?.gameCount ?? 0,
       deckCount: colorCounts.get(color)?.deckCount ?? 0,
@@ -934,7 +926,7 @@ export class StatsTab {
     return { colorRanking, colorComboRanking };
   });
 
-  /** Farbverteilung als Netzdiagramm - feste Achsenreihenfolge, siehe COLOR_RADAR_AXES. */
+  /** Farbverteilung als Netzdiagramm - feste Achsenreihenfolge, siehe COLOR_AXES. */
   readonly groupColorRadarChart = computed<RadarChartDatum[]>(() =>
     this.groupColorAndComboStats().colorRanking.map((stat) => ({
       label: this.colorLabel(stat.color),
@@ -955,25 +947,10 @@ export class StatsTab {
     Math.max(1, ...this.rankedGroupColorCombos().map((c) => this.colorCountFor(c))),
   );
 
-  /** CSS-Farbe einer Manafarbe, aus den globalen --pip-*-Tokens - identisch zu colorVar() im Profil-Tab. */
-  readonly colorVar = (color: string): string =>
-    'WUBRG'.includes(color) ? `var(--pip-${color.toLowerCase()})` : 'var(--series-neutral)';
-
-  /** Anzeigename einer Achse - identisch zu colorLabel() im Profil-Tab. */
-  readonly colorLabel = (color: string): string =>
-    color === COLORLESS ? this.i18n.t('deckView.colorless') : this.i18n.t(`pip.${color}`);
-
-  /** Anzeigename einer Farbkombination (Eigenname wie "Azorius", sonst aneinandergereihte
-   * Farbnamen) - identisch zu colorComboLabel() im Profil-Tab. */
-  readonly colorComboLabel = (colors: string[]): string => {
-    if (colors.length === 0) return this.i18n.t('deckView.colorless');
-    if (colors.length === 1)
-      return this.i18n.t('colorCombo.mono', { color: this.colorLabel(colors[0]) });
-    if (colors.length >= 5) return this.i18n.t('colorCombo.fiveColor');
-    return colorComboName(colors) ?? colors.map((c) => this.colorLabel(c)).join(' / ');
-  };
-
-  /** Farben einer Kombination in WUBRG-Reihenfolge - identisch zu comboColors() im Profil-Tab. */
+  // Farb-Hilfen für die Vorlage, Logik in color-combo-names.ts.
+  readonly colorVar = colorVar;
+  readonly colorLabel = (color: string): string => colorLabel(this.i18n, color);
+  readonly colorComboLabel = (colors: string[]): string => colorComboLabel(this.i18n, colors);
   readonly comboColors = (colors: string[]): string[] => sortColors(colors);
 
   /** Umschalter Gruppe/Global - "Global" wird von der eigenständigen GlobalStats-Komponente
