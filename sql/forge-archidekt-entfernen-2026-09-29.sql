@@ -38,7 +38,20 @@ drop view if exists public.deck_sim_by_bracket;
 drop view if exists public.archidekt_deck_pool_readable;
 
 -- ---------------------------------------------------------------------------------------------
--- 2. Funktionen (alle Überladungen, deshalb über den Namen gesucht)
+-- 2. Tabellen (Policies und Indizes fallen mit). VOR den Funktionen: Die generierte Spalte
+--    archidekt_deck_pool.search_text hängt an archidekt_pool_search_text() - andersherum bricht
+--    das Skript mit 2BP01 ab (so geschehen beim ersten Versuch am 29.09.2026).
+-- ---------------------------------------------------------------------------------------------
+drop table if exists public.deck_sim_results;
+drop table if exists public.archidekt_deck_pool_cardlists;
+drop table if exists public.archidekt_pool_card_names;
+drop table if exists public.archidekt_deck_pool_cards;
+drop table if exists public.archidekt_deck_pool;
+drop table if exists public.forge_einstufung_auftraege;
+drop table if exists public.forge_einstufungen;
+
+-- ---------------------------------------------------------------------------------------------
+-- 3. Funktionen (alle Überladungen, deshalb über den Namen gesucht)
 -- ---------------------------------------------------------------------------------------------
 do $$
 declare f record;
@@ -55,22 +68,12 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------------------------
--- 3. Tabellen (Policies und Indizes fallen mit)
--- ---------------------------------------------------------------------------------------------
-drop table if exists public.deck_sim_results;
-drop table if exists public.archidekt_deck_pool_cardlists;
-drop table if exists public.archidekt_pool_card_names;
-drop table if exists public.archidekt_deck_pool_cards;
-drop table if exists public.archidekt_deck_pool;
-drop table if exists public.forge_einstufung_auftraege;
-drop table if exists public.forge_einstufungen;
-
--- ---------------------------------------------------------------------------------------------
 -- 4. Kontrolle: muss 0 Zeilen liefern - und Urteil F muss weiter antworten (eine Zahl, kein Fehler).
 -- ---------------------------------------------------------------------------------------------
 select table_name from information_schema.tables
 where table_schema = 'public'
   and (table_name like 'archidekt%' or table_name like 'deck_sim%' or table_name like 'forge_%');
 
-select public.winning_combos_in_deck(array['Thassa''s Oracle', 'Demonic Consultation'], array[]::text[])
+-- Namen klein geschrieben, wie CardDataService.lookupKey() sie schickt - sonst kommt 0 zurück.
+select public.winning_combos_in_deck(array['thassa''s oracle', 'demonic consultation'], array[]::text[])
   as urteil_f_funktioniert;
