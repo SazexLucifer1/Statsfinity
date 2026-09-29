@@ -1744,7 +1744,7 @@
                     <span class="bracket-caveat">
                       {{ viewer.i18n.t('deckView.bracketMathPartMeasured', { value: (part.value | number: '1.0-2') ?? '' }) }} ·
                       {{ viewer.i18n.t('deckView.bracketMathPartScale', { from: (part.from | number: '1.0-1') ?? '', to: (part.to | number: '1.0-1') ?? '' }) }} ·
-                      {{ viewer.i18n.t('deckView.bracketMathPartScore', { score: (part.score | number: '1.2-2') ?? '' }) }}
+                      {{ viewer.i18n.t('deckView.bracketMathPartScore', { score: (part.score | number: '1.2-2') ?? '', weight: (part.weight | number: '1.2-2') ?? '' }) }}
                     </span>
                     @if (part.from > part.to) {
                       <span class="bracket-caveat">{{ viewer.i18n.t('deckView.bracketMathPartReversed') }}</span>

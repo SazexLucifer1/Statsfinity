@@ -276,11 +276,11 @@ export class CardDataService {
   /** Gemessene Bracket-Schwellen, einmal je Sitzung. Ohne Tabelle oder Netz die Startwerte. */
   bracketBenchmark(): Promise<BracketBenchmark> {
     this.bracketBenchmarkPromise ??= (async () => {
-      const { data, error } = await supabase
-        .from('bracket_benchmark')
-        .select(
-          'bracket, tutor_density, avg_cmc, untapped_land_percent, game_changers, combo_tutor_min',
-        );
+      const basis = 'bracket, tutor_density, avg_cmc, untapped_land_percent, game_changers, combo_tutor_min';
+      const gewichte = 'weight_tutors, weight_avg_cmc, weight_untapped_lands, weight_game_changers';
+      let { data, error } = await supabase.from('bracket_benchmark').select(`${basis}, ${gewichte}`);
+      // Gewichte-Migration noch nicht ausgeführt: ohne die Spalten, dann gelten die Start-Gewichte.
+      if (error?.code === '42703') ({ data, error } = await supabase.from('bracket_benchmark').select(basis));
 
       if (error) {
         console.warn('Bracket-Benchmark nicht verfügbar, es gelten die Startwerte:', error.message);

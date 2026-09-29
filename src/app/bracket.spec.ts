@@ -293,7 +293,7 @@ describe('bracket - Tuning-Grad aufgeschluesselt', () => {
    * Die wichtigste Zusage: was die Oberflaeche aufschluesselt, ergibt genau den Prozentwert, den
    * sie daneben anzeigt. Ohne diesen Test koennten beide unbemerkt auseinanderlaufen.
    */
-  it('mittelt sich exakt zum angezeigten Tuning-Grad', () => {
+  it('mittelt sich gewichtet exakt zum angezeigten Tuning-Grad', () => {
     for (const input of [
       basis(),
       basis({ tutorCount: 6, averageCmc: 2.5, untappedLandPercent: 85 }),
@@ -301,9 +301,19 @@ describe('bracket - Tuning-Grad aufgeschluesselt', () => {
       basis({ averageCmc: null, untappedLandPercent: null }),
     ]) {
       const parts = tuningParts(input);
-      const mittel = parts.reduce((s, t) => s + t.score, 0) / parts.length;
+      const gewichte = parts.reduce((s, t) => s + t.weight, 0);
+      const mittel = parts.reduce((s, t) => s + t.score * t.weight, 0) / gewichte;
       expect(tuningVerdict(input)).toBeCloseTo(mittel, 10);
     }
+  });
+
+  it('gewichtet Game Changer staerker als die Manakurve', () => {
+    const nurGc = basis({
+      averageCmc: 3.4,
+      cards: Array.from({ length: 6 }, (_, i) => karte(`GC${i}`, { gameChanger: true })),
+    });
+    const nurKurve = basis({ averageCmc: 2.2 });
+    expect(tuningVerdict(nurGc)).toBeGreaterThan(tuningVerdict(nurKurve));
   });
 
   it('liefert dieselben Teile ueber analyzeBracket()', () => {
@@ -346,7 +356,8 @@ describe('bracket - Anhebe-Schwelle', () => {
    * und von oben ein.
    *
    * Drei der vier Messgroessen stehen auf Anschlag (und damit dank der Kappung auf exakt 1), die
-   * vierte ist die Zahl der Game Changer - ueber sie laesst sich der Mittelwert genau setzen.
+   * vierte ist die Zahl der Game Changer - ueber sie laesst sich der gewichtete Mittelwert genau
+   * setzen.
    */
   const dreiAufAnschlag = (gameChanger: number) =>
     basis({
@@ -357,7 +368,7 @@ describe('bracket - Anhebe-Schwelle', () => {
     });
 
   it('hebt unterhalb der Schwelle nicht an', () => {
-    // Ohne Game Changer: (1 + 1 + 1 + 0) / 4 = 0,75.
+    // Ohne Game Changer: (0,27 + 0,13 + 0,16 + 0) / 0,96 = 0,58.
     const ergebnis = analyzeBracket(dreiAufAnschlag(0));
     expect(ergebnis.verdicts.tuning).toBeLessThan(TUNING_BUMP_SCHWELLE);
     expect(ergebnis.bracket).toBe(ergebnis.verdicts.rules);
@@ -365,7 +376,7 @@ describe('bracket - Anhebe-Schwelle', () => {
   });
 
   it('hebt oberhalb der Schwelle um genau eine Stufe an', () => {
-    // Zwei Game Changer: (1 + 1 + 1 + 2/6) / 4 = 0,833.
+    // Zwei Game Changer: (0,27 + 0,13 + 0,16 + 0,4 * 2/6) / 0,96 = 0,72.
     const ergebnis = analyzeBracket(dreiAufAnschlag(2));
     expect(ergebnis.verdicts.tuning).toBeGreaterThanOrEqual(TUNING_BUMP_SCHWELLE);
     expect(ergebnis.bracket).toBe(ergebnis.verdicts.rules + 1);
@@ -636,5 +647,15 @@ describe('bracketBenchmarkFromRows - Tabellenzeilen zu Schwellen', () => {
     ]);
     expect(b.tuning.tutors).toEqual(DEFAULT_BRACKET_BENCHMARK.tuning.tutors);
     expect(b.tuning.gameChangers).toEqual(DEFAULT_BRACKET_BENCHMARK.tuning.gameChangers);
+  });
+
+  it('nimmt gelernte Gewichte aus Bracket 4, fehlende bleiben Startwerte', () => {
+    const b = bracketBenchmarkFromRows([
+      zeile(4, { weight_tutors: 0.3, weight_game_changers: 0.35, weight_avg_cmc: null }),
+    ]);
+    expect(b.weights.tutors).toBe(0.3);
+    expect(b.weights.gameChangers).toBe(0.35);
+    expect(b.weights.averageCmc).toBe(DEFAULT_BRACKET_BENCHMARK.weights.averageCmc);
+    expect(b.weights.untappedLands).toBe(DEFAULT_BRACKET_BENCHMARK.weights.untappedLands);
   });
 });

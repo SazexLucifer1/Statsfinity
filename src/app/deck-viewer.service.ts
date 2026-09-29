@@ -968,9 +968,9 @@ export class DeckViewerService {
     const teile = analysis.verdicts.tuningParts;
     const [powerVon, powerBis] = powerRange(analysis.bracket);
     return {
-      /** z.B. "0.00 + 0.31 + 0.00 + 0.17" - die Summanden der Mittelung, in der Reihenfolge der Liste. */
-      summands: teile.map((t) => t.score.toFixed(2)).join(' + '),
-      divisor: teile.length,
+      /** z.B. "0.27 × 0.31 + 0.40 × 0.17" - Gewicht × Punkte je Messgröße, in der Reihenfolge der Liste. */
+      summands: teile.map((t) => `${t.weight.toFixed(2)} × ${t.score.toFixed(2)}`).join(' + '),
+      divisor: teile.reduce((summe, t) => summe + t.weight, 0).toFixed(2),
       powerVon,
       powerBis,
       powerSpanne: Math.round((powerBis - powerVon) * 10) / 10,

@@ -762,6 +762,16 @@ async function aktualisiereBracketBenchmark() {
       : 'unter 100 Decks, Werte unverändert';
     console.log(`Bracket ${zeile.stufe}: ${zeile.decks} Decks - ${stand}.`);
   }
+
+  // Gewichte des Tuning-Grads (sql/bracket-gewichte-2026-09-29.sql), erst ab je 100 Decks in B2/B4.
+  const { data: gewichte, error: gewichteFehler } = await supabase.rpc('bracket_benchmark_gewichte');
+  if (gewichteFehler) {
+    console.warn(`Tuning-Gewichte nicht aktualisiert: ${gewichteFehler.message}.`);
+  } else if (!gewichte?.length) {
+    console.log('Tuning-Gewichte: noch unter 100 Decks je Bracket 2/4, Startwerte bleiben.');
+  } else {
+    console.log('Tuning-Gewichte:', gewichte.map((g) => `${g.merkmal} ${g.gewicht.toFixed(3)}`).join(', '));
+  }
 }
 
 main().catch((err) => {

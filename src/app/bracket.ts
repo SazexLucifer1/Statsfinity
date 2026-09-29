@@ -39,9 +39,12 @@ export const CEDH_TUNING_HINT = 0.85;
 
 /**
  * Ab diesem Tuning-Wert (0-1) hebt die Feinbewertung um eine Stufe an. Bewusst hoch: harte
- * Kriterien entscheiden, die Feinbewertung löst nur Grenzfälle.
+ * Kriterien entscheiden, die Feinbewertung löst nur Grenzfälle. Mit der Gewichtung (Game Changer
+ * zählen am meisten) heißt 0,7: alle übrigen Anzeichen voll und mindestens zwei Game Changer.
+ * Ungewichtet lag die Schwelle bei 0,8 - bei Gewichtung erreicht ein Deck mit höchstens drei
+ * Game Changern (Bracket 3) aber höchstens 0,79, die Anhebung wäre sonst nie mehr möglich.
  */
-export const TUNING_BUMP_SCHWELLE = 0.8;
+export const TUNING_BUMP_SCHWELLE = 0.7;
 
 /**
  * Ab diesem Kartenwert (€) gilt mindestens Bracket 3. Einzige Regel ohne offizielle Grundlage: Die
@@ -77,6 +80,8 @@ export interface BracketBenchmark {
   tuning: Record<TuningPart['key'], [number, number]>;
   /** Urteil F: so viele Tutoren braucht es zusätzlich zur Gewinn-Combo. */
   comboTutorMin: number;
+  /** Gewicht je Messgröße im Tuning-Grad = Trennschärfe (|AUC - 0,5|, Bracket 2 gegen 4). */
+  weights: Record<TuningPart['key'], number>;
 }
 
 /**
@@ -93,6 +98,9 @@ export const DEFAULT_BRACKET_BENCHMARK: BracketBenchmark = {
     gameChangers: [0, 6],
   },
   comboTutorMin: 2,
+  // Aus docs/bracket-benchmark-2026-09.md: Game Changer 0,40, Tutoren 0,27. Für die beiden anderen
+  // gibt es dort nur Näherungen (Mana in Zug 3: 0,16, Länder/Rampe: 0,13).
+  weights: { gameChangers: 0.4, tutors: 0.27, untappedLands: 0.16, averageCmc: 0.13 },
 };
 
 /** Welcher Befund die Einstufung getrieben hat - Grundlage der Begründung in der Oberfläche. */
@@ -334,13 +342,14 @@ export function priceVerdict(totalPrice: number | null): BracketLevel | null {
 
 /**
  * Urteil C - Tuning-Grad 0-1 aus vier Anzeichen: Tutoren, Manakurve, schnelle Manabasis, Game
- * Changer. Fehlende Werte fließen nicht ein, statt als 0 zu zählen (halb geladene Decks wären sonst
- * zu niedrig).
+ * Changer, gewichtet nach Trennschärfe (BracketBenchmark.weights). Fehlende Werte fließen nicht ein,
+ * statt als 0 zu zählen (halb geladene Decks wären sonst zu niedrig).
  */
 export function tuningVerdict(input: BracketInput): number {
   const teile = tuningParts(input);
-  if (teile.length === 0) return 0;
-  return teile.reduce((summe, t) => summe + t.score, 0) / teile.length;
+  const gewichte = teile.reduce((summe, t) => summe + t.weight, 0);
+  if (gewichte === 0) return 0;
+  return teile.reduce((summe, t) => summe + t.score * t.weight, 0) / gewichte;
 }
 
 /** Eine der Messgrößen, aus denen sich der Tuning-Grad mittelt. */
@@ -354,19 +363,21 @@ export interface TuningPart {
   to: number;
   /** Beitrag dieses Teils, 0 bis 1. */
   score: number;
+  /** Gewicht im Tuning-Grad (siehe BracketBenchmark.weights). */
+  weight: number;
 }
 
 /**
  * Die Messgrößen einzeln, damit die Oberfläche die Prozentzahl erklären kann. tuningVerdict()
- * mittelt über genau diese Liste - Anzeige und Zahl können nicht auseinanderlaufen (Invariante in
+ * mittelt gewichtet über genau diese Liste - Anzeige und Zahl können nicht auseinanderlaufen (Invariante in
  * bracket.spec.ts).
  */
 export function tuningParts(input: BracketInput): TuningPart[] {
   const teile: TuningPart[] = [];
-  const spannen = (input.benchmark ?? DEFAULT_BRACKET_BENCHMARK).tuning;
+  const benchmark = input.benchmark ?? DEFAULT_BRACKET_BENCHMARK;
   const teil = (key: TuningPart['key'], value: number) => {
-    const [from, to] = spannen[key];
-    teile.push({ key, value, from, to, score: anteil(value, from, to) });
+    const [from, to] = benchmark.tuning[key];
+    teile.push({ key, value, from, to, score: anteil(value, from, to), weight: benchmark.weights[key] });
   };
 
   if (input.totalCards > 0) {
@@ -394,6 +405,11 @@ export interface BracketBenchmarkRow {
   untapped_land_percent: number | null;
   game_changers: number | null;
   combo_tutor_min: number | null;
+  /** Gelernte Gewichte, nur in der Zeile von Bracket 4 (sql/bracket-gewichte-2026-09-29.sql). */
+  weight_tutors?: number | null;
+  weight_avg_cmc?: number | null;
+  weight_untapped_lands?: number | null;
+  weight_game_changers?: number | null;
 }
 
 /**
@@ -408,7 +424,7 @@ export function bracketBenchmarkFromRows(rows: BracketBenchmarkRow[]): BracketBe
 
   const spanne = (
     key: TuningPart['key'],
-    spalte: keyof Omit<BracketBenchmarkRow, 'bracket' | 'combo_tutor_min'>,
+    spalte: 'tutor_density' | 'avg_cmc' | 'untapped_land_percent' | 'game_changers',
   ): [number, number] => {
     const von = unten?.[spalte];
     const bis = oben?.[spalte];
@@ -417,6 +433,9 @@ export function bracketBenchmarkFromRows(rows: BracketBenchmarkRow[]): BracketBe
   };
 
   const tutoren = zeile(4)?.combo_tutor_min;
+  const b4 = zeile(4);
+  const gewicht = (key: TuningPart['key'], wert: number | null | undefined): number =>
+    wert != null && wert > 0 ? wert : DEFAULT_BRACKET_BENCHMARK.weights[key];
   return {
     tuning: {
       tutors: spanne('tutors', 'tutor_density'),
@@ -426,6 +445,12 @@ export function bracketBenchmarkFromRows(rows: BracketBenchmarkRow[]): BracketBe
     },
     comboTutorMin:
       tutoren != null && tutoren >= 1 ? tutoren : DEFAULT_BRACKET_BENCHMARK.comboTutorMin,
+    weights: {
+      tutors: gewicht('tutors', b4?.weight_tutors),
+      averageCmc: gewicht('averageCmc', b4?.weight_avg_cmc),
+      untappedLands: gewicht('untappedLands', b4?.weight_untapped_lands),
+      gameChangers: gewicht('gameChangers', b4?.weight_game_changers),
+    },
   };
 }
 
