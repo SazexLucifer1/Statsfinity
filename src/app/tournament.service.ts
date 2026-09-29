@@ -1,4 +1,4 @@
-import { Injectable, computed, effect, inject, signal } from '@angular/core';
+import { DestroyRef, Injectable, WritableSignal, computed, effect, inject, signal } from '@angular/core';
 import { supabase } from './supabase.client';
 import { AuthService } from './auth.service';
 import { GroupService } from './group.service';
@@ -9,6 +9,7 @@ import { PageVisibilityService } from './page-visibility.service';
 import { DialogService } from './dialog.service';
 import { I18nService } from './i18n.service';
 import { chunk } from './array-utils';
+import { TournamentRealtime } from './tournament-realtime';
 import {
   ParticipantStatus,
   RoundCountMode,
@@ -111,10 +112,29 @@ export class TournamentService {
     return new Date(new Date(match.startedAt).getTime() + roundLengthMinutes * 60_000).toISOString();
   }
 
+  /**
+   * Synchronisation: Realtime meldet Änderungen sofort (TournamentRealtime), ein seltener
+   * Sicherheits-Poll fängt verpasste Ereignisse ab. Ohne Verbindung (oder ohne die Migration
+   * sql/turnier-realtime-2026-09-29.sql) wird entsprechend öfter gepollt.
+   */
+  private static readonly POLL_MS = {
+    live: { active: 30_000, idle: 180_000 },
+    offline: { active: 3_000, idle: 30_000 },
+  };
+
+  private readonly realtimeConnected = signal(false);
+  private readonly realtime = new TournamentRealtime(
+    () => this.reload(),
+    (connected) => this.realtimeConnected.set(connected),
+  );
   private pollTimer: ReturnType<typeof setInterval> | null = null;
 
-  /** True, sobald der Tab einmal im Hintergrund lag - siehe Poll-Effect im Konstruktor. */
+  /** True, sobald der Tab einmal im Hintergrund lag - bei Rückkehr einmal frisch laden. */
   private missedPollsWhileHidden = false;
+
+  /** Laufendes Nachladen; weitere Anstöße währenddessen führen zu genau einem Folgelauf. */
+  private reloadInFlight: Promise<void> | null = null;
+  private reloadQueued = false;
 
   /** Verhindert, dass dieselbe fertig gespielte Partie (matchRowId) innerhalb derselben Sitzung mehrfach verarbeitet wird - zusätzliche Absicherung neben der ohnehin idempotenten Neuberechnung in recordGameResult(). */
   private readonly processedGameResults = new Set<string>();
@@ -122,36 +142,42 @@ export class TournamentService {
   constructor() {
     effect(() => {
       const groupId = this.groupService.groupId();
-      if (groupId) {
-        this.loadForGroup(groupId);
-      } else {
-        this.clear();
-      }
+      this.realtime.watchGroup(groupId, () => this.activeTournament()?.id ?? null);
+      if (groupId) void this.reload();
+      else this.clear();
     });
 
-    // Polling statt Realtime. Schon ab aktiver Gruppe, nicht erst bei laufendem Turnier - sonst
-    // sähe jemand mit bereits offener App ein neues Turnier nie.
+    // Turnierkanal folgt dem aktiven Turnier und seinen Tischen (neue Runde = neue Tische).
+    effect(() => {
+      const tournament = this.activeTournament();
+      const running = tournament && tournament.status !== 'completed' ? tournament.id : null;
+      this.realtime.watchTournament(running, running ? this.matches().map((m) => m.id) : []);
+    });
+
+    // Sicherheits-Poll, im Hintergrund pausiert (der Browser drosselt ohnehin).
     effect(() => {
       const groupId = this.groupService.groupId();
-      // Im Hintergrund pausieren (der Browser drosselt ohnehin); bei Rückkehr einmal frisch laden.
       const visible = this.pageVisibility.visible();
+      const status = this.activeTournament()?.status;
+      const running = status === 'setup' || status === 'active';
+      const ms = TournamentService.POLL_MS[this.realtimeConnected() ? 'live' : 'offline'][running ? 'active' : 'idle'];
       if (this.pollTimer) {
         clearInterval(this.pollTimer);
         this.pollTimer = null;
       }
+      if (!visible) this.missedPollsWhileHidden = true;
       if (!groupId || !visible) return;
 
       if (this.missedPollsWhileHidden) {
         this.missedPollsWhileHidden = false;
-        this.loadForGroup(groupId);
+        void this.reload();
       }
-      this.pollTimer = setInterval(() => this.loadForGroup(groupId), 2_000);
+      this.pollTimer = setInterval(() => void this.reload(), ms);
     });
 
-    // Merkt sich, dass der Tab zwischendurch weg war - nur dann lohnt das sofortige Nachladen oben
-    // (beim allerersten Durchlauf erledigt das schon der Effect auf groupId).
-    effect(() => {
-      if (!this.pageVisibility.visible()) this.missedPollsWhileHidden = true;
+    inject(DestroyRef).onDestroy(() => {
+      this.realtime.stop();
+      if (this.pollTimer) clearInterval(this.pollTimer);
     });
 
     // Ein Turnierspiel fließt automatisch ins Tisch-Ergebnis; bei offenem BO3 startet direkt das
@@ -244,17 +270,35 @@ export class TournamentService {
     if (!groupId || this.refreshing()) return;
     this.refreshing.set(true);
     try {
-      await this.loadForGroup(groupId);
+      await this.reload();
     } finally {
       this.refreshing.set(false);
     }
   }
 
   private clear(): void {
-    this.activeTournament.set(null);
-    this.participants.set([]);
-    this.rounds.set([]);
-    this.matches.set([]);
+    setIfChanged(this.activeTournament, null);
+    setIfChanged(this.participants, []);
+    setIfChanged(this.rounds, []);
+    setIfChanged(this.matches, []);
+  }
+
+  /** Lädt den Turnierstand der aktiven Gruppe neu - nie zweimal gleichzeitig. */
+  private reload(): Promise<void> {
+    if (this.reloadInFlight) {
+      this.reloadQueued = true;
+      return this.reloadInFlight;
+    }
+    const groupId = this.groupService.groupId();
+    if (!groupId) return Promise.resolve();
+    this.reloadInFlight = this.loadForGroup(groupId).finally(() => {
+      this.reloadInFlight = null;
+      if (this.reloadQueued) {
+        this.reloadQueued = false;
+        void this.reload();
+      }
+    });
+    return this.reloadInFlight;
   }
 
   // --- Laden ---
@@ -281,7 +325,7 @@ export class TournamentService {
       return;
     }
 
-    this.activeTournament.set(this.mapTournament(data));
+    setIfChanged(this.activeTournament, this.mapTournament(data));
     await this.loadParticipants(data.id);
     await this.loadRoundsAndMatches(data.id);
   }
@@ -301,7 +345,7 @@ export class TournamentService {
   }
 
   private async loadParticipants(tournamentId: string): Promise<void> {
-    this.participants.set(await this.fetchParticipants(tournamentId));
+    setIfChanged(this.participants, await this.fetchParticipants(tournamentId));
   }
 
   private async fetchParticipants(tournamentId: string): Promise<TournamentParticipant[]> {
@@ -328,8 +372,8 @@ export class TournamentService {
 
   private async loadRoundsAndMatches(tournamentId: string): Promise<void> {
     const { rounds, matches } = await this.fetchRoundsAndMatches(tournamentId);
-    this.rounds.set(rounds);
-    this.matches.set(matches);
+    setIfChanged(this.rounds, rounds);
+    setIfChanged(this.matches, matches);
   }
 
   private async fetchRoundsAndMatches(
@@ -1644,4 +1688,9 @@ export class TournamentService {
       .eq('id', matchRowId);
     if (gameNumberError) console.error('Konnte Spielnummer nicht am Match hinterlegen:', gameNumberError);
   }
+}
+
+/** Setzt ein Signal nur bei geändertem Inhalt - ein Nachladen ohne Änderung löst keine Neuberechnung aus. */
+function setIfChanged<T>(target: WritableSignal<T>, value: T): void {
+  if (JSON.stringify(target()) !== JSON.stringify(value)) target.set(value);
 }
