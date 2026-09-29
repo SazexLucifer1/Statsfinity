@@ -2,11 +2,19 @@ name: Daily database backup
 
 # Go-Live-Vorbereitung Abschnitt F: Supabase Free hat KEINE automatischen Backups.
 # Braucht das Repo-Secret SUPABASE_DB_URL (die Postgres-Connection-URI aus dem
-# Supabase-Dashboard: Project Settings -> Database -> Connection string -> URI,
-# "Direct connection" verwenden, nicht den Pooler) - einzutragen unter
-# GitHub-Repo -> Settings -> Secrets and variables -> Actions -> "New repository secret".
+# Supabase-Dashboard: "Connect" -> Connection string -> URI, **"Session pooler"**
+# verwenden). Sieht so aus:
+#   postgresql://postgres.<projekt-ref>:<passwort>@aws-0-eu-central-1.pooler.supabase.com:5432/postgres
+# NICHT die "Direct connection" (db.<ref>.supabase.co): die ist nur per IPv6
+# erreichbar, GitHub-Runner haben kein IPv6 -> "Network is unreachable".
+# Auch NICHT den "Transaction pooler" (Port 6543), der verträgt pg_dump nicht.
+# Einzutragen unter GitHub-Repo -> Settings -> Secrets and variables -> Actions.
 # Ohne dieses Secret schlägt der Lauf mit einer klaren Fehlermeldung fehl, statt still
 # nichts zu tun.
+#
+# Wiederherstellen: gunzip -c supabase-backup-*.sql.gz | psql "<Ziel-URI>"
+# Enthalten sind alle Schemas der Datenbank (auch auth und die Metadaten von storage),
+# NICHT die Dateien in den Storage-Buckets selbst (deck-art, primer-images).
 
 on:
   schedule:
@@ -24,15 +32,29 @@ jobs:
             exit 1
           fi
 
+      # pg_dump muss mindestens so neu sein wie der Server (Supabase läuft auf
+      # Postgres 15 oder 17), Ubuntus eigenes Paket ist älter -> PGDG-Paket.
       - name: Install PostgreSQL client
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y postgresql-client-17
 
       - name: Dump database
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
+          # pipefail: ohne das verschluckt "| gzip" jeden Fehler von pg_dump, und der
+          # Lauf lädt grün ein leeres Archiv hoch (so geschehen bis 29.09.2026).
+          set -o pipefail
           FILENAME="supabase-backup-$(date +%Y-%m-%d).sql.gz"
-          pg_dump "$SUPABASE_DB_URL" --no-owner --no-privileges | gzip > "$FILENAME"
+          /usr/lib/postgresql/17/bin/pg_dump "$SUPABASE_DB_URL" --no-owner --no-privileges | gzip > "$FILENAME"
+          if ! gunzip -c "$FILENAME" | tail -n 5 | grep -q "PostgreSQL database dump complete"; then
+            echo "::error::Dump ist unvollständig - kein Backup hochgeladen."
+            exit 1
+          fi
+          ls -lh "$FILENAME"
           echo "FILENAME=$FILENAME" >> "$GITHUB_ENV"
 
       - name: Upload backup artifact
@@ -41,3 +63,4 @@ jobs:
           name: ${{ env.FILENAME }}
           path: ${{ env.FILENAME }}
           retention-days: 30
+          if-no-files-found: error
