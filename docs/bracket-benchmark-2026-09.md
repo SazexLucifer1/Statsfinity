@@ -1,8 +1,8 @@
 # Bracket-Benchmark (September 2026)
 
-Ergebnisse einer abgeschlossenen Untersuchung. Die Daten dahinter (eine externe Deck-Stichprobe, Simulationsläufe,
-Forge-Partien) sind am 29.09.2026 aus Repo und Datenbank entfernt worden. Hier stehen **nur Kennzahlen** – keine
-Decklisten, keine Decknamen, keine Verweise auf einzelne Decks.
+Ergebnisse einer abgeschlossenen Untersuchung. Die Daten dahinter (eine externe Deck-Stichprobe und Simulationsläufe) sind am
+29.09.2026 aus Repo und Datenbank entfernt worden. Hier stehen **nur Kennzahlen** – keine Decklisten, keine
+Decknamen, keine Verweise auf einzelne Decks.
 
 Wozu es diese Datei gibt: Sie ist der **Ausgangspunkt** des Benchmarks, den die App seit dem 29.09.2026 selbst
 fortschreibt (siehe „Ab jetzt: der Benchmark lernt aus Statsfinity-Decks“ ganz unten). Die Startwerte dort stammen
@@ -83,42 +83,6 @@ Von 1.320 Ergebnis-Texten in Commander Spellbook zählen **43** als Sieg im weit
 **28** im engen („beendet das Spiel sofort“), neun fallen durch Ausnahmen („Infinite damage to all creatures“ ist
 ein Boardwipe). Anlass: Ein cEDH-Deck mit 22 vollständigen Combos hatte nach der engen Definition keine einzige
 Sieg-Combo. Die Muster stehen in SQL (`sql/sieg-definition-breit-2026-09-17.sql`), Urteil F nutzt die enge.
-
-## Forge: echte 4er-Partien mit Bots (28./29.09.2026)
-
-Idee: Stufe eines Decks = gegen welche Test-Decks es mithält. Engine: Forge (Open Source), dazu ein eigener
-Combo-Pilot, der erkannte Sieg-Combos vorführt.
-
-**Hinweis zu Rundenzahlen:** Forge teilt die Zugzahl im Ergebnis durch 2 (für Duelle gebaut). Alle damals notierten
-„Runden“ sind deshalb etwa halb so groß wie die echten. Die Winraten stimmen.
-
-### Test-Decks: höhere Stufe gegen drei Decks der Stufe darunter (fair 25 %)
-
-| Probe       | Standard-Bot | mit Combo-Pilot | nach Deck-Tausch |
-| ----------- | -----------: | --------------: | ---------------: |
-| B2 gegen B1 |         35 % |            30 % |                – |
-| B3 gegen B2 |         25 % |            25 % |             20 % |
-| B4 gegen B3 |         15 % |            15 % |             20 % |
-| B5 gegen B4 |          5 % |            25 % |              5 % |
-
-Je 20 Partien (95-%-Intervall etwa ±18 Punkte). Ohne Pilot gab es in 180 Partien keinen einzigen Combo-Sieg.
-
-### Probe an der Stichprobe: 45 Decks, 2.104 Partien, je Deck gegen drei feste B4-Test-Decks
-
-| angegebene Stufe | Decks | Partien | Winrate | Combo-Siege |
-| ---------------: | ----: | ------: | ------: | ----------: |
-|                1 |     9 |     421 |    18 % |           2 |
-|                2 |     9 |     424 |    23 % |           3 |
-|                3 |     9 |     412 |    29 % |          16 |
-|                4 |     9 |     418 |    24 % |          22 |
-|                5 |     9 |     429 |    18 % |          36 |
-
-AUC der Deck-Winraten: 1|2 0,605 · 2|3 0,648 · 3|4 0,389 · 4|5 0,327 · **1–2 gegen 4–5: 0,515**.
-
-Befund: Bis Bracket 3 steigt die Winrate, danach fällt sie – cEDH-Decks gewinnen so selten wie Bracket-1-Decks,
-obwohl ihre Combo-Siege mit der Stufe steigen. Die Bots spielen starke Decks nicht stark: Sie wirken aus, was geht,
-entfernen, was sich entfernen lässt, und blocken schlecht (Beispiel: bei 4 Leben den tödlichen Angreifer ungeblockt
-gelassen, zwei kleinere doppelt geblockt). **Als Bracket-Maßstab untauglich** – deshalb eingestellt.
 
 ## Was daraus folgt
 
