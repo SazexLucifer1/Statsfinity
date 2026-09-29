@@ -61,7 +61,6 @@ export class ProfileRank {
     return { lp, name: this.nameOf({ tier, division: tier === 'infinity' ? null : 5, lp: 0 }) };
   });
 
-  readonly lastChange = computed(() => Math.round(this.entry()?.lastChange ?? 0));
   readonly placementTotal = ELO_PROVISIONAL_GAMES;
 
   private nameOf(r: Rank | null): string {

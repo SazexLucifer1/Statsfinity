@@ -4,3 +4,18 @@
 .history-summary {
   margin-bottom: var(--sp-5);
 }
+
+/* LP-Änderung der Partie (Elo-Rang im Profil) - gehört nur hierher, nicht in den Match-Tab. */
+.match-log-lp {
+  font-size: 0.78rem;
+  font-weight: 700;
+  opacity: 0.85;
+
+  &.up {
+    color: var(--success);
+  }
+
+  &.down {
+    color: var(--danger);
+  }
+}

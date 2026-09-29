@@ -6,6 +6,7 @@ import {
   divisionLabel,
   rankFromLp,
   eloRanking,
+  lpChangesByMatch,
   expectedScore,
   isRatedMatch,
   ratedModes,
@@ -62,15 +63,20 @@ describe('elo', () => {
     const ranking = eloRanking(games, 'Normal');
     for (const e of ranking) expect(e.lp).toBeGreaterThan(ELO_START);
     expect(ELO_K / 2).toBe(50);
+    const byMatch = lpChangesByMatch(games);
+    expect(byMatch.size).toBe(40);
+    const last = ranking.find((e) => e.name === 'A')!;
+    expect(byMatch.get(games[39].id)!.get('A')).toBeCloseTo(last.lastChange);
   });
 
   it('ordnet LP Rängen und Divisionen zu', () => {
-    expect(rankFromLp(ELO_START)).toEqual({ tier: 'wood', division: 2, lp: 0 });
+    expect(rankFromLp(ELO_START)).toEqual({ tier: 'wood', division: 5, lp: 0 });
     expect(rankFromLp(0)).toEqual({ tier: 'wood', division: 5, lp: 0 });
-    expect(rankFromLp(1000)).toEqual({ tier: 'iron', division: 5, lp: 0 });
-    expect(rankFromLp(1499)).toEqual({ tier: 'iron', division: 1, lp: 99 });
-    expect(rankFromLp(3950)).toEqual({ tier: 'diamond', division: 1, lp: 50 });
-    expect(rankFromLp(4321)).toEqual({ tier: 'infinity', division: null, lp: 321 });
+    expect(rankFromLp(1250)).toEqual({ tier: 'wood', division: 1, lp: 50 });
+    expect(rankFromLp(1300)).toEqual({ tier: 'iron', division: 5, lp: 0 });
+    expect(rankFromLp(1799)).toEqual({ tier: 'iron', division: 1, lp: 99 });
+    expect(rankFromLp(4250)).toEqual({ tier: 'diamond', division: 1, lp: 50 });
+    expect(rankFromLp(4621)).toEqual({ tier: 'infinity', division: null, lp: 321 });
     expect(divisionLabel(5)).toBe('V');
   });
 

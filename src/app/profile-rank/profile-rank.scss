@@ -3,10 +3,21 @@
   margin-top: var(--sp-3, 12px);
 }
 
+// Rang links, Modus-Chips rechts daneben, sobald Platz ist (Desktop: eine Zeile unter den
+// Lieblingscommandern); auf dem Handy rutschen die Chips darunter.
+.rank-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 24px;
+}
+
 .rank-box {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex: 1 1 260px;
+  max-width: 420px;
 }
 
 .badge-muted {
@@ -49,19 +60,6 @@
   font-weight: 700;
 }
 
-.rank-change {
-  margin-left: 4px;
-  font-weight: 600;
-
-  &.up {
-    color: var(--success, #4ade80);
-  }
-
-  &.down {
-    color: var(--danger, #f87171);
-  }
-}
-
 .rank-meter {
   max-width: 220px;
 }
@@ -71,5 +69,5 @@
 }
 
 .rank-modes {
-  margin-top: 8px;
+  flex: 0 1 auto;
 }

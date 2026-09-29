@@ -11,6 +11,7 @@ import { ScryfallCard, ScryfallService } from '../scryfall.service';
 import { DeckService } from '../deck.service';
 import { DeckViewerService } from '../deck-viewer.service';
 import { Icon } from '../ui/icon/icon';
+import { lpChangesByMatch } from '../elo';
 
 /** Ein Teilnehmer eines Spiels, so wie ihn die Historie als Kachel zeigt. */
 export interface PlayerMatchEntry {
@@ -30,6 +31,8 @@ export interface PlayerMatchRow {
   match: Match;
   result: 'win' | 'loss' | 'draw';
   placement: number | null;
+  /** LP-Änderung der Person in dieser Partie (elo.ts), null = Partie ist nicht gewertet. */
+  lpChange: number | null;
   /** ALLE Teilnehmer inklusive der eigenen Person, in der Reihenfolge des Matches. */
   participants: PlayerMatchEntry[];
 }
@@ -77,6 +80,9 @@ export class PlayerMatchHistory {
 
     // Beide Quellen kommen bereits nach Datum absteigend sortiert.
     const quelle = extern ?? this.mtg.history().map((match) => ({ match, selfName: name! }));
+    // Über die GANZE Quelle gerechnet, nicht über die gefilterten Zeilen - die LP einer Partie
+    // hängen an allem, was davor gespielt wurde, auch an Partien anderer Jahre.
+    const lp = lpChangesByMatch(quelle.map((q) => q.match));
 
     const rows: PlayerMatchRow[] = [];
     for (const { match, selfName: name } of quelle) {
@@ -97,6 +103,7 @@ export class PlayerMatchHistory {
             ? 'win'
             : 'loss',
         placement: me.placement ?? null,
+        lpChange: lp.has(match.id) ? Math.round(lp.get(match.id)!.get(name) ?? 0) : null,
         participants: match.players.map((p) => ({
           name: p.name,
           isSelf: p.name === name,

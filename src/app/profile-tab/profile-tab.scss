@@ -165,15 +165,25 @@
 @include bp.up(md) {
   .profile-main-row {
     grid-template-columns: minmax(0, 260px) minmax(0, 1fr) auto;
+    // Zeile 1 so hoch wie die Commander, der Rang direkt darunter; die linke Spalte reicht über
+    // beide Zeilen (sonst begänne der Rang erst unter der Gruppenliste).
+    grid-template-rows: auto 1fr;
+  }
+
+  .profile-left {
+    grid-row: 1 / span 2;
   }
 
   .favorite-commanders-col {
     grid-column: 2;
-    grid-row: 1 / span 2;
+    grid-row: 1;
   }
 
+  // Desktop: waagerecht unter den Lieblingscommandern statt in der schmalen linken Spalte.
   .profile-rank-cell {
-    grid-column: 1;
+    grid-column: 2 / -1;
+    grid-row: 2;
+    align-self: start;
   }
 
   .header-icon-col {

@@ -13,7 +13,7 @@ import { GameMode, LIVE_TRACKING_START_DATE, Match } from './models';
  *
  * Teamkollegen (Two-Headed Giant) und die Verbündeten gegen den Archenemy duellieren sich nicht.
  *
- * Skala wie in League of Legends: LP (League Points), Start 800 = Holz II, je Division 100 LP,
+ * Skala wie in League of Legends: LP (League Points), Start 800 = Holz V (ganz unten), je Division 100 LP,
  * fünf Divisionen je Rang (siehe rankFromLp()). Ein Sieg gegen gleich starke Gegner bringt rund
  * 50 LP (K / 2, im Pod wie im 1v1).
  *
@@ -142,7 +142,12 @@ export function matchChanges(
 }
 
 /** Rangliste eines Modus, nach Wertung absteigend. Matches werden chronologisch verrechnet. */
-export function eloRanking(matches: readonly Match[], mode: GameMode): EloEntry[] {
+export function eloRanking(
+  matches: readonly Match[],
+  mode: GameMode,
+  /** Wird je gewerteter Partie mit den LP-Änderungen (inklusive Bonus) aller Spieler aufgerufen. */
+  onMatch?: (match: Match, lpChanges: Map<string, number>) => void,
+): EloEntry[] {
   const table = new Map<string, EloEntry>();
   const entry = (name: string): EloEntry => {
     let e = table.get(name);
@@ -173,9 +178,11 @@ export function eloRanking(matches: readonly Match[], mode: GameMode): EloEntry[
       (n) => entry(n).rating,
       (n) => entry(n).games,
     );
+    const lpChanges = new Map<string, number>();
     for (const seat of seats) {
       const e = entry(seat.name);
       const change = changes.get(seat.name) ?? 0;
+      lpChanges.set(seat.name, change + ELO_LP_BONUS);
       e.rating += change;
       e.lp += change + ELO_LP_BONUS;
       e.lastChange = change + ELO_LP_BONUS;
@@ -184,9 +191,23 @@ export function eloRanking(matches: readonly Match[], mode: GameMode): EloEntry[
       e.peak = Math.max(e.peak, e.lp);
       e.provisional = e.games < ELO_PROVISIONAL_GAMES;
     }
+    onMatch?.(match, lpChanges);
   }
 
   return [...table.values()].sort((a, b) => b.lp - a.lp || b.games - a.games);
+}
+
+/**
+ * LP-Änderung je Partie und Spieler (Match-ID → Name → LP), über alle Modi. Für die
+ * Match-Historie im Profil; ungewertete Partien fehlen in der Map.
+ */
+export function lpChangesByMatch(matches: readonly Match[]): Map<string, Map<string, number>> {
+  const result = new Map<string, Map<string, number>>();
+  const modes = new Set(matches.filter(isRatedMatch).map((m) => m.mode));
+  for (const mode of modes) {
+    eloRanking(matches, mode, (match, changes) => result.set(match.id, changes));
+  }
+  return result;
 }
 
 /** Modi, in denen es überhaupt gewertete Partien gibt, in der Reihenfolge von `modes`. */
@@ -211,7 +232,8 @@ export const RANK_TIERS: readonly RankTier[] = [
   'diamond',
   'infinity',
 ];
-export const RANK_FLOOR = 500;
+/** = ELO_START: Man beginnt in Holz V mit 0 LP und arbeitet sich über Holz I nach Eisen V. */
+export const RANK_FLOOR = ELO_START;
 export const DIVISION_LP = 100;
 export const DIVISIONS = 5;
 const RANK_SPAN = DIVISION_LP * DIVISIONS;
