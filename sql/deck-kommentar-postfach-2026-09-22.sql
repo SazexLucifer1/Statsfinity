@@ -12,8 +12,7 @@
 -- =====================================================================================
 -- 1. Was gelesen wurde. Nur gelesene Nachrichten stehen hier - "ungelesen" ist die Abwesenheit
 --    einer Zeile, nicht ein Flag. Der Schlüssel ist ein uuid-Paar (32 Byte), nicht die
---    Text-Kombination, an der sich archidekt_deck_pool_cards und spellbook_combo_cards schon
---    einmal verhoben haben.
+--    Text-Kombination, an der sich spellbook_combo_cards schon einmal verhoben hat.
 -- =====================================================================================
 create table if not exists public.deck_comment_reads (
   user_id uuid not null references auth.users(id) on delete cascade,

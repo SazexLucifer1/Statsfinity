@@ -5,7 +5,9 @@ import { CardDataService, SpellbookCardFlags, SpellbookTwoCardCombo } from './ca
 import {
   AUTO_BRACKET_MAX,
   BracketAnalysis,
+  BracketBenchmark,
   BracketCard,
+  DEFAULT_BRACKET_BENCHMARK,
   PREIS_SCHWELLE_EUR,
   TUNING_BUMP_SCHWELLE,
   analyzeBracket,
@@ -1034,6 +1036,13 @@ export class DeckViewerService {
    * dann fehlt zwar die Angabe, WAS eine Combo erzeugt, aber welche Combos im Deck stecken, wissen
    * wir aus dem Nachtlauf trotzdem.
    */
+  /**
+   * Gemessene Schwellen der Einstufung (Tuning-Spannen, Urteil F) aus der Tabelle bracket_benchmark.
+   * Lädt zusammen mit den Kartendetails, also bevor bracketAnalysis überhaupt rechnet - bis dahin
+   * und ohne Tabelle gelten die Startwerte.
+   */
+  private readonly bracketBenchmark = signal<BracketBenchmark>(DEFAULT_BRACKET_BENCHMARK);
+
   readonly localTwoCardCombos = computed(() =>
     presentCombos(this.bracketCards(), this.spellbookCombos(), this.spellbookCardFlags()),
   );
@@ -1059,6 +1068,7 @@ export class DeckViewerService {
       winningCombos: this.winningCombos(),
       totalCards: this.viewingTotalCards(),
       totalPrice: this.totalDeckPrice(),
+      benchmark: this.bracketBenchmark(),
     });
   });
 
@@ -3070,12 +3080,14 @@ export class DeckViewerService {
     // Combos sind die Grundlage der Bracket-Einstufung und sollen die Kartendetails nicht
     // verzögern.
     const commanderNames = cards.filter((c) => c.isCommander).map((c) => c.cardName);
-    const [found, flags, combos, gewinnCombos] = await Promise.all([
+    const [found, flags, combos, gewinnCombos, benchmark] = await Promise.all([
       this.cardData.findCardsBulk(names),
       this.cardData.spellbookCardFlags(),
       this.cardData.twoCardCombosFor(names),
       this.cardData.winningCombosIn(names, commanderNames),
+      this.cardData.bracketBenchmark(),
     ]);
+    this.bracketBenchmark.set(benchmark);
     this.viewingCardDetails.set(found);
     this.spellbookCardFlags.set(flags);
     this.spellbookCombos.set(combos);

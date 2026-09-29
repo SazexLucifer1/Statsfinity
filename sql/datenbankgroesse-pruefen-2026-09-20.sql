@@ -1,12 +1,12 @@
 -- Wo die 398 von 500 MB liegen - und ob es mehr wird. MIT ERGEBNIS, siehe unten.
--- Im Supabase-SQL-Editor ausführen. Reine Abfragen, ändert nichts (Abschnitt 5 legt auf Wunsch
--- eine kleine Messtabelle an, Abschnitt 6 ist auskommentiert).
+-- Im Supabase-SQL-Editor ausführen. Reine Abfragen, ändert nichts (Abschnitt 3 legt auf Wunsch
+-- eine kleine Messtabelle an, Abschnitt 4 ist auskommentiert).
 --
 -- ACHTUNG BEIM KOPIEREN: Der Supabase-SQL-Editor zeigt nur das Ergebnis der LETZTEN Abfrage.
 -- Die Abschnitte einzeln ausführen, sonst sieht man von fünf Auswertungen genau eine.
 --
 -- ANLASS: Die Datenbank stand am 15.09. bei 494 MB, kurz vor dem Umschalten auf read-only. Die
--- Umstellung der Kartenlisten auf Arrays (sql/archidekt-pool-card-arrays-2026-09-15.sql) hat rund
+-- Umstellung der Kartenlisten eines inzwischen entfernten Deckvorrats auf Arrays hat rund
 -- 154 MB zurückgegeben, danach war sie wieder bei 432 MB laut Dashboard.
 --
 -- =====================================================================================
@@ -15,9 +15,9 @@
 -- =====================================================================================
 --
 --   Spellbook-Cache (combos, combo_cards, winning_combos, ...)   ~193 MB   48 %
---   Archidekt-Deckvorrat (pool, cardlists, names)                ~110 MB   28 %
+--   externer Deckvorrat (am 29.09.2026 entfernt)                 ~110 MB   28 %
 --   Scryfall-Cache (cards, effects)                               ~48 MB   12 %
---   deck_sim_results                                               25 MB    6 %
+--   Simulationsergebnisse (am 29.09.2026 entfernt)                 25 MB    6 %
 --   ALLE echten App-Daten (decks, matches, players, Turniere)      ~7 MB    2 %
 --
 -- DIE ZAHL, AUF DIE ES ANKOMMT: Die Nutzerdaten dieser App sind SIEBEN MEGABYTE. Alles andere
@@ -36,15 +36,11 @@
 --      Primärschlüssel ist (combo_id text, name_normalized text), bei 383.229 Zeilen sind das
 --      ~29 MB an reinen Schlüsseldaten. Der Index ist nicht kaputt, er ist teuer ENTWORFEN.
 --
--- DAMIT IST ES DERSELBE FEHLER WIE BEI archidekt_deck_pool_cards, wo der Primärschlüssel allein
--- 72 MB gekostet hat: eine Zeile je Karte, Textschlüssel in jeder davon. Die Lösung war dort ein
+-- DAMIT IST ES DERSELBE FEHLER WIE BEI DEN KARTENZEILEN DES FRÜHEREN DECKVORRATS, wo der
+-- Primärschlüssel allein 72 MB gekostet hat: eine Zeile je Karte, Textschlüssel in jeder davon. Die Lösung war dort ein
 -- Zahlen-Array je Deck; dieselbe Umstellung auf spellbook_combo_cards (ein Array je Combo statt
 -- 3,6 Zeilen je Combo) würde die 82 MB dieser Tabelle auf etwa 15 MB drücken. Das ist der
 -- größte strukturelle Hebel, der hier noch liegt - und er ist schon einmal gebaut worden.
---
--- WAS SOFORT GEHT, ohne irgendetwas umzubauen (Abschnitt 6):
---   deck_sim_results hält die Fassungen 3, 5 und 7. Fassung 8 hat nie einen Lauf gesehen. Die
---   Fassungen 3 und 5 sind 98.637 Zeilen (~17 MB) und durch Fassung 7 ersetzt.
 --
 -- WAS OHNE DATENBANKZUGANG MESSBAR WAR (REST-API, zum Vergleich der Schätzgüte): die
 -- Zeilenzahlen stimmten, die Größen lagen 10-25 % zu niedrig, weil Zeilenköpfe, Ausrichtung und
@@ -85,7 +81,7 @@ limit 25;
 -- Schlüssel lässt sich ändern, Aufblähung nicht. Gemessen am 20.09.:
 --
 --   spellbook_combo_cards_pkey      33 MB   btree (combo_id text, name_normalized text)
---   archidekt_deck_pool_search_idx  14 MB   gin (search_text gin_trgm_ops)
+--   (Suchindex des früheren Deckvorrats, 14 MB - mit ihm entfernt)
 --   spellbook_combo_cards_synced_at 8,3 MB  braucht der nächtliche Abgleich zum Aufräumen
 --
 -- Der erste ist der Fall: 383.229 Zeilen mal zwei Textspalten sind rechnerisch ~29 MB, der Index
@@ -131,40 +127,7 @@ order by n_dead_tup desc
 limit 20;
 
 -- =====================================================================================
--- 3. Verdacht B: Wie viele Simulator-Fassungen liegen noch in deck_sim_results?
---
---    Die letzte Spalte ist die eigentliche Antwort: Was kostet alles, was NICHT die aktuelle
---    Fassung 8 ist? Genau das ist der Platz, den ein delete zurückgeben würde - ohne dass ein
---    aktuelles Ergebnis verloren geht.
--- =====================================================================================
-select
-  sim_version                                                          as fassung,
-  count(*)                                                             as zeilen,
-  min(berechnet_at)::date                                              as erster_lauf,
-  max(berechnet_at)::date                                              as letzter_lauf,
-  pg_size_pretty(
-    (count(*) * (pg_total_relation_size('public.deck_sim_results')
-                 / nullif((select count(*) from public.deck_sim_results), 0)))::bigint
-  )                                                                    as anteil_geschaetzt
-from public.deck_sim_results
-group by sim_version
-order by sim_version;
-
--- =====================================================================================
--- 4. Der Deckvorrat: ist er noch der Posten, für den ihn die Umbau-Migration gehalten hat?
--- =====================================================================================
-select
-  (select count(*) from public.archidekt_deck_pool)           as decks,
-  (select count(*) from public.archidekt_deck_pool_cardlists) as kartenlisten,
-  (select count(*) from public.archidekt_pool_card_names)     as kartennamen,
-  pg_size_pretty(
-    pg_total_relation_size('public.archidekt_deck_pool')
-    + pg_total_relation_size('public.archidekt_deck_pool_cardlists')
-    + pg_total_relation_size('public.archidekt_pool_card_names')
-  )                                                           as vorrat_gesamt;
-
--- =====================================================================================
--- 5. "Wird es gerade mehr?" - die Frage, die eine einzelne Messung nicht beantworten kann.
+-- 3. "Wird es gerade mehr?" - die Frage, die eine einzelne Messung nicht beantworten kann.
 --
 --    Eine Momentaufnahme sagt, wie groß es IST. Ob es WÄCHST, sagt erst die zweite Messung.
 --    Deshalb hier eine winzige Tabelle (ein paar hundert Byte je Lauf), die jeden Aufruf
@@ -238,35 +201,21 @@ where bis > von
 order by zuletzt - zuerst desc;
 
 -- =====================================================================================
--- 6. Was danach zu tun wäre - BEWUSST AUSKOMMENTIERT.
+-- 4. Was danach zu tun wäre - BEWUSST AUSKOMMENTIERT.
 --
 --    Erst messen, dann löschen. Die Zahlen aus den Abschnitten oben entscheiden, welcher dieser
 --    Schritte überhaupt etwas bringt; blind ausgeführt geben sie im schlechtesten Fall nichts
 --    frei und kosten im Fall von "vacuum full" die Erreichbarkeit der Tabelle.
 --
---    a) Alte Simulator-Fassungen. Gibt echten Platz frei, wenn Abschnitt 3 mehrere Fassungen
---       zeigt - gemessen am 20.09. waren das 3, 5 und 7, zusammen 25 MB.
---
---       NICHT "where sim_version <> '<aktuelle>'" schreiben. SIM_VERSION steht in
---       scripts/simulate-deck-pool.js inzwischen auf '8', aber ein Lauf dieser Fassung hat nie
---       stattgefunden - ein delete auf alles außer '8' hätte die Tabelle GELEERT, samt der
---       Fassung 7, auf der die Trennschärfe-Messung vom 17.09. beruht (Game Changer 0,898,
---       Tutoren 0,771, dokumentiert in CLAUDE.md und im Kopf von
---       sql/deck-sim-feature-strength-2026-09-16.sql). Die zu löschenden Fassungen deshalb
---       IMMER aus Abschnitt 3 ablesen und einzeln aufzählen, statt sie auszurechnen.
---
--- delete from public.deck_sim_results where sim_version in ('3', '5');
--- vacuum full public.deck_sim_results;
---
---    b) Aufblähung zurückgeben. "vacuum full" ist das Einzige, was die Datei wirklich
+--    a) Aufblähung zurückgeben. "vacuum full" ist das Einzige, was die Datei wirklich
 --       schrumpfen lässt - es schreibt die Tabelle neu. Zwei Warnungen, beide ernst:
 --       Die Tabelle ist währenddessen GESPERRT (die App sieht sie nicht), und Postgres braucht
 --       kurzzeitig Platz für die alte UND die neue Fassung.
 --
 --       DESHALB MIT DER KLEINSTEN BEGINNEN, nicht mit der größten: spellbook_combos ist 102 MB,
 --       ein "vacuum full" darauf stünde bei 398 MB Bestand kurzzeitig bei rund 500 MB - genau
---       die Grenze, ab der Supabase auf read-only schaltet. Erst a) ausführen, damit Luft da
---       ist, dann nach jedem Schritt Abschnitt 1 wiederholen.
+--       die Grenze, ab der Supabase auf read-only schaltet. Nach jedem Schritt Abschnitt 1
+--       wiederholen.
 --
 --       Ob sich das überhaupt lohnt, sagt pgstattuple (free_percent ist der Anteil, den ein
 --       "vacuum full" zurückgäbe) - messen statt vermuten:
@@ -277,6 +226,6 @@ order by zuletzt - zuerst desc;
 -- vacuum full public.scryfall_cards;
 -- vacuum full public.spellbook_combos;
 --
---    c) Die Messtabelle aus Abschnitt 5 wieder los werden, wenn die Frage beantwortet ist.
+--    b) Die Messtabelle aus Abschnitt 3 wieder los werden, wenn die Frage beantwortet ist.
 --
 -- drop table if exists public.groessen_verlauf;

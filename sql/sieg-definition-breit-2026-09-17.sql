@@ -186,6 +186,6 @@ grant execute on function public.winning_combos_in_deck(text[], text[]) to anon,
 
 -- =====================================================================================
 -- 4. (Entfernt am 29.09.2026) Hier stand die Spalte deck_sim_results.sieg_combos des
---    Stapellaufs. Die Tabelle ist mit sql/forge-archidekt-entfernen-2026-09-29.sql gelöscht,
---    die Ergebnisse stehen in docs/bracket-benchmark-archidekt-2026-09.md.
+--    Stapellaufs. Die Tabelle ist am 29.09.2026 gelöscht worden, die Ergebnisse stehen in
+--    docs/bracket-benchmark-2026-09.md.
 -- =====================================================================================

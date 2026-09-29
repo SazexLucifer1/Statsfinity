@@ -3,9 +3,11 @@ import {
   BracketCard,
   BracketInput,
   CEDH_TUNING_HINT,
+  DEFAULT_BRACKET_BENCHMARK,
   PREIS_SCHWELLE_EUR,
   TUNING_BUMP_SCHWELLE,
   analyzeBracket,
+  bracketBenchmarkFromRows,
   powerLevel,
   powerRange,
   presentCombos,
@@ -540,9 +542,9 @@ describe('bracket - Urteil E: Kartenwert', () => {
 });
 
 describe('Urteil F - Combo plus Tutoren', () => {
-  // Der einzige Befund dieser Einstufung, der nicht aus dem Regelwerk stammt, sondern aus 48.638
-  // gemessenen Decks: Wer eine spielbeendende Combo UND mindestens zwei Tutoren hat, liegt zu
-  // 93 % in Bracket 4 oder 5.
+  // Der einzige Befund dieser Einstufung, der nicht aus dem Regelwerk stammt, sondern aus
+  // gemessenen Decks: Wer eine spielbeendende Combo UND mindestens zwei Tutoren hat (Startwert,
+  // siehe BracketBenchmark), liegt zu 93 % in Bracket 4 oder 5.
 
   const harmlos = (extra: Partial<BracketInput> = {}): BracketInput => basis(extra);
 
@@ -575,5 +577,64 @@ describe('Urteil F - Combo plus Tutoren', () => {
   it('rechnet ohne die Zahl einfach weiter', () => {
     // 0 heisst "liegt nicht vor" - dann darf Urteil F nichts behaupten.
     expect(analyzeBracket(harmlos({ winningCombos: 0, tutorCount: 2 })).bracket).toBe(2);
+  });
+
+  it('nimmt die Tutorenschwelle aus dem gemessenen Benchmark', () => {
+    const benchmark = { ...DEFAULT_BRACKET_BENCHMARK, comboTutorMin: 3 };
+    expect(analyzeBracket(harmlos({ winningCombos: 1, tutorCount: 2, benchmark })).bracket).toBe(2);
+    expect(analyzeBracket(harmlos({ winningCombos: 1, tutorCount: 3, benchmark })).bracket).toBe(4);
+  });
+});
+
+describe('Gemessener Benchmark - Tuning-Spannen', () => {
+  it('rechnet ohne Benchmark genau mit den Startwerten', () => {
+    const ohne = tuningParts(basis({ tutorCount: 4 }));
+    const mit = tuningParts(basis({ tutorCount: 4, benchmark: DEFAULT_BRACKET_BENCHMARK }));
+    expect(mit).toEqual(ohne);
+  });
+
+  it('übernimmt die Spannen aus der Datenbank', () => {
+    const benchmark = {
+      ...DEFAULT_BRACKET_BENCHMARK,
+      tuning: { ...DEFAULT_BRACKET_BENCHMARK.tuning, tutors: [1, 5] as [number, number] },
+    };
+    const teil = tuningParts(basis({ tutorCount: 3, benchmark })).find((t) => t.key === 'tutors');
+    expect(teil).toMatchObject({ from: 1, to: 5, score: 0.5 });
+  });
+});
+
+describe('bracketBenchmarkFromRows - Tabellenzeilen zu Schwellen', () => {
+  const zeile = (bracket: number, werte: Partial<Record<string, number | null>> = {}) => ({
+    bracket,
+    tutor_density: null,
+    avg_cmc: null,
+    untapped_land_percent: null,
+    game_changers: null,
+    combo_tutor_min: null,
+    ...werte,
+  });
+
+  it('liefert ohne Zeilen genau die Startwerte', () => {
+    expect(bracketBenchmarkFromRows([])).toEqual(DEFAULT_BRACKET_BENCHMARK);
+  });
+
+  it('spannt von Bracket 2 bis Bracket 5 und nimmt Urteil F aus Bracket 4', () => {
+    const b = bracketBenchmarkFromRows([
+      zeile(2, { tutor_density: 1, avg_cmc: 3.2 }),
+      zeile(4, { combo_tutor_min: 3 }),
+      zeile(5, { tutor_density: 7, avg_cmc: 2.1 }),
+    ]);
+    expect(b.tuning.tutors).toEqual([1, 7]);
+    expect(b.tuning.averageCmc).toEqual([3.2, 2.1]);
+    expect(b.comboTutorMin).toBe(3);
+  });
+
+  it('fällt je Merkmal auf den Startwert zurück, wenn ein Ende fehlt oder beide gleich sind', () => {
+    const b = bracketBenchmarkFromRows([
+      zeile(2, { tutor_density: 2, game_changers: 1 }),
+      zeile(5, { tutor_density: 2 }),
+    ]);
+    expect(b.tuning.tutors).toEqual(DEFAULT_BRACKET_BENCHMARK.tuning.tutors);
+    expect(b.tuning.gameChangers).toEqual(DEFAULT_BRACKET_BENCHMARK.tuning.gameChangers);
   });
 });

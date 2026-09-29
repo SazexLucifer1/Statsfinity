@@ -171,7 +171,7 @@ async function ladeAlleSeiten(startUrl, aufZeile) {
 // =====================================================================================
 // Supabase: Wiederholungen bei Netzaussetzern
 //
-// Übernommen aus dem früheren Archidekt-Import (am 29.09.2026 entfernt), samt der dort teuer gelernten Lehre: Die
+// Übernommen aus einem früheren Import-Skript (am 29.09.2026 entfernt), samt der dort teuer gelernten Lehre: Die
 // Spellbook-Seite hatte längst Wiederholungen, die Supabase-Seite nicht - und ein Lauf über gut
 // eine Stunde starb an einem einzigen Aussetzer ("Upsert in spellbook_combos fehlgeschlagen:
 // Gateway Timeout", Nachtlauf vom 14.09.2026, nach 150 von 1.085 Seiten).
@@ -455,9 +455,9 @@ async function hatManaSpalte() {
  * Hunderttausende Nachschlag-Abfragen zusammen. Die Tabelle wächst nur, wenn eine Combo eine
  * Karte enthält, die noch nie vorkam - nach den ersten paar hundert Combos ist das die Ausnahme.
  *
- * Gleiche Bauart wie die Kartennamen des früheren Archidekt-Imports, aber bewusst eine eigene
- * Tabelle: Die beiden Läufe sind voneinander unabhängig (Spellbook nächtlich, Archidekt von
- * Hand), und eine gemeinsame Namenstabelle würde sie aneinanderketten.
+ * Gleiche Bauart wie die Kartennamen eines früheren, inzwischen entfernten Deckvorrats, aber
+ * bewusst eine eigene Tabelle: Die beiden Läufe waren voneinander unabhängig, und eine gemeinsame
+ * Namenstabelle hätte sie aneinandergekettet.
  */
 class Kartennamen {
   constructor() {
@@ -709,6 +709,7 @@ async function main() {
   await syncKartenFlags(laufBegonnen);
   await syncCombos(laufBegonnen);
   await frischeGewinnCombosAuf();
+  await aktualisiereBracketBenchmark();
   console.log('Abgleich abgeschlossen.');
 }
 
@@ -717,7 +718,7 @@ async function main() {
  *
  * Sie speichert ihr Ergebnis (siehe sql/spellbook-winning-combos-matview-2026-09-16.sql) und weiss
  * von den Combos, die dieser Lauf gerade eingespielt hat, sonst nichts. Ohne diesen Aufruf wuerde
- * der Goldfish-Stapellauf auf einem Stand von gestern rechnen, ohne dass es irgendwo auffiele.
+ * die Bracket-Einstufung (Urteil F) auf einem Stand von gestern rechnen, ohne dass es irgendwo auffiele.
  *
  * Ein Fehlschlag beendet den Abgleich NICHT: Die Kartendaten sind zu diesem Zeitpunkt vollstaendig
  * geschrieben, und die ganze Nacht wegen einer Nebensache als gescheitert zu melden hiesse, den
@@ -734,6 +735,33 @@ async function frischeGewinnCombosAuf() {
     return;
   }
   console.log('spellbook_winning_combos ist auf dem neuesten Stand.');
+}
+
+/**
+ * Den Bracket-Benchmark neu messen (sql/bracket-benchmark-2026-09-29.sql).
+ *
+ * Misst alle Commander-Decks, deren Besitzer das Bracket selbst gewählt hat, und überschreibt die
+ * Schwellen eines Brackets erst ab 100 Decks dieses Brackets. Läuft NACH dem Auffrischen der
+ * Gewinn-Combos, weil Urteil F deren Zahl je Deck braucht.
+ *
+ * Wie beim Auffrischen oben: Ein Fehlschlag beendet den Abgleich nicht - die Kartendaten sind
+ * vollständig geschrieben, und ohne Migration gelten in der App einfach die Startwerte.
+ */
+async function aktualisiereBracketBenchmark() {
+  console.log('--- Teil 4: Bracket-Benchmark messen ---');
+  const { data, error } = await supabase.rpc('bracket_benchmark_aktualisieren');
+  if (error) {
+    console.warn(
+      `Bracket-Benchmark nicht aktualisiert: ${error.message}. Migration sql/bracket-benchmark-2026-09-29.sql schon ausgefuehrt?`,
+    );
+    return;
+  }
+  for (const zeile of data ?? []) {
+    const stand = zeile.werte_aktualisiert
+      ? 'Werte aktualisiert'
+      : 'unter 100 Decks, Werte unverändert';
+    console.log(`Bracket ${zeile.stufe}: ${zeile.decks} Decks - ${stand}.`);
+  }
 }
 
 main().catch((err) => {

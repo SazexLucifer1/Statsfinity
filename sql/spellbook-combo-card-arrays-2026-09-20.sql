@@ -15,9 +15,8 @@
 -- Der Index ist gesund, er ist teuer ENTWORFEN. Bei 105.025 Combos sind das 3,6 Zeilen je Combo,
 -- und jede davon wiederholt die Combo-ID als Text.
 --
--- DAS IST DERSELBE FEHLER WIE BEI archidekt_deck_pool_cards, wo der Primärschlüssel allein 72 MB
--- gekostet hat (sql/archidekt-pool-card-arrays-2026-09-15.sql). Dort war die Lösung ein Zahlen-
--- Array je Deck; hier ist es ein Zahlen-Array je Combo. Erwartet:
+-- DAS IST DERSELBE FEHLER WIE BEI DEN KARTENZEILEN DES FRÜHEREN DECKVORRATS, wo der
+-- Primärschlüssel allein 72 MB gekostet hat. Dort war die Lösung ein Zahlen-Array je Deck; hier ist es ein Zahlen-Array je Combo. Erwartet:
 --
 --   spellbook_combo_cardlists (105.025 Zeilen) + spellbook_card_names   ~26 MB
 --   -> rund 56 MB frei, ohne dass eine einzige Combo verloren geht.
@@ -32,10 +31,10 @@
 -- ändert sich deshalb nichts. Ebenso unberührt: spellbook_two_card_combos, die schmale Tabelle
 -- hinter dem offiziellen Bracket-Kriterium.
 --
--- EIGENE NAMENSTABELLE, nicht archidekt_pool_card_names mitbenutzt: Die beiden werden von
--- verschiedenen Läufen gefüllt (Spellbook-Abgleich nächtlich, Archidekt-Import von Hand). Eine
--- gemeinsame Tabelle würde die beiden aneinanderketten, und der Gewinn wären rund 3 MB an
--- doppelten Namen - gemessen an 56 MB kein Grund, zwei unabhängige Läufe zu verheiraten.
+-- EIGENE NAMENSTABELLE, nicht die des damaligen Deckvorrats mitbenutzt: Die beiden wurden von
+-- verschiedenen Läufen gefüllt (Spellbook-Abgleich nächtlich, Deckvorrat von Hand). Eine
+-- gemeinsame Tabelle hätte die beiden aneinandergekettet, und der Gewinn wären rund 3 MB an
+-- doppelten Namen gewesen - gemessen an 56 MB kein Grund, zwei unabhängige Läufe zu verheiraten.
 --
 -- REIHENFOLGE: Die Abschnitte bauen aufeinander auf und müssen in EINEM Durchgang laufen.
 -- Abschnitt 1 gibt zuerst Platz frei, weil die neuen Tabellen neben den alten entstehen.

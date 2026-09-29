@@ -82,13 +82,13 @@ export const TUNING_BUMP_SCHWELLE = 0.8;
 export const PREIS_SCHWELLE_EUR = 150;
 
 /**
- * Urteil F, die beiden Schwellen: mindestens eine spielbeendende Combo UND mindestens zwei
- * Tutoren heißt mindestens Bracket 4.
+ * Urteil F, die beiden Schwellen: mindestens eine spielbeendende Combo UND mindestens N Tutoren
+ * heißt mindestens Bracket 4.
  *
  * Das ist das erste Kriterium dieser Einstufung, das NICHT aus dem Regelwerk stammt, sondern aus
- * gemessenen Decks - und es ist gemessen, nicht geschätzt. Über 48.638 fremde Commander-Decks,
- * deren Stufe ihr jeweiliger Ersteller selbst angegeben hat, verteilen sich Decks mit beiden
- * Merkmalen so:
+ * gemessenen Decks. Der Startwert N = 2 kommt aus einer Auswertung von 48.638 Commander-Decks,
+ * deren Stufe ihr jeweiliger Ersteller selbst angegeben hat (docs/bracket-benchmark-2026-09.md).
+ * Decks mit beiden Merkmalen verteilten sich dort so:
  *
  *   Bracket 1     75 Decks   (0,8 % der Stufe)
  *   Bracket 2     68 Decks   (0,7 %)
@@ -97,7 +97,11 @@ export const PREIS_SCHWELLE_EUR = 150;
  *   Bracket 5  5.595 Decks  (57,3 %)
  *
  * 93 % aller Decks mit beiden Merkmalen liegen also in Bracket 4 oder 5, und von Stufe 2 zu Stufe
- * 4 ist es ein Faktor 30. Das ist der schärfste Befund der ganzen Auswertung.
+ * 4 ist es ein Faktor 30.
+ *
+ * Seit dem 29.09.2026 misst die Datenbank N jede Nacht an den Statsfinity-Decks mit selbst
+ * gewähltem Bracket nach (bracket_benchmark.combo_tutor_min, siehe BracketBenchmark) - aber erst,
+ * wenn Bracket 2, 3 und 4 je mindestens 100 Decks haben. Bis dahin gilt der Startwert.
  *
  * WARUM BEIDES ZUSAMMEN und nicht jedes für sich: Einzeln trennen sie viel schwächer. Eine Combo
  * allein haben 9,9 % der Bracket-2-Decks - das Regelwerk erlaubt in Bracket 2 ausdrücklich
@@ -110,7 +114,46 @@ export const PREIS_SCHWELLE_EUR = 150;
  * Urteil hier ist eine Untergrenze, keines eine Obergrenze.
  */
 export const EMPIRISCH_MIN_COMBOS = 1;
-export const EMPIRISCH_MIN_TUTOREN = 2;
+
+/**
+ * Die gemessenen Teile der Einstufung - alles, was nicht aus dem offiziellen Regelwerk stammt,
+ * sondern aus Decks mit selbst gewähltem Bracket gelernt wird.
+ *
+ * Kommt aus der Tabelle bracket_benchmark (sql/bracket-benchmark-2026-09-29.sql), die jede Nacht
+ * neu gemessen wird - je Bracket erst, wenn mindestens 100 Decks davon vorliegen. Solange die
+ * Tabelle fehlt oder nicht geladen ist, gilt DEFAULT_BRACKET_BENCHMARK.
+ */
+export interface BracketBenchmark {
+  /**
+   * Spannen des Tuning-Grads je Messgröße: [zählt 0, zählt 1]. In der Datenbank der Median von
+   * Bracket 2 bzw. Bracket 5 - "voll getunt" heißt also "wie ein typisches cEDH-Deck".
+   */
+  tuning: Record<TuningPart['key'], [number, number]>;
+  /** Urteil F: so viele Tutoren braucht es zusätzlich zur Gewinn-Combo. */
+  comboTutorMin: number;
+}
+
+/**
+ * Startwerte, identisch mit den Startwerten in der Tabelle - gelten, bis die Datenbank etwas
+ * anderes sagt.
+ *
+ * - Tutoren: acht auf 100 Karten sind dicht; das erreichen sonst nur sehr zielgerichtete Decks.
+ * - Ø Manawert: niedriger ist stärker, deshalb die Spanne andersherum.
+ * - Ungetappte Länder: Precons liegen bei 70-80 %, ab ~95 % ist die Manabasis praktisch
+ *   durchgängig ungetappt. Was das Maß bewusst nicht kann: Ein einfarbiges Deck aus lauter
+ *   Standardländern braucht kein Fixing und bekommt die volle Punktzahl geschenkt. Der Preis
+ *   dafür, Tempo statt Fixing zu messen - und einer von vier gemittelten Werten, also gedämpft.
+ * - Game Changer: sechs sind ein Deck, das die Liste gezielt ausreizt.
+ */
+export const DEFAULT_BRACKET_BENCHMARK: BracketBenchmark = {
+  tuning: {
+    tutors: [0, 8],
+    averageCmc: [3.4, 2.2],
+    untappedLands: [70, 95],
+    gameChangers: [0, 6],
+  },
+  comboTutorMin: 2,
+};
 
 /** Welcher Befund die Einstufung getrieben hat - Grundlage der Begründung in der Oberfläche. */
 export type BracketReasonKey =
@@ -148,6 +191,8 @@ export interface BracketVerdicts {
   precon: boolean;
   /** Urteil E: gemessener Kartenwert in Euro, null solange der Preis noch nicht vorliegt. */
   price: number | null;
+  /** Urteil F: so viele Tutoren braucht es zur Gewinn-Combo (gemessen, siehe BracketBenchmark). */
+  comboTutorMin: number;
 }
 
 export interface BracketAnalysis {
@@ -206,6 +251,8 @@ export interface BracketInput {
    * nicht geladener Preis darf ein Deck weder anheben noch von einer Anhebung befreien.
    */
   totalPrice: number | null;
+  /** Gemessene Schwellen aus der Datenbank. Fehlt die Angabe, gelten die Startwerte. */
+  benchmark?: BracketBenchmark;
 }
 
 /** Eine im Deck vollständig vorhandene Zwei-Karten-Combo, samt der beiden Karten. */
@@ -417,32 +464,74 @@ export interface TuningPart {
  */
 export function tuningParts(input: BracketInput): TuningPart[] {
   const teile: TuningPart[] = [];
-  const teil = (key: TuningPart['key'], value: number, from: number, to: number) =>
+  const spannen = (input.benchmark ?? DEFAULT_BRACKET_BENCHMARK).tuning;
+  const teil = (key: TuningPart['key'], value: number) => {
+    const [from, to] = spannen[key];
     teile.push({ key, value, from, to, score: anteil(value, from, to) });
+  };
 
   if (input.totalCards > 0) {
-    // Acht Tutoren auf 100 Karten sind dicht; das erreichen sonst nur sehr zielgerichtete Decks.
-    teil('tutors', (input.tutorCount / input.totalCards) * 100, 0, 8);
+    teil('tutors', (input.tutorCount / input.totalCards) * 100);
   }
   if (input.averageCmc !== null) {
-    // Niedriger ist stärker, deshalb die Spanne andersherum.
-    teil('averageCmc', input.averageCmc, 3.4, 2.2);
+    teil('averageCmc', input.averageCmc);
   }
   if (input.untappedLandPercent !== null) {
-    // Gemessen an echten Decks: Precons liegen bei 70-80 %, ab ~95 % ist die Manabasis praktisch
-    // durchgängig ungetappt. Was das Maß bewusst nicht kann: Ein einfarbiges Deck aus lauter
-    // Standardländern braucht kein Fixing und bekommt die volle Punktzahl geschenkt. Der Preis
-    // dafür, Tempo statt Fixing zu messen - und einer von vier gemittelten Werten, also gedämpft.
-    teil('untappedLands', input.untappedLandPercent, 70, 95);
+    teil('untappedLands', input.untappedLandPercent);
   }
   teil(
     'gameChangers',
     input.cards.filter((c) => c.gameChanger).reduce((sum, c) => sum + c.quantity, 0),
-    0,
-    6,
   );
 
   return teile;
+}
+
+/** Eine Zeile aus bracket_benchmark, so wie sie aus der Datenbank kommt. */
+export interface BracketBenchmarkRow {
+  bracket: number;
+  tutor_density: number | null;
+  avg_cmc: number | null;
+  untapped_land_percent: number | null;
+  game_changers: number | null;
+  combo_tutor_min: number | null;
+}
+
+/**
+ * Macht aus den Tabellenzeilen die Schwellen der Einstufung: Tuning-Spannen von Bracket 2 bis
+ * Bracket 5, Urteil F aus der Zeile von Bracket 4.
+ *
+ * Je Merkmal einzeln abgesichert: Fehlt ein Wert oder fallen beide Enden zusammen (eine Spanne
+ * der Breite null zählt nichts), gilt für DIESES Merkmal der Startwert - ein einzelner schiefer
+ * Wert soll nicht den ganzen Tuning-Grad lahmlegen.
+ */
+export function bracketBenchmarkFromRows(rows: BracketBenchmarkRow[]): BracketBenchmark {
+  const zeile = (b: number) => rows.find((r) => r.bracket === b);
+  const unten = zeile(2);
+  const oben = zeile(5);
+  const start = DEFAULT_BRACKET_BENCHMARK.tuning;
+
+  const spanne = (
+    key: TuningPart['key'],
+    spalte: keyof Omit<BracketBenchmarkRow, 'bracket' | 'combo_tutor_min'>,
+  ): [number, number] => {
+    const von = unten?.[spalte];
+    const bis = oben?.[spalte];
+    if (von == null || bis == null || von === bis) return start[key];
+    return [von, bis];
+  };
+
+  const tutoren = zeile(4)?.combo_tutor_min;
+  return {
+    tuning: {
+      tutors: spanne('tutors', 'tutor_density'),
+      averageCmc: spanne('averageCmc', 'avg_cmc'),
+      untappedLands: spanne('untappedLands', 'untapped_land_percent'),
+      gameChangers: spanne('gameChangers', 'game_changers'),
+    },
+    comboTutorMin:
+      tutoren != null && tutoren >= 1 ? tutoren : DEFAULT_BRACKET_BENCHMARK.comboTutorMin,
+  };
 }
 
 /** Wert linear auf 0..1 abbilden. von > bis dreht die Richtung um (kleiner = stärker). */
@@ -498,6 +587,7 @@ export function powerLevel(bracket: BracketLevel, tuning: number): number {
  * selben Februar-Update neu auf die Game-Changer-Liste gesetzt).
  */
 export function analyzeBracket(input: BracketInput): BracketAnalysis {
+  const benchmark = input.benchmark ?? DEFAULT_BRACKET_BENCHMARK;
   const { level: rules, reasons } = rulesVerdict(input);
   const spellbook = spellbookVerdict(input.spellbookTag);
   const tuning = tuningVerdict(input);
@@ -513,12 +603,12 @@ export function analyzeBracket(input: BracketInput): BracketAnalysis {
     bracket = maxLevel(bracket, price);
   }
 
-  // Urteil F: der gemessene Befund aus 48.638 fremden Decks (siehe EMPIRISCH_MIN_COMBOS). Steht
+  // Urteil F: der gemessene Befund (siehe EMPIRISCH_MIN_COMBOS und BracketBenchmark). Steht
   // bewusst VOR der Feinbewertung: Es ist ein harter Befund wie die übrigen Untergrenzen, kein
   // weiches Anheben um eine Stufe.
   if (
     input.winningCombos >= EMPIRISCH_MIN_COMBOS &&
-    input.tutorCount >= EMPIRISCH_MIN_TUTOREN &&
+    input.tutorCount >= benchmark.comboTutorMin &&
     bracket < AUTO_BRACKET_MAX
   ) {
     const nichtsGefunden = reasons.findIndex((r) => r.key === 'nothing');
@@ -556,6 +646,7 @@ export function analyzeBracket(input: BracketInput): BracketAnalysis {
       tuningParts: tuningParts(input),
       precon: input.isPrecon,
       price: input.totalPrice,
+      comboTutorMin: benchmark.comboTutorMin,
     },
   };
 }
