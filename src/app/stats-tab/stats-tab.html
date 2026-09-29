@@ -409,15 +409,15 @@
         {{ e.name }}
       </span>
       <span class="detail">
-        {{ i18n.t('stats.elo.detail', { games: e.games, wins: e.wins, peak: (e.peak | number: '1.0-0') ?? '' }) }}
+        {{ i18n.t('stats.elo.detail', { games: e.games, wins: e.wins, peak: e.peak }) }}
         @if (e.provisional) {
         · {{ i18n.t('stats.elo.provisional') }}
         }
       </span>
       <span class="rate elo-rate">
-        {{ e.rating | number: '1.0-0' }}
+        {{ e.rating }}
         <small class="elo-lp" [class.up]="e.lastChange > 0" [class.down]="e.lastChange < 0">
-          {{ e.lastChange > 0 ? '+' : '' }}{{ e.lastChange | number: '1.0-0' }} LP
+          {{ e.lastChange > 0 ? '+' : '' }}{{ e.lastChange }} LP
         </small>
       </span>
     </li>

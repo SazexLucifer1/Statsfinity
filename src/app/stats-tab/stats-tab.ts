@@ -280,7 +280,16 @@ export class StatsTab {
   readonly pagedEloRanking = computed(() => {
     const pages = Math.max(1, Math.ceil(this.eloRanking().length / PAGE_SIZE));
     const start = Math.min(this.eloPage(), pages - 1) * PAGE_SIZE;
-    return this.eloRanking().slice(start, start + PAGE_SIZE).map((e, i) => ({ ...e, place: start + i }));
+    // Ganze Zahlen ohne Tausendertrennzeichen - "1,016" läse sich im deutschen Text als Kommazahl.
+    return this.eloRanking()
+      .slice(start, start + PAGE_SIZE)
+      .map((e, i) => ({
+        ...e,
+        place: start + i,
+        rating: Math.round(e.rating),
+        peak: Math.round(e.peak),
+        lastChange: Math.round(e.lastChange),
+      }));
   });
   readonly showEloInfo = signal(false);
 
