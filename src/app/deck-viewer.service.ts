@@ -32,6 +32,7 @@ import { normalizeCardName, sleep } from './array-utils';
 import { AuthService } from './auth.service';
 import { GroupService } from './group.service';
 import { MtgService } from './mtg.service';
+import { ProfileService } from './profile.service';
 import { I18nService } from './i18n.service';
 import { DeckPrimerService } from './deck-primer.service';
 import { DeckSteckbriefService } from './deck-steckbrief.service';
@@ -186,6 +187,7 @@ export class DeckViewerService {
   private readonly cardData = inject(CardDataService);
   private readonly commanderSpellbook = inject(CommanderSpellbookService);
   private readonly edhrec = inject(EdhrecService);
+  private readonly profileService = inject(ProfileService);
   private readonly auth = inject(AuthService);
   private readonly groupService = inject(GroupService);
   private readonly mtg = inject(MtgService);
@@ -2610,6 +2612,9 @@ export class DeckViewerService {
 
   // NEU - EDHREC-Vorschläge im Add-Karten-Panel
   readonly addCardMode = signal<'search' | 'edhrec'>('search');
+
+  /** EDHREC-Vorschläge und -Tags nur für Alpha-Tester (siehe ProfileService.isAlphaTester). */
+  readonly edhrecEnabled = computed(() => this.profileService.isAlphaTester());
   readonly edhrecLists = signal<EdhrecCardlist[] | null>(null);
   readonly edhrecBusy = signal(false);
   readonly edhrecFailed = signal(false);
@@ -2690,6 +2695,11 @@ export class DeckViewerService {
     const commanders = this.edhrecCommanderNames();
     this.edhrecRefreshTick();
     if (mode !== 'edhrec') return;
+    if (!this.edhrecEnabled()) {
+      // Z.B. abgemeldet, während der EDHREC-Modus offen war - zurück zur normalen Suche.
+      this.addCardMode.set('search');
+      return;
+    }
     this.edhrecLists.set(null);
     this.edhrecFailed.set(false);
     this.edhrecBrowseTagActive.set(false);
@@ -2709,7 +2719,7 @@ export class DeckViewerService {
     const commanders = this.edhrecCommanderNames();
     this.edhrecRefreshTick();
     this.edhrecAvailableTags.set([]);
-    if (commanders.length === 0) return;
+    if (commanders.length === 0 || !this.edhrecEnabled()) return;
     this.loadEdhrecAvailableTags(commanders);
   });
 

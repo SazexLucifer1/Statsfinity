@@ -142,12 +142,17 @@ export const tutorial = {
     'tutorial.deckDetail.header.title': 'Name & EDHREC-Tag',
     'tutorial.deckDetail.header.text':
       'Deckname und EDHREC-Theme-Tag lassen sich hier jederzeit ändern (auch außerhalb des Bearbeiten-Modus) - der Tag steuert später, welche EDHREC-Vorschläge beim Kartenhinzufügen erscheinen.',
+    'tutorial.deckDetail.header.plainTitle': 'Name & Format',
+    'tutorial.deckDetail.header.plainText':
+      'Deckname und Format lassen sich hier jederzeit ändern (auch außerhalb des Bearbeiten-Modus).',
     'tutorial.deckDetail.toggles.title': 'Ansicht & Aktionen',
     'tutorial.deckDetail.toggles.text':
       'Zwischen Bilder- und Text-Ansicht wechseln, den Bearbeiten-Modus starten, den Änderungs-Verlauf einsehen, das Deck als druckfertiges PDF exportieren, oder die komplette Kartenliste neu einfügen (z.B. nach einer großen Änderung auf deckstats.net/Moxfield).',
     'tutorial.deckDetail.editMode.title': 'Karten bearbeiten',
     'tutorial.deckDetail.editMode.text':
       'Im Bearbeiten-Modus kannst du über die Such- oder EDHREC-Vorschlagsliste Karten hinzufügen, mit +/- die Anzahl anpassen, per Kronen-Knopf einen Commander markieren, und über den Paletten- bzw. Tag-Knopf ein alternatives Artwork bzw. eigene Sortier-Tags für jede Karte festlegen.',
+    'tutorial.deckDetail.editMode.plainText':
+      'Im Bearbeiten-Modus kannst du über die Suche Karten hinzufügen, mit +/- die Anzahl anpassen, per Kronen-Knopf einen Commander markieren, und über den Paletten- bzw. Tag-Knopf ein alternatives Artwork bzw. eigene Sortier-Tags für jede Karte festlegen.',
     'tutorial.deckDetail.edhrec.title': 'EDHREC-Vorschläge',
     'tutorial.deckDetail.edhrec.text':
       'Im Bearbeiten-Modus zeigt der EDHREC-Tab thematisch passende Karten für deinen Commander (und optional den gewählten Theme-Tag) - bereits im Deck vorhandene Karten sind markiert.',
@@ -169,6 +174,9 @@ export const tutorial = {
     'tutorial.deckBuild.addMode.title': 'Karten hinzufügen: Suche oder EDHREC',
     'tutorial.deckBuild.addMode.text':
       'Über "Suche" findest du jede Commander-legale Karte per Namen und Filtern. Über "EDHREC" bekommst du thematisch passende Vorschläge speziell für deinen Commander.',
+    'tutorial.deckBuild.addMode.plainTitle': 'Karten hinzufügen',
+    'tutorial.deckBuild.addMode.plainText':
+      'Über "Suche" findest du jede Commander-legale Karte per Namen und Filtern.',
     'tutorial.deckBuild.filters.title': 'Filter für die Kartensuche',
     'tutorial.deckBuild.filters.text':
       'Grenze die Suche nach Typ, Kreaturtyp, Manawert, Farbe, Effekt-Kategorie (z.B. Kartenziehen) oder Fähigkeit (z.B. Flugfähigkeit) ein - die Suche berücksichtigt automatisch nur Karten innerhalb der Farbidentität deines Commanders.',
@@ -345,12 +353,17 @@ export const tutorial = {
     'tutorial.deckDetail.header.title': 'Name & EDHREC tag',
     'tutorial.deckDetail.header.text':
       'Deck name and EDHREC theme tag can be changed here anytime (even outside edit mode) - the tag controls which EDHREC suggestions appear later when adding cards.',
+    'tutorial.deckDetail.header.plainTitle': 'Name & format',
+    'tutorial.deckDetail.header.plainText':
+      'Deck name and format can be changed here anytime (even outside edit mode).',
     'tutorial.deckDetail.toggles.title': 'View & actions',
     'tutorial.deckDetail.toggles.text':
       'Switch between image and text view, enter edit mode, view the change log, export the deck as a print-ready PDF, or re-paste the whole card list (e.g. after a big change on deckstats.net/Moxfield).',
     'tutorial.deckDetail.editMode.title': 'Edit cards',
     'tutorial.deckDetail.editMode.text':
       'In edit mode you can add cards via search or EDHREC suggestions, adjust quantity with +/-, mark a commander with the crown button, and set alternate artwork or custom sort tags per card via the palette and tag buttons.',
+    'tutorial.deckDetail.editMode.plainText':
+      'In edit mode you can add cards via search, adjust quantity with +/-, mark a commander with the crown button, and set alternate artwork or custom sort tags per card via the palette and tag buttons.',
     'tutorial.deckDetail.edhrec.title': 'EDHREC suggestions',
     'tutorial.deckDetail.edhrec.text':
       'In edit mode, the EDHREC tab shows thematically fitting cards for your commander (and optionally the chosen theme tag) - cards already in the deck are marked.',
@@ -372,6 +385,9 @@ export const tutorial = {
     'tutorial.deckBuild.addMode.title': 'Adding cards: search or EDHREC',
     'tutorial.deckBuild.addMode.text':
       'Use "Search" to find any commander-legal card by name and filters. Use "EDHREC" for thematically fitting suggestions specific to your commander.',
+    'tutorial.deckBuild.addMode.plainTitle': 'Adding cards',
+    'tutorial.deckBuild.addMode.plainText':
+      'Use "Search" to find any commander-legal card by name and filters.',
     'tutorial.deckBuild.filters.title': 'Card search filters',
     'tutorial.deckBuild.filters.text':
       "Narrow the search by type, creature type, mana value, color, effect category (e.g. card draw), or ability (e.g. flying) - the search automatically only considers cards within your commander's color identity.",

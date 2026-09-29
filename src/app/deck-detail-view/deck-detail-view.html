@@ -103,24 +103,26 @@
               <option [ngValue]="f">{{ f }}</option>
             }
           </select>
-          @if (viewer.edhrecTagsBusy()) {
-            <p class="hint">{{ viewer.i18n.t('deckView.loadingEdhrecTags') }}</p>
-          } @else if (viewer.edhrecAvailableTags().length === 0) {
-            <p class="hint">
-              {{ viewer.edhrecCommanderName() ? viewer.i18n.t('deckView.noEdhrecTagsForCommander') : viewer.i18n.t('deckView.noCommanderMarkedYet') }}
-            </p>
-          } @else {
-            <select
-              class="glass-input"
-              [attr.aria-label]="viewer.i18n.t('deckView.edhrecTagAria')"
-              [ngModel]="viewer.deckTagDraft()"
-              (ngModelChange)="viewer.deckTagDraft.set($event)"
-            >
-              <option [ngValue]="null">{{ viewer.i18n.t('deckView.noTag') }}</option>
-              @for (t of viewer.edhrecAvailableTags(); track t.slug) {
-                <option [ngValue]="t.slug">{{ t.value }} ({{ t.count }})</option>
-              }
-            </select>
+          @if (viewer.edhrecEnabled()) {
+            @if (viewer.edhrecTagsBusy()) {
+              <p class="hint">{{ viewer.i18n.t('deckView.loadingEdhrecTags') }}</p>
+            } @else if (viewer.edhrecAvailableTags().length === 0) {
+              <p class="hint">
+                {{ viewer.edhrecCommanderName() ? viewer.i18n.t('deckView.noEdhrecTagsForCommander') : viewer.i18n.t('deckView.noCommanderMarkedYet') }}
+              </p>
+            } @else {
+              <select
+                class="glass-input"
+                [attr.aria-label]="viewer.i18n.t('deckView.edhrecTagAria')"
+                [ngModel]="viewer.deckTagDraft()"
+                (ngModelChange)="viewer.deckTagDraft.set($event)"
+              >
+                <option [ngValue]="null">{{ viewer.i18n.t('deckView.noTag') }}</option>
+                @for (t of viewer.edhrecAvailableTags(); track t.slug) {
+                  <option [ngValue]="t.slug">{{ t.value }} ({{ t.count }})</option>
+                }
+              </select>
+            }
           }
           @if (viewer.deckInfoDirty()) {
             <div class="chip-row">
@@ -631,9 +633,11 @@
             <button class="glass-chip small" [class.active]="viewer.addCardMode() === 'search'" (click)="viewer.setAddCardMode('search')">
               {{ viewer.i18n.t('deckView.search') }}
             </button>
-            <button class="glass-chip small" [class.active]="viewer.addCardMode() === 'edhrec'" (click)="viewer.setAddCardMode('edhrec')">
-              {{ viewer.i18n.t('deckView.edhrec') }}
-            </button>
+            @if (viewer.edhrecEnabled()) {
+              <button class="glass-chip small" [class.active]="viewer.addCardMode() === 'edhrec'" (click)="viewer.setAddCardMode('edhrec')">
+                {{ viewer.i18n.t('deckView.edhrec') }}
+              </button>
+            }
           </div>
 
           <div class="chip-row" data-tutorial="deck-add-card-destination">

@@ -21,6 +21,11 @@ export interface TutorialStep {
   target: string | null;
   titleKey: string;
   textKey: string;
+  /** Schritt erklärt eine EDHREC-Funktion und entfällt ohne Alpha-Zugang (siehe ProfileService.isAlphaTester). */
+  alphaOnly?: boolean;
+  /** Ersatztexte ohne EDHREC-Erwähnung für Nutzer ohne Alpha-Zugang. */
+  plainTitleKey?: string;
+  plainTextKey?: string;
 }
 
 export interface TutorialDef {
@@ -97,10 +102,21 @@ const TUTORIALS: TutorialDef[] = [
     labelKey: 'tutorial.def.deckDetail',
     steps: [
       { target: null, titleKey: 'tutorial.deckDetail.intro.title', textKey: 'tutorial.deckDetail.intro.text' },
-      { target: 'deck-detail-header', titleKey: 'tutorial.deckDetail.header.title', textKey: 'tutorial.deckDetail.header.text' },
+      {
+        target: 'deck-detail-header',
+        titleKey: 'tutorial.deckDetail.header.title',
+        textKey: 'tutorial.deckDetail.header.text',
+        plainTitleKey: 'tutorial.deckDetail.header.plainTitle',
+        plainTextKey: 'tutorial.deckDetail.header.plainText',
+      },
       { target: 'deck-view-toggles', titleKey: 'tutorial.deckDetail.toggles.title', textKey: 'tutorial.deckDetail.toggles.text' },
-      { target: null, titleKey: 'tutorial.deckDetail.editMode.title', textKey: 'tutorial.deckDetail.editMode.text' },
-      { target: null, titleKey: 'tutorial.deckDetail.edhrec.title', textKey: 'tutorial.deckDetail.edhrec.text' },
+      {
+        target: null,
+        titleKey: 'tutorial.deckDetail.editMode.title',
+        textKey: 'tutorial.deckDetail.editMode.text',
+        plainTextKey: 'tutorial.deckDetail.editMode.plainText',
+      },
+      { target: null, titleKey: 'tutorial.deckDetail.edhrec.title', textKey: 'tutorial.deckDetail.edhrec.text', alphaOnly: true },
       { target: 'deck-analysis-toggle', titleKey: 'tutorial.deckDetail.analysis.title', textKey: 'tutorial.deckDetail.analysis.text' },
       { target: 'deck-sort-toggle', titleKey: 'tutorial.deckDetail.sort.title', textKey: 'tutorial.deckDetail.sort.text' },
       { target: 'deck-search-filter', titleKey: 'tutorial.deckDetail.search.title', textKey: 'tutorial.deckDetail.search.text' },
@@ -112,9 +128,15 @@ const TUTORIALS: TutorialDef[] = [
     steps: [
       { target: null, titleKey: 'tutorial.deckBuild.intro.title', textKey: 'tutorial.deckBuild.intro.text' },
       { target: 'deck-edit-topbar', titleKey: 'tutorial.deckBuild.topbar.title', textKey: 'tutorial.deckBuild.topbar.text' },
-      { target: 'deck-add-card-mode', titleKey: 'tutorial.deckBuild.addMode.title', textKey: 'tutorial.deckBuild.addMode.text' },
+      {
+        target: 'deck-add-card-mode',
+        titleKey: 'tutorial.deckBuild.addMode.title',
+        textKey: 'tutorial.deckBuild.addMode.text',
+        plainTitleKey: 'tutorial.deckBuild.addMode.plainTitle',
+        plainTextKey: 'tutorial.deckBuild.addMode.plainText',
+      },
       { target: 'deck-add-card-filters', titleKey: 'tutorial.deckBuild.filters.title', textKey: 'tutorial.deckBuild.filters.text' },
-      { target: null, titleKey: 'tutorial.deckBuild.edhrec.title', textKey: 'tutorial.deckBuild.edhrec.text' },
+      { target: null, titleKey: 'tutorial.deckBuild.edhrec.title', textKey: 'tutorial.deckBuild.edhrec.text', alphaOnly: true },
       { target: 'deck-card-edit-controls', titleKey: 'tutorial.deckBuild.cardControls.title', textKey: 'tutorial.deckBuild.cardControls.text' },
       { target: null, titleKey: 'tutorial.deckBuild.pending.title', textKey: 'tutorial.deckBuild.pending.text' },
     ],
@@ -162,7 +184,11 @@ export class TutorialService {
   }
 
   currentSteps(): TutorialStep[] {
-    return this.currentDef()?.steps ?? [];
+    const steps = this.currentDef()?.steps ?? [];
+    if (this.profileService.isAlphaTester()) return steps;
+    return steps
+      .filter((s) => !s.alphaOnly)
+      .map((s) => ({ ...s, titleKey: s.plainTitleKey ?? s.titleKey, textKey: s.plainTextKey ?? s.textKey }));
   }
 
   currentStep(): TutorialStep | null {

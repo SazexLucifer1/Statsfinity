@@ -4,6 +4,7 @@ import { PreconService, PreconSummary } from './precon.service';
 import { ScryfallService, ScryfallCard } from './scryfall.service';
 import { EdhrecService, EdhrecTag } from './edhrec.service';
 import { I18nService } from './i18n.service';
+import { ProfileService } from './profile.service';
 import { DeckFormat, DECK_FORMATS } from './models';
 
 /** Precons sind immer fertige Commander-Produkte - kein Grund, hier eine Abfrage anzubieten. */
@@ -22,6 +23,10 @@ export class DeckImportService {
   private readonly scryfall = inject(ScryfallService);
   private readonly edhrec = inject(EdhrecService);
   readonly i18n = inject(I18nService);
+  private readonly profileService = inject(ProfileService);
+
+  /** EDHREC-Tags nur für Alpha-Tester (siehe ProfileService.isAlphaTester). */
+  readonly edhrecEnabled = this.profileService.isAlphaTester.asReadonly();
 
   private owner: DeckOwner | null = null;
   private onSaved: (() => void) | null = null;
@@ -44,7 +49,7 @@ export class DeckImportService {
     this.lastTagsCommander = commanderName;
     this.selectedCommanderTag.set(keepTag);
     this.availableCommanderTags.set([]);
-    if (!commanderName) return;
+    if (!commanderName || !this.edhrecEnabled()) return;
 
     this.commanderTagsBusy.set(true);
     const tags = await this.edhrec.getCommanderTags([commanderName]);

@@ -33,6 +33,15 @@ export class ProfileService {
   readonly profile = signal<Profile | null>(null);
   readonly loading = signal<boolean>(true);
 
+  /**
+   * Alpha-Tester sehen die EDHREC-Funktionen (Empfehlungen, Themen-Tags) - alle anderen nicht,
+   * solange nicht geklärt ist, ob EDHREC das in einer öffentlichen App duldet. Wer dazugehört,
+   * entscheidet public.is_alpha_tester() (sql/alpha-tester-2026-09-29.sql): Developer, von Hand
+   * freigeschaltete Accounts und alle, die mit einem Developer in einer Gruppe sind. Nicht
+   * eingeloggt = kein Alpha-Tester.
+   */
+  readonly isAlphaTester = signal(false);
+
   /** Ist gesetzt, während im Profil-Tab statt des eigenen Profils das eines anderen Users
    * (nur lesend) angezeigt wird - z.B. nach "Profil ansehen" aus dem Gruppen-Tab. */
   readonly viewingUserId = signal<string | null>(null);
@@ -95,6 +104,7 @@ export class ProfileService {
       if (!user) {
         this.loadedUserId = null;
         this.profile.set(null);
+        this.isAlphaTester.set(false);
         this.loading.set(false);
         return;
       }
@@ -153,8 +163,29 @@ export class ProfileService {
         isDeveloper: (zeile['is_developer'] as boolean | null) ?? false,
       });
       this.loadedUserId = userId;
+      void this.loadAlphaTester(seq);
     }
     this.loading.set(false);
+  }
+
+  /**
+   * Fragt den Alpha-Status ab. Fehlt die Funktion noch (Skript nicht gelaufen), gilt als
+   * Rückfall nur der Developer als Alpha-Tester - so verliert der Betreiber die Funktion nicht,
+   * und öffentlich ist sie trotzdem nicht.
+   */
+  private async loadAlphaTester(seq: number): Promise<void> {
+    const { data, error } = await supabase.rpc('is_alpha_tester');
+    if (seq !== this.loadSeq) return;
+    if (error) {
+      if (error.code === 'PGRST202' || error.code === '42883') {
+        console.warn('Funktion is_alpha_tester fehlt noch - sql/alpha-tester-2026-09-29.sql im Supabase-SQL-Editor ausführen.');
+      } else {
+        console.error('Konnte Alpha-Status nicht laden:', error);
+      }
+      this.isAlphaTester.set(this.profile()?.isDeveloper === true);
+      return;
+    }
+    this.isAlphaTester.set(data === true);
   }
 
   /** In-App-Fallback für den Fehlerzustand im Profil-Tab, falls das Laden doch mal fehlschlägt (z.B. echter Netzwerkfehler) - erspart einen kompletten Seiten-Reload. */
