@@ -127,7 +127,7 @@ function sortByCmc(a: PublicDeckCardEntry, b: PublicDeckCardEntry): number {
  * "neu"/Winrate) und rein lesend ansehen - ohne Account nutzbar, eigener Umschalter im Suche-Tab
  * (siehe sql/public-deck-browse-2026-08-26.sql für die zugrundeliegende RLS-/Schema-Änderung).
  * Hält den Zustand komplett lokal statt DeckViewerService zu injizieren - gleiche Entscheidung wie
- * commander-recommendations.ts/precon-browser.ts.
+ * precon-browser.ts.
  *
  * Die Deck-Detailansicht (nach openDeck()) portiert bewusst nur einen SCHLANKEN Ausschnitt der
  * Analyse-/Filter-Logik aus DeckViewerService (Manakurve, Pip-Verteilung, Typ-Verteilung,

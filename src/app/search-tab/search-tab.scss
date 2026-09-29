@@ -1,3 +1,8 @@
 .search-mode-toggle {
   margin-bottom: 10px;
+  // Drei kurze Reiter passen auch auf dem Handy in eine Zeile - das globale auto-fit (130px je
+  // Spalte) würde sie sonst auf zwei Zeilen verteilen, mit einem einzelnen Reiter unten links.
+  &.block {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }

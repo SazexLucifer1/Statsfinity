@@ -3,7 +3,6 @@ export const search = {
   de: {
     // --- Header / Navigation ---
     'search.cardsTab': 'Karten',
-    'search.commanderTab': 'Commander',
     'search.preconsTab': 'Precons',
     'search.decksTab': 'Decks',
     'pip.W': 'Weiß',
@@ -58,15 +57,8 @@ export const search = {
     'publicSearch.noResults': 'Keine Karte gefunden.',
     'publicSearch.resetFilters': 'Filter zurücksetzen',
 
-    // --- Commander-Empfehlungen (EDHREC), Suche-Tab ---
-    'commanderRec.namePlaceholder': 'Commander-Name eingeben …',
-    'commanderRec.hint':
-      'Wähle einen Commander, um EDHRECs Empfehlungen für synergistische Karten zu sehen.',
-    'commanderRec.browseHint':
-      'Oder nach Name/Farbe/Archetyp/Kreaturtyp durchsuchen (sortiert nach Beliebtheit):',
+    // --- Archetyp-/Kreaturtyp-Auswahl (Deck-Ansicht, öffentliches Stöbern) ---
     'commanderRec.anyArchetype': 'Archetyp: alle',
-    'commanderRec.browseButton': 'Anzeigen',
-    'commanderRec.back': '← Zurück',
     'commanderRec.anyCreatureType': 'Kreaturtyp: alle',
     'commanderRec.creatureTypesLoading': 'Kreaturtypen werden geladen …',
 
@@ -121,7 +113,6 @@ export const search = {
   en: {
     // --- Header / Navigation ---
     'search.cardsTab': 'Cards',
-    'search.commanderTab': 'Commander',
     'search.preconsTab': 'Precons',
     'search.decksTab': 'Decks',
     'pip.W': 'White',
@@ -173,14 +164,8 @@ export const search = {
     'publicSearch.noResults': 'No card found.',
     'publicSearch.resetFilters': 'Reset filters',
 
-    // --- Commander recommendations (EDHREC), Search tab ---
-    'commanderRec.namePlaceholder': 'Enter commander name …',
-    'commanderRec.hint': "Pick a commander to see EDHREC's recommendations for synergistic cards.",
-    'commanderRec.browseHint':
-      'Or browse by name/color/archetype/creature type (sorted by popularity):',
+    // --- Archetype/creature-type pickers (deck view, public deck browser) ---
     'commanderRec.anyArchetype': 'Archetype: any',
-    'commanderRec.browseButton': 'Show',
-    'commanderRec.back': '← Back',
     'commanderRec.anyCreatureType': 'Creature type: any',
     'commanderRec.creatureTypesLoading': 'Loading creature types …',
 
