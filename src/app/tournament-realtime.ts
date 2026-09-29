@@ -40,18 +40,32 @@ export class TournamentRealtime {
       .channel(`tournaments:${groupId}`)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'tournaments', filter: `group_id=eq.${groupId}` },
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'tournaments',
+          filter: `group_id=eq.${groupId}`,
+        },
         () => this.changed(),
       )
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'tournaments', filter: `group_id=eq.${groupId}` },
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'tournaments',
+          filter: `group_id=eq.${groupId}`,
+        },
         () => this.changed(),
       )
       // DELETE lässt sich nicht filtern und trägt nur die ID - reicht, um das aktive zu erkennen.
-      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'tournaments' }, (payload) => {
-        if ((payload.old as { id?: string })?.id === activeTournamentId()) this.changed();
-      })
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'tournaments' },
+        (payload) => {
+          if ((payload.old as { id?: string })?.id === activeTournamentId()) this.changed();
+        },
+      )
       .subscribe((status) => this.onConnection(status === 'SUBSCRIBED'));
   }
 
@@ -67,8 +81,10 @@ export class TournamentRealtime {
     const byTournament = `tournament_id=eq.${tournamentId}`;
     let channel = supabase.channel(`tournament:${tournamentId}`);
     for (const table of ['tournament_participants', 'tournament_rounds', 'tournament_matches']) {
-      channel = channel.on('postgres_changes', { event: '*', schema: 'public', table, filter: byTournament }, () =>
-        this.changed(),
+      channel = channel.on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table, filter: byTournament },
+        () => this.changed(),
       );
     }
     // Spielstände (games_won) stehen nur an den Tisch-Teilnehmern, die kein tournament_id haben.
