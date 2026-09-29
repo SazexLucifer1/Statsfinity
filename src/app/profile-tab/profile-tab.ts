@@ -42,6 +42,7 @@ import { colorComboName, sortColors } from '../color-combo-names';
 import { COLORLESS, FILTER_COLORS } from '../color-filter-match';
 import { Icon } from '../ui/icon/icon';
 import { CommentInbox } from '../comment-inbox/comment-inbox';
+import { BracketBenchmarkPanel } from '../bracket-benchmark-panel/bracket-benchmark-panel';
 
 /**
  * Achsen des Farb-Netzdiagramms: die fünf Manafarben in WUBRG-Reihenfolge, farblos als sechste.
@@ -54,7 +55,7 @@ const COLOR_RADAR_AXES: readonly string[] = [...FILTER_COLORS, COLORLESS];
 
 @Component({
   selector: 'app-profile-tab',
-  imports: [FormsModule, DatePipe, DecimalPipe, NgTemplateOutlet, DeckList, CardImage, CommanderStatList, FavoriteCommanderEditor, BarChart, RadarChart, Meter, ManaSymbol, Podium, PlayerMatchHistory, Icon, CommentInbox],
+  imports: [FormsModule, DatePipe, DecimalPipe, NgTemplateOutlet, DeckList, CardImage, CommanderStatList, FavoriteCommanderEditor, BarChart, RadarChart, Meter, ManaSymbol, Podium, PlayerMatchHistory, Icon, CommentInbox, BracketBenchmarkPanel],
   templateUrl: './profile-tab.html',
   styleUrl: './profile-tab.scss',
 })

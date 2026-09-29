@@ -490,6 +490,8 @@
 
 <div class="profile-grid">
   @if (profileService.profile()?.isDeveloper) {
+  <app-bracket-benchmark-panel />
+
   <section class="glass-card span-full">
     <div class="section-header-row">
       <h2>{{ i18n.t('feedback.developerTitle') }}</h2>

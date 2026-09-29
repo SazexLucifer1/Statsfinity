@@ -1,0 +1,104 @@
+@if (service.verfuegbar()) {
+  <section class="glass-card span-full benchmark">
+    <div class="section-header-row">
+      <h2>{{ i18n.t('profile.benchmarkTitle') }}</h2>
+      <button class="glass-chip small" [disabled]="laedt()" (click)="laden()">
+        {{ i18n.t('profile.benchmarkRefresh') }}
+      </button>
+    </div>
+    <p class="hint">{{ i18n.t('profile.benchmarkHint', { min: minDecks }) }}</p>
+
+    @if (fehler(); as f) {
+      <p class="hint benchmark-fehler">{{ f }}</p>
+    }
+
+    @if (ergebnis(); as e) {
+      <div class="benchmark-anzahl">
+        @for (s of stufen; track s) {
+          <span class="glass-chip small">B{{ s }}: {{ e.anzahl[s] }}</span>
+        }
+        <span class="hint">{{ i18n.t('profile.benchmarkDecks', { anzahl: gesamt() }) }}</span>
+      </div>
+
+      <table class="benchmark-tabelle">
+        <thead>
+          <tr>
+            <th>{{ i18n.t('profile.benchmarkMerkmal') }}</th>
+            <th>{{ i18n.t('profile.benchmarkEigene') }}</th>
+            <th>{{ i18n.t('profile.benchmarkReferenz') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (m of merkmale; track m) {
+            <tr>
+              <td>{{ i18n.t('profile.benchmarkMerkmal_' + m) }}</td>
+              <td>
+                @if (e.auc[m] != null) {
+                  {{ e.auc[m] | number: '1.3-3' }}
+                } @else {
+                  <span class="hint">{{ i18n.t('profile.benchmarkZuWenig') }}</span>
+                }
+              </td>
+              <td>
+                @if (referenz[m] != null) {
+                  {{ referenz[m] | number: '1.3-3' }}
+                } @else {
+                  –
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      <p class="hint">{{ i18n.t('profile.benchmarkLesen') }}</p>
+
+      <button class="glass-button small" [disabled]="speichert()" (click)="speichern()">
+        {{ i18n.t('profile.benchmarkSpeichern') }}
+      </button>
+    }
+
+    @if (staende().length) {
+      <h3>{{ i18n.t('profile.benchmarkStaende') }}</h3>
+      <table class="benchmark-tabelle">
+        <thead>
+          <tr>
+            <th>{{ i18n.t('profile.benchmarkDatum') }}</th>
+            <th>Decks</th>
+            <th>{{ i18n.t('profile.benchmarkMerkmal_gameChanger') }}</th>
+            <th>{{ i18n.t('profile.benchmarkMerkmal_tutoren') }}</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (s of staende(); track s.id) {
+            <tr>
+              <td>{{ s.erstelltAt | date: 'dd.MM.yy' }}</td>
+              <td>{{ summe(s) }}</td>
+              <td>
+                {{
+                  s.ergebnis.auc.gameChanger != null
+                    ? (s.ergebnis.auc.gameChanger | number: '1.2-2')
+                    : '–'
+                }}
+              </td>
+              <td>
+                {{
+                  s.ergebnis.auc.tutoren != null ? (s.ergebnis.auc.tutoren | number: '1.2-2') : '–'
+                }}
+              </td>
+              <td>
+                <button
+                  class="benchmark-loeschen"
+                  (click)="loeschen(s)"
+                  [attr.aria-label]="i18n.t('profile.benchmarkLoeschen')"
+                >
+                  ×
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </section>
+}
