@@ -3,7 +3,7 @@ import { DatePipe, DecimalPipe } from '@angular/common';
 import { I18nService } from '../i18n.service';
 import { BenchmarkStand, BracketBenchmarkService } from '../bracket-benchmark.service';
 import {
-  ARCHIDEKT_AUC,
+  REFERENZ_AUC,
   auswerten,
   BenchmarkErgebnis,
   MERKMALE,
@@ -12,7 +12,7 @@ import {
 
 /**
  * Developer-Liste im Profil: Wie gut trennen einzelne Merkmale die Bracket-Stufen an den eigenen
- * Decks (selbst gesetztes Bracket), verglichen mit dem Archidekt-Benchmark
+ * Decks (selbst gesetztes Bracket), verglichen mit dem Referenz-Benchmark
  * (docs/bracket-benchmark-archidekt-2026-09.md)? Live gerechnet beim Öffnen, dazu gespeicherte
  * Stände, um die Entwicklung mit wachsender Deckzahl zu sehen.
  *
@@ -30,7 +30,7 @@ export class BracketBenchmarkPanel implements OnInit {
 
   readonly merkmale = MERKMALE;
   readonly stufen = [1, 2, 3, 4, 5] as const;
-  readonly archidekt = ARCHIDEKT_AUC;
+  readonly referenz = REFERENZ_AUC;
   readonly minDecks = MIN_DECKS_JE_STUFE;
 
   readonly ergebnis = signal<BenchmarkErgebnis | null>(null);

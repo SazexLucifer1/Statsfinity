@@ -26,7 +26,7 @@ export interface BenchmarkDeck {
   werte: Record<MerkmalKey, number | null>;
 }
 
-/** Reihenfolge der Tabelle: erst die, zu denen es einen Archidekt-Wert gibt. */
+/** Reihenfolge der Tabelle: erst die, zu denen es einen Referenzwert gibt. */
 export const MERKMALE: MerkmalKey[] = [
   'gameChanger',
   'tutoren',
@@ -40,10 +40,10 @@ export const MERKMALE: MerkmalKey[] = [
 ];
 
 /**
- * Archidekt-Benchmark, Bracket 2 gegen 4 (48.638 Decks, September 2026). Nur Merkmale, die dort
+ * Referenz-Benchmark (Archidekt-Auswertung, nur im Repo dokumentiert), Bracket 2 gegen 4 (48.638 Decks, September 2026). Nur Merkmale, die dort
  * genauso gezählt wurden - Ø Manawert, Massen-Landzerstörung und Extrazüge gab es dort nicht.
  */
-export const ARCHIDEKT_AUC: Partial<Record<MerkmalKey, number>> = {
+export const REFERENZ_AUC: Partial<Record<MerkmalKey, number>> = {
   gameChanger: 0.898,
   tutoren: 0.771,
   combos: 0.633,
