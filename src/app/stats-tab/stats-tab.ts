@@ -262,9 +262,11 @@ export class StatsTab {
 
   // --- Elo-Wertung je Spielmodus (elo.ts) - über alle live erfassten Partien, ohne Jahresfilter ---
 
+  // Wie der Rang im Profil je Modus UND Format: dem Format-Filter oben folgend ("Alle" = alle
+  // Formate eines Modus gemeinsam). Ein Modern-Sieg soll keinen Commander-Rang verschieben.
   readonly eloModes = computed(() =>
     ratedModes(
-      this.viewedMatches(),
+      this.applyFormatFilter(this.viewedMatches()),
       GAME_MODES.filter((m) => this.canViewMode(m)),
     ),
   );
@@ -276,7 +278,9 @@ export class StatsTab {
   });
   readonly eloRanking = computed<EloEntry[]>(() => {
     const mode = this.eloMode();
-    return mode ? eloRanking(this.viewedMatches(), mode) : [];
+    if (!mode) return [];
+    const format = this.selectedFormat();
+    return eloRanking(this.viewedMatches(), mode, format === 'Alle' ? {} : { format });
   });
   readonly eloPage = signal(0);
   readonly pagedEloRanking = computed(() => {

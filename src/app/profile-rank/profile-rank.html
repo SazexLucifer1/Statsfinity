@@ -40,21 +40,46 @@
           }
         </small>
       } @else {
-        <small class="hint">{{ i18n.t('profile.rank.unrankedHint', { mode: mode() }) }}</small>
+        <small class="hint">{{
+          i18n.t('profile.rank.unrankedHint', { mode: choiceLabel() })
+        }}</small>
       }
     </div>
   </div>
 
-  @if (editable() && modes().length > 1) {
-    <div class="chip-row rank-modes" [attr.aria-label]="i18n.t('profile.rank.modeAria')">
-      @for (m of modes(); track m) {
-        <button class="glass-chip small" [class.active]="m === mode()" (click)="modeChange.emit(m)">
-          {{ m }}
-        </button>
+  @if (editable() && (modes().length > 1 || formats().length > 1)) {
+    <div class="rank-modes">
+      @if (modes().length > 1) {
+        <div class="chip-row" role="group" [attr.aria-label]="i18n.t('profile.rank.modeAria')">
+          @for (m of modes(); track m) {
+            <button
+              class="glass-chip small"
+              [class.active]="m === mode()"
+              (click)="modeChange.emit(m)"
+            >
+              {{ m }}
+            </button>
+          }
+        </div>
+      }
+      @if (formats().length > 1) {
+        <div class="chip-row" role="group" [attr.aria-label]="i18n.t('profile.rank.formatAria')">
+          @for (f of formats(); track f) {
+            <button
+              class="glass-chip small"
+              [class.active]="f === format()"
+              (click)="formatChange.emit(f)"
+            >
+              {{ f }}
+            </button>
+          }
+        </div>
       }
     </div>
   } @else {
-    <small class="hint rank-modes">{{ i18n.t('profile.rank.modeLabel', { mode: mode() }) }}</small>
+    <small class="hint rank-modes">{{
+      i18n.t('profile.rank.modeLabel', { mode: choiceLabel() })
+    }}</small>
   }
 </div>
 

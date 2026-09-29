@@ -2,9 +2,9 @@ import { Component, computed, effect, inject, signal, viewChild } from '@angular
 import { FormsModule } from '@angular/forms';
 import { DatePipe, DecimalPipe, NgTemplateOutlet } from '@angular/common';
 import QRCode from 'qrcode';
-import { ProfileService } from '../profile.service';
-import { GAME_MODES, GameMode, Match } from '../models';
-import { EloEntry, eloRanking, rankFromLp } from '../elo';
+import { ProfileService, RankChoice } from '../profile.service';
+import { DECK_FORMATS, DeckFormat, GAME_MODES, GameMode, Match } from '../models';
+import { EloEntry, eloRanking, rankFromLp, ratedFormatsFor } from '../elo';
 import { ProfileRank } from '../profile-rank/profile-rank';
 import { rankStyle } from '../ui/rank-badge/rank-badge';
 import { MtgService } from '../mtg.service';
@@ -115,12 +115,12 @@ export class ProfileTab {
   // --- Elo-Rang (elo.ts): Abzeichen im Kopf, Rahmen und Profilbild in Rangfarbe ---
 
   /** Gewählter Modus des eigenen Profils bzw. des angesehenen Accounts (NPCs: immer Standard). */
-  private readonly ownRankMode = signal<GameMode>(ProfileService.DEFAULT_RANK_MODE);
-  private readonly viewedRankMode = signal<GameMode>(ProfileService.DEFAULT_RANK_MODE);
-  readonly rankMode = computed<GameMode>(() => {
-    if (this.profileService.viewingUserId()) return this.viewedRankMode();
-    if (this.profileService.viewingPlayerId()) return ProfileService.DEFAULT_RANK_MODE;
-    return this.ownRankMode();
+  private readonly ownRankChoice = signal<RankChoice>(ProfileService.DEFAULT_RANK_CHOICE);
+  private readonly viewedRankChoice = signal<RankChoice>(ProfileService.DEFAULT_RANK_CHOICE);
+  readonly rankChoice = computed<RankChoice>(() => {
+    if (this.profileService.viewingUserId()) return this.viewedRankChoice();
+    if (this.profileService.viewingPlayerId()) return ProfileService.DEFAULT_RANK_CHOICE;
+    return this.ownRankChoice();
   });
 
   /**
@@ -141,14 +141,25 @@ export class ProfileTab {
     const name = this.rankPlayerName();
     const matches = this.rankMatches();
     return GAME_MODES.filter(
-      (m) => m === this.rankMode() || (!!name && eloRanking(matches, m).some((e) => e.name === name)),
+      (m) =>
+        m === this.rankChoice().mode ||
+        (!!name && eloRanking(matches, m).some((e) => e.name === name)),
     );
+  });
+
+  /** Formate, in denen der Spieler im gewählten Modus gewertet ist, plus das gewählte. */
+  readonly rankFormats = computed<DeckFormat[]>(() => {
+    const { mode, format } = this.rankChoice();
+    const name = this.rankPlayerName();
+    const rated = name ? ratedFormatsFor(this.rankMatches(), mode, name, DECK_FORMATS) : [];
+    return DECK_FORMATS.filter((f) => f === format || rated.includes(f));
   });
 
   readonly rankEntry = computed<EloEntry | null>(() => {
     const name = this.rankPlayerName();
     if (!name) return null;
-    return eloRanking(this.rankMatches(), this.rankMode()).find((e) => e.name === name) ?? null;
+    const { mode, format } = this.rankChoice();
+    return eloRanking(this.rankMatches(), mode, { format }).find((e) => e.name === name) ?? null;
   });
 
   /** CSS-Variablen für den Rahmen um den Profilkopf; null = ungewertet, normaler Rahmen. */
@@ -157,9 +168,32 @@ export class ProfileTab {
     return e ? rankStyle(rankFromLp(e.lp).tier) : null;
   });
 
+  /**
+   * Beim Moduswechsel bleibt das Format, wenn der Spieler darin auch in diesem Modus gewertet ist;
+   * sonst das erste Format, in dem er es ist (2HG wird z. B. selten Modern gespielt). Hat der
+   * Modus nur Partien ohne Format (Spezialevent), gilt null.
+   */
   setRankMode(mode: GameMode): void {
-    this.ownRankMode.set(mode);
-    void this.profileService.saveRankMode(mode);
+    const name = this.rankPlayerName();
+    const matches = this.rankMatches();
+    const current = this.rankChoice().format;
+    const rated = name ? ratedFormatsFor(matches, mode, name, DECK_FORMATS) : [];
+    const formatlos =
+      !!name &&
+      rated.length === 0 &&
+      eloRanking(matches, mode, { format: null }).some((e) => e.name === name);
+    const format =
+      current && rated.includes(current) ? current : (rated[0] ?? (formatlos ? null : current));
+    this.saveRankChoice({ mode, format });
+  }
+
+  setRankFormat(format: DeckFormat): void {
+    this.saveRankChoice({ mode: this.rankChoice().mode, format });
+  }
+
+  private saveRankChoice(choice: RankChoice): void {
+    this.ownRankChoice.set(choice);
+    void this.profileService.saveRankChoice(choice);
   }
 
   // --- Developer-Vollansicht eines fremden Profils ---
@@ -508,17 +542,17 @@ export class ProfileTab {
     effect(() => {
       const userId = this.profileService.profile()?.id;
       if (!userId) return;
-      void this.profileService.loadRankMode(userId).then((mode) => {
-        if (this.profileService.profile()?.id === userId) this.ownRankMode.set(mode);
+      void this.profileService.loadRankChoice(userId).then((choice) => {
+        if (this.profileService.profile()?.id === userId) this.ownRankChoice.set(choice);
       });
     });
 
     effect(() => {
       const userId = this.profileService.viewingUserId();
-      this.viewedRankMode.set(ProfileService.DEFAULT_RANK_MODE);
+      this.viewedRankChoice.set(ProfileService.DEFAULT_RANK_CHOICE);
       if (!userId) return;
-      void this.profileService.loadRankMode(userId).then((mode) => {
-        if (this.profileService.viewingUserId() === userId) this.viewedRankMode.set(mode);
+      void this.profileService.loadRankChoice(userId).then((choice) => {
+        if (this.profileService.viewingUserId() === userId) this.viewedRankChoice.set(choice);
       });
     });
 

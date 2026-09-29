@@ -4,7 +4,7 @@ export const profile = {
     // --- Profil-Tab ---
     'profile.rank.infoAria': 'Wie das Rangsystem funktioniert',
     'profile.rank.info':
-      'Jeder startet je Spielmodus in Holz V (800 LP) und arbeitet sich über Holz I nach Eisen V hoch. Jeder Rang hat fünf Divisionen (V bis I) zu je 100 LP: Holz, Eisen, Bronze, Silber, Gold, Platin, Diamant und ganz oben Infinity. Ein Sieg gegen gleich starke Gegner bringt rund 50 LP. Je schlechter die Platzierung, desto mehr LP gehen verloren – als Vierter mehr als als Zweiter. Gegen stärkere Gegner gibt es mehr, gegen schwächere weniger. Dazu kommen 5 LP für jede gewertete Partie: Wer im Commander-Pod im Schnitt jedes vierte Spiel gewinnt, steigt langsam auf. Die ersten 10 Partien sind die Einstufung und zählen stärker.',
+      'Jeder startet je Spielmodus und Format in Holz V (800 LP) und arbeitet sich über Holz I nach Eisen V hoch. Jeder Rang hat fünf Divisionen (V bis I) zu je 100 LP: Holz, Eisen, Bronze, Silber, Gold, Platin, Diamant und ganz oben Infinity. Ein Sieg gegen gleich starke Gegner bringt rund 50 LP. Je schlechter die Platzierung, desto mehr LP gehen verloren – als Vierter mehr als als Zweiter. Gegen stärkere Gegner gibt es mehr, gegen schwächere weniger. Dazu kommen 5 LP für jede gewertete Partie: Wer im Commander-Pod im Schnitt jedes vierte Spiel gewinnt, steigt langsam auf. Die ersten 10 Partien sind die Einstufung und zählen stärker.',
     'profile.rank.tier.wood': 'Holz',
     'profile.rank.tier.iron': 'Eisen',
     'profile.rank.tier.bronze': 'Bronze',
@@ -14,13 +14,14 @@ export const profile = {
     'profile.rank.tier.diamond': 'Diamant',
     'profile.rank.tier.infinity': 'Infinity',
     'profile.rank.unranked': 'Ungewertet',
-    'profile.rank.unrankedHint': 'Noch keine gewertete Partie im Modus {{mode}}.',
+    'profile.rank.unrankedHint': 'Noch keine gewertete Partie in {{mode}}.',
     'profile.rank.lp': '{{lp}} LP',
     'profile.rank.toNext': 'Noch {{lp}} LP bis {{next}}',
     'profile.rank.detail': '{{games}} Partien · {{wins}} Siege · Bestwert {{peak}}',
     'profile.rank.placement': 'Einstufung {{games}}/{{total}}',
     'profile.rank.modeAria': 'Spielmodus für den Rang',
-    'profile.rank.modeLabel': 'Rang im Modus {{mode}}',
+    'profile.rank.formatAria': 'Format für den Rang',
+    'profile.rank.modeLabel': 'Rang in {{mode}}',
     'profile.artLanguage': 'Sprache der Kartenbilder',
     'profile.artLanguageInfoAria': 'Was bewirkt diese Einstellung?',
     'profile.artLanguageHint':
@@ -200,7 +201,7 @@ export const profile = {
   en: {
     'profile.rank.infoAria': 'How the rank system works',
     'profile.rank.info':
-      'Everyone starts in Wood V (800 LP) per game mode and works up through Wood I to Iron V. Each rank has five divisions (V to I) of 100 LP each: Wood, Iron, Bronze, Silver, Gold, Platinum, Diamond and, at the top, Infinity. A win against equally strong opponents earns about 50 LP. The worse your placement, the more LP you lose – fourth place loses more than second. Stronger opponents give more, weaker ones less. On top of that, every rated game adds 5 LP: winning one game in four in a Commander pod slowly moves you up. The first 10 games are placements and count more.',
+      'Everyone starts in Wood V (800 LP) per game mode and format and works up through Wood I to Iron V. Each rank has five divisions (V to I) of 100 LP each: Wood, Iron, Bronze, Silver, Gold, Platinum, Diamond and, at the top, Infinity. A win against equally strong opponents earns about 50 LP. The worse your placement, the more LP you lose – fourth place loses more than second. Stronger opponents give more, weaker ones less. On top of that, every rated game adds 5 LP: winning one game in four in a Commander pod slowly moves you up. The first 10 games are placements and count more.',
     'profile.rank.tier.wood': 'Wood',
     'profile.rank.tier.iron': 'Iron',
     'profile.rank.tier.bronze': 'Bronze',
@@ -216,6 +217,7 @@ export const profile = {
     'profile.rank.detail': '{{games}} games · {{wins}} wins · peak {{peak}}',
     'profile.rank.placement': 'Placements {{games}}/{{total}}',
     'profile.rank.modeAria': 'Game mode for the rank',
+    'profile.rank.formatAria': 'Format for the rank',
     'profile.rank.modeLabel': 'Rank in {{mode}}',
     // --- Profile tab ---
     'profile.artLanguage': 'Card image language',

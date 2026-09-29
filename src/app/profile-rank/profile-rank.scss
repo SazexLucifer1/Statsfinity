@@ -70,4 +70,7 @@
 
 .rank-modes {
   flex: 0 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }

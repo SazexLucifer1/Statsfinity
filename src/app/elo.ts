@@ -1,5 +1,5 @@
 import { ARCHENEMY_OTHERS, DRAW, isImportLossDuplicate } from './match-utils';
-import { GameMode, LIVE_TRACKING_START_DATE, Match } from './models';
+import { DeckFormat, GameMode, LIVE_TRACKING_START_DATE, Match } from './models';
 
 /**
  * Elo-Wertung je Spielmodus, aus dem Match-Verlauf berechnet (nichts gespeichert, deshalb auch
@@ -145,9 +145,17 @@ export function matchChanges(
 export function eloRanking(
   matches: readonly Match[],
   mode: GameMode,
-  /** Wird je gewerteter Partie mit den LP-Änderungen (inklusive Bonus) aller Spieler aufgerufen. */
-  onMatch?: (match: Match, lpChanges: Map<string, number>) => void,
+  options: {
+    /**
+     * Gesetzt = nur Partien genau dieses Formats (null = Partien ohne Format, z. B. Spezialevent).
+     * Weggelassen = alle Formate des Modus gemeinsam.
+     */
+    format?: DeckFormat | null;
+    /** Wird je gewerteter Partie mit den LP-Änderungen (inklusive Bonus) aller Spieler aufgerufen. */
+    onMatch?: (match: Match, lpChanges: Map<string, number>) => void;
+  } = {},
 ): EloEntry[] {
+  const { format, onMatch } = options;
   const table = new Map<string, EloEntry>();
   const entry = (name: string): EloEntry => {
     let e = table.get(name);
@@ -168,7 +176,9 @@ export function eloRanking(
   };
 
   const rated = matches
-    .filter((m) => m.mode === mode && isRatedMatch(m))
+    .filter(
+      (m) => m.mode === mode && (format === undefined || m.format === format) && isRatedMatch(m),
+    )
     .sort((a, b) => a.date.localeCompare(b.date));
 
   for (const match of rated) {
@@ -198,16 +208,37 @@ export function eloRanking(
 }
 
 /**
- * LP-Änderung je Partie und Spieler (Match-ID → Name → LP), über alle Modi. Für die
- * Match-Historie im Profil; ungewertete Partien fehlen in der Map.
+ * LP-Änderung je Partie und Spieler (Match-ID → Name → LP), je Modus und Format getrennt
+ * gerechnet wie der Rang im Profil. Für die Match-Historie; ungewertete Partien fehlen.
  */
 export function lpChangesByMatch(matches: readonly Match[]): Map<string, Map<string, number>> {
   const result = new Map<string, Map<string, number>>();
-  const modes = new Set(matches.filter(isRatedMatch).map((m) => m.mode));
-  for (const mode of modes) {
-    eloRanking(matches, mode, (match, changes) => result.set(match.id, changes));
+  const seen = new Set<string>();
+  for (const m of matches.filter(isRatedMatch)) {
+    const key = `${m.mode}|${m.format ?? ''}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    eloRanking(matches, m.mode, {
+      format: m.format ?? null,
+      onMatch: (match, changes) => result.set(match.id, changes),
+    });
   }
   return result;
+}
+
+/** Formate, in denen `name` im Modus `mode` gewertete Partien hat, in der Reihenfolge von `formats`. */
+export function ratedFormatsFor(
+  matches: readonly Match[],
+  mode: GameMode,
+  name: string,
+  formats: readonly DeckFormat[],
+): DeckFormat[] {
+  const present = new Set(
+    matches
+      .filter((m) => m.mode === mode && m.players.some((p) => p.name === name) && isRatedMatch(m))
+      .map((m) => m.format),
+  );
+  return formats.filter((f) => present.has(f));
 }
 
 /** Modi, in denen es überhaupt gewertete Partien gibt, in der Reihenfolge von `modes`. */

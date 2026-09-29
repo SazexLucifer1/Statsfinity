@@ -7,6 +7,7 @@ import {
   rankFromLp,
   eloRanking,
   lpChangesByMatch,
+  ratedFormatsFor,
   expectedScore,
   isRatedMatch,
   ratedModes,
@@ -67,6 +68,21 @@ describe('elo', () => {
     expect(byMatch.size).toBe(40);
     const last = ranking.find((e) => e.name === 'A')!;
     expect(byMatch.get(games[39].id)!.get('A')).toBeCloseTo(last.lastChange);
+  });
+
+  it('wertet Formate getrennt, wenn eines angegeben ist', () => {
+    const commander = match('Normal', 'A', [p('A'), p('B')], '2026-08-01T10:00:00Z');
+    const modern = {
+      ...match('Normal', 'B', [p('A'), p('B')], '2026-08-01T11:00:00Z'),
+      format: 'Modern',
+    } as Match;
+    const nurCommander = eloRanking([commander, modern], 'Normal', { format: 'Commander' });
+    expect(nurCommander.find((e) => e.name === 'A')!.games).toBe(1);
+    expect(eloRanking([commander, modern], 'Normal').find((e) => e.name === 'A')!.games).toBe(2);
+    expect(ratedFormatsFor([commander, modern], 'Normal', 'A', ['Commander', 'Modern'])).toEqual([
+      'Commander',
+      'Modern',
+    ]);
   });
 
   it('ordnet LP Rängen und Divisionen zu', () => {

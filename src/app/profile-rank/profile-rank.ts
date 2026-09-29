@@ -1,5 +1,5 @@
 import { Component, computed, inject, input, output, signal } from '@angular/core';
-import { GameMode } from '../models';
+import { DeckFormat, GameMode } from '../models';
 import {
   DIVISION_LP,
   ELO_PROVISIONAL_GAMES,
@@ -32,10 +32,20 @@ export class ProfileRank {
   /** null = in diesem Modus noch keine gewertete Partie. */
   readonly entry = input<EloEntry | null>(null);
   readonly mode = input.required<GameMode>();
-  /** Zur Auswahl stehende Modi; nur im eigenen Profil angeboten. */
+  /** Format des Rangs; null = Modus ohne Format (Spezialevent). */
+  readonly format = input<DeckFormat | null>(null);
+  /** Zur Auswahl stehende Modi und Formate; nur im eigenen Profil angeboten. */
   readonly modes = input<GameMode[]>([]);
+  readonly formats = input<DeckFormat[]>([]);
   readonly editable = input(false);
   readonly modeChange = output<GameMode>();
+  readonly formatChange = output<DeckFormat>();
+
+  /** "Normal · Commander" - welcher Rang gerade zu sehen ist. */
+  readonly choiceLabel = computed(() => {
+    const format = this.format();
+    return format ? `${this.mode()} · ${format}` : this.mode();
+  });
 
   readonly showInfo = signal(false);
 
