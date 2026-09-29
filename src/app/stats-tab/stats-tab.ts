@@ -25,6 +25,7 @@ import {
 import { I18nService } from '../i18n.service';
 import { TournamentHistory } from '../tournament-history/tournament-history';
 import { isImportLossDuplicate, isPlayerWinner as isMatchWinner } from '../match-utils';
+import { EloEntry, eloRanking, ratedModes } from '../elo';
 import { Meter } from '../ui/meter/meter';
 import { Pager } from '../ui/pager/pager';
 import { SplitBar, SplitSegment } from '../ui/split-bar/split-bar';
@@ -255,6 +256,37 @@ export class StatsTab {
   commanderBackImage(name: string | undefined): string | null {
     if (!name) return null;
     return this.cardDetails()[name.toLowerCase()]?.backImageUrl ?? null;
+  }
+
+  // --- Elo-Wertung je Spielmodus (elo.ts) - über alle live erfassten Partien, ohne Jahresfilter ---
+
+  readonly eloModes = computed(() =>
+    ratedModes(
+      this.viewedMatches(),
+      GAME_MODES.filter((m) => this.canViewMode(m)),
+    ),
+  );
+  private readonly eloModeChoice = signal<GameMode | null>(null);
+  readonly eloMode = computed(() => {
+    const choice = this.eloModeChoice();
+    const modes = this.eloModes();
+    return choice && modes.includes(choice) ? choice : (modes[0] ?? null);
+  });
+  readonly eloRanking = computed<EloEntry[]>(() => {
+    const mode = this.eloMode();
+    return mode ? eloRanking(this.viewedMatches(), mode) : [];
+  });
+  readonly eloPage = signal(0);
+  readonly pagedEloRanking = computed(() => {
+    const pages = Math.max(1, Math.ceil(this.eloRanking().length / PAGE_SIZE));
+    const start = Math.min(this.eloPage(), pages - 1) * PAGE_SIZE;
+    return this.eloRanking().slice(start, start + PAGE_SIZE).map((e, i) => ({ ...e, place: start + i }));
+  });
+  readonly showEloInfo = signal(false);
+
+  setEloMode(mode: GameMode): void {
+    this.eloModeChoice.set(mode);
+    this.eloPage.set(0);
   }
 
   // --- Sortierung der Ranglisten (Logik in rank-sort.ts, geteilt mit GlobalStats) ---

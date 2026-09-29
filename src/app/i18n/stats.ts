@@ -74,6 +74,12 @@ export const stats = {
     'stats.distinctDecksCount': '{{count}} verschiedene Decks',
     'stats.distinctCommandersCount': '{{count}} verschiedene Commander',
     'stats.ranking': 'Spieler-Rangliste',
+    'stats.elo.title': 'Elo-Wertung',
+    'stats.elo.infoAria': 'Wie die Elo-Wertung funktioniert',
+    'stats.elo.info':
+      'Jeder startet je Spielmodus bei 1000. Jede Partie zählt als Duell gegen jeden Gegner: besser platziert = Sieg, gleich = Remis. Gegen starke Gegner gibt es mehr LP, gegen schwache weniger. Die ersten 10 Partien zählen stärker. Gewertet werden live erfasste Partien.',
+    'stats.elo.detail': '{{games}} Partien · {{wins}} Siege · Bestwert {{peak}}',
+    'stats.elo.provisional': 'vorläufig',
     'stats.notEnoughGamesForRanking':
       'Noch niemand hat genug Spiele für die Rangliste – siehe Qualifikation unten.',
     'stats.notEnoughGamesForRankingDecks':
@@ -210,6 +216,12 @@ export const stats = {
     'stats.distinctDecksCount': '{{count}} distinct decks',
     'stats.distinctCommandersCount': '{{count}} distinct commanders',
     'stats.ranking': 'Player ranking',
+    'stats.elo.title': 'Elo rating',
+    'stats.elo.infoAria': 'How the Elo rating works',
+    'stats.elo.info':
+      'Everyone starts at 1000 per game mode. Every game counts as a duel against each opponent: placed higher = win, same = draw. Beating strong opponents earns more LP, weak ones less. The first 10 games count more. Only live-tracked games are rated.',
+    'stats.elo.detail': '{{games}} games · {{wins}} wins · peak {{peak}}',
+    'stats.elo.provisional': 'provisional',
     'stats.notEnoughGamesForRanking':
       'No one has enough games for the ranking yet – see qualification below.',
     'stats.notEnoughGamesForRankingDecks':

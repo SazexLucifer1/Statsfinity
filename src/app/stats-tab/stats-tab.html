@@ -378,6 +378,55 @@
   />
 </section>
 
+@if (eloModes().length > 0) {
+<section class="glass-card" data-tutorial="stats-elo">
+  <div class="elo-head">
+    <h2>{{ i18n.t('stats.elo.title') }}</h2>
+    <button
+      type="button"
+      class="icon-button"
+      (click)="showEloInfo.set(!showEloInfo())"
+      [attr.aria-label]="i18n.t('stats.elo.infoAria')"
+      [title]="i18n.t('stats.elo.infoAria')"
+    >
+      <app-icon name="info" />
+    </button>
+  </div>
+  @if (showEloInfo()) {
+  <p class="hint">{{ i18n.t('stats.elo.info') }}</p>
+  }
+  <div class="chip-row">
+    @for (mode of eloModes(); track mode) {
+    <button class="glass-chip small" [class.active]="eloMode() === mode" (click)="setEloMode(mode)">{{ mode }}</button>
+    }
+  </div>
+  <ul class="ranking">
+    @for (e of pagedEloRanking(); track e.name) {
+    <li>
+      <span class="rank">{{ medal(e.place) }}</span>
+      <span class="name player-name-cell" [class.clickable]="isPlayerLinked(e.name)" (click)="openPlayerProfile(e.name)">
+        <app-player-avatar [url]="mtg.playerAvatars()[e.name] ?? null" />
+        {{ e.name }}
+      </span>
+      <span class="detail">
+        {{ i18n.t('stats.elo.detail', { games: e.games, wins: e.wins, peak: (e.peak | number: '1.0-0') ?? '' }) }}
+        @if (e.provisional) {
+        · {{ i18n.t('stats.elo.provisional') }}
+        }
+      </span>
+      <span class="rate elo-rate">
+        {{ e.rating | number: '1.0-0' }}
+        <small class="elo-lp" [class.up]="e.lastChange > 0" [class.down]="e.lastChange < 0">
+          {{ e.lastChange > 0 ? '+' : '' }}{{ e.lastChange | number: '1.0-0' }} LP
+        </small>
+      </span>
+    </li>
+    }
+  </ul>
+  <app-pager [page]="eloPage()" [totalItems]="eloRanking().length" (pageChange)="eloPage.set($event)" />
+</section>
+}
+
 @if (playersInQualification().length > 0) {
 <section class="glass-card">
   <h2>{{ i18n.t('stats.gamesUntilQualification') }}</h2>
