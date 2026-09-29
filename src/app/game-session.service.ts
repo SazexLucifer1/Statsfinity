@@ -243,7 +243,6 @@ export class GameSessionService {
    */
   readonly commanderDamageFocus = signal<string | null>(null);
 
-  // NEU
   /**
    * Manuell festgelegte Reihenfolge der Panel-Keys (durch "Spieler neu
    * anordnen" im Options-Menü). Wird in ingameUnits() angewendet, BEVOR der
@@ -264,7 +263,6 @@ export class GameSessionService {
     this.manualOrder.set(next);
   }
 
-  // NEU
   /**
    * Panel-Key, der bei ungerader Panel-Anzahl den Sonderslot unten (volle
    * Bildschirmbreite, quer liegend) bekommt. Frei wählbar per Longpress auf
@@ -447,12 +445,10 @@ export class GameSessionService {
     return 2;
   });
 
-  // NEU
   /** Gibt es bei der aktuellen Panel-Anzahl einen Sonderslot unten (ungerade Anzahl im 2-Spalten-Grid)? */
   readonly hasOddBottomSlot = computed(
     () => this.ingameColumns() === 2 && this.ingameUnits().length % 2 === 1
   );
-  // NEU
   /**
    * Vertikale Position (in % der Overlay-Höhe) für den zentralen ⋮-Button.
    * Normalfall: 50% (Mitte des gesamten Grids, alle Reihen gleich behandelt).
@@ -764,7 +760,6 @@ export class GameSessionService {
   panelRotation(index: number): number {
     const cols = this.ingameColumns();
 
-    // NEU
     if (this.hasOddBottomSlot() && index === this.ingameUnits().length - 1) {
       return 0;
     }
@@ -924,7 +919,6 @@ export class GameSessionService {
   startGame(): void {
     if (!this.canStartGame()) return;
 
-    // NEU
     // Archenemy landet standardmäßig im Sonderslot unten, solange der Nutzer
     // noch nichts anderes per Longpress festgelegt hat.
     if (this.mode() === 'Archenemy' && this.pinnedBottomKey() === null) {

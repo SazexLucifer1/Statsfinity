@@ -1076,16 +1076,6 @@ export class MtgService {
     await this.refreshHistory();
   }
 
-  /** crypto.randomUUID() existiert nur in sicheren Kontexten (HTTPS/localhost) – daher Fallback. */
-  private createId(): string {
-    if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-      return crypto.randomUUID();
-    }
-    return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-  }
-
-  // NEU
-  // NEU
   async deleteMatch(id: string): Promise<void> {
     const groupId = this.groupService.groupId();
     if (!groupId || !this.groupService.hasPermission('match.delete')) return;

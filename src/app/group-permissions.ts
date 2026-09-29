@@ -53,8 +53,6 @@ export const GROUP_PERMISSION_CATEGORIES: GroupPermissionCategory[] = [
   },
 ];
 
-export const ALL_GROUP_PERMISSIONS: GroupPermission[] = GROUP_PERMISSION_CATEGORIES.flatMap((c) => c.permissions);
-
 /**
  * Vom Owner selbst definiertes, benanntes Bündel aus GroupPermission-Werten (group_roles) - wird
  * einzelnen Mitgliedern zugewiesen (group_members.custom_role_id) und ersetzt die frühere

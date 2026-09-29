@@ -290,7 +290,6 @@ export class IngameTracker implements AfterViewInit, OnDestroy {
     return this.session.hasOddBottomSlot() && index === this.session.ingameUnits().length - 1;
   }
 
-  // NEU
   // --- Startspieler-Roulette: durchläuft alle Panel-Einheiten mehrfach
   // (schnell, wird zum Ende hin langsamer) und landet zufällig auf einer. ---
 
@@ -299,7 +298,6 @@ export class IngameTracker implements AfterViewInit, OnDestroy {
   readonly rouletteResultUnit = signal<IngameUnit | null>(null);
   private rouletteTimeout: ReturnType<typeof setTimeout> | null = null;
 
-  // NEU
   startPlayerRoulette(): void {
     this.showOptionsMenu.set(false);
     const units = this.session.ingameUnits();
@@ -365,13 +363,6 @@ export class IngameTracker implements AfterViewInit, OnDestroy {
     this.observeCurrentPanels();
     this.panelRefsSub = this.panelRefs.changes.subscribe(() => this.observeCurrentPanels());
   }
-
-  private readonly iconCornerMap: Record<number, string> = {
-    0: 'corner-tl',
-    180: 'corner-br',
-    90: 'corner-bl',
-    [-90]: 'corner-tr',
-  };
 
   iconPairCorner(index: number): string {
     const cols = this.session.ingameColumns();

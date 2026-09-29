@@ -474,7 +474,6 @@ export class StatsTab {
     this.applyFormatFilter(this.applyModeFilter(this.viewedYearFilteredMatches())),
   );
 
-  // NEU
   /**
    * "Echte" Match-Anzahl statt roher Datensatz-Anzahl: der Excel-Import legt
    * pro real gespieltem Match mehrere Datensätze an (1x Sieger + 1x pro
@@ -1430,7 +1429,6 @@ export class StatsTab {
       return;
     }
 
-    // NEU
     const importDate = `${this.importYear()}-12-31T00:00:00.000Z`;
     const selectedCube = this.mtg.cubes().find((c) => c.id === this.importCubeId());
 

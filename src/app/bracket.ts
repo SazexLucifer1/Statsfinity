@@ -42,8 +42,7 @@ export function storedDeckBracket(deck: {
   return deck.bracketAuto != null ? { level: deck.bracketAuto, source: 'auto' } : null;
 }
 
-/** Stufen, die die Automatik überhaupt vergeben darf - siehe Punkt 1 oben. */
-export const AUTO_BRACKET_MIN = 2;
+/** Höchste Stufe, die die Automatik vergibt - siehe Punkt 1 oben. */
 export const AUTO_BRACKET_MAX = 4;
 
 /**

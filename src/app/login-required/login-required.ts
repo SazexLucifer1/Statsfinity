@@ -1,4 +1,3 @@
-// NEU
 import { Component, inject, input } from '@angular/core';
 import { I18nService } from '../i18n.service';
 import { LoginOverlayService } from '../login-overlay.service';

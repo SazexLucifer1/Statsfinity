@@ -1,4 +1,3 @@
-// NEU
 /**
  * Scryfall-Oracle-Tag-Filter für "was tut eine Karte" (z.B. Sacrifice-Outlet, Removal, Ramp) - aus
  * public-card-search.ts/deck-viewer.service.ts extrahiert, damit beide Stellen (und die Commander-

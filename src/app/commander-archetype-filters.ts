@@ -1,28 +1,9 @@
-// NEU
 /**
- * EDH-Archetyp-Filter für die Commander-Suche ("welcher Commander passt zu Strategie X?") - bewusst
- * GETRENNT von card-effect-filters.ts. Dessen CARD_EFFECT_FILTERS beschreibt, was eine EINZELNE
- * Karte TUT (Removal, Ramp, ...) und filtert damit Karten, die man einem Deck HINZUFÜGT
- * (public-card-search.ts, deck-viewer.service.ts) - unverändert, nicht anfassen. Diese Liste hier
- * beschreibt dagegen ganze Deck-STRATEGIEN und filtert COMMANDER-Karten selbst (is:commander +
- * diese Query, siehe ScryfallService.searchCommanders()).
+ * Archetyp-Filter für die Commander-Suche (Deck-STRATEGIE, filtert Commander selbst über
+ * is:commander + Query). Getrennt von CARD_EFFECT_FILTERS, das beschreibt, was eine einzelne Karte tut.
  *
- * Wo ein von Scryfalls community-gepflegtem Tagger-Projekt echter Oracle-Tag (otag:) existiert, der
- * die Strategie zuverlässig genug abbildet, wird dieser genutzt. Für reine Spielplan-Archetypen ohne
- * eigenen Karten-Funktions-Tag (z.B. Voltron, Aristocrats - das sind Strategien, keine
- * Karteneigenschaft) wird stattdessen eine handgebaute Text-/Keyword-Heuristik verwendet (o:"..."),
- * nach demselben Muster wie CARD_EFFECT_FILTERS' "tokens"-Eintrag (o:create o:token).
- *
- * Die Tag-Recherche für diese Liste lief indirekt über Websuche (nicht per direktem Live-Aufruf
- * gegen api.scryfall.com, der von dieser Sandbox aus blockiert ist). Eine zweite Rechercherunde
- * hat u.a. den "superfriends"-Eintrag korrigiert: die ursprüngliche Abfrage suchte nur nach dem
- * PLURAL "planeswalkers you control" und übersah damit Karten mit Singular-Text (z.B. Carth the
- * Lion: "...or a planeswalker you control dies...") - dadurch lieferte z.B. Golgari (BG) trotz
- * real existierender BG-Superfriends-Commander null Treffer. Vor dem produktiven Rollout sollten
- * die weiterhin als niedrig-konfident markierten Einträge (voltron, aristocrats, combo) einmal
- * live gegen https://api.scryfall.com/cards/search?q=is:commander+<query> geprüft werden - z.B.
- * mit demselben Wegwerf-console.log-Trick, den filterNamesByQueryChecked() in scryfall.service.ts
- * nutzt.
+ * Wo ein verlässlicher Scryfall-Oracle-Tag (otag:) existiert, wird er genutzt, sonst eine Text-
+ * Heuristik (o:"..."). Niedrig-konfident und noch live zu prüfen: voltron, aristocrats, combo.
  */
 export interface CommanderArchetypeFilter {
   value: string;

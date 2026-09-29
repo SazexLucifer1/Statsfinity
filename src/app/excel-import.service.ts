@@ -33,7 +33,6 @@ export class ExcelImportService {
 
   private workbook: XLSX.WorkBook | null = null;
 
-  // NEU
   /** Spielername (lowercase) -> Jahresabschluss-Event-Stats, aus der Übersichts-Sheet gelesen. */
   private yearEndStats = new Map<string, { played: number; wins: number }>();
 
@@ -222,7 +221,6 @@ export class ExcelImportService {
       .trim();
   }
 
-  // NEU
   /**
    * Baut aus den bestätigten Sheet->Spieler-Zuordnungen synthetische Match-Objekte (ohne id).
    * `assignCube`: wenn gesetzt, bekommen ALLE importierten Cube-Modus-Spiele diesen konkreten

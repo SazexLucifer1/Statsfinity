@@ -698,39 +698,6 @@ export class TournamentService {
     return 'invited';
   }
 
-  async addParticipant(tournamentId: string, playerName: string): Promise<boolean> {
-    const playerId = this.mtg.playerIdFor(playerName);
-    if (!playerId) return false;
-
-    const status = this.initialStatusFor(playerName);
-    const { error } = await supabase.from('tournament_participants').insert({
-      tournament_id: tournamentId,
-      player_id: playerId,
-      status,
-      joined_at: status === 'joined' ? new Date().toISOString() : null,
-    });
-
-    if (error) {
-      console.error('Konnte Teilnehmer nicht hinzufügen:', error);
-      return false;
-    }
-    await this.loadParticipants(tournamentId);
-    return true;
-  }
-
-  async removeParticipant(participantId: string, tournamentId: string): Promise<boolean> {
-    const tournament = this.activeTournament();
-    if (!tournament || tournament.id !== tournamentId || !this.isOrganizer()) return false;
-
-    const { error } = await supabase.from('tournament_participants').delete().eq('id', participantId);
-    if (error) {
-      console.error('Konnte Teilnehmer nicht entfernen:', error);
-      return false;
-    }
-    await this.loadParticipants(tournamentId);
-    return true;
-  }
-
   async confirmJoin(tournamentId: string): Promise<boolean> {
     const name = this.mtg.myPlayerName();
     const playerId = name ? this.mtg.playerIdFor(name) : null;

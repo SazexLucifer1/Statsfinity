@@ -1134,9 +1134,6 @@ export class DeckViewerService {
   /** Die fünf Stufen für das Auswahlfeld, in Anzeigereihenfolge. */
   readonly bracketOptions: readonly number[] = [1, 2, 3, 4, 5];
 
-  /** Höchste Stufe, die die Automatik von sich aus vergibt - für den Hinweistext am Auswahlfeld. */
-  readonly autoBracketMax = AUTO_BRACKET_MAX;
-
   /** Begründung der Einstufung ein-/ausklappen. */
   readonly showBracketWhy = signal(false);
 
@@ -1390,7 +1387,6 @@ export class DeckViewerService {
     return sections;
   });
 
-  // NEU
   readonly cardSearchQuery = signal('');
   readonly cmcFilter = signal<'all' | number>('all');
   readonly typeFilterValue = signal<'all' | string>('all');

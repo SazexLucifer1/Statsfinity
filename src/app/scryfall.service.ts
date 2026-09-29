@@ -172,7 +172,6 @@ export class ScryfallService {
     return this.cachedCreatureTypes;
   }
 
-  // NEU
   /** Entfernt Apostrophe/Akzente, damit z.B. "Baldurs" auch "Baldur's" findet. */
   private normalizeForSearch(text: string): string {
     return text
@@ -182,7 +181,6 @@ export class ScryfallService {
       .replace(/['’‘´`]/g, '');        // alle Apostroph-Varianten entfernen
   }
 
-  // NEU
   /**
    * Set-Typen, die als echtes Draft-/Play-Booster-Display verkauft werden.
    * Schließt Token-, Promo-, Commander-Precon-, Duel-Deck- und Alchemy-Sets
@@ -219,11 +217,6 @@ export class ScryfallService {
     return filtered.slice(0, 30);
   }
 
-  /** Liefert Sets nach Erscheinungsjahr */
-  async setsByYear(year: number): Promise<ScryfallSet[]> {
-    return this.searchSets('', year);
-  }
-  // NEU
   /**
    * Autovervollständigung für Kartennamen – liefert nur Karten, die laut Regel 903.3
    * als Commander erlaubt sind (legendäre Kreatur, Vehicle, Spacecraft mit P/T-Werten,
@@ -378,7 +371,6 @@ export class ScryfallService {
     return fuzzy?.name ?? null;
   }
 
-  // NEU
   /**
    * Sucht deutsche gedruckte Namen und liefert die englischen Kartennamen zurück. `scope` steuert,
    * welche Karten überhaupt in Frage kommen: nur Commander, Commander+Backgrounds (zweiter
@@ -501,7 +493,6 @@ export class ScryfallService {
     return ergebnis;
   }
 
-  // NEU
   /**
    * Lädt genau die Druckvarianten, die eine Decklist über Set-Kürzel + Sammelnummer benennt
    * ("Sol Ring (SOC) 128"). Nötig fürs Artwork: findCardsBulk() sucht nur über den Namen und
@@ -557,7 +548,6 @@ export class ScryfallService {
     return result;
   }
 
-  // NEU
   /**
    * Lädt Kartendaten für viele Scryfall-IDs auf einmal (z.B. Marken aus all_parts) - Namenssuche
    * wäre hier mehrdeutig (mehrere Karten teilen sich oft denselben Markennamen wie "Zombie"),
@@ -589,7 +579,6 @@ export class ScryfallService {
     return result;
   }
 
-  // NEU
   /**
    * Kartensuche zum Hinzufügen einzelner Karten zu einem Deck. Beschränkt sich auf Karten, die im
    * Format des Decks erlaubt sind (legal:<format>, siehe filters.format) und optional auf eine Farbidentität
@@ -856,8 +845,6 @@ export class ScryfallService {
     return pairs;
   }
 
-  // NEU
-  // NEU
   /**
    * Prüft, welche der übergebenen Kartennamen zu einer otag:/keyword:-Abfrage passen, und meldet
    * zusätzlich, welche der übergebenen Namen überhaupt erfolgreich geprüft wurden ("checked") -
@@ -895,26 +882,12 @@ export class ScryfallService {
       }
       const nameClause = '(' + chunk.map((n) => `!"${n.replace(/"/g, '')}"`).join(' or ') + ')';
       const q = encodeURIComponent(`${tagQuery} ${nameClause}`);
-      // NEU - Verifikationsrunde (siehe Plan): macht die exakte Scryfall-Anfrage in der Browser-Konsole
-      // sichtbar, damit sie manuell (F12) nachvollzogen werden kann - wieder entfernen, sobald alle
-      // 15 Effekt-Kategorien einzeln verifiziert sind.
-      console.log(`[Effekt-Kategorie-Check] Anfrage: https://scryfall.com/search?q=${q}`);
       const res = await this.fetchWithRetry(`${API}/cards/search?q=${q}&unique=cards`);
-      if (!res) {
-        console.log('[Effekt-Kategorie-Check] Anfrage fehlgeschlagen (Rate-Limit?), wird beim nächsten Öffnen erneut versucht.');
-        continue; // Chunk gescheitert - bleibt in "checked" ungelistet, wird beim nächsten Aufruf erneut versucht.
-      }
+      if (!res) continue; // gescheitert: bleibt ungeprüft, nächster Aufruf versucht es erneut
       for (const name of chunk) checked.add(normalizeCardName(name));
-      // Scryfall antwortet bei null Treffern mit HTTP 404 (kein Fehler, siehe fetchWithRetry()) -
-      // gültiges "keine dieser Karten hat den Tag"-Ergebnis, muss trotzdem als geprüft gecacht werden,
-      // sonst würden diese Karten bei jedem Öffnen erneut abgefragt, obwohl das Ergebnis feststeht.
-      if (res.status === 404) {
-        console.log('[Effekt-Kategorie-Check] Keine Treffer in diesem Chunk.');
-        continue;
-      }
+      // 404 = keine Treffer: gültiges Ergebnis, bleibt als geprüft gecacht.
+      if (res.status === 404) continue;
       const data = await res.json();
-      const chunkMatches = ((data.data as any[]) ?? []).map((card) => card.name as string);
-      console.log(`[Effekt-Kategorie-Check] Treffer in diesem Chunk (${chunkMatches.length}):`, chunkMatches);
       for (const card of (data.data as any[]) ?? []) {
         // Scryfall liefert bei Doppelkarten den vollen "A // B"-Namen zurück, obwohl nur mit dem
         // Vorderseiten-Namen gesucht wurde (siehe classifyCards()) - ohne diesen Split würde
@@ -952,7 +925,6 @@ export class ScryfallService {
     }
   }
 
-  // NEU
   /**
    * Wie filterNamesByQueryChecked(), aber mit dauerhaftem localStorage-Cache pro (Kategorie, Kartenname) -
    * Kartentags ändern sich praktisch nie, ein erneutes Abfragen bei jedem Deck-Öffnen ist daher
@@ -978,11 +950,6 @@ export class ScryfallService {
       // cached === false: bewusst weder zu matched hinzufügen noch erneut abfragen.
     }
 
-    // NEU - Verifikationsrunde (siehe Plan): zusammenfassender Log pro Kategorie in der Konsole.
-    console.log(
-      `[Effekt-Kategorie-Check] "${categoryKey}": ${unique.length} Karte(n) im Deck, ${uncached.length} davon noch nicht gecacht.`
-    );
-
     if (uncached.length > 0) {
       const { matched: freshlyMatched, checked } = await this.filterNamesByQueryChecked(tagQuery, uncached);
       for (const name of checked) {
@@ -994,11 +961,9 @@ export class ScryfallService {
       this.saveTagCache();
     }
 
-    console.log(`[Effekt-Kategorie-Check] "${categoryKey}" Endergebnis (${matched.size}):`, [...matched]);
     return matched;
   }
 
-  // NEU
   /**
    * Alle Editionen/Artworks einer Karte, neueste zuerst - für die Artwork-Auswahl im
    * Bearbeiten-Modus. include:extras ist nötig, weil Scryfalls Suche Marken/Tokens standardmäßig
@@ -1037,7 +1002,6 @@ export class ScryfallService {
       .filter((p): p is ScryfallPrinting => !!p.imageUrl);
   }
 
-  // NEU
   /**
    * Liefert für jeden übergebenen Kartennamen den EUR-Preis (Cardmarket, über Scryfall) der
    * GÜNSTIGSTEN Druckvariante - bewusst NICHT der Preis des aktuell im Deck ausgewählten Artworks

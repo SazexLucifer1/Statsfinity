@@ -1,4 +1,3 @@
-// NEU
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CardSuggestion, ScryfallCard, ScryfallService } from '../scryfall.service';

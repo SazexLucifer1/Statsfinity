@@ -122,7 +122,6 @@
   }
 }
 
-// NEU
 // Farben orientieren sich an den fünf MTG-Manafarben (W/U/B/R/G), abgestimmt auf ausreichenden
 // Kontrast/Unterscheidbarkeit (inkl. Farbenblindheit) vor dem dunklen App-Hintergrund.
 .deck-analysis {
@@ -251,7 +250,6 @@
   text-align: center;
 }
 
-// NEU
 .deck-analysis-header-row {
   display: flex;
   align-items: center;
@@ -403,7 +401,6 @@
   }
 }
 
-// NEU
 // Namensfeld der Kartensuche: steht als letztes Element des Kastens direkt über der Trefferliste
 // und braucht deshalb die volle Breite, damit es zwischen den Filterfeldern darüber weiterhin als
 // das Hauptfeld erkennbar ist (ein <input> ist sonst nur so breit wie seine Standardspaltenzahl).
@@ -412,7 +409,6 @@
   width: 100%;
 }
 
-// NEU
 .card-filter-row {
   margin-top: 8px;
 
@@ -425,7 +421,6 @@
   }
 }
 
-// NEU
 // Nur noch die Textliste benutzt den Stepper - in der Kachelansicht steht die Menge seit dem
 // freigeräumten Kartenbild in .deck-card-qtybar unter der Karte.
 .deck-card-stepper {
@@ -612,7 +607,6 @@
   }
 }
 
-// NEU
 // Gemeinsames Kartenbild-Raster für Add-Karten-Suche UND EDHREC-Vorschläge - liegt bewusst
 // außerhalb von .add-card-panel, damit es wie die Hauptdeckansicht die volle Breite nutzt statt
 // im schmaleren, eingerahmten Bearbeiten-Kästchen gequetscht zu sein.
@@ -723,7 +717,6 @@
   text-align: center;
 }
 
-// NEU
 .artwork-picker-sheet {
   width: min(94vw, 480px);
   max-width: 480px;
@@ -783,7 +776,6 @@
   }
 }
 
-// NEU
 .tag-editor-sheet {
   width: min(94vw, 480px);
   max-width: 480px;
@@ -798,7 +790,6 @@
   margin: 6px 0 12px;
 }
 
-// NEU
 // Bearbeiten-Modus: Bild frei, Bedienung darunter.
 // Die Kachel bleibt ein reines Kartenbild; die Menge sitzt als Leiste direkt an der Karte (gleiche
 // Breite, geteilte untere Ecken) zusammen mit Umdrehen und Commander, die restlichen drei

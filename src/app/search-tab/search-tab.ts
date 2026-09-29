@@ -1,4 +1,3 @@
-// NEU
 import { Component, effect, inject, signal } from '@angular/core';
 import { PublicCardSearch } from '../public-card-search/public-card-search';
 import { PreconBrowser } from '../precon-browser/precon-browser';

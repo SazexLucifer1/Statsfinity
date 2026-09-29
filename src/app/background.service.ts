@@ -163,29 +163,4 @@ export class BackgroundService {
     }
     return true;
   }
-
-  async loadSharesFor(backgroundId: string): Promise<{ userId: string }[]> {
-    const { data, error } = await supabase
-      .from('background_shares')
-      .select('shared_with')
-      .eq('background_id', backgroundId);
-
-    if (error) {
-      console.error('Konnte Freigaben nicht laden:', error);
-      return [];
-    }
-    return (data ?? []).map((row) => ({ userId: row.shared_with }));
-  }
-
-  async unshareBackground(backgroundId: string, targetUserId: string): Promise<void> {
-    const { error } = await supabase
-      .from('background_shares')
-      .delete()
-      .eq('background_id', backgroundId)
-      .eq('shared_with', targetUserId);
-
-    if (error) {
-      console.error('Konnte Freigabe nicht entfernen:', error);
-    }
-  }
 }
