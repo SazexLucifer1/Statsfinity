@@ -5,8 +5,7 @@ import { I18nService } from '../i18n.service';
 import { Icon } from '../ui/icon/icon';
 
 /**
- * Zeigt 1 Commander normal, bei einem Partner-Paar (2 Commander, siehe
- * ScryfallService.searchCommanderPairs()) BEIDE Karten als versetzter Stapel - vordere Karte fast
+ * Zeigt 1 Commander normal, bei einem Partner-Paar BEIDE Karten als versetzter Stapel - vordere Karte fast
  * kartengroß und dominant, hintere Karte in echter Kartengröße direkt dahinter, sodass oben nur ein
  * schmaler Streifen mit Name/Manakosten herausschaut. Dadurch nimmt eine Partner-Kachel exakt
  * dieselbe Fläche ein wie eine Solo-Commander-Kachel (siehe partner-card-image.scss). Ein kleiner

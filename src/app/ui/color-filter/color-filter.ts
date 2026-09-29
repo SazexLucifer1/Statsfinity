@@ -44,12 +44,7 @@ export class ColorFilter {
    */
   readonly withColorless = input(true);
 
-  /**
-   * Umschalter genau/enthält anbieten. Aus für die Deck- und Commander-Suche: dort ist die gesuchte
-   * Farbidentität selbst das Ziel ("zeig mir die Simic-Decks"), und die Partner-Paarungen der
-   * Commander-Suche lassen sich ohne feste Zielkombination gar nicht sinnvoll durchrechnen (siehe
-   * searchCommanderPairs in scryfall.service.ts).
-   */
+  /** Umschalter genau/enthält anbieten. Aus für die Deck-Suche: dort ist die Farbidentität selbst das Ziel. */
   readonly withMode = input(true);
 
   readonly options = computed<string[]>(() =>

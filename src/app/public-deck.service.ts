@@ -24,7 +24,7 @@ export interface PublicDeckStats {
 
 export interface PublicDeckFilters {
   name?: string;
-  /** Exakte Farbidentität (wie ScryfallService.searchCommanders()) - sortiert, für den eq()-Vergleich gegen decks.color_identity. */
+  /** Exakte Farbidentität - sortiert, für den eq()-Vergleich gegen decks.color_identity. */
   colors?: string[];
   /** decks.edhrec_tag, exakt (siehe archetypeOptions()). */
   archetype?: string | null;

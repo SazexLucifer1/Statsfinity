@@ -8,9 +8,8 @@ import { DeckFormat, SCRYFALL_FORMAT } from './models';
 export interface ScryfallCard {
   name: string;
   /**
-   * Der gedruckte Name des angezeigten Drucks ("Sonnenring") - nur gesetzt, wenn das Bild NICHT
-   * englisch ist, also die Artwork-Sprache im Profil auf etwas anderes steht. Reine Anzeige:
-   * Gespeichert, gesucht und verrechnet wird immer über `name` (englisch).
+   * Gedruckter Name des angezeigten Drucks ("Sonnenring"), nur bei nicht-englischer
+   * Artwork-Sprache. Reine Anzeige - gerechnet wird immer mit `name`.
    */
   printedName?: string;
   imageUrl?: string;
@@ -19,8 +18,8 @@ export interface ScryfallCard {
   manaCost?: string;
   colorIdentity?: string[];
   /**
-   * Farben, die diese Karte an Mana erzeugen kann ('W'|'U'|'B'|'R'|'G'|'C') - von Scryfall selbst
-   * gepflegt, fehlt bei Karten, die gar kein Mana erzeugen. Grundlage der Manaquellen-Verteilung.
+   * Farben, die die Karte an Mana erzeugen kann (W/U/B/R/G/C); fehlt bei Karten ohne Mana.
+   * Grundlage der Manaquellen-Verteilung.
    */
   producedMana?: string[];
   /** Teil der offiziellen Commander-Bracket-"Game Changers"-Liste (von Scryfall selbst gepflegt). */
@@ -29,20 +28,16 @@ export interface ScryfallCard {
   /** Native Scryfall-Fähigkeiten-Liste ("Flying", "Lifelink", ...) - kein Tagger-Tag, kommt direkt mit jeder Karte. */
   keywords?: string[];
   /**
-   * Nur gesetzt bei echten zweiseitigen Karten (Transform/Modal-DFC), deren Rückseite ein eigenes
-   * Kartenbild hat - NICHT bei Adventure/Split, die trotz mehrerer "Faces" nur ein einziges,
-   * gemeinsames Bild besitzen (dort fehlt image_uris auf der zweiten Face, siehe toCard()).
+   * Nur bei echten Doppelkarten (Transform/MDFC) mit eigenem Rückseitenbild, nicht bei
+   * Adventure/Split.
    */
   backImageUrl?: string;
   backTypeLine?: string;
   /** Von Scryfall mitgelieferte verwandte Karten (u.a. Marken, die diese Karte erzeugt) - component "token" ist der für den Marken-Scan relevante Fall. */
   allParts?: { id: string; component: string; name: string; typeLine?: string }[];
   /**
-   * Scryfalls "gleiche Karte über alle Drucke hinweg"-ID - bei Marken essenziell, da viele
-   * VERSCHIEDENE Marken denselben schlichten Namen teilen (z.B. "Wizard" oder "Zombie" in
-   * unterschiedlichen Farben/Werten/Fähigkeiten je nach erzeugender Karte). Nur über diese ID
-   * lässt sich zuverlässig zwischen "andere Edition derselben Marke" und "andere Marke mit
-   * zufällig gleichem Namen" unterscheiden.
+   * Scryfalls druckübergreifende ID - bei Marken nötig, weil viele verschiedene Marken gleich
+   * heißen.
    */
   oracleId?: string;
 }
@@ -71,19 +66,6 @@ export interface ScryfallSet {
   set_type?: string;
 }
 
-export interface CommanderFilters {
-  /** Freitext, UND-verknüpft als Teilstring-Suche auf den Kartennamen (name:"..."). */
-  name?: string | null;
-  /** Fertiges Scryfall-Query-Fragment für einen Archetyp, z.B. "otag:landfall" - siehe commander-archetype-filters.ts. */
-  archetypeQuery?: string | null;
-  /**
-   * Kreaturtyp aus dem Scryfall-Katalog (z.B. "Elf") - bewusst BREIT: matcht Commander, die
-   * SELBST diesen Typ tragen (t:) ODER ihn im Oracle-Text referenzieren/unterstützen (o:), z.B.
-   * ein Nicht-Elf-Commander mit "Elfen, die du kontrollierst erhalten +1/+1".
-   */
-  creatureType?: string | null;
-}
-
 /** Welche der 5 Partner-Commander-Mechaniken eine Karte trägt - siehe ScryfallService.partnerProfile(). */
 interface PartnerProfile {
   plainPartner: boolean;
@@ -105,9 +87,8 @@ export class ScryfallService {
   private cachedSets: ScryfallSet[] | null = null;
 
   /**
-   * Cache je (Sprache, normalisierter Vorderseitenname) für druckeInSprache(): das Rohobjekt des
-   * Drucks, oder null = "in dieser Sprache nicht gedruckt". Das null ist der wichtigere Teil -
-   * ohne es würde jede Ansicht für dieselben nie übersetzten Karten wieder Scryfall fragen.
+   * Cache je (Sprache, Vorderseitenname) für druckeInSprache(): Rohdruck oder null = "in dieser
+   * Sprache nicht gedruckt" (das null spart die meisten Wiederholungsanfragen).
    */
   private readonly druckCache = new Map<string, unknown | null>();
 
@@ -119,12 +100,8 @@ export class ScryfallService {
   }
 
   /**
-   * Fetch mit Wiederholung bei Fehlern - wichtig, weil Scryfalls Rate-Limit (429) im Browser als
-   * generischer CORS-Fehler ankommt (die 429-Antwort hat selbst keine CORS-Header, der Browser
-   * blockt sie also komplett und die fetch-Promise wird abgelehnt, ohne dass der Statuscode für
-   * JS lesbar wäre). Ein einzelner Fehlschlag lässt sich also nicht sicher von einem "429, kurz
-   * warten reicht" unterscheiden - deshalb bei JEDEM Fehler einfach abwarten und erneut versuchen,
-   * mit wachsender Pause, statt sofort aufzugeben.
+   * Fetch mit Wiederholung und wachsender Pause bei JEDEM Fehler: Scryfalls 429 kommt ohne
+   * CORS-Header und ist im Browser nicht von anderen Fehlern zu unterscheiden.
    */
   private async fetchWithRetry(url: string, retries = 2, init?: RequestInit): Promise<Response | null> {
     for (let attempt = 0; attempt <= retries; attempt++) {
@@ -158,10 +135,8 @@ export class ScryfallService {
   private cachedCreatureTypes: string[] | null = null;
 
   /**
-   * Liefert den vollständigen, offiziellen Katalog aller je gedruckten Kreaturtypen (Scryfalls
-   * /catalog/creature-types) - Grundlage für das Kreaturtyp-Dropdown der Commander-Suche.
-   * Alphabetisch sortiert, da Scryfalls Katalog-Reihenfolge nicht dokumentiert/stabil ist.
-   * Caching wie allSets() - ändert sich praktisch nur bei neuen Editionen.
+   * Katalog aller Kreaturtypen (/catalog/creature-types), alphabetisch, zwischengespeichert wie
+   * allSets().
    */
   async creatureTypes(): Promise<string[]> {
     if (this.cachedCreatureTypes) return this.cachedCreatureTypes;
@@ -182,9 +157,8 @@ export class ScryfallService {
   }
 
   /**
-   * Set-Typen, die als echtes Draft-/Play-Booster-Display verkauft werden.
-   * Schließt Token-, Promo-, Commander-Precon-, Duel-Deck- und Alchemy-Sets
-   * (nur digital in Arena) automatisch aus.
+   * Set-Typen, die als Draft-/Play-Booster verkauft werden (ohne Token-, Promo-, Precon-,
+   * Duel-Deck- und Alchemy-Sets).
    */
   private readonly DRAFTABLE_SET_TYPES = new Set(['core', 'expansion', 'draft_innovation', 'masters']);
 
@@ -218,12 +192,8 @@ export class ScryfallService {
   }
 
   /**
-   * Autovervollständigung für Kartennamen – liefert nur Karten, die laut Regel 903.3
-   * als Commander erlaubt sind (legendäre Kreatur, Vehicle, Spacecraft mit P/T-Werten,
-   * oder Karten mit "kann dein Commander sein"-Text). Scryfalls "is:commander"
-   * bildet genau diese Regel ab, deshalb reicht ein einziger Suchoperator.
-   * Findet englische Namen direkt; bei deutschen Eingaben wird zusätzlich
-   * über die gedruckten deutschen Namen gesucht und der englische Name geliefert.
+   * Autovervollständigung für Commander (is:commander = Regel 903.3). Englische Namen direkt,
+   * zusätzlich über gedruckte Namen (Deutsch); geliefert wird der englische Name.
    */
   async autocomplete(query: string): Promise<string[]> {
     if (query.trim().length < 2) return [];
@@ -240,10 +210,8 @@ export class ScryfallService {
   }
 
   /**
-   * Autovervollständigung für den ZWEITEN Commander eines Partner-Decks - wie autocomplete(),
-   * schließt aber zusätzlich Backgrounds mit ein: die sind selbst nicht is:commander-legal (keine
-   * "kann dein Commander sein"-Karte) und würden hier sonst fehlen, wandern bei "Choose a
-   * Background" aber genauso mit in die Kommandozone.
+   * Wie autocomplete(), aber inkl. Backgrounds (die sind selbst nicht is:commander) - für den
+   * zweiten Commander.
    */
   async autocompleteSecondCommander(query: string): Promise<string[]> {
     if (query.trim().length < 2) return [];
@@ -259,13 +227,8 @@ export class ScryfallService {
   }
 
   /**
-   * Autovervollständigung ohne Commander-Einschränkung - für die öffentliche Kartensuche (jede
-   * Karte, nicht nur Commander-legale), nutzt Scryfalls eigenen dafür vorgesehenen Endpoint statt
-   * einer eigenen name:"..."-Suche.
-   * Dieser Endpoint kennt allerdings NUR englische Namen ("Blitzschlag" liefert dort nichts),
-   * deshalb wird bei wenigen Treffern zusätzlich über die gedruckten Namen gesucht - genau wie in
-   * autocomplete() für Commander. Geliefert wird immer der englische Name, mit dem der Rest der
-   * App weiterarbeitet, plus der gedruckte Name für die Anzeige im Dropdown.
+   * Autovervollständigung für jede Karte über Scryfalls Endpoint (nur englisch), bei wenigen
+   * Treffern zusätzlich über gedruckte Namen. Liefert englischen und gedruckten Namen.
    */
   async autocompleteAnyCard(query: string): Promise<CardSuggestion[]> {
     if (query.trim().length < 2) return [];
@@ -297,9 +260,7 @@ export class ScryfallService {
   }
 
   /**
-   * Prüft, ob eine Karte existiert, und liefert Details (englischer Name).
-   * Akzeptiert auch deutsche Kartennamen - geliefert wird aber immer der ENGLISCHE Druck,
-   * siehe englischerDruck().
+   * Karte per Name (auch deutsch); geliefert wird immer der englische Druck (englischerDruck()).
    */
   async findCard(name: string): Promise<ScryfallCard | null> {
     if (!name.trim()) return null;
@@ -332,27 +293,16 @@ export class ScryfallService {
   }
 
   /**
-   * Löst einen unsauberen Namens-Kandidaten (z.B. aus einem Excel-Kommentar-Bildtitel oder einem
-   * Deckname wie "Sovereign Okinec Ahau +1/+1 Markendeck") zu einem eindeutigen, offiziellen
-   * Commander-Namen auf. Schneidet dafür schrittweise Wörter vom Ende ab (der störende
-   * Zusatztext steht meist hinter dem eigentlichen Namen) und sucht bei jeder Länge gezielt nach
-   * Commander-fähigen Karten - auf Englisch, dann Deutsch (nacheinander statt parallel, siehe
-   * fetchWithRetry). Sobald eine Länge Treffer liefert, wird abgebrochen (kürzer würde die Trefferzahl nur
-   * noch vergrößern, nie eindeutiger machen). Von den englischen Treffern zählt nur einer, dessen
-   * Name mit dem gesuchten Ausschnitt beginnt (z.B. akzeptiert "T'Challa, the Black Panther" für die
-   * Suche "T'Challa" - aber NICHT "King T'Challa // Black Panther, Hope Enduring", das "T'Challa" nur
-   * mittendrin enthält). Ohne diesen Filter griff Scryfalls Namens-Suche als reine Teilstring-Suche
-   * und der alphabetisch erste Treffer konnte eine völlig andere Karte sein, die den gesuchten
-   * Ausschnitt nur zufällig irgendwo im Namen trägt. Letzter Fallback: die normale Fuzzy-Suche, die
-   * auch Tippfehler im Kernnamen selbst abdeckt.
+   * Löst unsaubere Kandidaten ("Sovereign Okinec Ahau +1/+1 Markendeck") zu einem Commander-Namen
+   * auf: schneidet Wörter vom Ende ab und sucht je Länge Commander, erst englisch, dann deutsch;
+   * bricht beim ersten Treffer ab. Englische Treffer zählen nur, wenn ihr Name mit dem Ausschnitt
+   * BEGINNT (Scryfalls name: ist eine Teilstring-Suche). Zuletzt Fuzzy-Suche für Tippfehler.
    */
   async resolveCommanderCandidate(candidate: string): Promise<string | null> {
     const words = candidate.trim().split(/\s+/).filter(Boolean);
     if (words.length === 0) return null;
 
-    // Bewusst NACHEINANDER statt parallel, mit Pause zwischen jeder einzelnen Anfrage -
-    // Scryfalls Rate-Limit (429) greift sonst schnell, wenn ein Name mehrere Kürzungs- und
-    // Sprachversuche braucht (mehrere Anfragen in kurzer Zeit).
+    // Nacheinander mit Pause, sonst greift Scryfalls Rate-Limit.
     for (let len = words.length; len >= 1; len--) {
       const attempt = words.slice(0, len).join(' ');
       const normalizedAttempt = normalizeCardName(attempt);
@@ -372,11 +322,9 @@ export class ScryfallService {
   }
 
   /**
-   * Sucht deutsche gedruckte Namen und liefert die englischen Kartennamen zurück. `scope` steuert,
-   * welche Karten überhaupt in Frage kommen: nur Commander, Commander+Backgrounds (zweiter
-   * Commander eines Partner-Decks) oder - für die öffentliche Kartensuche - jede Karte.
-   * Der Name wird als name:"..."-Klausel gestellt: unter lang:de vergleicht Scryfall damit den
-   * gedruckten deutschen Namen (verifiziert: lang:de name:"Sonnenring" findet Sol Ring).
+   * Sucht gedruckte deutsche Namen und liefert englische. `scope`: nur Commander,
+   * Commander+Backgrounds oder jede Karte. Unter lang:de vergleicht name:"..." den gedruckten
+   * Namen.
    */
   private async searchGermanPrintedNames(
     query: string,
@@ -386,10 +334,8 @@ export class ScryfallService {
   }
 
   /**
-   * Wie searchGermanPrintedNames(), liefert aber zusätzlich den GEDRUCKTEN Namen, über den der
-   * Treffer gefunden wurde. Genau der gehört ins Vorschlags-Dropdown: Wer "Sonnenring" tippt, will
-   * dort "Sonnenring" lesen und nicht "Sol Ring" - der englische Name arbeitet im Hintergrund
-   * weiter.
+   * Wie searchGermanPrintedNames(), liefert zusätzlich den gedruckten Namen fürs Dropdown (wer
+   * "Sonnenring" tippt, will das lesen).
    */
   private async searchPrintedNames(
     query: string,
@@ -412,37 +358,26 @@ export class ScryfallService {
   }
 
   /**
-   * In welchen Sprachen nach GEDRUCKTEN Namen gesucht wird: immer Deutsch - das ist die
-   * Heimatsprache der App, und "Sonnenring" soll auch dann etwas finden, wenn die Kartenbilder
-   * (wie standardmäßig) englisch sind -, dazu die eingestellte Artwork-Sprache, falls sie eine
-   * andere ist. Beides zusammen in EINER Anfrage, nicht in zweien.
+   * Sprachen für die Suche nach gedruckten Namen: immer Deutsch, dazu die Artwork-Sprache - in
+   * einer Anfrage.
    */
   private gedruckteSuchsprachen(): ArtLang[] {
     const art = this.artLang.lang();
     return art === 'de' || art === 'en' ? ['de'] : ['de', art];
   }
   /**
-   * Lädt Kartendaten (u.a. Bilder) für viele Kartennamen auf einmal, statt pro Karte eine
-   * Anfrage zu schicken. Nutzt Scryfalls Collection-Endpoint (max. 75 Identifier pro Request).
-   * Karten, die nicht exakt gefunden werden, fehlen einfach in der Ergebnis-Map (kein Fehler).
-   * `failed` (optional) sammelt die Namen, die NICHT fehlen, weil Scryfall sie nicht kennt,
-   * sondern weil ihre Anfrage auch nach Wiederholungen scheiterte (meist das Rate-Limit) - wer
-   * Ergebnisse zwischenspeichert, darf die nicht als "gibt es nicht" ablegen.
+   * Kartendaten für viele Namen per Collection-Endpoint (75 je Anfrage). Nicht gefundene Karten
+   * fehlen einfach. `failed` sammelt Namen, deren Anfrage scheiterte (Rate-Limit) - die dürfen
+   * nicht als "gibt es nicht" gecacht werden.
    */
   async findCardsBulk(names: string[], failed?: Set<string>): Promise<Map<string, ScryfallCard>> {
     const unique = [...new Set(names.map((n) => n.trim()).filter(Boolean))];
     const result = new Map<string, ScryfallCard>();
 
-    // Scryfalls Collection-Endpoint matcht Doppelkarten (Transform/MDFC, z.B. "Westvale Abbey //
-    // Ormendahl, Profane Prince") nur über den Namen der Vorderseite, nicht über den vollen
-    // "A // B"-Namen, den Decklist-Exporte oft verwenden. Deshalb wird nur vor "//" gesucht,
-    // das Ergebnis aber unter dem ursprünglichen (vollen) Namen abgelegt.
+    // Der Endpoint matcht Doppelkarten nur über die Vorderseite; abgelegt wird unter dem vollen
+    // Namen.
     const frontFaceName = (name: string) => name.split(' // ')[0].trim();
-    // normalizeCardName() statt nur .toLowerCase() - Scryfall liefert Kartennamen mit Apostroph (z.B.
-    // "Dovin's Veto") teils mit einer anderen Unicode-Apostroph-Variante zurück als sie in
-    // Decklisten-Importen gespeichert sind. Ohne Normalisierung würde original hier undefined bleiben
-    // und die Karte landete unter Scryfalls statt dem ursprünglichen Namen im Ergebnis - der Lookup
-    // per viewingCardDetails.get(cardName.toLowerCase()) an anderer Stelle würde sie dann nie finden.
+    // normalizeCardName() wegen abweichender Apostroph-Varianten zwischen Scryfall und Importen.
     const searchNameToOriginal = new Map<string, string>();
     for (const name of unique) {
       searchNameToOriginal.set(normalizeCardName(frontFaceName(name)), name);
@@ -475,9 +410,8 @@ export class ScryfallService {
       })
     );
 
-    // Der Collection-Endpoint liefert immer den englischen Druck - steht die Artwork-Sprache auf
-    // etwas anderes, werden die Bilder hier noch einmal gebündelt getauscht. Auf Englisch kostet
-    // das keine einzige zusätzliche Anfrage.
+    // Der Endpoint liefert englisch; bei anderer Artwork-Sprache werden die Bilder gebündelt
+    // getauscht (auf Englisch ohne Zusatzanfrage).
     return this.karteMapInKartensprache(result);
   }
 
@@ -494,17 +428,10 @@ export class ScryfallService {
   }
 
   /**
-   * Lädt genau die Druckvarianten, die eine Decklist über Set-Kürzel + Sammelnummer benennt
-   * ("Sol Ring (SOC) 128"). Nötig fürs Artwork: findCardsBulk() sucht nur über den Namen und
-   * liefert damit immer Scryfalls Standarddruck, nie das Bild, das der Nutzer auf seiner
-   * Deck-Seite ausgesucht hat.
-   *
-   * Zugeordnet wird über den zurückgegebenen KARTENNAMEN, nicht über das angefragte Set-Kürzel:
-   * Scryfall kennt Alias-Kürzel und antwortet immer mit dem kanonischen Set, sodass ein Abgleich
-   * über "Set + Nummer" gerade bei älteren Drucken ins Leere liefe. Kommt zu einer Zeile ein
-   * fremder Kartenname zurück (falsche Sammelnummer in der Liste), fehlt sie einfach im Ergebnis
-   * und der Aufrufer bleibt beim Standarddruck. Schlüssel ist - wie bei findCardsBulk() - der
-   * übergebene Name in Kleinbuchstaben.
+   * Lädt genau die per Set + Sammelnummer benannten Drucke ("Sol Ring (SOC) 128") fürs gewählte
+   * Artwork. Zugeordnet über den zurückgegebenen Kartennamen, nicht das Set-Kürzel (Scryfall
+   * antwortet mit dem kanonischen Set). Falsche Nummern fehlen einfach. Schlüssel: übergebener Name
+   * klein.
    */
   async findPrintingsBySetAndNumber(
     requests: { name: string; setCode: string; collectorNumber: string }[]
@@ -548,12 +475,7 @@ export class ScryfallService {
     return result;
   }
 
-  /**
-   * Lädt Kartendaten für viele Scryfall-IDs auf einmal (z.B. Marken aus all_parts) - Namenssuche
-   * wäre hier mehrdeutig (mehrere Karten teilen sich oft denselben Markennamen wie "Zombie"),
-   * die ID identifiziert dagegen eindeutig genau diesen einen Marken-Druck. Gleiches
-   * Chunking-/Parallelitätsmuster wie findCardsBulk().
-   */
+  /** Kartendaten für viele Scryfall-IDs (z. B. Marken aus all_parts), eindeutig statt per Name. */
   async findCardsByIds(ids: string[]): Promise<Map<string, ScryfallCard>> {
     const unique = [...new Set(ids.filter(Boolean))];
     const result = new Map<string, ScryfallCard>();
@@ -580,10 +502,8 @@ export class ScryfallService {
   }
 
   /**
-   * Kartensuche zum Hinzufügen einzelner Karten zu einem Deck. Beschränkt sich auf Karten, die im
-   * Format des Decks erlaubt sind (legal:<format>, siehe filters.format) und optional auf eine Farbidentität
-   * (id<=<Farben> - Teilmenge, damit das Ergebnis wirklich in ein Deck mit dieser
-   * Commander-Farbidentität passt; leeres Array = nur farblose Karten über id:c).
+   * Kartensuche zum Hinzufügen: nur im Deck-Format legale Karten (legal:<format>), optional in der
+   * Farbidentität (id<=, leer = nur farblos).
    */
   async searchCards(
     query: string,
@@ -603,8 +523,8 @@ export class ScryfallService {
       /** Default true (bestehendes Verhalten fürs Deck-Hinzufügen). false = auch Nicht-Commander-legale Karten (öffentliche Suche ohne Format-Bezug). */
       commanderOnly?: boolean;
       /**
-       * Format des Decks: nur Karten, die dort erlaubt sind (gebannte bewusst nicht). null = Deck
-       * ohne Format, dann ohne Einschränkung. Fehlt der Schlüssel ganz, entscheidet commanderOnly.
+       * Deck-Format: nur dort erlaubte Karten. null = ohne Einschränkung; fehlt der Schlüssel,
+       * entscheidet commanderOnly.
        */
       format?: DeckFormat | null;
     }
@@ -629,13 +549,9 @@ export class ScryfallService {
     } else if (filters.commanderOnly !== false) {
       parts.push('legal:commander');
     }
-    // Der Name wird bewusst gegen den englischen UND den gedruckten deutschen Namen geprüft
-    // (ein Request statt zwei): Scryfall vergleicht name:"..." unter lang:de mit printed_name.
-    // Ohne die zweite Hälfte findet "Sonnenring" nichts.
-    // Das lang:en der ersten Hälfte ist NICHT überflüssig: sobald irgendwo im Query ein lang:
-    // steht, schaltet Scryfall include_multilingual ein - ein nacktes name:"ring" matcht dann
-    // auch italienische ("Stringere un Accordo") und französische Drucke, und deren Kartenbild
-    // landete in der Trefferliste. Mit lang:en bleiben genau die beiden gewollten Sprachen übrig.
+    // Name gegen englischen UND gedruckten deutschen Namen in einer Anfrage. Das lang:en ist nötig:
+    // sobald ein lang: im Query steht, sucht Scryfall mehrsprachig und fände sonst auch
+    // italienische/französische Drucke.
     if (trimmed) {
       const safeName = trimmed.replace(/"/g, '');
       parts.push(`(lang:en name:"${safeName}" or lang:de name:"${safeName}")`);
@@ -644,9 +560,7 @@ export class ScryfallService {
     if (creatureType) parts.push(`type:"${creatureType.replace(/"/g, '')}"`);
     if (filters.cmc != null) parts.push(filters.cmc >= 7 ? 'cmc>=7' : `cmc:${filters.cmc}`);
     if (filters.colors?.colors.length) {
-      // Bewusst id= bzw. id>= statt des mehrdeutigen id: - das ist bei Scryfall die
-      // Teilmengen-Suche (id:U findet blaue UND farblose Karten, aber keine simic-farbenen) und
-      // trifft damit keine der beiden Lesarten des Filters.
+      // id= bzw. id>= statt des mehrdeutigen id: (Teilmenge).
       const { colors, mode } = filters.colors;
       const operator = mode === 'atLeast' ? '>=' : '=';
       parts.push(colors.includes('C') ? 'id:c' : `id${operator}${colors.join('')}`);
@@ -671,60 +585,9 @@ export class ScryfallService {
   }
 
   /**
-   * Sucht Commander-legale Legenden über beliebig kombinierbare Filter (Name, exakte Farbidentität,
-   * Archetyp-Kategorie, Kreaturtyp), alle UND-verknüpft, sortiert nach Scryfalls eigenem EDHREC-Rang
-   * (order=edhrec - offizieller, dokumentierter Scryfall-Sortierparameter, keine inoffizielle
-   * EDHREC-API nötig). Farbidentität nutzt bewusst id= (EXAKTE Übereinstimmung) statt id:
-   * (Teilmenge) - "Azorius-Commander" meint wirklich genau Weiß+Blau, nicht auch Mono-Weiß oder
-   * einen 3-Farben-Commander, der Weiß+Blau mit einschließt. Ersetzt die EDHREC-Direktanbindung
-   * fürs Commander-Entdecken (Farbe/Archetyp-Browsing), die trotz mehrerer Versuche keine
-   * zuverlässigen Endpunkte fand - Scryfalls eigene API ist dokumentiert und stabil.
-   */
-  async searchCommanders(colors: string[], filters?: CommanderFilters): Promise<ScryfallCard[]> {
-    const parts = ['is:commander'];
-    if (colors.length > 0) parts.push(`id=${colors.join('')}`);
-    parts.push(...this.buildCommanderFilterParts(filters));
-    return this.fetchCommanderList(parts.join(' '));
-  }
-
-  /** Baut die Name-/Archetyp-/Kreaturtyp-Query-Fragmente, die searchCommanders() UND searchCommanderPairs() teilen. */
-  private buildCommanderFilterParts(filters?: CommanderFilters): string[] {
-    const parts: string[] = [];
-
-    const name = filters?.name?.trim();
-    if (name) parts.push(`name:"${name.replace(/"/g, '')}"`);
-
-    if (filters?.archetypeQuery) parts.push(filters.archetypeQuery);
-
-    const creatureType = filters?.creatureType?.trim();
-    if (creatureType) {
-      const safe = creatureType.replace(/"/g, '');
-      parts.push(`(t:"${safe}" or o:"${safe}")`);
-    }
-
-    return parts;
-  }
-
-  /** Führt eine fertige Scryfall-Query aus und liefert die geparste Kartenliste (order=edhrec, wie searchCommanders()). */
-  private async fetchCommanderList(query: string): Promise<ScryfallCard[]> {
-    const q = encodeURIComponent(query);
-    const res = await this.fetchWithRetry(`${API}/cards/search?q=${q}&unique=cards&order=edhrec`);
-    if (!res?.ok) return [];
-    const data = await res.json();
-    return this.inKartensprache(((data.data as any[]) ?? []).map((c) => this.toCard(c)));
-  }
-
-  /**
-   * Erkennt, über welche der 5 Partner-Commander-Mechaniken eine Karte verfügt (reines Parsen von
-   * oracleText/typeLine, keine zusätzliche Netzwerkanfrage nötig) - Grundlage für searchCommanderPairs().
-   * Reihenfolge/Erkennung nach Recherche gegen Scryfalls Suchsyntax:
-   * - "Partner" (bare) pairt mit jedem anderen bare-Partner - MUSS von "Partner with X" und
-   *   "Partner—Designator" unterschieden werden (beide enthalten ebenfalls das Wort "Partner").
-   * - "Partner with X" pairt NUR mit der explizit genannten Karte X.
-   * - "Partner—Designator" (z.B. "Partner—Survivors") pairt nur mit Karten mit demselben Designator.
-   * - "Friends forever" pairt mit jeder anderen Friends-forever-Karte.
-   * - "Choose a Background" pairt mit jeder Karte vom Typ "Background".
-   * - "Doctor's companion" pairt mit jeder Karte vom Kreaturtyp "Time Lord Doctor".
+   * Welche Partner-Mechanik eine Karte trägt (nur Text/Typzeile): Partner (bare, pairt mit jedem
+   * bare-Partner), Partner with X (nur mit X), Partner—Designator (gleicher Designator), Friends
+   * forever, Choose a Background + Background, Doctor's companion + Time Lord Doctor.
    */
   private partnerProfile(card: ScryfallCard): PartnerProfile {
     const text = card.oracleText ?? '';
@@ -732,11 +595,7 @@ export class ScryfallService {
 
     const partnerWithMatch = text.match(/Partner with ([^(\n]+)/);
     const designatorMatch = text.match(/Partner—([^(\n]+)/);
-    // Bewusst NICHT auf exakte Gleichheit mit "Partner" prüfen: Scryfalls oracle_text hängt bei
-    // Keyword-Fähigkeiten oft den Reminder-Text in Klammern an dieselbe Zeile an (z.B.
-    // "Partner (You can have two commanders if both have partner.)"). Das Pattern lässt genau
-    // diesen optionalen Klammerzusatz zu, schließt aber "Partner with X"/"Partner—X" aus, weil dort
-    // zwischen "Partner" und der Klammer noch anderer Text steht.
+    // Reminder-Text in Klammern ist erlaubt, "Partner with X"/"Partner—X" nicht.
     const barePartnerLine = /^Partner(\s*\(.*\))?$/;
 
     return {
@@ -763,10 +622,8 @@ export class ScryfallService {
   }
 
   /**
-   * Ob eine Karte überhaupt einen ZWEITEN Commander neben sich erlaubt - beide Hälften einer
-   * Paarung zählen, also auch die passive: ein Background selbst trägt kein Partner-Schlüsselwort,
-   * gehört aber genauso zu einer "Choose a Background"-Paarung wie ein Time Lord Doctor zu einer
-   * "Doctor's companion"-Paarung.
+   * Erlaubt die Karte einen zweiten Commander? Auch die passive Hälfte zählt (Background, Time Lord
+   * Doctor).
    */
   allowsSecondCommander(card: ScryfallCard): boolean {
     const p = this.partnerProfile(card);
@@ -788,70 +645,9 @@ export class ScryfallService {
   }
 
   /**
-   * Sucht regelkonforme PAARE von Partner-Commandern (Partner, Partner with X, Friends forever,
-   * Choose a Background, Doctor's companion), deren KOMBINIERTE Farbidentität exakt den Filtern
-   * entspricht - Ergänzung zu searchCommanders() für Decks mit zwei Commandern. Ein Paar zählt als
-   * Treffer, sobald MINDESTENS EINE Hälfte Name/Archetyp/Kreaturtyp erfüllt (nicht zwingend beide -
-   * genau wie im echten Partner-Deckbau ergänzen sich beide Hälften, statt identisch zu sein).
-   *
-   * Bewusst nur aktiv, wenn mindestens eine Farbe gewählt ist: ohne Farbziel gäbe es keine sinnvolle
-   * Grenze für "welche Farbkombination muss die Paarung exakt ergeben", und ein ungefiltertes
-   * Durchpaaren aller ~230 Partner-fähigen Karten wäre kombinatorisch (zehntausende Paare) sinnlos.
-   *
-   * Backgrounds sind selbst NICHT is:commander-legal (keine "kann dein Commander sein"-Karte),
-   * werden also über eine separate type:background-Abfrage geholt, sonst würden sie in der
-   * Kandidatenliste fehlen und "Choose a Background"-Paarungen wären nie vollständig.
-   */
-  async searchCommanderPairs(colors: string[], filters?: CommanderFilters): Promise<[ScryfallCard, ScryfallCard][]> {
-    if (colors.length === 0) return [];
-
-    const colorClause = `id<=${colors.join('')}`;
-    const matchingQuery = ['is:commander', 'is:partner', colorClause, ...this.buildCommanderFilterParts(filters)].join(' ');
-    const fullQuery = ['is:commander', 'is:partner', colorClause].join(' ');
-    const backgroundQuery = ['type:background', colorClause].join(' ');
-
-    const [matchingPool, fullCreaturePool, backgroundPool] = await Promise.all([
-      this.fetchCommanderList(matchingQuery),
-      this.fetchCommanderList(fullQuery),
-      this.fetchCommanderList(backgroundQuery),
-    ]);
-
-    const fullPool = [...fullCreaturePool, ...backgroundPool];
-    const profiles = new Map(fullPool.map((c) => [c.name, this.partnerProfile(c)]));
-    const targetColors = new Set(colors);
-
-    const pairs: [ScryfallCard, ScryfallCard][] = [];
-    const seen = new Set<string>();
-
-    for (const a of matchingPool) {
-      const profileA = profiles.get(a.name);
-      if (!profileA) continue;
-
-      for (const b of fullPool) {
-        if (b.name === a.name) continue;
-        const profileB = profiles.get(b.name)!;
-        if (!this.partnersCompatible(a, profileA, b, profileB)) continue;
-
-        const combined = new Set([...(a.colorIdentity ?? []), ...(b.colorIdentity ?? [])]);
-        if (combined.size !== targetColors.size || [...combined].some((c) => !targetColors.has(c))) continue;
-
-        const key = [a.name, b.name].sort().join('|');
-        if (seen.has(key)) continue;
-        seen.add(key);
-        pairs.push([a, b]);
-      }
-    }
-
-    return pairs;
-  }
-
-  /**
-   * Prüft, welche der übergebenen Kartennamen zu einer otag:/keyword:-Abfrage passen, und meldet
-   * zusätzlich, welche der übergebenen Namen überhaupt erfolgreich geprüft wurden ("checked") -
-   * nötig für classifyCards(), das ein Nein-Ergebnis nur
-   * dann dauerhaft cachen darf, wenn der jeweilige Chunk wirklich erfolgreich beantwortet wurde
-   * (sonst würde ein an Scryfalls Rate-Limit gescheiterter Chunk fälschlich als "nicht getaggt"
-   * gecacht - schlimmer als das ursprüngliche Problem, weil es sich nie mehr korrigiert).
+   * Welche Namen passen zu einer otag:/keyword:-Abfrage - plus welche erfolgreich geprüft wurden
+   * ("checked"), damit classifyCards() ein Nein nur nach echter Antwort cacht (ein
+   * Rate-Limit-Fehler als "nicht getaggt" korrigierte sich nie).
    */
   private async filterNamesByQueryChecked(
     tagQuery: string,
@@ -861,12 +657,8 @@ export class ScryfallService {
     const checked = new Set<string>();
     const unique = [...new Set(cardNames.map((n) => n.trim()).filter(Boolean))];
 
-    // Chunks längenbasiert statt fester Anzahl bilden - eine feste Zahl (z.B. 30) reißt bei
-    // Kategorien mit langer Tag-Abfrage (z.B. Konter mit 12 ODER-verknüpften Unter-Tags, ~450
-    // Zeichen) Scryfalls (nicht dokumentiertes) Query-Längenlimit, was die komplette Anfrage mit
-    // HTTP 400 scheitern lässt - beobachtet bei 30 Namen + Konter-Tag-Abfrage (1063 Zeichen).
-    // MAX_QUERY_LEN liegt bewusst deutlich darunter. Mindestens 1 Name pro Chunk, auch falls schon
-    // dieser eine Name allein (mit der Tag-Abfrage) das Limit reißen würde - sonst Endlosschleife.
+    // Chunks nach Länge statt fester Anzahl - Scryfalls undokumentiertes Längenlimit lässt zu lange
+    // Anfragen mit 400 scheitern. Mindestens ein Name je Chunk (sonst Endlosschleife).
     const MAX_QUERY_LEN = 800;
     let i = 0;
     while (i < unique.length) {
@@ -889,20 +681,15 @@ export class ScryfallService {
       if (res.status === 404) continue;
       const data = await res.json();
       for (const card of (data.data as any[]) ?? []) {
-        // Scryfall liefert bei Doppelkarten den vollen "A // B"-Namen zurück, obwohl nur mit dem
-        // Vorderseiten-Namen gesucht wurde (siehe classifyCards()) - ohne diesen Split würde
-        // z.B. "Ashling, Rekindled // Ashling, Rimebound" hier nie mit dem in "checked" stehenden
-        // reinen "ashling, rekindled" übereinstimmen und fälschlich als "nicht getaggt" gelten.
+        // Scryfall liefert bei Doppelkarten "A // B", geprüft wurde mit der Vorderseite.
         matched.add(normalizeCardName((card.name as string).split(' // ')[0].trim()));
       }
     }
     return { matched, checked };
   }
 
-  // Versionsnummer im Schlüssel MUSS hochgezählt werden, sobald sich eine der Kategorie-Abfragen in
-  // EFFECT_TAG_CATEGORIES (deck-viewer.service.ts) inhaltlich ändert - sonst werden alte, gegen die
-  // VORHERIGE Abfrage ermittelte Ergebnisse fälschlich weiterverwendet, obwohl sie zur neuen Abfrage
-  // nicht mehr passen (z.B. wenn Ramp um zusätzliche Unter-Tags erweitert wird).
+  // Versionsnummer hochzählen, sobald sich eine Abfrage in EFFECT_TAG_CATEGORIES ändert - sonst
+  // gelten alte Ergebnisse weiter.
   private static readonly TAG_CACHE_KEY = 'statsfinity-tag-cache-v5';
   private tagCache: Record<string, Record<string, boolean>> | null = null;
 
@@ -926,18 +713,12 @@ export class ScryfallService {
   }
 
   /**
-   * Wie filterNamesByQueryChecked(), aber mit dauerhaftem localStorage-Cache pro (Kategorie, Kartenname) -
-   * Kartentags ändern sich praktisch nie, ein erneutes Abfragen bei jedem Deck-Öffnen ist daher
-   * unnötig und war die Hauptursache für schwankende Ergebnisse beim wiederholten Testen (Scryfalls
-   * Rate-Limit riss bei den vielen parallelen/wiederholten Anfragen). Nur wirklich neue, noch nie
-   * klassifizierte Karten lösen überhaupt eine Netzanfrage aus.
+   * Wie filterNamesByQueryChecked(), mit dauerhaftem localStorage-Cache je (Kategorie, Karte) -
+   * Tags ändern sich praktisch nie; nur neue Karten fragen Scryfall.
    */
   async classifyCards(categoryKey: string, tagQuery: string, cardNames: string[]): Promise<Set<string>> {
     const cache = this.getTagCache();
-    // Nur der Vorderseiten-Name - Scryfalls exakter Namens-Filter (!"...") lehnt Anfragen mit "//"
-    // (voller Doppelkarten-Name, z.B. "Sink into Stupor // Soporific Springs") mit HTTP 400 ab, was
-    // den GESAMTEN Chunk (bis zu 30 Karten) zum Scheitern brachte - nicht nur die Doppelkarte selbst.
-    // Gleiches Vorgehen wie findCardsBulk()/cheapestPrices().
+    // Nur die Vorderseite: !"A // B" lässt Scryfall mit 400 scheitern (den ganzen Chunk).
     const frontFaceName = (name: string) => name.split(' // ')[0].trim();
     const unique = [...new Set(cardNames.map((n) => normalizeCardName(frontFaceName(n))).filter(Boolean))];
     const matched = new Set<string>();
@@ -965,19 +746,8 @@ export class ScryfallService {
   }
 
   /**
-   * Alle Editionen/Artworks einer Karte, neueste zuerst - für die Artwork-Auswahl im
-   * Bearbeiten-Modus. include:extras ist nötig, weil Scryfalls Suche Marken/Tokens standardmäßig
-   * NICHT durchsucht (genau wie Pläne, Embleme, Art-Series-Karten, ...) - ohne dieses Flag liefert
-   * die Suche für einen Markennamen (z.B. "Spirit") praktisch immer null Treffer.
-   *
-   * Bei Marken wird bevorzugt über oracleId gesucht statt über den Namen: viele VERSCHIEDENE
-   * Marken teilen sich denselben schlichten Namen (z.B. gibt es rote, blaue und schwarze "Wizard"-
-   * Marken mit komplett unterschiedlichen Werten/Fähigkeiten je nach erzeugender Karte) - eine
-   * reine Namenssuche würde all diese Varianten wild durcheinanderwürfeln. oracleId identifiziert
-   * dagegen genau EINE bestimmte Markenvariante über alle ihre Drucke hinweg. Nur wenn keine
-   * oracleId bekannt ist (ältere, vor diesem Fix gescannte Marken), fällt die Suche auf
-   * Name+t:token zurück - besser als gar nichts, kann aber bei mehrdeutigen Markennamen weiterhin
-   * andere Varianten mit anzeigen.
+   * Alle Drucke einer Karte, neueste zuerst (Artwork-Auswahl). include:extras, sonst findet die
+   * Suche keine Marken. Marken bevorzugt über oracleId (viele heißen gleich), sonst Name + t:token.
    */
   async getPrintings(cardName: string, options?: { isToken?: boolean; oracleId?: string | null }): Promise<ScryfallPrinting[]> {
     const query = options?.oracleId
@@ -1003,18 +773,9 @@ export class ScryfallService {
   }
 
   /**
-   * Liefert für jeden übergebenen Kartennamen den EUR-Preis (Cardmarket, über Scryfall) der
-   * GÜNSTIGSTEN Druckvariante - bewusst NICHT der Preis des aktuell im Deck ausgewählten Artworks
-   * und keine grobe USD→EUR-Umrechnung, sondern der echte, von Scryfall separat geführte
-   * Cardmarket-Preis. `eur>0` blendet Drucke ohne ermittelbaren EUR-Preis aus, `unique:cards`
-   * dedupliziert auf einen Eintrag pro Kartenname; da explizit nach `order:eur dir:asc` sortiert
-   * wird, bleibt dabei jeweils die günstigste Druckvariante übrig (Karten ohne ermittelbaren Preis
-   * fehlen einfach im Ergebnis). Gleiches Chunking-Muster wie filterNamesByQueryChecked() (Gruppen statt
-   * einer Anfrage pro Karte, um bei größeren Decks nicht an Scryfalls Rate-Limit zu geraten).
-   *
-   * Schlüssel der zurückgegebenen Map ist die normalisierte VORDERSEITE des Kartennamens (also
-   * "esika, god of the tree", nicht "esika, god of the tree // the prismatic bridge") - so, wie
-   * auch gesucht wird und wie alle Aufrufer nachschlagen.
+   * EUR-Preis (Cardmarket über Scryfall) des GÜNSTIGSTEN Drucks je Karte: eur>0, unique:cards,
+   * order:eur asc. In Chunks wie filterNamesByQueryChecked(). Schlüssel ist die normalisierte
+   * Vorderseite.
    */
   async cheapestPrices(cardNames: string[]): Promise<{ prices: Map<string, number>; incomplete: boolean }> {
     const prices = new Map<string, number>();
@@ -1027,16 +788,9 @@ export class ScryfallService {
       const chunk = unique.slice(i, i + 30);
       const nameClause = '(' + chunk.map((n) => `!"${n.replace(/"/g, '')}"`).join(' or ') + ')';
       const q = encodeURIComponent(`${nameClause} eur>0 -is:digital unique:cards order:eur dir:asc`);
-      // Geduldiger als der Standard (2 Versuche): Diese Abfrage ist seit der Umstellung auf den
-      // eigenen Kartenbestand die EINZIGE, die beim Öffnen eines Decks noch zu Scryfall geht - sie
-      // darf also ruhig warten, es hängt nichts anderes dahinter. Scheitert ein Chunk trotzdem,
-      // fehlen dessen Karten im Ergebnis und die Summe wäre STILL zu niedrig; genau das ist
-      // passiert (277 € statt 388 € an einem echten Deck). Deshalb wird der Ausfall gemeldet,
-      // statt ihn zu verschlucken.
-      //
-      // Ein Warten nach Scryfalls "Retry-After" ist hier bewusst NICHT möglich: Eine 429-Antwort
-      // trägt selbst keine CORS-Header, der Browser blockt sie komplett, und JS sieht nur einen
-      // generischen Fehler ohne Status und ohne Header (siehe fetchWithRetry()).
+      // Geduldiger (4 Versuche) - die einzige Scryfall-Anfrage beim Deck-Öffnen. Scheitert ein
+      // Chunk trotzdem, wird das gemeldet statt still eine zu niedrige Summe zu zeigen (so
+      // geschehen: 277 statt 388 €). Retry-After ist wegen CORS nicht lesbar.
       const res = await this.fetchWithRetry(`${API}/cards/search?q=${q}`, 4);
       if (!res?.ok) {
         incomplete = true;
@@ -1044,37 +798,24 @@ export class ScryfallService {
       }
       const data = await res.json();
       for (const card of (data.data as any[]) ?? []) {
-        // Schlüssel ist die VORDERSEITE, nicht der volle Scryfall-Name: Bei doppelseitigen,
-        // Split-, Aftermath- und Abenteuer-Karten liefert Scryfall "Vorderseite // Rückseite",
-        // während alle drei Aufrufer (Deck-Ansicht, Precon-Browser, öffentliche Decks) mit der
-        // Vorderseite nachschlagen - genauso, wie oben auch gesucht wird. Vorher passte beides
-        // nicht zusammen, jede solche Karte fiel STILL aus der Summe (über die 92 Commander-
-        // Precons aus 2023-2026 waren das 234 statt 121 preislose Karten, rund 2 € je Deck).
+        // Schlüssel ist die Vorderseite, wie bei allen Aufrufern (sonst fielen Doppel-, Split- und
+        // Abenteuerkarten still aus der Summe).
         const name = normalizeCardName(frontFaceName(card.name as string));
         const price = parseFloat(card.prices?.eur);
         if (!prices.has(name) && !Number.isNaN(price)) prices.set(name, price);
       }
     }
 
-    // incomplete meint AUSDRÜCKLICH nur "eine Anfrage ist gescheitert" - nicht "eine Karte hat
-    // keinen Preis". Letzteres ist der Normalfall (eur>0 blendet preislose Drucke aus) und würde
-    // die Kennzeichnung sonst praktisch immer auslösen und damit wertlos machen.
+    // incomplete heißt nur "eine Anfrage scheiterte", nicht "eine Karte hat keinen Preis"
+    // (Normalfall).
     return { prices, incomplete };
   }
 
   /**
-   * Setzt in einer Trefferliste Kartenbild und gedruckten Namen auf den Druck in der eingestellten
-   * Artwork-Sprache (Profil -> "Sprache der Kartenbilder", Standard Englisch).
-   *
-   * Alles andere bleibt ENGLISCH - Name, Typzeile, Regeltext, Farbidentität, Schlüsselwörter. Die
-   * App wertet genau diese Felder aus (Typzeilen-Prüfungen, Kartenname als Schlüssel in
-   * Decklisten und Statistik); eine übersetzte Typzeile erzeugt keine Fehlermeldung, sondern
-   * stillschweigend halbe Deck-Analysen.
-   *
-   * `sprachen[i]` sagt, in welcher Sprache Treffer i schon vorliegt (Default 'en'): Was passt,
-   * wird nicht nachgeschlagen. Steht die Sprache auf Englisch, erledigt derselbe Weg die
-   * Gegenrichtung - ein Treffer, den Scryfall nur über den gedruckten deutschen Namen gefunden
-   * hat, kommt als deutsches Kartenobjekt mit deutschem Bild zurück und wird hier englisch.
+   * Setzt Bild und gedruckten Namen auf den Druck in der Artwork-Sprache. Alles andere bleibt
+   * englisch (Name, Typzeile, Regeltext, Farbidentität) - die App wertet diese Felder aus.
+   * `sprachen[i]` = Sprache, in der Treffer i schon vorliegt; auf Englisch macht derselbe Weg
+   * deutsche Treffer wieder englisch.
    */
   async inKartensprache(
     karten: ScryfallCard[],
@@ -1097,11 +838,9 @@ export class ScryfallService {
   }
 
   /**
-   * Sucht zu englischen Kartennamen den Druck in einer bestimmten Sprache - gebündelt als
-   * `lang:xx (!"A" or !"B" ...)`, nicht einzeln. Der sonst übliche Collection-Endpoint scheidet
-   * hier aus: er kennt keinen Sprachparameter und liefert immer den englischen Druck.
-   * Karten ohne Druck in dieser Sprache fehlen im Ergebnis (und werden als null gemerkt) - der
-   * Aufrufer behält dann sein englisches Bild.
+   * Druck in einer Sprache zu englischen Namen, gebündelt als lang:xx (!"A" or !"B" ...) - der
+   * Collection-Endpoint kennt keine Sprache. Ohne Druck: null gemerkt, der Aufrufer behält
+   * Englisch.
    */
   private async druckeInSprache(namen: string[], lang: ArtLang): Promise<Map<string, any>> {
     const ergebnis = new Map<string, any>();
@@ -1121,17 +860,11 @@ export class ScryfallService {
     }
     if (offen.length === 0) return ergebnis;
 
-    // 25 Namen je Anfrage. Nicht 75 wie beim Collection-Endpoint: Scryfalls Suche hat eine
-    // Komplexitätsgrenze, und die meldet sie ausgerechnet als "Your search contains unclosed
-    // parentheses" (400) - bei 40 !"..."-Gliedern reproduzierbar, bei 39 nicht. 25 hält
-    // ausreichend Abstand, auch wenn die Namen lang sind.
+    // 25 Namen je Anfrage: ab 40 Gliedern meldet Scryfall fälschlich "unclosed parentheses" (400).
     const bloecke: string[][] = [];
     for (let i = 0; i < offen.length; i += 25) bloecke.push(offen.slice(i, i + 25));
 
-    // Bewusst NACHEINANDER mit kurzer Pause statt parallel wie in findCardsBulk(): Eine volle
-    // Trefferseite sind 175 Karten und damit fünf Blöcke: gleichzeitig abgeschickt, beantwortet
-    // Scryfall den Großteil davon mit 429, was im Browser als CORS-Fehler ankommt (siehe
-    // fetchWithRetry). Genau das war zu sehen - von 30 angezeigten Karten kamen 5 auf Deutsch.
+    // Nacheinander mit Pause: parallel beantwortet Scryfall die meisten Blöcke mit 429.
     for (const block of bloecke) {
       const namensteil = block
         .map((name) => `!"${ScryfallService.vorderseite(name).replace(/"/g, '')}"`)
@@ -1145,9 +878,8 @@ export class ScryfallService {
       if (res.ok) {
         const data = await res.json();
         for (const karte of (data.data as any[]) ?? []) {
-          // Schlüssel aus dem Namen des TREFFERS, nicht aus dem angefragten: !"Lightning Bolt"
-          // matcht auch eine doppelseitige Karte, deren Rückseite so heißt. Die landet dann unter
-          // ihrem eigenen Vorderseiten-Namen und damit an keinem angefragten Platz.
+          // Schlüssel aus dem Namen des Treffers: !"Lightning Bolt" matcht auch Doppelkarten mit
+          // dieser Rückseite.
           if (!ScryfallService.hatEchtesBild(karte)) continue;
           const schluessel = ScryfallService.druckSchluessel(lang, karte.name as string);
           if (!ergebnis.has(schluessel)) ergebnis.set(schluessel, karte);
@@ -1166,13 +898,9 @@ export class ScryfallService {
   }
 
   /**
-   * Zu vielen fremdsprachigen Drucken kennt Scryfall gar kein Bild und liefert statt der Karte
-   * einen Platzhalter ("Localized Image Not Available", `image_status: placeholder`) - allein auf
-   * Deutsch über 30.000 Stück. Der ist schlechter als das englische Artwork, deshalb zählt so ein
-   * Druck wie "gibt es in dieser Sprache nicht". Filtern lässt sich das nur hier: Scryfalls
-   * `is:placeholder` meint etwas anderes und schließt sie nicht aus, und welchen Druck `unique=cards`
-   * zurückgibt, ist über die Sortierung nicht steuerbar (geprüft mit order=released in beide
-   * Richtungen).
+   * Scryfall kennt zu vielen fremdsprachigen Drucken kein Bild (Platzhalter, allein deutsch
+   * >30.000) - die zählen als "nicht in dieser Sprache". Nur hier filterbar (is:placeholder meint
+   * etwas anderes).
    */
   private static hatEchtesBild(druck: any): boolean {
     const status = druck.image_status as string | undefined;

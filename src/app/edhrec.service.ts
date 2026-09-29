@@ -127,15 +127,8 @@ export class EdhrecService {
   }
 
   /**
-   * Laedt EDHRECs Kartenempfehlungen fuer einen Commander oder ein Commander-Paar (optional
-   * kombiniert mit einem Theme-Tag, z.B. "ramp" oder "aristocrats" - dieselben Tags, die EDHREC
-   * auf der Commander-Seite selbst als anklickbare Links zeigt) direkt vom selben JSON, das ihre
-   * eigene Webseite nutzt (kein offizieller API-Key noetig, CORS ist offen) -
-   * inoffiziell/undokumentiert, kann sich also theoretisch ohne Vorwarnung aendern. Nur noch für
-   * die Empfehlungen zu einem konkreten, per Namen ausgewählten Commander im Einsatz - das
-   * allgemeine "Commander nach Farbe/Archetyp entdecken" läuft seit einem gescheiterten mehrfachen
-   * Anlauf mit EDHRECs undokumentierter API stattdessen über Scryfalls eigene, dokumentierte API
-   * (ScryfallService.searchCommanders(), order=edhrec).
+   * EDHRECs Kartenempfehlungen für einen Commander oder ein Paar, optional mit Theme-Tag ("ramp").
+   * Liest dasselbe JSON wie EDHRECs Webseite - inoffiziell, kann sich ohne Vorwarnung ändern.
    */
   async getCommanderRecommendations(
     commanderNames: string[],
