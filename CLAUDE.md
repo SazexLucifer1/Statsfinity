@@ -162,11 +162,10 @@ Bei diesen Dateien grundsätzlich `grep`/`Glob` vor `Read`; wenn doch gelesen we
 
 | Zeilen | Datei                                            |
 | ------ | ------------------------------------------------ |
-| 3475   | `src/app/deck-viewer.service.ts`                 |
+| 3109   | `src/app/deck-viewer.service.ts`                 |
 | 1770   | `src/app/tournament.service.ts`                  |
-| 2804   | `src/app/deck.service.ts`                        |
+| 2459   | `src/app/deck.service.ts`                        |
 | 1492   | `src/app/mtg.service.ts`                         |
-| 1233   | `src/app/scryfall.service.ts`                    |
 | 1386   | `src/app/stats-tab/stats-tab.ts`                 |
 | 1111   | `src/app/game-session.service.ts`                |
 | 1154   | `src/app/profile-tab/profile-tab.ts`             |
@@ -203,7 +202,7 @@ Wichtig zur Einordnung:
 
 - `npm run format:check` meldet aktuell **~104 vorbestehende** Dateien: Prettier ist konfiguriert, wurde aber nie projektweit ausgeführt. Ein roter `format:check` ist deshalb **kein** Hinweis darauf, dass die eigene Änderung falsch formatiert ist. Prüfe gezielt die eigenen Dateien (`npx prettier --check <datei>`) und formatiere auch nur diese. **Nicht** `npm run format` über das ganze Projekt laufen lassen — das erzeugt einen themenfremden Riesen-Diff, den der User nicht prüfen kann.
 - Es gibt **kein Lint** und **keine Build-CI auf GitHub**. Die drei Workflows sind alle nächtliche Hintergrundläufe und sagen über einen PR nichts aus: das Supabase-Backup sowie der Scryfall- und der Commander-Spellbook-Abgleich (siehe „Weitere Orte“). Ein grüner PR bedeutet also nicht, dass gebaut wurde — deshalb lokal bauen, bevor gepusht wird.
-- Es gibt **11 Spec-Dateien** (`scryfall.service`, `public-deck.service`, `deck.service`, `color-filter-match`, `color-combo-names`, `app-recovery`, `bracket`, `combo-finder`, `primer-html`, `ui/radar-chart/radar-geometry`, `i18n/i18n-keys`). Die Tests sind **kein Sicherheitsnetz** — grüne Tests sagen fast nichts.
+- Es gibt **12 Spec-Dateien** (`scryfall.service`, `public-deck.service`, `deck.service`, `deck-analyse`, `color-filter-match`, `color-combo-names`, `app-recovery`, `bracket`, `combo-finder`, `primer-html`, `ui/radar-chart/radar-geometry`, `i18n/i18n-keys`). Die Tests sind **kein Sicherheitsnetz** — grüne Tests sagen fast nichts.
 - Der echte Test ist die **Cloudflare-Pages-Preview des PRs** auf dem iPhone.
 
 ---
