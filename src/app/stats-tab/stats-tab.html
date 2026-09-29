@@ -1,105 +1,3 @@
-@if (showImportDialog()) {
-<div class="options-menu-overlay" (click)="closeImportDialog()">
-  <div class="options-menu-sheet" (click)="$event.stopPropagation()">
-    <h3>{{ i18n.t('stats.importDialogTitle') }}</h3>
-    <p class="hint">
-      {{ i18n.t('stats.importDialogHint') }}
-    </p>
-
-    <div class="import-field">
-      <label class="hint" for="import-year-select">{{ i18n.t('stats.importYearLabel') }}</label>
-      <select
-        id="import-year-select"
-        class="glass-input"
-        [ngModel]="importYear()"
-        [disabled]="importBusy()"
-        (ngModelChange)="importYear.set($event)"
-      >
-        @for (year of importYearOptions(); track year) {
-        <option [value]="year">{{ year }}</option>
-        }
-      </select>
-    </div>
-
-    @if (mtg.cubes().length > 0) {
-    <div class="import-field">
-      <label class="hint" for="import-cube-select">{{ i18n.t('stats.importCubeLabel') }}</label>
-      <select
-        id="import-cube-select"
-        class="glass-input"
-        [value]="importCubeId()"
-        [disabled]="importBusy()"
-        (change)="setImportCubeId($event)"
-      >
-        <option value="">{{ i18n.t('stats.importCubeNone') }}</option>
-        @for (cube of mtg.cubes(); track cube.id) {
-        <option [value]="cube.id">{{ cube.name }}</option>
-        }
-      </select>
-    </div>
-    }
-
-    <div class="import-field">
-      <label class="glass-button import-file-label">
-        {{ i18n.t('stats.importChooseFile') }}
-        <input
-          type="file"
-          accept=".xlsx"
-          [disabled]="importBusy()"
-          (change)="onExcelSelected($event)"
-        />
-      </label>
-    </div>
-
-    @if (importBusy()) {
-    <p class="hint"><span class="spinner"></span> {{ i18n.t('stats.importReading') }}</p>
-    } @if (importMessage()) {
-    <p class="hint">{{ importMessage() }}</p>
-    } @if (importPreview().length > 0) {
-    <h3>{{ i18n.t('stats.importCheckMapping') }}</h3>
-    <p class="hint">
-      {{ i18n.t('stats.importMappingHint') }}
-    </p>
-    <ul class="import-mapping-list">
-      @for (row of importPreview(); track row.sheetName) {
-      <li>
-        <span class="sheet-name">{{ row.sheetName }}</span>
-        <select
-          class="glass-input"
-          [value]="row.selection"
-          (change)="updateImportSelection(row.sheetName, $any($event.target).value)"
-        >
-          <option value="">{{ i18n.t('stats.importSkip') }}</option>
-          @for (player of mtg.allPlayers(); track player) {
-          <option [value]="player">{{ player }}</option>
-          }
-          <option value="__NEW__">{{ i18n.t('stats.importNewPlayer') }}</option>
-        </select>
-        @if (row.selection === '__NEW__') {
-        <input
-          class="glass-input"
-          type="text"
-          [placeholder]="i18n.t('stats.importNewPlayerNamePlaceholder')"
-          [value]="row.newName"
-          (input)="updateImportNewName(row.sheetName, $any($event.target).value)"
-        />
-        }
-      </li>
-      }
-    </ul>
-    <div class="chip-row">
-      <button class="glass-button primary" [disabled]="importBusy()" (click)="confirmImport()">
-        {{ importBusy() ? i18n.t('stats.importing') : i18n.t('stats.import') }}
-      </button>
-      <button class="glass-button" (click)="cancelImport()">{{ i18n.t('stats.cancel') }}</button>
-    </div>
-    }
-
-    <button class="glass-button" (click)="closeImportDialog()">{{ i18n.t('stats.close') }}</button>
-  </div>
-</div>
-}
-
 <div class="stats-view-toggle segmented">
   <button [class.active]="viewMode() === 'stats'" (click)="viewMode.set('stats')">
     {{ i18n.t('stats.viewStats') }}
@@ -479,6 +377,55 @@
     (pageChange)="playerPage.set($event)"
   />
 </section>
+
+@if (eloModes().length > 0) {
+<section class="glass-card" data-tutorial="stats-elo">
+  <div class="elo-head">
+    <h2>{{ i18n.t('stats.elo.title') }}</h2>
+    <button
+      type="button"
+      class="icon-button"
+      (click)="showEloInfo.set(!showEloInfo())"
+      [attr.aria-label]="i18n.t('stats.elo.infoAria')"
+      [title]="i18n.t('stats.elo.infoAria')"
+    >
+      <app-icon name="info" />
+    </button>
+  </div>
+  @if (showEloInfo()) {
+  <p class="hint">{{ i18n.t('stats.elo.info') }}</p>
+  }
+  <div class="chip-row">
+    @for (mode of eloModes(); track mode) {
+    <button class="glass-chip small" [class.active]="eloMode() === mode" (click)="setEloMode(mode)">{{ mode }}</button>
+    }
+  </div>
+  <ul class="ranking">
+    @for (e of pagedEloRanking(); track e.name) {
+    <li>
+      <span class="rank">{{ medal(e.place) }}</span>
+      <span class="name player-name-cell" [class.clickable]="isPlayerLinked(e.name)" (click)="openPlayerProfile(e.name)">
+        <app-player-avatar [url]="mtg.playerAvatars()[e.name] ?? null" />
+        {{ e.name }}
+      </span>
+      <span class="detail">
+        {{ i18n.t('stats.elo.detail', { games: e.games, wins: e.wins, peak: e.peak }) }}
+        @if (e.provisional) {
+        · {{ i18n.t('stats.elo.provisional') }}
+        }
+      </span>
+      <span class="rate elo-rate">
+        {{ e.rating }}
+        <small class="elo-lp" [class.up]="e.lastChange > 0" [class.down]="e.lastChange < 0">
+          {{ e.lastChange > 0 ? '+' : '' }}{{ e.lastChange }} LP
+        </small>
+      </span>
+    </li>
+    }
+  </ul>
+  <app-pager [page]="eloPage()" [totalItems]="eloRanking().length" (pageChange)="eloPage.set($event)" />
+</section>
+}
 
 @if (playersInQualification().length > 0) {
 <section class="glass-card">

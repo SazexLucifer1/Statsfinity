@@ -4,9 +4,10 @@ import { ScryfallService, ScryfallCard } from './scryfall.service';
 import { CardDataService } from './card-data.service';
 import { isPlayerWinner } from './match-utils';
 import { sleep } from './array-utils';
+import { parseSubtypes } from './deck-analyse';
 import { GroupService } from './group.service';
 import { PreconService } from './precon.service';
-import { COLORLESS, FILTER_COLORS } from './color-filter-match';
+import { COLORLESS, COLOR_AXES, FILTER_COLORS } from './color-filter-match';
 import { DeckFormat, GameMode } from './models';
 
 export interface Deck {
@@ -32,41 +33,28 @@ export interface Deck {
   /** Als "Outdated" markierte Decks sind standardmäßig in der Deck-Liste ausgeblendet (z.B. für Decks, die nicht mehr gespielt werden, aber nicht gelöscht werden sollen). */
   isOutdated: boolean;
   /**
-   * Gesetzt = vom Besitzer gelöschtes Deck ("Grabstein", siehe deleteDeck()). Kartenliste und
-   * Änderungsverlauf sind dann weg, die Zeile steht nur noch da, damit die Partien in
-   * match_players ihren Deck-Namen, Besitzer und ihre Farbidentität behalten. Deck-Liste,
-   * Deck-Auswahl und öffentliche Suche blenden solche Decks aus - in den Statistiken zählen sie
-   * unverändert weiter.
+   * Gesetzt = gelöschtes Deck ("Grabstein", siehe deleteDeck()): ohne Kartenliste, bleibt nur,
+   * damit Partien Name, Besitzer und Farbidentität behalten. Listen und Suche blenden es aus,
+   * Statistiken zählen es weiter.
    */
   deletedAt: string | null;
   /**
-   * Vom Spieler selbst gewählter Kreaturtyp (z.B. "Elf") für Typal-/Stammes-Decks, gespeichert in
-   * decks.commander_types (siehe updateDeckArchetype()) - beim Import wird die Spalte zwar einmalig
-   * mit dem Typ des markierten Commanders vorbefüllt (siehe DeckService.saveDeck()), da aber nicht
-   * jeder Stammes-Commander selbst den beworbenen Kreaturtyp trägt, bleibt sie danach rein manuell
-   * gepflegt (ändert sich NICHT mehr automatisch mit, wenn später der Commander gewechselt wird).
-   * Nur der erste Wert der commander_types-Spalte - die Auswahl im Bearbeiten-Modus ist bewusst ein
-   * einzelnes Dropdown, keine Mehrfachauswahl.
+   * Selbst gewählter Kreaturtyp (z. B. "Elf") aus decks.commander_types[0]. Beim Import einmal mit
+   * dem Typ des Commanders vorbefüllt, danach rein manuell (updateDeckArchetype()).
    */
   creatureType: string | null;
-  /**
-   * Selbst festgelegte Commander-Bracket-Stufe 1-5, oder null für "automatisch bestimmen".
-   * Angezeigt wird immer bracket, und nur wenn das null ist, bracketAuto.
-   */
+  /** Selbst gewählte Bracket-Stufe 1-5, null = automatisch (dann gilt bracketAuto). */
   bracket: number | null;
   /**
-   * Zuletzt berechnete Stufe der Automatik (siehe src/app/bracket.ts). Wird beim Öffnen eines
-   * Decks nachgeführt und existiert nur, damit Deck-Liste und Match-Auswahl ein Abzeichen zeigen
-   * können, ohne für jedes Deck die ganze Kartenliste nachzuladen.
+   * Zuletzt berechnete Automatik-Stufe (bracket.ts), gespeichert, damit Listen ein Abzeichen ohne
+   * Kartenliste zeigen können.
    */
   bracketAuto: number | null;
   bracketAutoAt: string | null;
 }
 
 /**
- * Ein Deck gehört entweder einem echten Account ODER einem virtuellen Spieler ohne eigenen Login -
- * nie beidem (siehe decks_owner_xor_check-Constraint in der DB). Fast alle deck-bezogenen Methoden
- * nehmen diesen Typ statt einer nackten userId entgegen, damit dieselbe Logik für beide Fälle gilt.
+ * Ein Deck gehört einem Account ODER einem virtuellen Spieler, nie beidem (decks_owner_xor_check).
  */
 export type DeckOwner = { kind: 'user'; userId: string } | { kind: 'player'; playerId: string };
 
@@ -83,10 +71,7 @@ export interface CommanderGameStats {
   games: number;
   wins: number;
   winRate: number;
-  /**
-   * Nur bei einem geliehenen Deck gefüllt: das fremde Deck, mit dem gespielt wurde - damit es aus
-   * der Liste heraus geöffnet werden kann, statt nur als Name dazustehen.
-   */
+  /** Nur bei geliehenem Deck: das fremde Deck, damit es aus der Liste geöffnet werden kann. */
   borrowedDeck?: BorrowedDeckInfo;
 }
 
@@ -96,24 +81,16 @@ export interface BorrowedDeckInfo {
   /** Anzeigename des Besitzers, falls auflösbar (z.B. bei einem Deck aus einer anderen Gruppe nicht). */
   ownerName: string | null;
   /**
-   * Gespeichertes Commander-Bild des Decks (deck_cards.image_url) - wie in der eigenen Deck-Liste.
-   * Ohne das müsste die Profil-Liste das Bild über den Namen bei Scryfall nachschlagen, und das
-   * scheitert ab und zu am Rate-Limit.
+   * Gespeichertes Commander-Bild (deck_cards.image_url) - spart einen Scryfall-Lookup, der am
+   * Rate-Limit scheitern kann.
    */
   commanderImageUrl: string | null;
 }
 
 /**
- * Warum es zu einem gespielten Commander kein eigenes Deck gibt - entscheidet, in welcher der drei
- * Listen im Profil er landet:
- *
- * - `none`    - es fehlt schlicht ein Deck; genau hier lohnt sich das Anlegen/Verlinken.
- * - `borrowed`- gespielt wurde das Deck einer anderen Person. Ein Deck existiert also sehr wohl,
- *               es gehört nur jemand anderem und hat deshalb in der eigenen Deck-Liste nichts
- *               verloren.
- * - `cube`    - der Commander stammt aus einem Cube-/Draft-Spiel. Dazu wird es nie ein Deck geben,
- *               solche Spiele werden bewusst nie mit einem Deck verknüpft (siehe
- *               eligibleMatchIdsExcludingCubeDraft).
+ * Warum ein gespielter Commander kein eigenes Deck hat - bestimmt die Liste im Profil: `none` =
+ * Deck fehlt (anlegen/verlinken lohnt), `borrowed` = Deck einer anderen Person gespielt, `cube` =
+ * Cube-/Draft-Spiel, dafür gibt es nie ein Deck.
  */
 export type UnassignedCommanderCategory = 'none' | 'borrowed' | 'cube';
 
@@ -121,9 +98,10 @@ export interface UnassignedCommanderStats extends CommanderGameStats {
   category: UnassignedCommanderCategory;
 }
 
-/** Persönliche Gesamt-Statistik eines Accounts über ALLE Gruppen hinweg, in denen er Mitglied ist
- * (siehe DeckService.getCrossGroupPersonalStats) - fürs Profil-Tab, das Stats-Tab bleibt bewusst
- * pro aktiver Gruppe getrennt. */
+/**
+ * Persönliche Statistik eines Accounts über ALLE seine Gruppen (Profil-Tab; der Stats-Tab bleibt je
+ * Gruppe).
+ */
 export interface CrossGroupPersonalStats {
   totalGames: number;
   totalWins: number;
@@ -144,11 +122,8 @@ export interface MostUsedCardStats {
 
 export interface ColorStat {
   /**
-   * Eine der fünf Manafarben oder 'C' für farblos (Deck mit leerer Farbidentität).
-   *
-   * Farblos ist eine eigene Achse, keine sechste Farbe: ein farbloses Deck zählt auf 'C' und auf
-   * keine der fünf Farben, genau wie im Farbfilter (color-filter-match.ts) und in der
-   * Farbkombinations-Rangliste, wo es als leere Farbliste auftaucht.
+   * Eine der fünf Farben oder 'C' für farblose Decks. 'C' ist eine eigene Achse: ein farbloses Deck
+   * zählt nur dort.
    */
   color: 'W' | 'U' | 'B' | 'R' | 'G' | 'C';
   /** Anzahl tatsächlich gespielter Partien mit Decks, deren Farbidentität diese Farbe enthält. */
@@ -166,10 +141,10 @@ export interface ColorComboStat {
   deckCount: number;
 }
 
-/** Kombinierte "Meistgespielte Karten" (Top 5, ohne Länder), vollständige Farb-Rangliste (alle
- * fünf Farben plus farblos) und Rangliste der genutzten Farbkombinationen über ALLE Gruppen
- * hinweg - siehe DeckService.getCardAndColorStats(). Precon-Decks fließen bewusst in keine dieser
- * Statistiken ein, da sie nicht selbst zusammengestellt wurden. */
+/**
+ * "Meistgespielte Karten" (ohne Länder), Farb- und Farbkombinations-Rangliste über alle Gruppen
+ * (getCardAndColorStats()). Precons zählen nicht.
+ */
 export interface CardAndColorStats {
   mostUsedCards: MostUsedCardStats[];
   colorRanking: ColorStat[];
@@ -177,12 +152,8 @@ export interface CardAndColorStats {
 }
 
 /**
- * Ein Eintrag der weltweiten "Decks"- bzw. "Commander"-Rangliste (GlobalStats-Komponente) - kommt
- * aus der SECURITY DEFINER-Funktion global_deck_commander_stats() (sql/global-stats-functions-*
- * .sql), da RLS einen normalen Client-Query auf die eigenen Gruppen beschränkt. Bewusst OHNE
- * Spielername ("gespielt von X") - das würde erstmals Namen aus fremden, nie für eine weltweite
- * Ansicht freigegebenen Gruppen offenlegen. Zwei getrennte Interfaces statt einem gemeinsamen, weil
- * die beiden Ranglisten in der UI bewusst getrennt sind (anders als im Gruppen-Scope).
+ * Eintrag der weltweiten Decks-/Commander-Rangliste aus global_deck_commander_stats() (SECURITY
+ * DEFINER, RLS sähe nur eigene Gruppen). Bewusst ohne Spielernamen fremder Gruppen.
  */
 export interface GlobalDeckStat {
   /** Für den "Ansehen"-Sprung zur Deck-Detailansicht. */
@@ -226,10 +197,8 @@ export interface DeckCard {
   /** Marke (Token), die eine andere Karte im Deck erzeugt - kein eigener Deckeintrag, zählt nicht zur Deckgröße/Analyse. */
   isToken: boolean;
   /**
-   * Scryfalls "gleiche Karte über alle Drucke hinweg"-ID - nur bei Marken gesetzt (siehe
-   * ScryfallService.getPrintings()). Nötig, weil viele VERSCHIEDENE Marken sich denselben
-   * schlichten Namen teilen (z.B. rote/blaue/schwarze "Wizard"-Marken mit unterschiedlichen
-   * Werten), Namensgleichheit allein also nicht "gleiche Marke" bedeutet.
+   * Scryfalls kartenübergreifende ID, nur bei Marken gesetzt - viele verschiedene Marken heißen
+   * gleich.
    */
   scryfallOracleId: string | null;
 }
@@ -244,20 +213,14 @@ export interface DeckChangeEntry {
 const SECTION_HEADER =
   /^(deck|decklist|main|mainboard|main deck|sideboard|maybeboard|commander|companion)\s*:?\s*$/i;
 /**
- * "3 Island", "3x Island" - und "3× Island": Das Mal-Zeichen ist Absicht, so zeigt die eigene
- * Deck-Ansicht die Anzahl an, und genau die kopieren Leute heraus (siehe normalisiereDeckAnsicht).
+ * "3 Island", "3x Island", "3× Island" (so zeigt die eigene Deck-Ansicht die Anzahl, siehe
+ * normalisiereDeckAnsicht).
  */
 const QUANTITY_LINE = /^(\d+)\s*[x×]?\s+(.+)$/i;
 /**
- * Set-Kürzel + Sammelnummer, wie sie z.B. deckstats.net anhängt: "Sol Ring (SOC) 128" -> "Sol Ring".
- * Beides wird zusätzlich ausgelesen (Gruppe 1/2), weil es genau EINEN Druck benennt - und damit das
- * Artwork, das der Nutzer auf der Deck-Seite ausgesucht hat (siehe saveDeck()).
- *
- * Die Sammelnummer darf Bindestrich und Schrägstrich enthalten: Moxfield exportiert die Karten aus
- * "The List" als "Alhammarret's Archive (PLST) ORI-221", und genau so heißt die Nummer auch bei
- * Scryfall. Ohne diese Zeichen scheitert der ganze Ausdruck (er ist auf das Zeilenende verankert),
- * der Zusatz bleibt im Kartennamen stehen und die Karte ist nicht mehr auffindbar - kein Bild,
- * keine Manakosten, kein Typ, dafür eine Geisterzeile in der Manakurve.
+ * Set-Kürzel + Sammelnummer ("Sol Ring (SOC) 128"), ausgelesen, weil sie genau einen Druck und
+ * damit das gewählte Artwork benennen. Die Nummer darf - und / enthalten (Moxfield "The List":
+ * "ORI-221"), sonst bliebe der Zusatz im Namen und die Karte wäre unauffindbar.
  */
 const SET_AND_COLLECTOR_NUMBER_SUFFIX = /\s*\(([A-Za-z0-9]{2,6})\)\s*([A-Za-z0-9★†+/-]*)\s*$/;
 /** Archidekt hängt hinter die Kategorien noch seine Sammlungs-Markierung: "... [Removal] ^Have,#37d67a^". */
@@ -278,9 +241,8 @@ const NUR_ANZAHL_ZEILE = /^(\d+)\s*[x×]?$/i;
 const ANSICHT_UEBERSCHRIFT = /^(.+?)\s*\((\d+[^)]*)\)$/;
 
 /**
- * Die Abschnittsnamen, die die eigene Deck-Ansicht überschreibt (DeckViewerService.LABEL_KEYS, in
- * beiden Sprachen). Nur zum Wiedererkennen des Formats - beim Umformen selbst gilt jede Zeile mit
- * Klammer-Zahl als Überschrift, damit auch die Gruppierung nach eigenen Tags ("Ramp (12)") trägt.
+ * Abschnittsnamen der eigenen Deck-Ansicht (beide Sprachen), nur zum Erkennen des Formats.
+ * Umgeformt wird jede Zeile mit Klammer-Zahl, damit auch Tag-Gruppen ("Ramp (12)") tragen.
  */
 const ANSICHT_ABSCHNITTE = new Set([
   'commander',
@@ -308,23 +270,10 @@ const ANSICHT_ABSCHNITTE = new Set([
 ]);
 
 /**
- * Formt eine aus der **eigenen Deck-Ansicht** herauskopierte Liste in das gewöhnliche
- * "Anzahl Name"-Format um; liefert null, wenn der Text gar nicht so aussieht.
- *
- * Wer kein Exportformat zur Hand hat, markiert die Deck-Ansicht und kopiert sie - und bekommt vom
- * Browser etwas, das mit einer Decklist nur noch entfernt verwandt ist:
- *
- *     Commander (1)        <- Überschrift mit Kartenzahl
- *     1×                   <- die Anzahl steht in einer eigenen Zeile
- *     Gandalf, Party Guest
- *
- * Ungefiltert ergab das ein kaputtes Deck: Jede Überschrift wurde zu einer Karte ("Kreatur (2)"
- * sogar mit dem Set-Kürzel "2"), alle "1×"-Zeilen zu EINER Geisterkarte mit der Summe als Anzahl,
- * jede echte Karte bekam Anzahl 1 (aus "3× Island" wurde ein einzelnes Island), der Commander
- * blieb unmarkiert - und die Tokens standen als Deckkarten in der Liste.
- *
- * Die Tokens-Gruppe fällt hier bewusst komplett weg: Das sind keine Deckkarten, sondern das, was
- * das Deck erzeugt (deck_cards.is_token). Sie mitzuzählen hieße, 11 Karten zu viel zu importieren.
+ * Formt eine aus der eigenen Deck-Ansicht kopierte Liste in "Anzahl Name" um; null, wenn der Text
+ * nicht so aussieht. Der Browser liefert dort Überschriften mit Kartenzahl ("Commander (1)") und
+ * die Anzahl ("1×") in eigener Zeile - ungefiltert entstand ein kaputtes Deck. Die Tokens-Gruppe
+ * fällt weg: das sind keine Deckkarten.
  */
 function normalisiereDeckAnsicht(lines: string[]): string[] | null {
   const siehtDanachAus = lines.some(
@@ -381,12 +330,9 @@ function normalisiereDeckAnsicht(lines: string[]): string[] | null {
 }
 
 /**
- * Erkennt die zwei Exporte, die gar nichts beschriften und sich allein auf Leerzeilen verlassen:
- * Moxfield stellt den Commander als eigenen Block voran, MTGGoldfish hängt das Sideboard als
- * eigenen Block an. Liefert je Zeilennummer die erkannte Rolle.
- *
- * Geraten wird nur, wenn die Liste NIRGENDS eine Überschrift mitbringt - sobald eine da ist, ist
- * sie die verlässlichere Quelle und diese Analyse hält sich komplett heraus.
+ * Erkennt Exporte ohne Beschriftung, die nur Leerzeilen nutzen: Moxfield stellt den Commander als
+ * eigenen Block voran, MTGGoldfish hängt das Sideboard an. Nur wenn die Liste nirgends eine
+ * Überschrift hat.
  */
 function blockRoles(lines: string[]): Map<number, 'commander' | 'sideboard'> {
   const roles = new Map<number, 'commander' | 'sideboard'>();
@@ -420,9 +366,7 @@ function blockRoles(lines: string[]): Map<number, 'commander' | 'sideboard'> {
     for (const lineNumber of first.lineNumbers) roles.set(lineNumber, 'commander');
   }
 
-  // MTGGoldfish: genau zwei Blöcke, vorn ein vollständiges Deck, hinten höchstens 15 Karten.
-  // Beide Schranken sind Absicht - bei Moxfield ist der vordere Block eine einzelne Karte, und
-  // ein nach Kategorien zerlegter Export hat mehr als zwei Blöcke.
+  // MTGGoldfish: genau zwei Blöcke, vorn ein ganzes Deck, hinten höchstens 15 Karten.
   if (blocks.length === 2 && first.cards >= 40 && last.cards <= 15) {
     for (const lineNumber of last.lineNumbers) roles.set(lineNumber, 'sideboard');
   }
@@ -436,11 +380,8 @@ export interface ParsedDecklistEntry {
   quantity: number;
   isCommander: boolean;
   /**
-   * Die Zeile stand ganz vorn in einem eigenen, nur durch eine Leerzeile abgetrennten Block, ohne
-   * dass die Liste irgendeine Überschrift mitbringt - genau so exportiert Moxfield den Commander.
-   * Bewusst nur eine Vermutung: bestätigt wird sie erst in saveDeck() anhand der Kartendaten,
-   * damit eine versehentliche Leerzeile nach der ersten Zeile nicht irgendeine Karte zum
-   * Commander macht (samt Farbidentität und nachträglicher Match-Verknüpfung).
+   * Stand allein im ersten Block einer Liste ohne Überschriften (Moxfield-Commander). Nur eine
+   * Vermutung, erst saveDeck() bestätigt sie anhand der Kartendaten.
    */
   isCommanderCandidate: boolean;
   /** Stand unter einer "Maybeboard"-Überschrift - gehört in die engere Auswahl, nicht ins Deck. */
@@ -451,22 +392,14 @@ export interface ParsedDecklistEntry {
   collectorNumber: string | null;
 }
 
-function parseSubtypes(typeLine: string | undefined): string[] {
-  const parts = (typeLine ?? '').split('—');
-  if (parts.length < 2) return [];
-  return parts[1].trim().split(/\s+/).filter(Boolean);
-}
-
 /** Für den Precon-Namensabgleich in backfillPreconReleaseYears - fängt zumindest Whitespace-Abweichungen zwischen gespeichertem Decknamen und MTGJSON-Katalogeintrag ab (echte Umbenennungen bleiben davon unberührt, dafür gibt es keine zuverlässige Heuristik). */
 function normalizePreconName(name: string): string {
   return name.trim().replace(/\s+/g, ' ').toLowerCase();
 }
 
 /**
- * Kann diese Karte überhaupt ein Commander sein? Grundlage für die Bestätigung der
- * Commander-Vermutung aus einem unbeschrifteten Export (siehe ParsedDecklistEntry.isCommanderCandidate).
- * Neben legendären Kreaturen zählt alles, was es sich selbst im Regeltext erlaubt - Hintergründe,
- * Commander-Planeswalker, "Doctor's companion".
+ * Kann die Karte Commander sein? Legendäre Kreaturen und alles, was es sich im Regeltext erlaubt
+ * (Backgrounds, Planeswalker, Doctor's companion).
  */
 function canBeCommander(card: ScryfallCard | undefined): boolean {
   if (!card) return false;
@@ -495,10 +428,8 @@ function commanderMetadataFrom(
 const VERSIONS_SUFFIX = /\s*\((\d+)\)\s*$/;
 
 /**
- * Name für die Kopie eines Decks: "Atraxa" wird zu "Atraxa (2)", eine bereits nummerierte Fassung
- * zählt weiter ("Atraxa (2)" -> "Atraxa (3)") statt zu verschachteln, und belegte Nummern werden
- * übersprungen - `vorhandene` sind dafür die Decknamen desselben Besitzers. Rein rechnerisch und
- * deshalb hier statt in der Komponente: Die Liste zeigt den Namen nur an, gebildet wird er einmal.
+ * Name der Deck-Kopie: "Atraxa" → "Atraxa (2)", "Atraxa (2)" → "Atraxa (3)", belegte Nummern
+ * (`vorhandene`, Decks desselben Besitzers) werden übersprungen.
  */
 export function deckKopieName(original: string, vorhandene: string[]): string {
   const basis = original.replace(VERSIONS_SUFFIX, '').trim() || original.trim();
@@ -518,26 +449,16 @@ export class DeckService {
   private readonly preconService = inject(PreconService);
 
   /**
-   * Spaltenliste für die Deck-Abfragen.
-   *
-   * Die Bracket-Spalten kommen aus sql/deck-bracket-2026-09-06.sql, und dieses Skript läuft NICHT
-   * automatisch mit dem Deployment - es wird von Hand im Supabase-SQL-Editor ausgeführt. Stünden
-   * sie fest in der Liste, würde PostgREST bis dahin jede Deck-Abfrage mit "column does not exist"
-   * (42703) ablehnen und die komplette Deck-Liste bliebe leer. Ein fehlendes Abzeichen ist ein
-   * hinnehmbarer Zustand, eine leere Deck-Liste nicht.
-   *
-   * Deshalb einmal je Sitzung: beim ersten 42703 auf eine Bracket-Spalte wird abgeschaltet und die
-   * Abfrage ohne sie wiederholt. Nach dem Ausführen der Migration greift beim nächsten Laden
-   * wieder die vollständige Liste.
+   * Spaltenliste der Deck-Abfragen. Die Bracket-Spalten (sql/deck-bracket-2026-09-06.sql) fehlen,
+   * bis die Migration von Hand läuft; fest in der Liste ließe PostgREST jede Abfrage mit 42703
+   * scheitern. Deshalb wird beim ersten 42703 auf eine Bracket-Spalte für die Sitzung abgeschaltet
+   * und ohne sie wiederholt.
    */
   private static bracketSpaltenVerfuegbar = true;
 
   /**
-   * Dasselbe Spiel für die Grabstein-Spalte aus sql/deck-grabstein-loeschen-2026-09-21.sql: Steht
-   * die Migration noch aus, darf weder die Spalte in der Select-Liste noch der Filter darauf die
-   * Deck-Liste leer laufen lassen. Beides hängt deshalb an diesem Schalter, der beim ersten 42703
-   * umgelegt wird - die Abfragen bauen ihre Query in einer Closure und greifen ihn beim zweiten
-   * Versuch automatisch ab.
+   * Dasselbe für die Grabstein-Spalte (sql/deck-grabstein-loeschen-2026-09-21.sql): Spalte und
+   * Filter hängen an diesem Schalter, die Abfragen greifen ihn beim zweiten Versuch auf.
    */
   private static grabsteinSpalteVerfuegbar = true;
 
@@ -553,23 +474,21 @@ export class DeckService {
   }
 
   /**
-   * Blendet gelöschte Decks (Grabsteine) aus - solange die Migration fehlt, gibt es keine, und der
-   * Filter entfällt. Öffentlich, weil PublicDeckService dieselbe Regel für die öffentliche
-   * Deck-Suche braucht und der Schalter nur einmal an einer Stelle stehen darf.
+   * Blendet Grabsteine aus (ohne Migration entfällt der Filter). Öffentlich, weil PublicDeckService
+   * dieselbe Regel braucht.
    */
   static nurLebende<T extends { is(column: string, value: null): T }>(query: T): T {
     return DeckService.grabsteinSpalteVerfuegbar ? query.is('deleted_at', null) : query;
   }
 
   /**
-   * true = der Fehler kam von den noch fehlenden Bracket-Spalten und der Aufrufer soll es ohne sie
-   * erneut versuchen. Schaltet dabei gleich für den Rest der Sitzung um.
+   * true = Fehler kam von fehlenden Bracket-Spalten; schaltet für die Sitzung um, der Aufrufer
+   * wiederholt.
    */
   private static istFehlendeBracketSpalte(error: { code?: string; message?: string } | null): boolean {
     if (!error || !DeckService.bracketSpaltenVerfuegbar) return false;
-    // Seit es eine zweite abschaltbare Spalte gibt (deleted_at), reicht "irgendein 42703" nicht
-    // mehr: Postgres nennt die fehlende Spalte in der Meldung, und wer hier zu grob prüft, schaltet
-    // die Bracket-Abzeichen wegen einer ganz anderen fehlenden Migration ab.
+    // Nur die genannte Spalte zählt - ein beliebiger 42703 schaltete sonst die Bracket-Abzeichen
+    // wegen einer anderen Migration ab.
     if (error.code !== '42703') return false;
     const message = error.message ?? '';
     if (message && !message.includes('bracket')) return false;
@@ -580,10 +499,7 @@ export class DeckService {
     return true;
   }
 
-  /**
-   * true = der Fehler kam von der noch fehlenden Grabstein-Spalte und der Aufrufer soll es ohne sie
-   * erneut versuchen (siehe grabsteinSpalteVerfuegbar).
-   */
+  /** true = Fehler kam von der fehlenden Grabstein-Spalte (siehe grabsteinSpalteVerfuegbar). */
   private static istFehlendeGrabsteinSpalte(error: { code?: string; message?: string } | null): boolean {
     if (!error || !DeckService.grabsteinSpalteVerfuegbar) return false;
     if (error.code !== '42703') return false;
@@ -597,19 +513,16 @@ export class DeckService {
   }
 
   /**
-   * true = eine noch fehlende Spalte wurde soeben abgeschaltet, die Abfrage lohnt einen zweiten
-   * Versuch. Fehlen beide Migrationen, fällt je Versuch ein Schalter - die Aufrufer wiederholen
-   * deshalb bis zu zweimal. Öffentlich aus demselben Grund wie nurLebende().
+   * true = eine fehlende Spalte wurde gerade abgeschaltet, ein neuer Versuch lohnt. Fehlen beide
+   * Migrationen, fällt je Versuch ein Schalter (bis zu zwei Wiederholungen).
    */
   static fehlendeSpalteAbgeschaltet(error: { code?: string; message?: string } | null): boolean {
     return DeckService.istFehlendeBracketSpalte(error) || DeckService.istFehlendeGrabsteinSpalte(error);
   }
 
   /**
-   * Löst einen DeckOwner zu den betroffenen players.id auf - bei einem echten Account können das
-   * mehrere sein (eine Spieler-Zeile pro Gruppe), bei einem virtuellen Spieler ist die playerId
-   * bereits selbst die einzige relevante ID, kein Lookup nötig. Öffentlich, da auch DeckViewerService
-   * das braucht, um "meine Spiele" (Pilot statt Deck-Besitzer) zu filtern - siehe getDeckStats().
+   * DeckOwner → players.id: bei einem Account eine je Gruppe, bei einem virtuellen Spieler die
+   * playerId selbst.
    */
   async resolvePlayerIds(owner: DeckOwner): Promise<string[]> {
     if (owner.kind === 'player') return [owner.playerId];
@@ -664,9 +577,8 @@ export class DeckService {
   }
 
   /**
-   * Lädt ein einzelnes Deck per ID, unabhängig vom Besitzer - z.B. für den Direkt-Sprung aus der
-   * Stats-Rangliste. Liefert bewusst AUCH gelöschte Decks (Grabsteine, deletedAt gesetzt): Der
-   * Aufrufer soll erkennen können, dass es das Deck nicht mehr gibt, statt ein leeres zu öffnen.
+   * Einzelnes Deck per ID, auch Grabsteine - der Aufrufer soll erkennen, dass es das Deck nicht
+   * mehr gibt.
    */
   async getDeckById(deckId: string): Promise<Deck | null> {
     const abfrage = () =>
@@ -755,11 +667,8 @@ export class DeckService {
   }
 
   /**
-   * Parst eine eingefügte Decklist (ein Eintrag pro Zeile, z.B. "1 Sol Ring" oder "1x Sol Ring").
-   * Ignoriert Kommentarzeilen (//, #), merkt sich aber, unter welcher Überschrift eine Zeile steht
-   * (z.B. "//Commander" und "//Maybeboard" im deckstats.net-Export), um Commander separat zu
-   * markieren und die engere Auswahl NICHT ins Deck zu schieben. Mehrfach vorkommende Kartennamen
-   * werden zu einer Zeile mit summierter Anzahl zusammengeführt.
+   * Parst eine eingefügte Decklist ("1 Sol Ring", "1x Sol Ring"). Kommentarzeilen (//, #) zählen
+   * als Überschriften (Commander, Maybeboard); doppelte Namen werden summiert.
    */
   parseDecklistText(text: string): ParsedDecklistEntry[] {
     const merged = new Map<string, ParsedDecklistEntry>();
@@ -771,12 +680,9 @@ export class DeckService {
 
     for (const [lineNumber, line] of lines.entries()) {
       if (!line) {
-        // Eine Leerzeile trennt bei den meisten Export-Formaten (deckstats.net, Moxfield,
-        // Archidekt, ...) die Commander-Sektion vom Rest der Liste, OHNE dass danach nochmal ein
-        // eigener "Deck:"/"Mainboard:"-Header folgt - ohne dieses Zurücksetzen bliebe sonst jede
-        // nachfolgende Karte fälschlich als Commander markiert. Das Maybeboard steht dagegen
-        // immer am Ende und unter einer eigenen Überschrift, und seine Unterkategorien sind durch
-        // Leerzeilen getrennt - es bleibt deshalb bis zur nächsten Überschrift bestehen.
+        // Eine Leerzeile beendet in den meisten Exporten die Commander-Sektion ohne neue
+        // Überschrift. Das Maybeboard steht dagegen am Ende und hat Leerzeilen zwischen
+        // Unterkategorien - es bleibt bis zur nächsten Überschrift.
         if (section === 'commander') section = 'main';
         continue;
       }
@@ -797,9 +703,8 @@ export class DeckService {
         continue;
       }
 
-      // --- Zuerst die Zeilen-Markierungen der einzelnen Seiten abtrennen, bis nur noch
-      // "Anzahl + Name + Druck" übrig ist. Ohne diesen Schritt bleibt z.B. bei Archidekt die
-      // komplette Kategorie im Kartennamen stehen und keine einzige Karte wird gefunden. ---
+      // Erst die Zeilen-Markierungen der Seiten abtrennen (z. B. Archidekt-Kategorien), bis nur
+      // "Anzahl Name Druck" bleibt.
       let rest = line;
       let isCommanderLine = section === 'commander';
       let isMaybeboardLine = section === 'maybeboard' || roles.get(lineNumber) === 'sideboard';
@@ -865,9 +770,7 @@ export class DeckService {
       if (existing.isMaybeboard === isMaybeboard) {
         existing.quantity += quantity;
       } else if (existing.isMaybeboard) {
-        // Dieselbe Karte steht in der engeren Auswahl UND im Deck: das Deck gewinnt, und die
-        // Maybeboard-Zeile zählt nicht mit - sonst stünde "1 Sol Ring" im Deck plus "1 Sol Ring"
-        // im Maybeboard am Ende als 2x Sol Ring in der Liste.
+        // Karte in Maybeboard UND Deck: das Deck gewinnt, die Maybeboard-Zeile zählt nicht mit.
         existing.quantity = quantity;
         existing.isMaybeboard = false;
         if (setCode) {
@@ -887,10 +790,8 @@ export class DeckService {
   }
 
   /**
-   * Legt ein neues Deck an (existingDeckId = undefined) oder ersetzt die Kartenliste eines
-   * bestehenden Decks. Beim Ersetzen wird die Differenz zur vorherigen Liste ins
-   * Änderungsverlauf-Log geschrieben (was reingekommen/rausgegangen ist), bevor die alten
-   * Karten-Zeilen gelöscht und durch die neuen ersetzt werden.
+   * Legt ein Deck an (ohne existingDeckId) oder ersetzt die Kartenliste und schreibt die Differenz
+   * in den Änderungsverlauf.
    */
   async saveDeck(
     owner: DeckOwner,
@@ -907,24 +808,15 @@ export class DeckService {
     if (parsed.length === 0) return null;
 
     const cardMap = await this.cardData.findCardsBulk(parsed.map((p) => p.name));
-    // Nennt die Liste zu einer Karte Set-Kürzel und Sammelnummer (deckstats.net, Moxfield,
-    // Archidekt), genau diesen Druck nachschlagen - sonst landet Scryfalls Standardbild im Deck
-    // statt des Artworks, das der Nutzer dort ausgesucht hat.
+    // Nennt die Liste Set und Nummer, genau diesen Druck nachschlagen (das gewählte Artwork).
     const printings = await this.scryfall.findPrintingsBySetAndNumber(
       parsed
         .filter((p) => p.setCode && p.collectorNumber)
         .map((p) => ({ name: p.name, setCode: p.setCode!, collectorNumber: p.collectorNumber! }))
     );
-    // Farb-/Typal-Metadaten für den öffentlichen Decks-Suchreiter (siehe
-    // sql/public-deck-browse-2026-08-26.sql) direkt beim Import/Neuanlegen mitschreiben - vorher
-    // wurden sie erst befüllt, sobald später im Deck-Editor die Commander-Markierung geändert
-    // wurde (DeckViewerService.saveEdits()), wodurch frisch importierte Decks mit bereits im Text
-    // markiertem Commander auf unbestimmte Zeit ungefiltert blieben (color_identity/commander_types
-    // blieben beim Spalten-Default '{}').
-    // Moxfield (und wer sein Textformat nachbaut) beschriftet den Commander nicht, sondern stellt
-    // ihn nur als eigenen Block voran. Die daraus abgeleitete Vermutung wird erst hier übernommen,
-    // wo die Kartendaten vorliegen und sie sich prüfen lässt - und nur, wenn die Liste sonst gar
-    // keinen Commander benennt.
+    // Farb-/Typ-Metadaten fürs öffentliche Stöbern gleich beim Import schreiben. Die
+    // Moxfield-Commander-Vermutung wird erst hier geprüft und nur übernommen, wenn die Liste sonst
+    // keinen Commander nennt.
     if (!parsed.some((p) => p.isCommander)) {
       for (const entry of parsed) {
         if (entry.isCommanderCandidate && canBeCommander(cardMap.get(entry.name.toLowerCase()))) {
@@ -1041,11 +933,8 @@ export class DeckService {
         deck_id: deckId,
         card_name: p.name,
         quantity: p.quantity,
-        // Reihenfolge ist Absicht: der in der Liste benannte Druck schlägt alles, danach kommt das
-        // bisher gespeicherte Bild (dort steckt u.U. ein von Hand gewähltes Artwork, siehe
-        // DeckViewerService.selectArtwork() - ohne diesen Schritt würde jedes erneute Speichern der
-        // Kartenliste die Auswahl auf Scryfalls Standarddruck zurücksetzen), und erst zuletzt
-        // eben dieser Standarddruck.
+        // Reihenfolge: benannter Druck, dann das bisherige Bild (evtl. von Hand gewählt), zuletzt
+        // Scryfalls Standarddruck.
         image_url: printings.get(key)?.imageUrl ?? previousImages.get(key) ?? card?.imageUrl ?? null,
         type_line: card?.typeLine ?? null,
         cmc: card?.cmc ?? 0,
@@ -1073,13 +962,9 @@ export class DeckService {
   }
 
   /**
-   * Verknüpft nachträglich alte Matches mit einem neu angelegten Deck: nur Matches, in denen
-   * GENAU DIESER Deck-Besitzer (über alle seine Spieler-Einträge in allen Gruppen hinweg) den
-   * gleichnamigen Commander gespielt hat, und die noch keinem Deck zugeordnet sind. Absichtlich
-   * NICHT namensbasiert über alle Spieler hinweg, damit ein geliehener Commander in einem alten
-   * Match eines anderen Spielers nicht fälschlich diesem Deck zugeschlagen wird. Cube-/Draft-Spiele
-   * werden dabei nie verknüpft (siehe eligibleMatchIdsExcludingCubeDraft), auch wenn dort zufällig
-   * ein commander-ähnlicher Name eingetragen ist - das sind keine Commander-Decks.
+   * Verknüpft alte, unverknüpfte Matches mit einem neuen Deck - nur Partien, in denen DIESER
+   * Besitzer den gleichnamigen Commander spielte (nicht namensbasiert über alle Spieler), nie
+   * Cube/Draft.
    */
   private async backfillDeckLinks(deckId: string, owner: DeckOwner, commanderName: string): Promise<void> {
     const playerIds = await this.resolvePlayerIds(owner);
@@ -1109,10 +994,8 @@ export class DeckService {
   }
 
   /**
-   * Filtert eine Liste von match_id's auf die, deren Spiel NICHT im Cube- oder Draft-Modus
-   * stattfand - für backfillDeckLinks/repairCommanderNames, die niemals Cube-/Draft-Spiele
-   * automatisch mit einem Commander-Deck verknüpfen dürfen (siehe MtgService.resolveAutoDeckLinks
-   * für dieselbe Regel beim Anlegen/nachträglichen Bearbeiten eines Matches).
+   * Filtert match_ids auf Nicht-Cube/Draft-Spiele (gleiche Regel wie
+   * MtgService.resolveAutoDeckLinks).
    */
   private async eligibleMatchIdsExcludingCubeDraft(matchIds: string[]): Promise<string[]> {
     if (matchIds.length === 0) return [];
@@ -1132,9 +1015,8 @@ export class DeckService {
   }
 
   /**
-   * Umgekehrte Richtung zu backfillDeckLinks: findet ein bereits vorhandenes Deck dieses Users mit
-   * passendem (Haupt-)Commander - fürs automatische Verknüpfen, wenn ein NEUES Match (live erstellt
-   * oder importiert) angelegt wird, ohne dass der Nutzer explizit ein Deck ausgewählt hat.
+   * Gegenrichtung zu backfillDeckLinks: vorhandenes Deck mit passendem Commander für ein neues
+   * Match ohne Deckwahl.
    */
   async findDeckIdByCommander(owner: DeckOwner, commanderName: string): Promise<string | null> {
     // Gelöschte Decks (Grabsteine) bleiben hier außen vor - sie haben keine Kartenliste mehr, und
@@ -1164,11 +1046,8 @@ export class DeckService {
   }
 
   /**
-   * Reparatur-Werkzeug für Alt-Daten: geht alle noch unverknüpften Commander-Namen dieses Users
-   * (über alle seine Spieler-Einträge/Gruppen hinweg) durch, löst sie mit der aktuellen (besseren)
-   * Scryfall-Erkennung neu auf, korrigiert falsch gespeicherte Namen in der DB und verknüpft sie
-   * danach - wo möglich - automatisch mit passenden eigenen Decks. Nötig, weil ein Match nach dem
-   * Speichern nicht rückwirkend von Verbesserungen an der Namens-Erkennung profitiert.
+   * Reparatur für Alt-Daten: löst unverknüpfte Commander-Namen des Users mit der aktuellen
+   * Erkennung neu auf, korrigiert sie und verknüpft sie mit passenden eigenen Decks.
    */
   async repairCommanderNames(
     owner: DeckOwner,
@@ -1251,13 +1130,8 @@ export class DeckService {
   }
 
   /**
-   * Reparatur-Werkzeug für Alt-Daten: ermittelt für bereits importierte Precons, deren Release-Jahr
-   * (decks.precon_release_year) noch fehlt, dieses Jahr nachträglich per Namens-Abgleich gegen den
-   * MTGJSON-Precon-Katalog. Betrifft alle Precons, die vor Einführung des Jahresfilters (oder auf
-   * einem anderen Weg als dem Precon-Import-Dialog) angelegt wurden - ohne dieses Nachtragen bleiben
-   * sie für den Jahresfilter in der Deck-Auswahl (Match-Tab) unsichtbar, obwohl sie existieren.
-   * Bei mehrdeutigem Namen (derselbe Precon-Name in mehreren Jahren neu aufgelegt) wird bewusst NICHT
-   * geraten, der Deck bleibt dann unverändert - analog zu findDeckIdByCommander().
+   * Reparatur: trägt fehlende precon_release_year per Namensabgleich mit MTGJSON nach (sonst
+   * unsichtbar im Jahresfilter). Mehrdeutige Namen bleiben unverändert.
    */
   async backfillPreconReleaseYears(
     owner: DeckOwner,
@@ -1269,9 +1143,7 @@ export class DeckService {
 
     const precons = await this.preconService.getAllPrecons();
     if (precons.length === 0) {
-      // MTGJSON nicht erreichbar (siehe PreconService.loadIndex) - ohne Katalog kann kein einziger
-      // Name abgeglichen werden. Klar von "geprüft, aber kein Treffer" unterscheiden, damit die
-      // Rückmeldung im Profil-Tab nicht fälschlich wie ein echtes "0 Treffer"-Ergebnis aussieht.
+      // MTGJSON nicht erreichbar - von "0 Treffer" unterscheiden.
       return { checked: missing.length, updated: 0, catalogUnavailable: true, unmatchedNames: [] };
     }
 
@@ -1304,12 +1176,8 @@ export class DeckService {
   }
 
   /**
-   * Wie repairCommanderNames(), aber für die GANZE Gruppe statt nur den eigenen Account - für den
-   * Host gedacht. Löst z.B. den Fall, dass ein Excel-Import einen Commander unaufgelöst auf
-   * Deutsch stehen ließ, während eine später live getrackte Partie denselben Commander (korrekt
-   * aufgelöst) auf Englisch speichert - beide würden sonst als zwei verschiedene Commander in der
-   * Statistik auftauchen. Verknüpft bewusst NICHT automatisch mit Decks (das bleibt Sache von
-   * repairCommanderNames() pro Account, da nur der jeweilige Besitzer seine eigenen Decks kennt).
+   * Wie repairCommanderNames(), aber für die ganze Gruppe (Host): vereinheitlicht z. B. deutsche
+   * Excel-Namen mit englischen. Verknüpft nicht mit Decks.
    */
   async repairCommanderNamesForGroup(
     groupId: string,
@@ -1365,11 +1233,7 @@ export class DeckService {
     return { checked: list.length, fixed };
   }
 
-  /**
-   * Zahl der gespeicherten Partien, in denen dieses Deck verlinkt ist. Entscheidet, ob beim Löschen
-   * ein Grabstein nötig ist - und steht im Löschdialog, damit niemand blind ein Deck wegwirft, an
-   * dem vierzig Partien hängen.
-   */
+  /** Zahl der Partien mit diesem Deck - entscheidet über Grabstein und steht im Löschdialog. */
   async matchCountForDeck(deckId: string): Promise<number> {
     const { count, error } = await supabase
       .from('match_players')
@@ -1384,18 +1248,10 @@ export class DeckService {
   }
 
   /**
-   * Löscht ein Deck - je nachdem, ob Statistik daran hängt, auf zwei Arten:
-   *
-   *   'hart'  - das Deck war in keiner Partie verlinkt, es verschwindet vollständig.
-   *   'weich' - es hängen Partien daran: Kartenliste und Änderungsverlauf werden gelöscht (das ist
-   *             der Teil, der Platz kostet), die decks-Zeile bleibt als "Grabstein" stehen und
-   *             bekommt deleted_at plus den geretteten Commander. Damit ändert sich KEINE Zahl in
-   *             den Gruppen-Statistiken: match_players.deck_id bleibt gültig, Deck-Name, Besitzer
-   *             und color_identity hängen weiter am Join (siehe sql/deck-grabstein-loeschen-2026-09-21.sql).
-   *
-   * 'migration-fehlt' = die Grabstein-Spalten gibt es noch nicht. Dann wird NICHTS gelöscht - ein
-   * hartes Löschen als Rückfallebene würde genau den Statistikverlust anrichten, den diese Methode
-   * verhindern soll.
+   * Löscht ein Deck: 'hart' ohne Partien vollständig; 'weich' mit Partien nur Kartenliste und
+   * Verlauf, die Zeile bleibt als Grabstein (deleted_at, geretteter Commander), keine Statistik
+   * ändert sich. 'migration-fehlt': es wird nichts gelöscht - hartes Löschen würde genau den
+   * Statistikverlust anrichten.
    */
   async deleteDeck(deckId: string): Promise<'hart' | 'weich' | 'migration-fehlt' | 'fehler'> {
     const games = await this.matchCountForDeck(deckId);
@@ -1441,15 +1297,9 @@ export class DeckService {
   }
 
   /**
-   * Legt eine Kopie eines Decks an - die "zweite Version", die man weiterbaut, ohne das gespielte
-   * Original anzufassen. Kopiert werden Kartenliste (samt gewähltem Artwork, Karten-Tags, Token
-   * und engerer Auswahl) und die Deck-Metadaten; NICHT kopiert werden Partien, Statistik und
-   * Änderungsverlauf - die Kopie startet bei null Spielen.
-   *
-   * Bewusst NICHT über saveDeck(): das geht den Umweg über den Decklisten-Text und verlöre dabei
-   * von Hand gewählte Artworks, Karten-Tags und Token-Zeilen - vor allem aber hängt dort
-   * backfillDeckLinks() alte Partien mit demselben Commander an das frisch angelegte Deck. Genau
-   * das darf hier nicht passieren: Eine zweite Version erbt keine Statistik.
+   * Kopie eines Decks als "zweite Version": Karten (samt Artwork, Tags, Marken, Maybeboard) und
+   * Metadaten, aber keine Partien, Statistik oder Verlauf. Nicht über saveDeck(), das Artworks
+   * verlöre und per backfillDeckLinks() alte Partien anhängen würde.
    */
   async duplicateDeck(deckId: string, newName: string): Promise<string | null> {
     // Bracket-Spalten wie überall optional (siehe deckColumns()) - fehlt die Migration, wird eben
@@ -1545,11 +1395,7 @@ export class DeckService {
     return neueId;
   }
 
-  /**
-   * Fügt eine einzelne Karte hinzu (Bearbeitungsmodus in der Deck-Detailansicht). Erhöht die
-   * Anzahl, falls die Karte schon drin ist, statt eine zweite Zeile anzulegen. `card` kommt direkt
-   * aus der Scryfall-Suche der Add-Karten-UI, damit kein zusätzlicher Lookup nötig ist.
-   */
+  /** Fügt eine Karte hinzu oder erhöht ihre Anzahl. */
   async addCardToDeck(deckId: string, card: ScryfallCard, quantity = 1, isMaybeboard = false): Promise<boolean> {
     const { data: existing, error: lookupError } = await supabase
       .from('deck_cards')
@@ -1564,9 +1410,8 @@ export class DeckService {
     }
 
     if (existing) {
-      // Menge einer bereits vorhandenen Karte erhöhen lässt ihren aktuellen Maybeboard-Status
-      // bewusst unangetastet - das Verschieben zwischen Deck/Maybeboard läuft separat über
-      // setCardMaybeboardFlag(), nicht über erneutes Hinzufügen.
+      // Beim Erhöhen bleibt der Maybeboard-Status unangetastet (Verschieben über
+      // setCardMaybeboardFlag()).
       const { error } = await supabase
         .from('deck_cards')
         .update({ quantity: existing.quantity + quantity })
@@ -1663,13 +1508,8 @@ export class DeckService {
   }
 
   /**
-   * Setzt den vom Spieler selbst gewählten Archetyp (decks.edhrec_tag) und/oder Kreaturtyp
-   * (decks.commander_types, als Einzelwert-Array) - für den öffentlichen Decks-Suchreiter (siehe
-   * sql/public-deck-browse-2026-08-26.sql), unabhängig von der automatisch aus der
-   * Commander-Farbidentität gepflegten decks.color_identity-Spalte (siehe
-   * updateDeckCommanderMetadata()). Beide Felder werden hier bewusst gemeinsam geschrieben (auch
-   * wenn im UI nur eines von beiden geändert wurde) - der jeweils andere Wert kommt vom Aufrufer
-   * unverändert aus dem aktuell angezeigten Deck.
+   * Setzt Archetyp (edhrec_tag) und Kreaturtyp (commander_types) fürs öffentliche Stöbern - immer
+   * beide, der unveränderte kommt vom Aufrufer.
    */
   async updateDeckArchetype(deckId: string, edhrecTag: string | null, creatureType: string | null): Promise<boolean> {
     const { error } = await supabase
@@ -1706,10 +1546,7 @@ export class DeckService {
     return true;
   }
 
-  /**
-   * Setzt die selbst gewählte Bracket-Stufe. null = "automatisch bestimmen" (dann gilt wieder
-   * bracket_auto).
-   */
+  /** Selbst gewählte Stufe setzen, null = automatisch. */
   async setDeckBracket(deckId: string, bracket: number | null): Promise<boolean> {
     const { error } = await supabase.from('decks').update({ bracket }).eq('id', deckId);
 
@@ -1721,16 +1558,8 @@ export class DeckService {
   }
 
   /**
-   * Schreibt das Ergebnis der Automatik zurück, damit Deck-Liste und Match-Auswahl ein Abzeichen
-   * zeigen können, ohne selbst zu rechnen (siehe sql/deck-bracket-2026-09-06.sql).
-   *
-   * Bewusst OHNE updated_at anzufassen: das ist der Zeitstempel der letzten inhaltlichen Änderung
-   * am Deck und sortiert die Deck-Liste. Ein reiner Nachtrag der Automatik ist keine Änderung
-   * durch den Nutzer und darf das Deck nicht nach oben schieben.
-   *
-   * Fehler landen hier nur in der Konsole: Steht die Migration noch aus, soll die Deck-Ansicht
-   * trotzdem normal funktionieren - das Bracket wird dann eben bei jedem Öffnen neu gerechnet,
-   * statt gespeichert zu werden.
+   * Schreibt das Automatik-Ergebnis zurück. Ohne updated_at - das sortiert die Liste nach
+   * inhaltlichen Änderungen. Fehler nur in die Konsole (ohne Migration wird eben neu gerechnet).
    */
   async saveDeckAutoBracket(deckId: string, bracketAuto: number): Promise<boolean> {
     const { error } = await supabase
@@ -1761,12 +1590,8 @@ export class DeckService {
   }
 
   /**
-   * Pflegt decks.color_identity nach - fürs Farbfilter im öffentlichen Decks-Suchreiter (siehe
-   * sql/public-deck-browse-2026-08-26.sql). Wird von DeckViewerService.saveEdits() aufgerufen,
-   * sobald sich die Commander-Markierung geändert hat - ohne diese Pflege würde die Spalte sofort
-   * wieder veralten. commander_types (Kreaturtyp) wird bewusst NICHT hier mitgepflegt - das ist ein
-   * eigenständiges, vom Spieler manuell gesetztes Feld (siehe updateDeckArchetype()), das nicht bei
-   * jedem Commander-Wechsel stillschweigend überschrieben werden soll.
+   * Pflegt decks.color_identity nach Commander-Änderung (Farbfilter im Stöbern). commander_types
+   * bleibt manuell.
    */
   async updateDeckCommanderMetadata(deckId: string, colorIdentity: string[]): Promise<boolean> {
     const { error } = await supabase
@@ -1822,10 +1647,8 @@ export class DeckService {
   }
 
   /**
-   * Trägt bei einer bereits vorhandenen Marke ohne oracleId (vor Einführung dieses Felds gescannt)
-   * die oracleId nachträglich ein, statt beim erneuten Scan eine doppelte Zeile für dieselbe Marke
-   * anzulegen. Matched zusätzlich über image_url, da mehrere Marken denselben Namen aber
-   * unterschiedliche Bilder haben können (z.B. verschiedenfarbige "Wizard"-Marken).
+   * Trägt die oracleId bei alten Marken nach (Abgleich auch über image_url, weil Marken gleich
+   * heißen können).
    */
   async backfillTokenOracleId(deckId: string, cardName: string, imageUrl: string, oracleId: string): Promise<boolean> {
     const { error } = await supabase
@@ -1894,12 +1717,8 @@ export class DeckService {
   }
 
   /**
-   * Gesamt-Statistik für ein Deck über ALLE Gruppen hinweg (nicht nur die aktuell aktive). Ohne
-   * pilotPlayerIds unabhängig davon, wer es jeweils gespielt hat (eigener Pilot oder ausgeliehen) -
-   * im Gegensatz zu den gruppen-gebundenen Stats im Stats-Tab, die nur die aktive Gruppe sehen. Mit
-   * pilotPlayerIds (siehe DeckViewerService.ownerPlayerIds()) nur die Partien, in denen einer
-   * dieser Spieler tatsächlich gespielt hat - für die "Meine Spiele"/"Alle Spiele"-Umschaltung in
-   * der Deck-Detailansicht.
+   * Deck-Statistik über ALLE Gruppen. Mit pilotPlayerIds nur Partien dieser Spieler ("Meine/Alle
+   * Spiele").
    */
   async getDeckStats(deckId: string, pilotPlayerIds?: string[]): Promise<DeckGameStats> {
     let query = supabase
@@ -1931,10 +1750,7 @@ export class DeckService {
     return { games, wins, winRate: games > 0 ? (wins / games) * 100 : 0 };
   }
 
-  /**
-   * Wie getDeckStats(), aber für mehrere Decks auf einmal (eine Anfrage statt einer pro Deck) -
-   * für Listen, die z.B. nach Winrate/Spielanzahl sortiert werden sollen.
-   */
+  /** Wie getDeckStats() für viele Decks in einer Anfrage. */
   async getDeckStatsForDecks(deckIds: string[]): Promise<Map<string, DeckGameStats>> {
     const result = new Map<string, DeckGameStats>();
     if (deckIds.length === 0) return result;
@@ -1979,13 +1795,8 @@ export class DeckService {
   }
 
   /**
-   * Der im Deck selbst hinterlegte Commander (deck_cards.is_commander) je Deck-ID - als Fallback
-   * für die Deckliste, wenn getDeckStatsForDecks() keinen Commander liefert (noch keine Partie
-   * gespielt, z.B. bei einem frisch angelegten leeren Deck). Bei Partner-Commandern wird nur
-   * einer davon zurückgegeben, wie auch sonst in der App für Karten-Thumbnails üblich. Liefert
-   * auch das dort hinterlegte Bild mit (statt nur den Namen), damit ein individuell gewähltes
-   * Artwork (siehe deck-viewer.service.ts selectArtwork) auch im Deckliste-Vorschaubild ankommt,
-   * statt dass dort immer nur das generische Scryfall-Standardbild zum Namen gezeigt wird.
+   * Hinterlegter Commander (is_commander) je Deck samt gewähltem Bild - Rückfall für Listen ohne
+   * Partie. Bei Partnern nur einer.
    */
   async getStoredCommanders(deckIds: string[]): Promise<Map<string, { name: string; imageUrl: string | null }>> {
     const result = new Map<string, { name: string; imageUrl: string | null }>();
@@ -2019,13 +1830,9 @@ export class DeckService {
   }
 
   /**
-   * Die Kartennamen eines Decks, die in "Meistgespielte Karten" (getCardAndColorStats()) zählen -
-   * exakt dieselbe Auswahl wie dort: ohne Länder, Marken und Maybeboard, jeder Name nur einmal.
-   * Beim Löschen wird genau diese Liste in decks.deleted_card_names gerettet, damit die
-   * Kartenstatistik im Profil ein gelöschtes Deck nicht vergisst.
-   *
-   * Bewusst nur die Namen: Mengen zählt die Statistik ohnehin nicht (je Deck 1x), und die Bild-URLs
-   * sind der Platzfresser - das Bild holt das Profil sonst über den Namen von Scryfall.
+   * Kartennamen, die in "Meistgespielte Karten" zählen (ohne Länder, Marken, Maybeboard, je Name
+   * einmal) - beim Löschen in deleted_card_names gerettet. Nur Namen: Mengen zählen nicht,
+   * Bild-URLs kosten Platz.
    */
   private async zaehlbareKartennamen(deckId: string): Promise<string[]> {
     const { data, error } = await supabase
@@ -2047,11 +1854,7 @@ export class DeckService {
     return [...namen];
   }
 
-  /**
-   * Die beim Löschen geretteten Kartennamen der Grabsteine unter diesen IDs, geschlüsselt nach
-   * Deck (siehe zaehlbareKartennamen()). Lebende Decks stehen nicht in der Map - ihre Karten kommen
-   * wie bisher aus deck_cards.
-   */
+  /** Gerettete Kartennamen der Grabsteine je Deck; lebende Decks fehlen in der Map. */
   private async geretteteKartennamen(deckIds: string[]): Promise<Map<string, string[]>> {
     const result = new Map<string, string[]>();
     if (deckIds.length === 0 || !DeckService.grabsteinSpalteVerfuegbar) return result;
@@ -2076,11 +1879,7 @@ export class DeckService {
     return result;
   }
 
-  /**
-   * Die beim Löschen geretteten Commander-Angaben der Grabsteine unter diesen IDs (siehe
-   * deleteDeck()). Lebende Decks stehen nicht in der Map - wer sie braucht, fragt damit zugleich
-   * ab, welche Decks es nicht mehr gibt.
-   */
+  /** Gerettete Commander-Angaben der Grabsteine; lebende Decks fehlen in der Map. */
   async getDeletedDeckInfos(deckIds: string[]): Promise<Map<string, { name: string | null; imageUrl: string | null }>> {
     const result = new Map<string, { name: string | null; imageUrl: string | null }>();
     if (deckIds.length === 0 || !DeckService.grabsteinSpalteVerfuegbar) return result;
@@ -2104,13 +1903,8 @@ export class DeckService {
   }
 
   /**
-   * Farbidentität einer Liste von Decks, geschlüsselt nach Deck-ID - für Statistiken, die (anders
-   * als getCardAndColorStats) nicht auf einen einzelnen DeckOwner beschränkt sind, sondern gegen
-   * bereits anderweitig geladene Matches rechnen (siehe stats-tab.ts groupColorAndComboStats).
-   *
-   * Liefert für private Decks anderer Nutzer keinen Eintrag (RLS blendet sie aus, siehe
-   * sql/security-fixes-2026-08-26.sql) - das ist dieselbe stille Auslassung, die deckStats()/
-   * commanderStats() im Stats-Tab beim deckName-Join schon länger haben, kein neuer Sonderfall.
+   * Farbidentität je Deck-ID für Statistiken über schon geladene Matches. Private fremde Decks
+   * fehlen (RLS) - dieselbe stille Auslassung wie beim deckName-Join.
    */
   async getColorIdentities(deckIds: string[]): Promise<Map<string, string[]>> {
     const result = new Map<string, string[]>();
@@ -2133,12 +1927,8 @@ export class DeckService {
   }
 
   /**
-   * Ruft eine der beiden Global-Statistik-Funktionen auf und fällt auf ihre alte, parameterlose
-   * Fassung zurück, falls die gefilterte Signatur noch nicht existiert (PostgREST-Code PGRST202,
-   * d.h. sql/global-stats-format-filter-2026-09-03.sql wurde noch nicht im Supabase-Editor
-   * ausgeführt). Ungefilterte Zahlen sind allemal besser als eine leere Seite - ohne diesen
-   * Rückfall stand die komplette Global-Ansicht leer da, bis die Migration lief. Nach der Migration
-   * greift der Zweig nie mehr. Liefert null, wenn auch der Rückfall scheitert.
+   * Ruft eine Global-Statistik-Funktion auf, mit Rückfall auf die parameterlose Fassung bei
+   * PGRST202 (Filter-Migration fehlt). null, wenn auch das scheitert.
    */
   private async callGlobalStatsRpc(
     fn: string,
@@ -2161,12 +1951,8 @@ export class DeckService {
   }
 
   /**
-   * Weltweite "Decks & Commander"-Rangliste über ALLE Spieler der Website hinweg (Stats-Tab,
-   * Global-Ansicht) - ruft die serverseitige Funktion global_deck_commander_stats() auf (siehe
-   * sql/global-stats-functions-*.sql, sql/global-stats-format-filter-2026-09-03.sql für die
-   * modes/formats-Parameter). Muss einmalig im Supabase-SQL-Editor angelegt werden - bis dahin
-   * greift der Rückfall in callGlobalStatsRpc() (ungefiltert statt leer).
-   * modes/formats = null bedeutet "kein Filter" (Default, entspricht dem bisherigen Verhalten).
+   * Weltweite Decks-/Commander-Rangliste (global_deck_commander_stats). modes/formats null = kein
+   * Filter.
    */
   async getGlobalDeckCommanderStats(
     modes: GameMode[] | null = null,
@@ -2213,12 +1999,8 @@ export class DeckService {
   }
 
   /**
-   * Weltweite Übersichtszahlen (Spiele, aktive Spieler, gebaute Decks) für die Kacheln oben in der
-   * Global-Ansicht - ruft global_overview_stats() auf (sql/global-overview-stats-2026-09-04.sql).
-   * Anders als die beiden Ranglisten-Funktionen gibt es hier bewusst KEINEN Rückfall auf eine alte
-   * Signatur: die Funktion ist neu, es gibt keine ältere Fassung. Solange die Migration nicht im
-   * Supabase-SQL-Editor gelaufen ist, kommt null zurück und die Kacheln bleiben ausgeblendet -
-   * der Rest der Global-Ansicht funktioniert davon unberührt weiter.
+   * Weltweite Übersichtszahlen (global_overview_stats). Ohne Migration null, die Kacheln bleiben
+   * aus.
    */
   async getGlobalOverviewStats(
     modes: GameMode[] | null = null,
@@ -2245,12 +2027,8 @@ export class DeckService {
   }
 
   /**
-   * Weltweite Lieblingsfarben/Farbkombinationen über ALLE Spieler der Website hinweg (Stats-Tab,
-   * Global-Ansicht) - ruft global_color_and_combo_stats() auf (siehe
-   * sql/global-stats-functions-*.sql, sql/global-stats-format-filter-2026-09-03.sql für die
-   * modes/formats-Parameter, null = kein Filter). Liefert dieselbe ColorStat[]/ColorComboStat[]-Form
-   * wie getCardAndColorStats(), damit die vorhandene Radar-/Kombinations-Darstellung (inkl.
-   * Partien/Decks-Umschalter) unverändert wiederverwendet werden kann.
+   * Weltweite Farben/Farbkombinationen (global_color_and_combo_stats), gleiche Form wie
+   * getCardAndColorStats().
    */
   async getGlobalColorAndComboStats(
     modes: GameMode[] | null = null,
@@ -2268,7 +2046,6 @@ export class DeckService {
 
     if (!rows) return empty;
 
-    const COLOR_AXES: readonly ColorStat['color'][] = [...FILTER_COLORS, COLORLESS];
     const colorRanking: ColorStat[] = COLOR_AXES.map((color) => {
       const row = rows.find((r) => r.kind === 'axis' && r.colors?.[0] === color);
       return { color, gameCount: Number(row?.games ?? 0), deckCount: Number(row?.decks ?? 0) };
@@ -2285,27 +2062,12 @@ export class DeckService {
   }
 
   /**
-   * Commander-Statistik über ALLE Gruppen hinweg für Spiele, zu denen es kein EIGENES Deck gibt
-   * (z.B. alte Excel-Importe, live getrackte Spiele ohne Deck-Auswahl, geliehene Decks oder
-   * Cube-Runden) - ergänzt getDeckStats() im Profil, wo sonst nur deck-gebundene Spiele auftauchen
-   * würden.
+   * Commander-Statistik über alle Gruppen für Spiele ohne EIGENES Deck, je Eintrag mit `category`
+   * (siehe UnassignedCommanderCategory). Ein Commander aus normalen und Cube-Spielen erscheint in
+   * beiden Listen.
    *
-   * Jeder Eintrag trägt eine `category` (siehe UnassignedCommanderCategory), denn "kein eigenes
-   * Deck" heißt nicht überall dasselbe: Zu einem geliehenen Deck gibt es sehr wohl ein Deck (nur
-   * eben das einer anderen Person), und zu einem Cube-Commander wird es nie eines geben. Beides
-   * gehört nicht in dieselbe Liste wie ein Commander, für den man tatsächlich noch ein Deck
-   * anlegen oder verlinken sollte.
-   *
-   * Ein Commander, der sowohl in normalen als auch in Cube-Spielen vorkam, erscheint in beiden
-   * Listen mit den jeweils zugehörigen Partien - eine gemeinsame Zeile könnte die Winrate keiner
-   * der beiden Listen korrekt ausweisen.
-   *
-   * "Geliehen" heißt ausschließlich: die Partie ist mit dem Deck einer anderen Person verknüpft
-   * (Ausleih-Picker). Bewusst KEIN Raten über den Commander-Namen mehr - das hat Partien ohne Deck
-   * dem einzigen fremden Deck mit demselben Commander zugeschlagen und das sogar in die Datenbank
-   * geschrieben. Wer seine Decks noch nicht hochgeladen hat, spielt aber fast immer ein eigenes Deck
-   * und nicht das des Einzigen, der dieses Commander-Deck schon angelegt hat (Edgard mit vier
-   * eigenen Decks, die plötzlich Michi gehörten, 23.09.2026).
+   * "Geliehen" nur, wenn die Partie mit einem fremden Deck verknüpft ist - kein Raten über den
+   * Namen mehr (das schlug am 23.09.2026 fremde Partien falschen Decks zu).
    */
   async getUnassignedCommanderStats(owner: DeckOwner): Promise<UnassignedCommanderStats[]> {
     const playerIds = await this.resolvePlayerIds(owner);
@@ -2435,14 +2197,8 @@ export class DeckService {
   }
 
   /**
-   * Persönliche Gesamt-Statistik eines Accounts über ALLE Gruppen hinweg (nicht nur die gerade
-   * aktive) - fürs Profil-Tab. Anders als getUnassignedCommanderStats() zählt hier JEDES Spiel mit,
-   * unabhängig davon, ob ein Deck verlinkt ist, da hier die Gesamtzahl gefragt ist statt einer
-   * reinen Commander-Rangliste. Respektiert stats_locked einer Gruppe bewusst NICHT - das sperrt nur
-   * die geteilte Rangliste für andere Mitglieder, nicht die eigenen Zahlen für einen selbst.
-   *
-   * year begrenzt die Auswertung auf ein Kalenderjahr (Jahresfilter der Profil-Statistiken);
-   * ohne Angabe zählen alle Partien.
+   * Persönliche Gesamtstatistik über alle Gruppen: zählt jedes Spiel, ignoriert stats_locked
+   * (sperrt nur die geteilte Rangliste). year = nur dieses Kalenderjahr.
    */
   async getCrossGroupPersonalStats(userId: string, year?: number): Promise<CrossGroupPersonalStats> {
     const { data: playerRows, error: playerError } = await supabase
@@ -2478,9 +2234,8 @@ export class DeckService {
       const match = row.matches;
       const playerName = row.players?.display_name;
       if (!match || !playerName || match.counts_in_general_stats === false) continue;
-      // Jahresfilter clientseitig statt als Query-Bedingung: die Matches hängen hier über einen
-      // Join dran, und ein Filter auf die eingebettete Tabelle bräuchte einen Inner-Join-Hinweis -
-      // die Zeilenzahl (Partien EINES Accounts) ist klein genug, dass sich das nicht lohnt.
+      // Jahresfilter im Client: Filter auf eingebettete Tabellen bräuchte einen Inner-Join, die
+      // Zeilenzahl ist klein.
       if (year != null && new Date(match.played_at).getFullYear() !== year) continue;
 
       totalGames++;
@@ -2516,19 +2271,9 @@ export class DeckService {
   }
 
   /**
-   * Meistgespielte Karten (ohne Länder), vollständige Farb-Rangliste (alle 5 Farben plus farblos)
-   * und Rangliste der genutzten Farbkombinationen über ALLE Gruppen hinweg. Liefert je Eintrag
-   * sowohl gameCount (nach tatsächlich gespielten Partien je Deck gewichtet, ein oft gespieltes
-   * Deck zählt stärker) als auch deckCount (reine Deckanzahl, unabhängig von Partien) - das
-   * Profil-Tab lässt den Nutzer zwischen beiden Sichten umschalten, ohne neu laden zu müssen. Eine
-   * Karte zählt dabei je Deck nur 1x, unabhängig von deck_cards.quantity. Länder (Basic wie
-   * Nichtbasis) werden rein anhand der Typzeile erkannt (enthält "Land") - es gibt kein eigenes
-   * "isLand"-Flag in deck_cards. Precon-Decks (is_precon) fließen bewusst NICHT ein, da sie nicht
-   * selbst zusammengestellt wurden. mostUsedCards liefert die vollständige Liste (nicht nur Top 5) -
-   * das Slicen auf die Top 5 je aktivem Modus übernimmt das Profil-Tab.
-   *
-   * year begrenzt die Auswertung wie bei getCrossGroupPersonalStats() auf ein Kalenderjahr - ein
-   * Deck ohne Partie in diesem Jahr fällt damit ganz heraus.
+   * Meistgespielte Karten (ohne Länder), Farben (5 + farblos) und Farbkombinationen über alle
+   * Gruppen, je Eintrag gameCount (nach Partien gewichtet) und deckCount. Eine Karte zählt je Deck
+   * einmal; Länder per Typzeile; Precons zählen nicht. year wie bei getCrossGroupPersonalStats().
    */
   async getCardAndColorStats(owner: DeckOwner, year?: number): Promise<CardAndColorStats> {
     const empty: CardAndColorStats = { mostUsedCards: [], colorRanking: [], colorComboRanking: [] };
@@ -2578,17 +2323,12 @@ export class DeckService {
 
     if (cardError) console.error('Konnte Deckkarten für die Kartenstatistik nicht laden:', cardError);
 
-    // Gelöschte Decks haben keine deck_cards mehr - ihre zählenden Kartennamen stehen im Grabstein
-    // (siehe deleteDeck()). Ohne diesen Nachschlag verschwände ausgerechnet das meistgespielte Deck
-    // aus der Kartenstatistik, sobald jemand es löscht, obwohl seine Partien weiter zählen.
+    // Grabsteine haben keine deck_cards mehr - ihre Kartennamen kommen aus deleted_card_names.
     const geretteteKarten = await this.geretteteKartennamen(deckIds);
 
     /**
-     * Achsen der Farbstatistik. 'C' ist keine sechste Manafarbe, sondern der Gegenfall: Decks ganz
-     * OHNE Farbidentität. Mehrfarbige Decks zählen weiterhin auf mehreren Achsen, die sechs Werte
-     * summieren sich also nicht auf die Deckanzahl.
+     * Achsen der Farbstatistik. 'C' = Decks ohne Farbidentität; mehrfarbige Decks zählen mehrfach.
      */
-    const COLOR_AXES: readonly ColorStat['color'][] = [...FILTER_COLORS, COLORLESS];
     const colorCounts = new Map<string, { gameCount: number; deckCount: number }>();
     const comboCounts = new Map<string, { colors: string[]; gameCount: number; deckCount: number }>();
     for (const row of nonPreconDeckRows) {
@@ -2596,9 +2336,7 @@ export class DeckService {
       if (games === 0) continue;
 
       const colors = FILTER_COLORS.filter((c) => ((row.color_identity ?? []) as string[]).includes(c));
-      // Ein farbloses Deck (leere Farbidentität) zählt auf die eigene Achse 'C' statt auf gar
-      // keine - sonst fehlte es in der Farbstatistik komplett, obwohl es in der
-      // Farbkombinations-Rangliste darunter längst auftaucht.
+      // Farblose Decks zählen auf 'C' statt gar nicht.
       for (const color of colors.length > 0 ? colors : [COLORLESS]) {
         const entry = colorCounts.get(color) ?? { gameCount: 0, deckCount: 0 };
         entry.gameCount += games;
@@ -2622,9 +2360,7 @@ export class DeckService {
       const games = gamesPerDeck.get(row.deck_id) ?? 0;
       if (games === 0) continue;
 
-      // Zählt pro Deck nur 1x mit, unabhängig von deck_cards.quantity - eine Karte, die mehrfach im
-      // selben Deck steckt (z.B. bei Nicht-Singleton-Formaten), soll nicht stärker gewichtet werden
-      // als eine, die nur einmal drin ist.
+      // Je Deck nur einmal, unabhängig von quantity.
       const entry = cardCounts.get(row.card_name) ?? { gameCount: 0, deckCount: 0, imageUrl: null };
       entry.gameCount += games;
       entry.deckCount += 1;
@@ -2632,9 +2368,7 @@ export class DeckService {
       cardCounts.set(row.card_name, entry);
     }
 
-    // Dieselbe Zählung für die Grabsteine. Die Auswahl (ohne Länder/Marken/Maybeboard, jeder Name
-    // einmal) ist beim Löschen schon passiert, hier bleibt nur das Gewichten mit den Partien. Ein
-    // Bild steht bewusst nicht dabei - das Profil holt es über den Namen von Scryfall.
+    // Dasselbe für Grabsteine (Auswahl schon beim Löschen erfolgt).
     for (const [grabsteinId, namen] of geretteteKarten) {
       const games = gamesPerDeck.get(grabsteinId) ?? 0;
       if (games === 0) continue;
@@ -2666,20 +2400,9 @@ export class DeckService {
   }
 
   /**
-   * Verlinkt manuell die Matches eines Commanders (nur eigene Spieler-Einträge) mit einem konkreten
-   * Deck - für Fälle, wo die automatische Erkennung (findDeckIdByCommander) nichts findet oder der
-   * falsche Commander-Name erkannt wurde.
-   *
-   * Übernommen werden neben den unverlinkten Partien auch die, die an einem FREMDEN Deck hängen -
-   * also als Leihe erkannt oder beim Erfassen über den Ausleih-Picker gewählt wurden. Ohne das käme
-   * man aus einer einmal gesetzten Leih-Zuordnung nie wieder heraus: Wer sich dasselbe Precon später
-   * selbst anlegt, dessen Altpartien bleiben am fremden Deck hängen, weil backfillDeckLinks()
-   * ausschließlich unverlinkte Zeilen anfasst. Genau dafür stehen die geliehenen Commander im
-   * Verknüpfen-Dialog zur Auswahl - das Verlinken lief dort bis hierher ins Leere.
-   *
-   * Partien an einem ANDEREN EIGENEN Deck bleiben unangetastet: Dort steht bereits eine bewusste
-   * Zuordnung, und zwei eigene Decks mit demselben Commander sind kein Fehler, den dieser Dialog
-   * aufzulösen hätte.
+   * Verlinkt die Matches eines Commanders (eigene Spieler-Einträge) manuell mit einem Deck.
+   * Übernimmt auch Partien an FREMDEN Decks (Leihe), sonst käme man aus einer Leih-Zuordnung nie
+   * heraus. Partien an einem anderen EIGENEN Deck bleiben unangetastet.
    */
   async linkCommanderToDeck(owner: DeckOwner, commander: string, deckId: string): Promise<boolean> {
     const playerIds = await this.resolvePlayerIds(owner);
@@ -2713,9 +2436,8 @@ export class DeckService {
   }
 
   /**
-   * Löst die Deck-Verknüpfung aller Matches eines Decks (nur eigene Spieler-Einträge) wieder -
-   * z.B. falls eine automatische oder manuelle Verlinkung ein falsches Deck getroffen hat. Die
-   * Matches landen danach wieder unter "Commander ohne Deck".
+   * Löst die Verknüpfung aller Matches eines Decks (eigene Spieler-Einträge); sie landen wieder
+   * unter "Commander ohne Deck".
    */
   async unlinkDeckMatches(owner: DeckOwner, deckId: string): Promise<boolean> {
     const playerIds = await this.resolvePlayerIds(owner);

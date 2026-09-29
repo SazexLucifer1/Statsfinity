@@ -219,10 +219,10 @@ export const deckView = {
       'Grundlage ist derselbe Betrag wie in der Kachel „Kartenpreis (ca.)“: die günstigste Druckvariante jeder Karte, in Euro über Cardmarket.',
     'deckView.bracketMathTuningTitle': 'So kommt der Tuning-Grad zustande',
     'deckView.bracketMathTuningIntro':
-      'Vier Messgrößen. Jede wird auf 0 bis 1 Punkte umgerechnet, der Tuning-Grad ist ihr Durchschnitt.',
+      'Vier Messgrößen. Jede wird auf 0 bis 1 Punkte umgerechnet und nach ihrer Trennschärfe gewichtet (Game Changer am stärksten), der Tuning-Grad ist der gewichtete Durchschnitt.',
     'deckView.bracketMathPartMeasured': 'Gemessen: {{value}}',
     'deckView.bracketMathPartScale': '0 Punkte ab {{from}}, 1 Punkt ab {{to}}',
-    'deckView.bracketMathPartScore': 'ergibt {{score}} Punkte',
+    'deckView.bracketMathPartScore': 'ergibt {{score}} Punkte, Gewicht {{weight}}',
     'deckView.bracketMathPartReversed':
       'Hier ist der niedrigere Wert der stärkere – deshalb läuft die Skala rückwärts.',
     'deckView.bracketMathSum': '({{summands}}) ÷ {{divisor}} = {{value}} – also {{percent}}',
@@ -244,7 +244,7 @@ export const deckView = {
     'deckView.nonBasicLandTile': 'Nichtbasisland',
     'deckView.priceTile': 'Kartenpreis (ca.)',
     // Vorangestellt, wenn eine Preisabfrage gescheitert ist: Die Summe ist dann nur eine
-    // Untergrenze. Bewusst kein Fehlertext - siehe deckPriceIncomplete in deck-viewer.service.ts.
+    // Untergrenze. Bewusst kein Fehlertext - siehe deckPriceIncomplete in deck-analysis.service.ts.
     'deckView.priceFrom': 'ab',
     'deckView.removalTile': 'Entfernung',
     'deckView.counterspellTile': 'Konter',
@@ -562,10 +562,10 @@ export const deckView = {
       'It uses the same amount as the "Card price (approx.)" tile: the cheapest printing of every card, in euros via Cardmarket.',
     'deckView.bracketMathTuningTitle': 'How the tuning level comes about',
     'deckView.bracketMathTuningIntro':
-      'Four measures. Each is converted to 0 to 1 points; the tuning level is their average.',
+      'Four measures. Each is converted to 0 to 1 points and weighted by how well it separates the brackets (game changers most); the tuning level is the weighted average.',
     'deckView.bracketMathPartMeasured': 'Measured: {{value}}',
     'deckView.bracketMathPartScale': '0 points at {{from}}, 1 point at {{to}}',
-    'deckView.bracketMathPartScore': 'gives {{score}} points',
+    'deckView.bracketMathPartScore': 'gives {{score}} points, weight {{weight}}',
     'deckView.bracketMathPartReversed':
       'Here the lower value is the stronger one – which is why the scale runs backwards.',
     'deckView.bracketMathSum': '({{summands}}) ÷ {{divisor}} = {{value}} – that is {{percent}}',

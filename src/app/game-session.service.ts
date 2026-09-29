@@ -1,4 +1,3 @@
-// NEU (komplette Datei)
 import { Injectable, WritableSignal, computed, effect, inject, signal } from '@angular/core';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { DeckFormat, GameMode, MatchPlayer, TEAM_OPTIONS, TeamName } from './models';
@@ -15,10 +14,8 @@ import { supabase } from './supabase.client';
 const CLIENT_ID = crypto.randomUUID();
 
 /**
- * Wie JSON.stringify, aber mit sortierten Objekt-Keys - normales JSON.stringify reicht hier nicht,
- * weil Postgres/JSONB die Feld-Reihenfolge beim Speichern verändert. Ohne das würde ein gerade per
- * Realtime empfangener (inhaltlich identischer) Stand nie als "schon bekannt" erkannt und ständig
- * unnötig zurückgepusht - ein Endlos-Ping-Pong zwischen zwei Geräten.
+ * JSON.stringify mit sortierten Keys - JSONB ändert die Reihenfolge, sonst würde ein empfangener,
+ * gleicher Stand nie als bekannt erkannt (Ping-Pong zwischen Geräten).
  */
 function stableStringify(value: unknown): string {
   if (Array.isArray(value)) {
@@ -32,10 +29,8 @@ function stableStringify(value: unknown): string {
 }
 
 /**
- * Der Teil des Session-Zustands, der zwischen Geräten synchronisiert wird (siehe
- * GameSessionService.buildSyncSnapshot/applySyncSnapshot). Bewusst NICHT enthalten: phase/minimized
- * (jedes Gerät steuert sein eigenes Fenster unabhängig) und die pending*Delta-Puffer (rein lokale
- * 700ms-Tap-Glättung, erst der committete Wert wird gesynced).
+ * Der zwischen Geräten synchronisierte Teil des Zustands. Nicht dabei: phase/minimized (je Gerät)
+ * und die pending*Delta-Puffer (nur lokale Tipp-Glättung).
  */
 export interface LiveSessionState {
   mode: GameMode;
@@ -69,12 +64,8 @@ export interface DamageSource {
 }
 
 /**
- * Eine "Panel-Einheit" im Ingame-Grid: normalerweise ein einzelner Spieler,
- * bei Two-Headed Giant aber ein ganzes Team (2 Spieler teilen sich ein Panel
- * mit gemeinsamem Leben/Gift/Commander-Schaden/Hintergrund). `key` ist der
- * Identifier, unter dem sämtliche Session-Signals (lifeTotals, poisonCounters,
- * deadPlayers, playerBackgrounds, ...) diese Einheit ablegen – bei normalen
- * Modi der Spielername, bei 2HG der Team-Name (z.B. "Team 1").
+ * Eine Panel-Einheit im Ingame-Raster: ein Spieler, bei Two-Headed Giant ein Team. `key` ist der
+ * Schlüssel aller Session-Signale (Spielername bzw. Team-Name).
  */
 export interface IngameUnit {
   key: string;
@@ -85,9 +76,8 @@ export interface IngameUnit {
 }
 
 /**
- * Hält den kompletten Zustand des aktuell laufenden (oder in Vorbereitung befindlichen) Matches.
- * Lebt als Singleton-Service statt in MatchTab, damit ein laufendes Spiel Tab-Wechsel übersteht –
- * Angular zerstört Komponenten beim Wechsel des @switch-Zweigs in app.html, Services nicht.
+ * Zustand des laufenden (oder vorbereiteten) Matches - als Service, damit ein Spiel Tab-Wechsel
+ * übersteht (Komponenten werden dabei zerstört).
  */
 @Injectable({ providedIn: 'root' })
 export class GameSessionService {
@@ -112,11 +102,8 @@ export class GameSessionService {
   readonly selectedDraftSet = signal<SelectedDraftSet | null>(null);
 
   /**
-   * Zuletzt gespeichertes Match (gesetzt direkt nach saveAndReset()), damit optional noch
-   * Platzierungen nachgetragen werden können - siehe PlacementDialog, der dieses Signal beobachtet.
-   * Wird beim Speichern/Überspringen im Dialog wieder auf null gesetzt. tournamentMatchId ist nur
-   * gesetzt, wenn dieses Spiel Teil eines laufenden Turnier-Tisches war - TournamentService
-   * beobachtet dasselbe Signal unabhängig von PlacementDialog, um das BO3-Ergebnis zu übernehmen.
+   * Zuletzt gespeichertes Match, für nachträgliche Platzierungen (PlacementDialog) und fürs
+   * BO3-Ergebnis (TournamentService, nur mit tournamentMatchId).
    */
   readonly lastFinishedMatch = signal<{
     matchId: string;
@@ -150,12 +137,8 @@ export class GameSessionService {
   >([]);
 
   /**
-   * Wie groupLiveSessions, aber ohne die eigene laufende Session und ohne Turnier-Tische - das ist
-   * die für die "Laufende Spiele"-Liste im Match-Tab relevante Auswahl (nur normale, nicht an ein
-   * Turnier gekoppelte Spiele). Turnier-Tische haben ihre eigene, auf Teilnehmende + veranstaltende
-   * Person beschränkte Zugriffsprüfung im Turnier-Panel (siehe TournamentPanel.canManageMatch) -
-   * ohne diesen Ausschluss könnte sich sonst jede Person aus der Gruppe über diese allgemeine Liste
-   * in ein fremdes Turnier-Match einklinken.
+   * Laufende Spiele der Gruppe ohne die eigene Session und ohne Turnier-Tische (die haben eine
+   * eigene Zugriffsprüfung) - für die Liste im Match-Tab.
    */
   readonly otherGroupLiveSessions = computed(() =>
     this.groupLiveSessions().filter((s) => s.id !== this.liveSessionId() && !s.tournamentMatchId)
@@ -191,12 +174,7 @@ export class GameSessionService {
     winner: this.winner(),
   }));
 
-  /**
-   * lifeTotals & co. sind ab jetzt generisch nach "Panel-Key" indiziert:
-   * bei normalen Modi der Spielername, bei 2HG der Team-Name. Die Methoden
-   * selbst (adjustLife, toggleDead, ...) kennt den Unterschied nicht – sie
-   * nehmen einfach einen String-Key entgegen.
-   */
+  /** Nach Panel-Key indiziert (Spielername bzw. 2HG-Team). */
   readonly lifeTotals = signal<Record<string, number>>({});
   /** commanderDamage[Ziel-Key][Quelle-Key] = Schaden */
   readonly commanderDamage = signal<Record<string, Record<string, number>>>({});
@@ -219,7 +197,6 @@ export class GameSessionService {
     return this.deadPlayers()[key] ?? false;
   }
 
-  // NEU (ersetzt die bisherige toggleDead-Methode)
   toggleDead(key: string): void {
     const wasDead = this.isDead(key);
     this.deadPlayers.update((all) => ({ ...all, [key]: !wasDead }));
@@ -237,19 +214,12 @@ export class GameSessionService {
   }
 
   /**
-   * Wenn gesetzt: die genannte Panel-Einheit sammelt gerade Commander-Schaden ein.
-   * Ihr eigenes Panel zeigt dann nur 2 Buttons, alle anderen Panels werden zu
-   * Eingabe-Trackern für ihre eigenen Commander/Partner gegen genau diese Einheit.
+   * Gesetzt: diese Einheit sammelt Commander-Schaden ein; die anderen Panels werden zu
+   * Eingabe-Trackern gegen sie.
    */
   readonly commanderDamageFocus = signal<string | null>(null);
 
-  // NEU
-  /**
-   * Manuell festgelegte Reihenfolge der Panel-Keys (durch "Spieler neu
-   * anordnen" im Options-Menü). Wird in ingameUnits() angewendet, BEVOR der
-   * pinnedBottomKey den Sonderslot unten erzwingt – so bleibt der Sonderslot
-   * auch nach manuellem Tauschen konsistent.
-   */
+  /** Manuelle Panel-Reihenfolge ("Spieler neu anordnen"), angewendet vor dem pinnedBottomKey. */
   readonly manualOrder = signal<string[] | null>(null);
 
   /** Tauscht die Positionen zweier Panel-Einheiten (per Key) in der Anzeige-Reihenfolge. */
@@ -264,13 +234,9 @@ export class GameSessionService {
     this.manualOrder.set(next);
   }
 
-  // NEU
   /**
-   * Panel-Key, der bei ungerader Panel-Anzahl den Sonderslot unten (volle
-   * Bildschirmbreite, quer liegend) bekommt. Frei wählbar per Longpress auf
-   * den Spieler-/Team-Namen (siehe IngameTracker.pinToBottom). Wird bei
-   * Archenemy automatisch auf den Archenemy vorbelegt, wenn der Nutzer noch
-   * nichts explizit gewählt hat (siehe startGame()).
+   * Panel für den Sonderslot unten bei ungerader Anzahl (Longpress auf den Namen); bei Archenemy
+   * vorbelegt.
    */
   readonly pinnedBottomKey = signal<string | null>(null);
 
@@ -290,11 +256,7 @@ export class GameSessionService {
 
   readonly isTwoHeadedGiantMode = computed(() => this.mode() === 'Two-Headed Giant');
 
-  /**
-   * Panel-Einheiten fürs Ingame-Grid. Bei 2HG: ein Eintrag pro Team, Label =
-   * beide Spielernamen mit "&" verbunden, members = beide Teammitglieder.
-   * Sonst: ein Eintrag pro Spieler wie bisher.
-   */
+  /** Panel-Einheiten: bei 2HG eine je Team ("A & B"), sonst eine je Spieler. */
   readonly ingameUnits = computed<IngameUnit[]>(() => {
     let units: IngameUnit[];
 
@@ -412,14 +374,7 @@ export class GameSessionService {
     return true;
   });
 
-  /**
-   * Ob das Fenster breit genug für zwei nebeneinanderliegende Spieler-Panels ist.
-   *
-   * Der Ingame-Tracker war bis hierher die einzige Vollbild-Ansicht der App, die die Fensterbreite
-   * überhaupt nicht kannte (in 747 Zeilen SCSS keine einzige Media Query). Der Schwellwert kommt
-   * aus derselben Quelle wie die SCSS-Breakpoints (--bp-lg), damit hier nicht wieder eine zweite
-   * Zahl gepflegt werden muss.
-   */
+  /** Ob zwei Panels nebeneinander passen; Schwelle aus --bp-lg wie in den Styles. */
   private readonly wideViewport = signal(false);
 
   private watchViewportWidth(): void {
@@ -433,12 +388,8 @@ export class GameSessionService {
   }
 
   /**
-   * Spaltenanzahl des Ingame-Rasters.
-   *
-   * Hing vorher ausschließlich an der Spielerzahl. Bei zwei Spielern hieß das: eine Spalte, also
-   * zwei sehr breite flache Panels übereinander - auf einem Tablet im Querformat oder am Desktop
-   * verschenkt das die halbe Höhe, obwohl nebeneinander offensichtlich besser passt. Ab drei
-   * Spielern bleibt es bei zwei Spalten wie bisher.
+   * Spaltenanzahl: bei zwei Spielern auf breiten Fenstern nebeneinander, ab drei Spielern zwei
+   * Spalten.
    */
   readonly ingameColumns = computed(() => {
     const units = this.ingameUnits().length;
@@ -447,20 +398,11 @@ export class GameSessionService {
     return 2;
   });
 
-  // NEU
   /** Gibt es bei der aktuellen Panel-Anzahl einen Sonderslot unten (ungerade Anzahl im 2-Spalten-Grid)? */
   readonly hasOddBottomSlot = computed(
     () => this.ingameColumns() === 2 && this.ingameUnits().length % 2 === 1
   );
-  // NEU
-  /**
-   * Vertikale Position (in % der Overlay-Höhe) für den zentralen ⋮-Button.
-   * Normalfall: 50% (Mitte des gesamten Grids, alle Reihen gleich behandelt).
-   * Bei ungeradem Sonderslot unten (eigene, gleich hohe Reihe für sich allein)
-   * soll der Button stattdessen in der Mitte der verbleibenden "4-Spieler"-
-   * Reihen sitzen statt in der Mitte des gesamten Bildschirms – sonst rutscht
-   * er optisch zu weit nach unten Richtung Sonderslot.
-   */
+  /** Vertikale Position des ⋮-Knopfs: 50 %, bei Sonderslot unten die Mitte der übrigen Reihen. */
   readonly centerButtonTopPercent = computed(() => {
     if (!this.hasOddBottomSlot()) return 50;
     const cols = this.ingameColumns();
@@ -471,12 +413,8 @@ export class GameSessionService {
   constructor() {
     this.watchViewportWidth();
 
-    // Automatische Cube-Vorauswahl: das Cube-<select> im Match-Tab hat keinen leeren
-    // Platzhalter-Eintrag mehr (der war laut Nutzer-Feedback unnötig) - ein natives <select> zeigt
-    // ohne passenden Options-Wert trotzdem immer den ersten Eintrag optisch als ausgewählt an, ohne
-    // dass Angular das automatisch ins Model zurückschreibt. Ohne diesen Effekt würde das Signal
-    // also stumm auf null bleiben, obwohl der erste Cube sichtbar ausgewählt aussieht - canStartGame
-    // würde dann fälschlich blockieren, obwohl der Nutzer denkt, er hätte schon einen Cube gewählt.
+    // Cube vorauswählen: das <select> zeigt ohne Platzhalter optisch den ersten Eintrag, schreibt
+    // ihn aber nicht ins Model - sonst blockierte canStartGame.
     effect(
       () => {
         if (this.mode() !== 'Cube' || this.selectedCubeId()) return;
@@ -486,12 +424,8 @@ export class GameSessionService {
       { allowSignalWrites: true }
     );
 
-    // Automatische Sieger-Vorauswahl: sobald nur noch eine Panel-Einheit
-    // lebt, wird sie als Gewinner vorgeschlagen; sterben alle gleichzeitig,
-    // wird "Unentschieden" vorgeschlagen. Der Nutzer muss trotzdem immer
-    // noch aktiv auf "Match speichern & beenden" klicken – hier wird nur
-    // die Chip-Auswahl im Winner-Screen vorbelegt. Archenemy bewusst
-    // ausgenommen: "nur noch einer lebt" hat dort eine andere Bedeutung.
+    // Sieger vorschlagen, sobald nur eine Einheit lebt (alle tot = Unentschieden). Nur Vorauswahl;
+    // Archenemy ausgenommen.
     effect(
       () => {
         if (this.phase() !== 'ingame' || this.mode() === 'Archenemy') return;
@@ -507,10 +441,8 @@ export class GameSessionService {
       { allowSignalWrites: true }
     );
 
-    // Push: sobald sich der synchronisierbare Zustand ändert, debounced (400ms) den eigenen
-    // live_game_sessions-Eintrag aktualisieren - läuft nur, solange liveSessionId gesetzt ist.
-    // Die Signatur-Prüfung verhindert, dass ein gerade per Realtime empfangener Fremd-Stand (siehe
-    // subscribeLiveSession) sofort unnötig zurückgepusht wird.
+    // Push: synchronisierbaren Zustand gebündelt (400 ms) in live_game_sessions schreiben, solange
+    // liveSessionId gesetzt ist; die Signatur verhindert das Zurückschicken empfangener Stände.
     effect(() => {
       const snapshot = this.syncSnapshot();
       const sessionId = this.liveSessionId();
@@ -595,9 +527,7 @@ export class GameSessionService {
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'live_game_sessions', filter: `id=eq.${sessionId}` },
         (payload) => {
-          // Absicherung gegen ein verspätetes Event von einem inzwischen schon wieder verlassenen
-          // Channel (z.B. weil zwischenzeitlich erneut gejoint wurde) - sessionId ist hier bewusst
-          // die beim ERZEUGEN dieses Channels erfasste ID, nicht neu abgefragt.
+          // Verspätete Events eines verlassenen Channels ignorieren (sessionId vom Erzeugen).
           if (this.liveSessionId() !== sessionId) return;
           const row = payload.new as { state: LiveSessionState; updated_by_client: string };
           if (row.updated_by_client === CLIENT_ID) return; // eigenes Echo, nicht nochmal übernehmen
@@ -605,18 +535,15 @@ export class GameSessionService {
         }
       )
       .on(
-        // Die andere Seite hat das Spiel gespeichert oder verworfen (siehe endLiveSession) - ohne
-        // diesen Handler bliebe ein nur beigetretenes/mitschauendes Gerät für immer im Ingame-Tracker
-        // mit dem letzten bekannten Stand hängen, statt automatisch abzuschließen.
+        // Die andere Seite hat gespeichert/verworfen - ohne das hinge ein beigetretenes Gerät im
+        // Tracker fest.
         'postgres_changes',
         { event: 'DELETE', schema: 'public', table: 'live_game_sessions', filter: `id=eq.${sessionId}` },
         async () => {
           if (this.liveSessionId() !== sessionId) return;
 
-          // Verifizieren statt blind vertrauen: bei schnell aufeinanderfolgenden Re-Subscribes kamen
-          // beobachtbar Fehlalarm-DELETE-Events für Zeilen, die in Wirklichkeit noch existieren -
-          // das führte zu einem sich selbst befeuernden Beitritts-Loop (als beendet behandelt, aber
-          // sofort wieder gefunden und erneut gejoint). Erst nach echter Bestätigung reagieren.
+          // Erst bestätigen, dass die Zeile weg ist: bei schnellen Re-Subscribes kamen falsche
+          // DELETE-Events (Beitritts-Loop).
           const { data } = await supabase.from('live_game_sessions').select('id').eq('id', sessionId).maybeSingle();
           if (data) {
             return;
@@ -660,10 +587,8 @@ export class GameSessionService {
   }
 
   /**
-   * Legt beim Start eines neuen Spiels die eigene live_game_sessions-Zeile an (fire-and-forget,
-   * blockiert das lokale Spiel nicht). liveSessionId wird bewusst erst NACH erfolgreichem Insert
-   * gesetzt - sonst könnte der Push-Effect (siehe Konstruktor) schon ein UPDATE auf eine Zeile
-   * schicken, die in der Datenbank noch gar nicht existiert (Race Condition).
+   * Legt die eigene live_game_sessions-Zeile an (fire-and-forget). liveSessionId erst nach
+   * erfolgreichem Insert setzen, sonst UPDATE auf eine noch fehlende Zeile.
    */
   private beginLiveSession(): void {
     const groupId = this.groupService.groupId();
@@ -674,9 +599,8 @@ export class GameSessionService {
     const initialState = this.syncSnapshot();
 
     (async () => {
-      // Kein "Aufräumen" alter eigener Zeilen mehr hier - wenn zwei Geräte mit demselben Account
-      // gleichzeitig spielen (z.B. beim Testen), würde das sonst versehentlich eine gerade aktive
-      // Session eines anderen Geräts löschen und einen Endlos-Beitritts-Loop auslösen.
+      // Keine alten eigenen Zeilen löschen - zwei Geräte mit demselben Account würden sich sonst
+      // gegenseitig die Session nehmen.
       const { error } = await supabase.from('live_game_sessions').insert({
         id,
         group_id: groupId,
@@ -695,21 +619,13 @@ export class GameSessionService {
     })();
   }
 
-  /**
-   * Tritt einer bereits laufenden Live-Session bei (statt eine neue, unabhängige zu starten) -
-   * genutzt sowohl beim automatischen Koppeln an einen Turnier-Tisch (siehe
-   * TournamentService.startGameForMatch) als auch beim manuellen Mitschauen/Übernehmen über die
-   * "Laufende Spiele"-Liste im Match-Tab.
-   */
   private readonly joinLiveSessionCallLog: number[] = [];
   private joinLiveSessionNotbremseLoggedAt = 0;
 
+  /** Tritt einer laufenden Live-Session bei (Turnier-Tisch oder "Laufende Spiele"). */
   async joinLiveSession(sessionId: string): Promise<void> {
-    // Bremse gegen wiederholte/parallele Aufrufe für dieselbe Session (z.B. mehrere Effects, die
-    // gleichzeitig reagieren) - ohne das kann daraus ein sich selbst befeuernder Beitritts-Loop
-    // werden, wenn applySyncSnapshot Signale ändert, auf die wiederum ein anderer Effect reagiert.
-    // Bewusst als ALLERERSTES geprüft (billigster Check, kein Logging), damit ein Loop nicht schon
-    // durchs Loggen selbst die Konsole/den Browser überlastet.
+    // Bremse gegen wiederholte/parallele Aufrufe (sonst Beitritts-Loop über Effects) - als Erstes
+    // und ohne Logging.
     if (this.liveSessionId() === sessionId) return;
 
     // Notbremse: falls trotz allem ein Loop entsteht, wenigstens die Datenbank nicht fluten - und
@@ -764,7 +680,6 @@ export class GameSessionService {
   panelRotation(index: number): number {
     const cols = this.ingameColumns();
 
-    // NEU
     if (this.hasOddBottomSlot() && index === this.ingameUnits().length - 1) {
       return 0;
     }
@@ -821,10 +736,8 @@ export class GameSessionService {
     }));
   }
 
-  // --- Gepuffertes Tippen: Leben/Gift/Commander-Schaden ändern sich beim Tippen/Halten NICHT
-  // sofort sichtbar - stattdessen sammelt sich ein "schwebendes" Delta (z.B. "-6"), das erst nach
-  // einer kurzen Pause ohne weitere Eingabe auf einmal verrechnet wird. Das erspart Kopfrechnen
-  // ("23 Leben, 6 Schaden -> 17") beim schnellen Eintippen von Schaden. ---
+  // --- Gepuffertes Tippen: Leben/Gift/Commander-Schaden sammeln ein sichtbares Delta ("-6") und
+  // werden nach kurzer Pause verrechnet - erspart Kopfrechnen. ---
 
   private static readonly PENDING_COMMIT_DELAY_MS = 700;
   private readonly pendingTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -924,7 +837,6 @@ export class GameSessionService {
   startGame(): void {
     if (!this.canStartGame()) return;
 
-    // NEU
     // Archenemy landet standardmäßig im Sonderslot unten, solange der Nutzer
     // noch nichts anderes per Longpress festgelegt hat.
     if (this.mode() === 'Archenemy' && this.pinnedBottomKey() === null) {
@@ -1004,7 +916,7 @@ export class GameSessionService {
       }
 
       this.resetAll();
-      this.deadMessageMap.set({}); // NEU
+      this.deadMessageMap.set({});
     } finally {
       this.saving.set(false);
     }
@@ -1044,7 +956,7 @@ export class GameSessionService {
     this.format.set('Commander');
     this.pinnedBottomKey.set(null);
     this.pinnedBottomKey.set(null);
-    this.manualOrder.set(null); // NEU // NEU
+    this.manualOrder.set(null);
     this.activeTournamentMatchId.set(null);
     this.activeTournamentCountsInStats.set(true);
   }

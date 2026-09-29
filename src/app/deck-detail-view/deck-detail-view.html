@@ -72,7 +72,7 @@
   </div>
 </ng-template>
 
-@if (viewer.viewingDeck(); as deck) {
+@if (viewer.state.viewingDeck(); as deck) {
 <div class="deck-detail-page">
   <div class="deck-detail-header" data-tutorial="deck-detail-header">
     <button class="glass-button small deck-detail-back" (click)="viewer.close()">{{ viewer.i18n.t('deckView.back') }}</button>
@@ -83,7 +83,7 @@
     @if (viewer.detailBusy()) {
       <p class="hint">{{ viewer.i18n.t('deckView.loadingDeck') }}</p>
     } @else {
-      @if (viewer.canEditViewingDeck()) {
+      @if (viewer.state.canEditViewingDeck()) {
         <div class="deck-info-edit">
           <input
             class="glass-input deck-name-input"
@@ -95,30 +95,30 @@
           <select
             class="glass-input"
             [attr.aria-label]="viewer.i18n.t('deckView.formatAria')"
-            [ngModel]="viewer.deckFormatDraft()"
-            (ngModelChange)="viewer.deckFormatDraft.set($event)"
+            [ngModel]="viewer.state.deckFormatDraft()"
+            (ngModelChange)="viewer.state.deckFormatDraft.set($event)"
           >
             <option [ngValue]="null">{{ viewer.i18n.t('deckView.noFormat') }}</option>
             @for (f of viewer.deckFormats; track f) {
               <option [ngValue]="f">{{ f }}</option>
             }
           </select>
-          @if (viewer.edhrecEnabled()) {
-            @if (viewer.edhrecTagsBusy()) {
+          @if (viewer.edhrecPanel.edhrecEnabled()) {
+            @if (viewer.edhrecPanel.edhrecTagsBusy()) {
               <p class="hint">{{ viewer.i18n.t('deckView.loadingEdhrecTags') }}</p>
-            } @else if (viewer.edhrecAvailableTags().length === 0) {
+            } @else if (viewer.edhrecPanel.edhrecAvailableTags().length === 0) {
               <p class="hint">
-                {{ viewer.edhrecCommanderName() ? viewer.i18n.t('deckView.noEdhrecTagsForCommander') : viewer.i18n.t('deckView.noCommanderMarkedYet') }}
+                {{ viewer.edhrecPanel.edhrecCommanderName() ? viewer.i18n.t('deckView.noEdhrecTagsForCommander') : viewer.i18n.t('deckView.noCommanderMarkedYet') }}
               </p>
             } @else {
               <select
                 class="glass-input"
                 [attr.aria-label]="viewer.i18n.t('deckView.edhrecTagAria')"
-                [ngModel]="viewer.deckTagDraft()"
-                (ngModelChange)="viewer.deckTagDraft.set($event)"
+                [ngModel]="viewer.state.deckTagDraft()"
+                (ngModelChange)="viewer.state.deckTagDraft.set($event)"
               >
                 <option [ngValue]="null">{{ viewer.i18n.t('deckView.noTag') }}</option>
-                @for (t of viewer.edhrecAvailableTags(); track t.slug) {
+                @for (t of viewer.edhrecPanel.edhrecAvailableTags(); track t.slug) {
                   <option [ngValue]="t.slug">{{ t.value }} ({{ t.count }})</option>
                 }
               </select>
@@ -142,9 +142,9 @@
       }
 
       @if (deck.format) {
-        <p class="hint">{{ deck.format }} · {{ viewer.i18n.t('deckView.cardsCount', { count: viewer.viewingTotalCards() }) }}</p>
+        <p class="hint">{{ deck.format }} · {{ viewer.i18n.t('deckView.cardsCount', { count: viewer.state.viewingTotalCards() }) }}</p>
       } @else {
-        <p class="hint">{{ viewer.i18n.t('deckView.cardsCount', { count: viewer.viewingTotalCards() }) }}</p>
+        <p class="hint">{{ viewer.i18n.t('deckView.cardsCount', { count: viewer.state.viewingTotalCards() }) }}</p>
       }
 
       <!-- Verstöße gegen Bannliste und Bauregeln: was, steht hier; welche Karten, zeigt der rote Rahmen. -->
@@ -162,9 +162,9 @@
       <!-- Bracket direkt unter der Format-Zeile: dort steht schon, WAS für ein Deck das ist, und
            die Stufe gehört zur selben Frage. Nur im Commander - für Brawl und PDH gibt es keine
            Brackets. -->
-      @if (viewer.showsBracket()) {
+      @if (viewer.bracket.showsBracket()) {
         <div class="bracket-row" data-tutorial="deck-bracket">
-          @if (viewer.effectiveBracket(); as current) {
+          @if (viewer.bracket.effectiveBracket(); as current) {
             @if (current.source === 'auto') {
               <span class="hint">{{ viewer.i18n.t('deckView.bracketMinimum') }}</span>
             }
@@ -173,16 +173,16 @@
                  Neben einer selbst gesetzten Stufe stünde er im Widerspruch dazu ("Bracket 5 ·
                  Power 5,4"), deshalb nur im Automatik-Fall. -->
             @if (current.source === 'auto') {
-              @if (viewer.bracketAnalysis(); as analysis) {
+              @if (viewer.bracket.bracketAnalysis(); as analysis) {
                 <span class="hint">{{ viewer.i18n.t('deckView.bracketPower', { power: (analysis.power | number: '1.1-1') ?? '' }) }}</span>
               }
             }
-          } @else if (viewer.analysisBusy()) {
+          } @else if (viewer.analysis.analysisBusy()) {
             <span class="hint">{{ viewer.i18n.t('deckView.bracketComputing') }}</span>
           } @else {
             <span class="hint">{{ viewer.i18n.t('deckView.bracketUnknown') }}</span>
           }
-          <button class="icon-button" (click)="viewer.toggleBracketWhy()" [attr.aria-label]="viewer.i18n.t('deckView.bracketWhyToggle')">
+          <button class="icon-button" (click)="viewer.bracket.toggleBracketWhy()" [attr.aria-label]="viewer.i18n.t('deckView.bracketWhyToggle')">
             ⓘ
           </button>
         </div>
@@ -191,17 +191,17 @@
              Auswahlfeld statt in der Begründung: er beantwortet keine Frage zur Rechnung, sondern
              sagt, warum man hier von Hand eingreifen muss. -->
         <div class="bracket-select-row">
-          @if (viewer.canEditViewingDeck()) {
+          @if (viewer.state.canEditViewingDeck()) {
             <label class="bracket-select-field">
               <span class="hint">{{ viewer.i18n.t('deckView.bracketSetLabel') }}</span>
               <select
                 class="glass-input small"
-                [disabled]="viewer.bracketSaving()"
+                [disabled]="viewer.bracket.bracketSaving()"
                 [ngModel]="deck.bracket"
-                (ngModelChange)="viewer.setBracket($event)"
+                (ngModelChange)="viewer.bracket.setBracket($event)"
               >
-                <option [ngValue]="null">{{ viewer.bracketAutoOptionLabel() }}</option>
-                @for (level of viewer.bracketOptions; track level) {
+                <option [ngValue]="null">{{ viewer.bracket.bracketAutoOptionLabel() }}</option>
+                @for (level of viewer.bracket.bracketOptions; track level) {
                   <option [ngValue]="level">
                     {{ viewer.i18n.t('deckView.bracketOption', { level: level, name: viewer.i18n.t('deck.bracket.name' + level) }) }}
                   </option>
@@ -212,12 +212,12 @@
           <p class="hint bracket-caveat bracket-never-auto">{{ viewer.i18n.t('deckView.bracketNeverAutoNote') }}</p>
         </div>
 
-        @if (viewer.showBracketWhy()) {
+        @if (viewer.bracket.showBracketWhy()) {
           <!-- Zwei Kästen: links WAS die Stufe treibt (mit den verantwortlichen Karten als Bild),
                rechts die vier Einzelurteile als Zahlenzeilen. Ab Tablet nebeneinander - auf dem
                iPhone untereinander, dort passt nichts anderes. -->
           <div class="bracket-why">
-            @if (viewer.bracketAnalysis(); as analysis) {
+            @if (viewer.bracket.bracketAnalysis(); as analysis) {
               <section class="bracket-panel">
                 <h4>{{ viewer.i18n.t('deckView.bracketReasonHeading') }}</h4>
                 @for (reason of analysis.reasons; track reason.key) {
@@ -232,7 +232,7 @@
                       <!-- Der einzige Befund ohne Karten: ohne den gemessenen Betrag stünde hier
                            eine Behauptung ohne Zahl. -->
                       <p class="hint bracket-reason-price">
-                        {{ viewer.i18n.t('deckView.bracketPriceFinding', { price: (analysis.verdicts.price | currency: 'EUR') ?? '', threshold: viewer.priceThresholdEur }) }}
+                        {{ viewer.i18n.t('deckView.bracketPriceFinding', { price: (analysis.verdicts.price | currency: 'EUR') ?? '', threshold: viewer.bracket.priceThresholdEur }) }}
                       </p>
                     }
                     @if (reason.cards.length > 0) {
@@ -281,7 +281,7 @@
                     <strong class="bracket-verdict-value">{{ viewer.i18n.t('deckView.bracketLevelValue', { level: analysis.verdicts.rules }) }}</strong>
                     <button
                       class="icon-button bracket-verdict-info"
-                      (click)="viewer.openBracketMath('rules')"
+                      (click)="viewer.bracket.openBracketMath('rules')"
                       [attr.aria-label]="viewer.i18n.t('deckView.bracketExplainAria', { topic: viewer.i18n.t('deckView.bracketRowRules') })"
                     >
                       ⓘ
@@ -298,7 +298,7 @@
                     </strong>
                     <button
                       class="icon-button bracket-verdict-info"
-                      (click)="viewer.openBracketMath('spellbook')"
+                      (click)="viewer.bracket.openBracketMath('spellbook')"
                       [attr.aria-label]="viewer.i18n.t('deckView.bracketExplainAria', { topic: viewer.i18n.t('deckView.bracketRowSpellbook') })"
                     >
                       ⓘ
@@ -309,7 +309,7 @@
                     <strong class="bracket-verdict-value">{{ analysis.verdicts.tuning | percent: '1.0-0' }}</strong>
                     <button
                       class="icon-button bracket-verdict-info"
-                      (click)="viewer.openBracketMath('tuning')"
+                      (click)="viewer.bracket.openBracketMath('tuning')"
                       [attr.aria-label]="viewer.i18n.t('deckView.bracketExplainAria', { topic: viewer.i18n.t('deckView.bracketRowTuning') })"
                     >
                       ⓘ
@@ -326,7 +326,7 @@
                     </strong>
                     <button
                       class="icon-button bracket-verdict-info"
-                      (click)="viewer.openBracketMath('price')"
+                      (click)="viewer.bracket.openBracketMath('price')"
                       [attr.aria-label]="viewer.i18n.t('deckView.bracketExplainAria', { topic: viewer.i18n.t('deckView.bracketRowPrice') })"
                     >
                       ⓘ
@@ -337,7 +337,7 @@
                     <strong class="bracket-verdict-value">{{ viewer.i18n.t('deckView.bracketPowerValue', { power: (analysis.power | number: '1.1-1') ?? '' }) }}</strong>
                     <button
                       class="icon-button bracket-verdict-info"
-                      (click)="viewer.openBracketMath('power')"
+                      (click)="viewer.bracket.openBracketMath('power')"
                       [attr.aria-label]="viewer.i18n.t('deckView.bracketExplainAria', { topic: viewer.i18n.t('deckView.bracketRowPower') })"
                     >
                       ⓘ
@@ -389,7 +389,7 @@
         <button [class.active]="viewer.deckTab() === 'steckbrief'" (click)="viewer.deckTab.set('steckbrief')">
           {{ viewer.i18n.t('deckSteckbrief.tab') }}
         </button>
-        @if (viewer.primer.verfuegbar() && (viewer.canEditViewingDeck() || viewer.primer.hatPrimer())) {
+        @if (viewer.primer.verfuegbar() && (viewer.state.canEditViewingDeck() || viewer.primer.hatPrimer())) {
           <button [class.active]="viewer.deckTab() === 'primer'" (click)="viewer.deckTab.set('primer')">
             {{ viewer.i18n.t('deckPrimer.tabPrimer') }}
           </button>
@@ -397,14 +397,14 @@
       </div>
 
       @if (viewer.deckTab() === 'primer') {
-        <app-deck-primer [deckId]="deck.id" [canEdit]="viewer.canEditViewingDeck()" />
+        <app-deck-primer [deckId]="deck.id" [canEdit]="viewer.state.canEditViewingDeck()" />
       } @else if (viewer.deckTab() === 'steckbrief') {
         @if (viewer.steckbriefDeck(); as steckbriefDeck) {
           <app-deck-steckbrief
             [deck]="steckbriefDeck"
             [karten]="viewer.steckbriefKarten()"
-            [schnittMv]="viewer.averageCmc()"
-            [canEdit]="viewer.canEditViewingDeck()"
+            [schnittMv]="viewer.analysis.averageCmc()"
+            [canEdit]="viewer.state.canEditViewingDeck()"
           />
         }
       } @else {
@@ -461,15 +461,15 @@
             {{ viewer.i18n.t('deckView.text') }}
           </button>
         </div>
-        @if (viewer.canEditViewingDeck()) {
+        @if (viewer.state.canEditViewingDeck()) {
           <!-- Hervorgehoben wird der Knopf, WÄHREND der Bearbeiten-Modus läuft - vorher war es
                genau umgekehrt (.primary im Ruhezustand, ausgegraut beim Bearbeiten) und damit
                verkehrt herum zu lesen. Nicht anklickbar bleibt er im Modus trotzdem: verlassen
                wird der bewusst nur über Speichern/Abbrechen darunter (siehe toggleEditMode()). -->
           <button
             class="glass-button small deck-edit-toggle"
-            [class.primary]="viewer.editMode()"
-            [disabled]="viewer.editMode()"
+            [class.primary]="viewer.state.editMode()"
+            [disabled]="viewer.state.editMode()"
             (click)="viewer.toggleEditMode()"
           >
             {{ viewer.i18n.t('deckView.edit') }}
@@ -479,10 +479,10 @@
           <button class="glass-button" (click)="viewer.toggleChangeLog()">
             {{ viewer.i18n.t('deckView.history') }}
           </button>
-          <button class="glass-button" [disabled]="viewer.analysisBusy()" (click)="openPdfExport()">
+          <button class="glass-button" [disabled]="viewer.analysis.analysisBusy()" (click)="openPdfExport()">
             {{ viewer.i18n.t('deckView.asPdf') }}
           </button>
-          @if (viewer.canEditViewingDeck()) {
+          @if (viewer.state.canEditViewingDeck()) {
             <button class="glass-button" (click)="reimportDecklist()">{{ viewer.i18n.t('deckView.reimportList') }}</button>
             <button
               class="glass-button"
@@ -550,26 +550,26 @@
         </div>
       }
 
-      @if (viewer.editMode()) {
+      @if (viewer.state.editMode()) {
         <div class="edit-mode-bar">
-          @if (viewer.commanderMarkError()) {
-            <p class="error">{{ viewer.commanderMarkError() }}</p>
+          @if (viewer.edit.commanderMarkError()) {
+            <p class="error">{{ viewer.edit.commanderMarkError() }}</p>
           }
-          @if (!viewer.hasPendingChanges()) {
+          @if (!viewer.edit.hasPendingChanges()) {
             <p class="hint">{{ viewer.i18n.t('deckView.noChanges') }}</p>
           } @else {
             <p class="hint">{{ viewer.i18n.t('deckView.unsavedChanges') }}</p>
             <ul class="pending-change-list">
-              @for (c of viewer.pendingChangeDetails().added; track c.cardName) {
+              @for (c of viewer.edit.pendingChangeDetails().added; track c.cardName) {
                 <li class="added">{{ c.quantity }}× {{ c.cardName }}</li>
               }
-              @for (c of viewer.pendingChangeDetails().removed; track c.cardName) {
+              @for (c of viewer.edit.pendingChangeDetails().removed; track c.cardName) {
                 <li class="removed">{{ c.quantity }}× {{ c.cardName }}</li>
               }
-              @for (c of viewer.pendingCommanderChangeDetails(); track c.cardName) {
+              @for (c of viewer.edit.pendingCommanderChangeDetails(); track c.cardName) {
                 <li class="added">{{ c.cardName }} {{ c.isCommander ? viewer.i18n.t('deckView.becomesCommander') : viewer.i18n.t('deckView.noLongerCommander') }}</li>
               }
-              @for (c of viewer.pendingMaybeboardChangeDetails(); track c.cardName) {
+              @for (c of viewer.edit.pendingMaybeboardChangeDetails(); track c.cardName) {
                 <li class="added">{{ c.cardName }} {{ c.isMaybeboard ? viewer.i18n.t('deckView.movedToMaybeboard') : viewer.i18n.t('deckView.movedToDeck') }}</li>
               }
             </ul>
@@ -577,29 +577,29 @@
           <div class="chip-row" data-tutorial="deck-edit-topbar">
             <button
               class="glass-button primary small"
-              [disabled]="!viewer.hasPendingChanges() || viewer.editSaveBusy()"
+              [disabled]="!viewer.edit.hasPendingChanges() || viewer.edit.editSaveBusy()"
               (click)="viewer.saveEdits()"
             >
-              {{ viewer.editSaveBusy() ? viewer.i18n.t('deckView.savingEdits') : viewer.i18n.t('deckView.save') }}
+              {{ viewer.edit.editSaveBusy() ? viewer.i18n.t('deckView.savingEdits') : viewer.i18n.t('deckView.save') }}
             </button>
-            <button class="glass-button small" [disabled]="viewer.editSaveBusy()" (click)="viewer.cancelEdits()">
+            <button class="glass-button small" [disabled]="viewer.edit.editSaveBusy()" (click)="viewer.cancelEdits()">
               {{ viewer.i18n.t('deckView.cancelX') }}
             </button>
             <button
               class="glass-chip small"
-              [class.active]="viewer.showCommanderToggle()"
-              (click)="viewer.showCommanderToggle.set(!viewer.showCommanderToggle())"
+              [class.active]="viewer.edit.showCommanderToggle()"
+              (click)="viewer.edit.showCommanderToggle.set(!viewer.edit.showCommanderToggle())"
             >
               {{ viewer.i18n.t('deckView.markCommander') }}
             </button>
-            <button class="glass-chip small" [disabled]="viewer.tokenScanBusy()" (click)="viewer.scanForTokens()">
-              {{ viewer.tokenScanBusy() ? viewer.i18n.t('deckView.scanningTokens') : viewer.i18n.t('deckView.scanTokens') }}
+            <button class="glass-chip small" [disabled]="viewer.edit.tokenScanBusy()" (click)="viewer.scanForTokens()">
+              {{ viewer.edit.tokenScanBusy() ? viewer.i18n.t('deckView.scanningTokens') : viewer.i18n.t('deckView.scanTokens') }}
             </button>
 
             <select
               class="glass-input small"
               [disabled]="viewer.archetypeSaving()"
-              [ngModel]="viewer.viewingDeck()?.edhrecTag ?? 'all'"
+              [ngModel]="viewer.state.viewingDeck()?.edhrecTag ?? 'all'"
               (ngModelChange)="viewer.setArchetype($event === 'all' ? null : $event)"
             >
               <option [ngValue]="'all'">{{ viewer.i18n.t('commanderRec.anyArchetype') }}</option>
@@ -611,7 +611,7 @@
             <select
               class="glass-input small"
               [disabled]="viewer.archetypeSaving() || viewer.creatureTypeOptionsLoading()"
-              [ngModel]="viewer.viewingDeck()?.creatureType ?? 'all'"
+              [ngModel]="viewer.state.viewingDeck()?.creatureType ?? 'all'"
               (ngModelChange)="viewer.setCreatureType($event === 'all' ? null : $event)"
             >
               <option [ngValue]="'all'">
@@ -622,19 +622,19 @@
               }
             </select>
           </div>
-          @if (viewer.tokenScanMessage()) {
-            <p class="hint">{{ viewer.tokenScanMessage() }}</p>
+          @if (viewer.edit.tokenScanMessage()) {
+            <p class="hint">{{ viewer.edit.tokenScanMessage() }}</p>
           }
         </div>
 
         <div class="add-card-panel">
           <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.addCardTitle') }}</h4>
           <div class="chip-row" data-tutorial="deck-add-card-mode">
-            <button class="glass-chip small" [class.active]="viewer.addCardMode() === 'search'" (click)="viewer.setAddCardMode('search')">
+            <button class="glass-chip small" [class.active]="viewer.edhrecPanel.addCardMode() === 'search'" (click)="viewer.edhrecPanel.setAddCardMode('search')">
               {{ viewer.i18n.t('deckView.search') }}
             </button>
-            @if (viewer.edhrecEnabled()) {
-              <button class="glass-chip small" [class.active]="viewer.addCardMode() === 'edhrec'" (click)="viewer.setAddCardMode('edhrec')">
+            @if (viewer.edhrecPanel.edhrecEnabled()) {
+              <button class="glass-chip small" [class.active]="viewer.edhrecPanel.addCardMode() === 'edhrec'" (click)="viewer.edhrecPanel.setAddCardMode('edhrec')">
                 {{ viewer.i18n.t('deckView.edhrec') }}
               </button>
             }
@@ -643,26 +643,26 @@
           <div class="chip-row" data-tutorial="deck-add-card-destination">
             <button
               class="glass-chip small"
-              [class.active]="!viewer.addCardToMaybeboard()"
-              (click)="viewer.toggleAddCardToMaybeboard(false)"
+              [class.active]="!viewer.edit.addCardToMaybeboard()"
+              (click)="viewer.edit.toggleAddCardToMaybeboard(false)"
             >
               {{ viewer.i18n.t('deckView.addDestinationDeck') }}
             </button>
             <button
               class="glass-chip small"
-              [class.active]="viewer.addCardToMaybeboard()"
-              (click)="viewer.toggleAddCardToMaybeboard(true)"
+              [class.active]="viewer.edit.addCardToMaybeboard()"
+              (click)="viewer.edit.toggleAddCardToMaybeboard(true)"
             >
               {{ viewer.i18n.t('deckView.addDestinationMaybeboard') }}
             </button>
           </div>
 
-          @if (viewer.addCardMode() === 'search') {
-          @if (!viewer.deckColorIdentitySubset()) {
+          @if (viewer.edhrecPanel.addCardMode() === 'search') {
+          @if (!viewer.state.deckColorIdentitySubset()) {
             <p class="hint">{{ viewer.i18n.t('deckView.searchAllCommanderLegal') }}</p>
-          } @else if (viewer.deckColorIdentitySubset()!.length > 0) {
+          } @else if (viewer.state.deckColorIdentitySubset()!.length > 0) {
             <p class="hint">
-              {{ viewer.i18n.t('deckView.onlyWithinColorIdentity', { colors: viewer.deckColorIdentitySubset()!.join('/') }) }}
+              {{ viewer.i18n.t('deckView.onlyWithinColorIdentity', { colors: viewer.state.deckColorIdentitySubset()!.join('/') }) }}
             </p>
           } @else {
             <p class="hint">{{ viewer.i18n.t('deckView.onlyColorless') }}</p>
@@ -675,8 +675,8 @@
           <div class="chip-row card-filter-row" data-tutorial="deck-add-card-filters">
             <select
               class="glass-input small"
-              [ngModel]="viewer.addCardTypeFilter()"
-              (ngModelChange)="viewer.setAddCardTypeFilter($event)"
+              [ngModel]="viewer.edit.addCardTypeFilter()"
+              (ngModelChange)="viewer.edit.setAddCardTypeFilter($event)"
             >
               <option [ngValue]="'all'">{{ viewer.i18n.t('deckView.typeAll') }}</option>
               <option [ngValue]="'Kreatur'">{{ viewer.translateLabel('Kreatur') }}</option>
@@ -693,43 +693,43 @@
               class="glass-input small"
               type="text"
               [placeholder]="viewer.i18n.t('deckView.creatureTypePlaceholder')"
-              [ngModel]="viewer.addCardCreatureTypeFilter()"
-              (ngModelChange)="viewer.onAddCardCreatureTypeInput($event)"
+              [ngModel]="viewer.edit.addCardCreatureTypeFilter()"
+              (ngModelChange)="viewer.edit.onAddCardCreatureTypeInput($event)"
             />
             <app-cmc-filter
-              [value]="viewer.addCardCmcFilter()"
-              (valueChange)="viewer.setAddCardCmcFilter($event)"
+              [value]="viewer.edit.addCardCmcFilter()"
+              (valueChange)="viewer.edit.setAddCardCmcFilter($event)"
             />
             <app-color-filter
-              [value]="viewer.addCardColorFilter()"
-              (valueChange)="viewer.setAddCardColorFilter($event)"
+              [value]="viewer.edit.addCardColorFilter()"
+              (valueChange)="viewer.edit.setAddCardColorFilter($event)"
             />
             <select
               class="glass-input small"
-              [ngModel]="viewer.addCardEffectFilter()"
-              (ngModelChange)="viewer.setAddCardEffectFilter($event)"
+              [ngModel]="viewer.edit.addCardEffectFilter()"
+              (ngModelChange)="viewer.edit.setAddCardEffectFilter($event)"
             >
               <option [ngValue]="'all'">{{ viewer.i18n.t('deckView.effectAll') }}</option>
-              @for (f of viewer.effectFilters; track f.value) {
-                <option [ngValue]="f.value">{{ viewer.effectFilterLabel(f.value) }}</option>
+              @for (f of viewer.effects.effectFilters; track f.value) {
+                <option [ngValue]="f.value">{{ viewer.effects.effectFilterLabel(f.value) }}</option>
               }
             </select>
             <select
               class="glass-input small"
-              [ngModel]="viewer.addCardKeywordFilter()"
-              (ngModelChange)="viewer.setAddCardKeywordFilter($event)"
+              [ngModel]="viewer.edit.addCardKeywordFilter()"
+              (ngModelChange)="viewer.edit.setAddCardKeywordFilter($event)"
             >
               <option [ngValue]="'all'">{{ viewer.i18n.t('deckView.abilityAll') }}</option>
-              @for (k of viewer.keywordFilters; track k.value) {
-                <option [ngValue]="k.value">{{ viewer.keywordFilterLabel(k.value) }}</option>
+              @for (k of viewer.effects.keywordFilters; track k.value) {
+                <option [ngValue]="k.value">{{ viewer.effects.keywordFilterLabel(k.value) }}</option>
               }
             </select>
           </div>
           <div class="chip-row">
-            <button class="glass-chip small" [class.active]="viewer.addCardSortMode() === 'name'" (click)="viewer.setAddCardSortMode('name')">
+            <button class="glass-chip small" [class.active]="viewer.edit.addCardSortMode() === 'name'" (click)="viewer.edit.setAddCardSortMode('name')">
               {{ viewer.i18n.t('deckView.sortByName') }}
             </button>
-            <button class="glass-chip small" [class.active]="viewer.addCardSortMode() === 'cmc'" (click)="viewer.setAddCardSortMode('cmc')">
+            <button class="glass-chip small" [class.active]="viewer.edit.addCardSortMode() === 'cmc'" (click)="viewer.edit.setAddCardSortMode('cmc')">
               {{ viewer.i18n.t('deckView.sortByCmc') }}
             </button>
           </div>
@@ -737,74 +737,74 @@
             class="glass-input card-name-search"
             type="text"
             [placeholder]="viewer.i18n.t('deckView.cardNamePlaceholder')"
-            [ngModel]="viewer.addCardQuery()"
-            (ngModelChange)="viewer.onAddCardSearchInput($event)"
+            [ngModel]="viewer.edit.addCardQuery()"
+            (ngModelChange)="viewer.edit.onAddCardSearchInput($event)"
           />
           }
 
-          @if (viewer.addCardMode() === 'edhrec') {
-            @if (!viewer.edhrecCommanderName()) {
+          @if (viewer.edhrecPanel.addCardMode() === 'edhrec') {
+            @if (!viewer.edhrecPanel.edhrecCommanderName()) {
               <p class="hint">{{ viewer.i18n.t('deckView.noCommanderForEdhrec') }}</p>
             } @else {
               <p class="hint edhrec-credit">
                 {{ viewer.i18n.t('deckView.edhrecCredit') }}
                 <a href="https://edhrec.com" target="_blank" rel="noopener">edhrec.com</a>
               </p>
-              @if (viewer.edhrecAvailableTags().length > 0) {
+              @if (viewer.edhrecPanel.edhrecAvailableTags().length > 0) {
                 <div class="import-field">
                   <label class="hint" for="edhrec-browse-tag-select">{{ viewer.i18n.t('deckView.browseOtherTag') }}</label>
                   <select
                     id="edhrec-browse-tag-select"
                     class="glass-input small"
-                    [ngModel]="viewer.effectiveEdhrecTag()"
-                    (ngModelChange)="viewer.setEdhrecBrowseTag($event)"
+                    [ngModel]="viewer.edhrecPanel.effectiveEdhrecTag()"
+                    (ngModelChange)="viewer.edhrecPanel.setEdhrecBrowseTag($event)"
                   >
                     <option [ngValue]="null">{{ viewer.i18n.t('deckView.noTag') }}</option>
-                    @for (t of viewer.edhrecAvailableTags(); track t.slug) {
+                    @for (t of viewer.edhrecPanel.edhrecAvailableTags(); track t.slug) {
                       <option [ngValue]="t.slug">{{ t.value }} ({{ t.count }})</option>
                     }
                   </select>
-                  @if (viewer.edhrecBrowseTagActive() && viewer.edhrecBrowseTag() !== viewer.edhrecTagSlug()) {
+                  @if (viewer.edhrecPanel.edhrecBrowseTagActive() && viewer.edhrecPanel.edhrecBrowseTag() !== viewer.edhrecPanel.edhrecTagSlug()) {
                     <p class="hint bracket-caveat">
                       {{ viewer.i18n.t('deckView.browseOnlyHint') }}
-                      <button class="glass-chip small" (click)="viewer.resetEdhrecBrowseTag()">{{ viewer.i18n.t('deckView.resetBrowse') }}</button>
+                      <button class="glass-chip small" (click)="viewer.edhrecPanel.resetEdhrecBrowseTag()">{{ viewer.i18n.t('deckView.resetBrowse') }}</button>
                     </p>
                   }
                 </div>
               }
 
-              @if (viewer.edhrecBusy()) {
+              @if (viewer.edhrecPanel.edhrecBusy()) {
                 <p class="hint">
-                  {{ viewer.i18n.t('deckView.loadingEdhrecSuggestionsFor', { commander: viewer.edhrecCommanderName() ?? '' }) }}
-                  @if (viewer.edhrecTagLabel(); as tag) { + {{ tag }} } …
+                  {{ viewer.i18n.t('deckView.loadingEdhrecSuggestionsFor', { commander: viewer.edhrecPanel.edhrecCommanderName() ?? '' }) }}
+                  @if (viewer.edhrecPanel.edhrecTagLabel(); as tag) { + {{ tag }} } …
                 </p>
-              } @else if (viewer.edhrecFailed()) {
+              } @else if (viewer.edhrecPanel.edhrecFailed()) {
                 <p class="hint">
                   {{ viewer.i18n.t('deckView.edhrecUnavailable') }}
                 </p>
-              } @else if (viewer.edhrecLists()) {
+              } @else if (viewer.edhrecPanel.edhrecLists()) {
                 <p class="hint bracket-caveat">
-                  {{ viewer.i18n.t('deckView.unofficialEdhrecDataFor', { commander: viewer.edhrecCommanderName() ?? '' }) }}
-                  @if (viewer.edhrecTagLabel(); as tag) { + {{ tag }} }. {{ viewer.i18n.t('deckView.alreadyInDeckSuffix') }}
+                  {{ viewer.i18n.t('deckView.unofficialEdhrecDataFor', { commander: viewer.edhrecPanel.edhrecCommanderName() ?? '' }) }}
+                  @if (viewer.edhrecPanel.edhrecTagLabel(); as tag) { + {{ tag }} }. {{ viewer.i18n.t('deckView.alreadyInDeckSuffix') }}
                 </p>
               }
             }
           }
 
-          @if (viewer.addCardMessage()) {
-            <p class="hint">{{ viewer.addCardMessage() }}</p>
+          @if (viewer.edit.addCardMessage()) {
+            <p class="hint">{{ viewer.edit.addCardMessage() }}</p>
           }
         </div>
 
-        @if (viewer.addCardMode() === 'search') {
-          @if (viewer.addCardBusy()) {
+        @if (viewer.edhrecPanel.addCardMode() === 'search') {
+          @if (viewer.edit.addCardBusy()) {
             <p class="hint">{{ viewer.i18n.t('deckView.searching') }}</p>
-          } @else if (viewer.addCardResults().length > 0) {
+          } @else if (viewer.edit.addCardResults().length > 0) {
             <div class="card-pick-grid">
-              @for (card of viewer.pagedAddCardResults(); track card.name) {
+              @for (card of viewer.edit.pagedAddCardResults(); track card.name) {
                 <div class="card-pick-tile">
                   <div class="card-pick-image">
-                    @if (viewer.isAddCardFlipped(card.name) && card.backImageUrl) {
+                    @if (viewer.edit.isAddCardFlipped(card.name) && card.backImageUrl) {
                       <img [src]="card.backImageUrl" [alt]="card.name" loading="lazy" />
                     } @else if (card.imageUrl) {
                       <img [src]="card.imageUrl" [alt]="card.name" loading="lazy" />
@@ -814,7 +814,7 @@
                     @if (card.backImageUrl) {
                       <button
                         class="card-pick-flip-button"
-                        (click)="$event.stopPropagation(); viewer.toggleAddCardFlip(card.name)"
+                        (click)="$event.stopPropagation(); viewer.edit.toggleAddCardFlip(card.name)"
                         [attr.aria-label]="viewer.i18n.t('deckView.flipAria')"
                       >
                         <app-icon name="refresh" />
@@ -822,37 +822,37 @@
                     }
                     <button
                       class="card-pick-add-button"
-                      [class.in-deck]="viewer.isCardInDeck(card.name)"
-                      [class.flash-add]="viewer.isFlashing(card.name, 'add')"
-                      [disabled]="viewer.isCardInDeck(card.name)"
-                      (click)="viewer.addCard(card)"
-                      [attr.aria-label]="viewer.isCardInDeck(card.name) ? viewer.i18n.t('deckView.alreadyInDeckAria') : viewer.i18n.t('deckView.addAria')"
+                      [class.in-deck]="viewer.state.isCardInDeck(card.name)"
+                      [class.flash-add]="viewer.edit.isFlashing(card.name, 'add')"
+                      [disabled]="viewer.state.isCardInDeck(card.name)"
+                      (click)="viewer.edit.addCard(card)"
+                      [attr.aria-label]="viewer.state.isCardInDeck(card.name) ? viewer.i18n.t('deckView.alreadyInDeckAria') : viewer.i18n.t('deckView.addAria')"
                     >
-                      <app-icon [name]="viewer.isCardInDeck(card.name) ? 'check' : 'plus'" />
+                      <app-icon [name]="viewer.state.isCardInDeck(card.name) ? 'check' : 'plus'" />
                     </button>
                   </div>
                 </div>
               }
             </div>
-            @if (viewer.addCardResultsTotalPages() > 1) {
+            @if (viewer.edit.addCardResultsTotalPages() > 1) {
               <div class="chip-row pager">
                 <button
                   class="icon-button"
-                  (click)="viewer.prevAddCardResultsPage()"
-                  [disabled]="viewer.addCardResultsEffectivePage() === 0"
+                  (click)="viewer.edit.prevAddCardResultsPage()"
+                  [disabled]="viewer.edit.addCardResultsEffectivePage() === 0"
                   [attr.aria-label]="viewer.i18n.t('deckView.previousPage')"
                 >◀</button>
                 <span class="hint">
                   {{ viewer.i18n.t('deckView.searchResultsPage', {
-                    page: viewer.addCardResultsEffectivePage() + 1,
-                    total: viewer.addCardResultsTotalPages(),
-                    count: viewer.addCardResults().length
+                    page: viewer.edit.addCardResultsEffectivePage() + 1,
+                    total: viewer.edit.addCardResultsTotalPages(),
+                    count: viewer.edit.addCardResults().length
                   }) }}
                 </span>
                 <button
                   class="icon-button"
-                  (click)="viewer.nextAddCardResultsPage()"
-                  [disabled]="viewer.addCardResultsEffectivePage() >= viewer.addCardResultsTotalPages() - 1"
+                  (click)="viewer.edit.nextAddCardResultsPage()"
+                  [disabled]="viewer.edit.addCardResultsEffectivePage() >= viewer.edit.addCardResultsTotalPages() - 1"
                   [attr.aria-label]="viewer.i18n.t('deckView.nextPage')"
                 >▶</button>
               </div>
@@ -860,22 +860,22 @@
           }
         }
 
-        @if (viewer.addCardMode() === 'edhrec' && viewer.edhrecLists(); as lists) {
+        @if (viewer.edhrecPanel.addCardMode() === 'edhrec' && viewer.edhrecPanel.edhrecLists(); as lists) {
           @for (list of lists; track list.tag) {
             @if (list.cards.length > 0) {
               <button class="glass-chip small" (click)="toggleEdhrecCategory(list)">
                 {{ isEdhrecCategoryExpanded(list.tag) ? '▾' : '▸' }} {{ list.header }} ({{ list.cards.length }})
               </button>
               @if (isEdhrecCategoryExpanded(list.tag)) {
-                @if (viewer.isEdhrecCategoryImagesBusy(list.tag)) {
+                @if (viewer.edhrecPanel.isEdhrecCategoryImagesBusy(list.tag)) {
                   <p class="hint">{{ viewer.i18n.t('deckView.loadingImages') }}</p>
                 }
                 <div class="card-pick-grid">
                   @for (card of list.cards; track card.name) {
                     <div class="card-pick-tile">
                       <div class="card-pick-image">
-                        @if (viewer.edhrecCardImage(card.name); as img) {
-                          <app-card-image [imageUrl]="img" [backImageUrl]="viewer.edhrecCardBackImage(card.name)" [alt]="card.name" />
+                        @if (viewer.edhrecPanel.edhrecCardImage(card.name); as img) {
+                          <app-card-image [imageUrl]="img" [backImageUrl]="viewer.edhrecPanel.edhrecCardBackImage(card.name)" [alt]="card.name" />
                         } @else {
                           <div class="deck-card-placeholder">{{ card.name }}</div>
                         }
@@ -887,13 +887,13 @@
                              statt die Höhenänderung wie sonst üblich automatisch auszugleichen. -->
                         <button
                           class="card-pick-add-button"
-                          [class.in-deck]="viewer.isCardInDeck(card.name)"
-                          [class.flash-add]="viewer.isFlashing(card.name, 'add')"
-                          [disabled]="viewer.isCardInDeck(card.name)"
-                          (click)="viewer.addEdhrecCard(card.name)"
-                          [attr.aria-label]="viewer.isCardInDeck(card.name) ? viewer.i18n.t('deckView.alreadyInDeckAria') : viewer.i18n.t('deckView.addAria')"
+                          [class.in-deck]="viewer.state.isCardInDeck(card.name)"
+                          [class.flash-add]="viewer.edit.isFlashing(card.name, 'add')"
+                          [disabled]="viewer.state.isCardInDeck(card.name)"
+                          (click)="viewer.edit.addEdhrecCard(card.name)"
+                          [attr.aria-label]="viewer.state.isCardInDeck(card.name) ? viewer.i18n.t('deckView.alreadyInDeckAria') : viewer.i18n.t('deckView.addAria')"
                         >
-                          <app-icon [name]="viewer.isCardInDeck(card.name) ? 'check' : 'plus'" />
+                          <app-icon [name]="viewer.state.isCardInDeck(card.name) ? 'check' : 'plus'" />
                         </button>
                       </div>
                       <span class="card-pick-stats">
@@ -908,7 +908,7 @@
         }
       }
 
-      @if (viewer.viewingDeckCards().length > 0) {
+      @if (viewer.state.viewingDeckCards().length > 0) {
         <div class="deck-analysis-header-row" data-tutorial="deck-analysis-toggle">
           <button class="glass-chip small" (click)="viewer.toggleDeckAnalysis()">
             {{ viewer.showDeckAnalysis() ? '▾' : '▸' }} {{ viewer.i18n.t('deckView.deckAnalysis') }}
@@ -975,29 +975,29 @@
 
         @if (viewer.showDeckAnalysis()) {
           <div class="deck-analysis">
-            @if (viewer.analysisBusy()) {
+            @if (viewer.analysis.analysisBusy()) {
               <p class="hint">{{ viewer.i18n.t('deckView.loadingAnalysis') }}</p>
             } @else {
               <section class="analysis-section analysis-section-wide">
                 <div class="stat-tiles">
                   <div class="stat-tile">
-                    <span class="stat-value">{{ viewer.averageCmc() != null ? ((viewer.averageCmc() | number: '1.1-2')) : '–' }}</span>
+                    <span class="stat-value">{{ viewer.analysis.averageCmc() != null ? ((viewer.analysis.averageCmc() | number: '1.1-2')) : '–' }}</span>
                     <span class="stat-label">{{ viewer.i18n.t('deckView.avgCmcTile') }}</span>
                   </div>
                   <div class="stat-tile">
-                    <span class="stat-value">{{ viewer.landCount() }}</span>
+                    <span class="stat-value">{{ viewer.analysis.landCount() }}</span>
                     <span class="stat-label">{{ viewer.i18n.t('deckView.landsTile') }}</span>
                   </div>
                   <div class="stat-tile">
-                    <span class="stat-value">{{ viewer.nonBasicLandPercent() != null ? (viewer.nonBasicLandPercent() + '%') : '–' }}</span>
+                    <span class="stat-value">{{ viewer.analysis.nonBasicLandPercent() != null ? (viewer.analysis.nonBasicLandPercent() + '%') : '–' }}</span>
                     <span class="stat-label">{{ viewer.i18n.t('deckView.nonBasicLandTile') }}</span>
                   </div>
                   <div class="stat-tile">
-                    @if (viewer.priceBusy()) {
+                    @if (viewer.analysis.priceBusy()) {
                       <span class="stat-value">…</span>
-                    } @else if (viewer.totalDeckPrice(); as price) {
+                    } @else if (viewer.analysis.totalDeckPrice(); as price) {
                       <span class="stat-value">
-                        @if (viewer.deckPriceIncomplete()) {
+                        @if (viewer.analysis.deckPriceIncomplete()) {
                           <span class="stat-value-prefix">{{ viewer.i18n.t('deckView.priceFrom') }}</span>
                         }{{ price | currency: 'EUR' }}
                       </span>
@@ -1011,29 +1011,29 @@
 
               <section class="analysis-section">
                 <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.manaCurveTitle') }}</h4>
-                <app-bar-chart [data]="viewer.manaCurveChart()" orientation="vertical" />
+                <app-bar-chart [data]="viewer.analysis.manaCurveChart()" orientation="vertical" />
               </section>
 
               <section class="analysis-section">
                 <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.pipDistTitle') }}</h4>
-                @if (viewer.pipDistribution().length > 0) {
-                  <app-bar-chart [data]="viewer.pipDistributionChart()" labelWidth="22px" />
+                @if (viewer.analysis.pipDistribution().length > 0) {
+                  <app-bar-chart [data]="viewer.analysis.pipDistributionChart()" labelWidth="22px" />
                 }
               </section>
 
               <section class="analysis-section">
                 <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.manaSourceTitle') }}</h4>
-                @if (viewer.manaSourceCount() > 0) {
+                @if (viewer.analysis.manaSourceCount() > 0) {
                   <p class="hint">
                     {{
                       viewer.i18n.t('deckView.manaSourceSummary', {
-                        count: viewer.manaSourceCount(),
-                        total: viewer.viewingTotalCards(),
-                        nonLand: viewer.nonLandManaSourceCount()
+                        count: viewer.analysis.manaSourceCount(),
+                        total: viewer.state.viewingTotalCards(),
+                        nonLand: viewer.analysis.nonLandManaSourceCount()
                       })
                     }}
                   </p>
-                  <app-bar-chart [data]="viewer.manaSourceChart()" labelWidth="22px" />
+                  <app-bar-chart [data]="viewer.analysis.manaSourceChart()" labelWidth="22px" />
                 } @else {
                   <p class="hint">{{ viewer.i18n.t('deckView.manaSourceEmpty') }}</p>
                 }
@@ -1041,25 +1041,25 @@
 
               <section class="analysis-section">
                 <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.typeBreakdownTitle') }}</h4>
-                <app-bar-chart [data]="viewer.typeBreakdownChart()" labelWidth="110px" />
+                <app-bar-chart [data]="viewer.analysis.typeBreakdownChart()" labelWidth="110px" />
               </section>
 
               <section class="analysis-section analysis-section-wide">
                 <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.effectCategoriesTitle') }}</h4>
-                @if (viewer.effectCategoryCountsBusy()) {
-                  @if (viewer.effectCategoryProgress(); as progress) {
+                @if (viewer.effects.effectCategoryCountsBusy()) {
+                  @if (viewer.effects.effectCategoryProgress(); as progress) {
                     <p class="hint">{{ viewer.i18n.t('deckView.loadingEffectCategoriesProgress', { done: progress.done, total: progress.total }) }}</p>
                   } @else {
                     <p class="hint">{{ viewer.i18n.t('deckView.loadingEffectCategories') }}</p>
                   }
-                } @else if (viewer.effectCategoryStats(); as stats) {
+                } @else if (viewer.effects.effectCategoryStats(); as stats) {
                   <p class="hint">{{ viewer.i18n.t('deckView.effectCategoriesHint') }}</p>
                   <div class="stat-tiles">
                     @for (stat of stats; track stat.key) {
                       <button
                         class="stat-tile stat-tile-button"
                         [disabled]="stat.count === 0"
-                        (click)="viewer.openEffectCategoryPopup(viewer.i18n.t(stat.labelKey), stat.cards)"
+                        (click)="viewer.effects.openEffectCategoryPopup(viewer.i18n.t(stat.labelKey), stat.cards)"
                       >
                         <span class="stat-value">{{ stat.count }}</span>
                         <span class="stat-label">{{ viewer.i18n.t(stat.labelKey) }}</span>
@@ -1074,20 +1074,20 @@
                 <!-- Der erklärende Satz steht bewusst UNTER den Karten: sonst schiebt er als
                      einziger Abschnitt sein Kartenraster zwei Zeilen nach unten, und die
                      Kartenbilder der Analyse stünden nicht mehr alle auf einer Höhe. -->
-                @if (viewer.gameChangerCards().length > 0) {
-                  <ng-container [ngTemplateOutlet]="analysisCardGrid" [ngTemplateOutletContext]="{ $implicit: viewer.gameChangerCards() }"></ng-container>
+                @if (viewer.analysis.gameChangerCards().length > 0) {
+                  <ng-container [ngTemplateOutlet]="analysisCardGrid" [ngTemplateOutletContext]="{ $implicit: viewer.analysis.gameChangerCards() }"></ng-container>
                 }
                 <p class="hint">
-                  {{ viewer.i18n.t('deckView.gameChangerSummary', { count: viewer.gameChangerCount(), total: viewer.viewingTotalCards(), hint: viewer.estimatedBracketHint() }) }}
+                  {{ viewer.i18n.t('deckView.gameChangerSummary', { count: viewer.analysis.gameChangerCount(), total: viewer.state.viewingTotalCards(), hint: viewer.analysis.estimatedBracketHint() }) }}
                 </p>
               </section>
 
               <section class="analysis-section">
                 <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.tutorsTitle') }}</h4>
-                @if (viewer.tutorCards().length === 0) {
+                @if (viewer.analysis.tutorCards().length === 0) {
                   <p class="hint">{{ viewer.i18n.t('deckView.noneFound') }}</p>
                 } @else {
-                  <ng-container [ngTemplateOutlet]="analysisCardGrid" [ngTemplateOutletContext]="{ $implicit: viewer.tutorCards() }"></ng-container>
+                  <ng-container [ngTemplateOutlet]="analysisCardGrid" [ngTemplateOutletContext]="{ $implicit: viewer.analysis.tutorCards() }"></ng-container>
                 }
               </section>
 
@@ -1096,7 +1096,7 @@
                    gerade nicht erreichbar ist. Nur WAS eine Combo erzeugt, weiß allein deren
                    Live-Auswertung - fehlt sie, wird das im Combo-Fenster als Fußnote gesagt,
                    statt die ganze Sektion für nicht verfügbar zu erklären. -->
-              @if (viewer.bracketEstimateBusy() && viewer.spellbookCardFlags().size === 0) {
+              @if (viewer.analysis.bracketEstimateBusy() && viewer.analysis.spellbookCardFlags().size === 0) {
                 <section class="analysis-section">
                   <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.mldTitle') }}</h4>
                   <p class="hint">{{ viewer.i18n.t('deckView.loadingSpellbookEval') }}</p>
@@ -1104,19 +1104,19 @@
               } @else {
                 <section class="analysis-section">
                   <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.massLandDenialTitle') }}</h4>
-                  @if (viewer.massLandDenialCards().length === 0) {
+                  @if (viewer.analysis.massLandDenialCards().length === 0) {
                     <p class="hint">{{ viewer.i18n.t('deckView.noneFound') }}</p>
                   } @else {
-                    <ng-container [ngTemplateOutlet]="analysisCardGrid" [ngTemplateOutletContext]="{ $implicit: viewer.massLandDenialCards() }"></ng-container>
+                    <ng-container [ngTemplateOutlet]="analysisCardGrid" [ngTemplateOutletContext]="{ $implicit: viewer.analysis.massLandDenialCards() }"></ng-container>
                   }
                 </section>
 
                 <section class="analysis-section">
                   <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.extraTurnsTitle') }}</h4>
-                  @if (viewer.extraTurnCards().length === 0) {
+                  @if (viewer.analysis.extraTurnCards().length === 0) {
                     <p class="hint">{{ viewer.i18n.t('deckView.noneFound') }}</p>
                   } @else {
-                    <ng-container [ngTemplateOutlet]="analysisCardGrid" [ngTemplateOutletContext]="{ $implicit: viewer.extraTurnCards() }"></ng-container>
+                    <ng-container [ngTemplateOutlet]="analysisCardGrid" [ngTemplateOutletContext]="{ $implicit: viewer.analysis.extraTurnCards() }"></ng-container>
                   }
                 </section>
 
@@ -1126,31 +1126,31 @@
                        eigenen Fenster, sonst schiebt eine lange Combo-Liste die ganze Analyse
                        auseinander. Zwei Kacheln, weil Combos aus genau zwei Karten (das
                        offizielle Kriterium) und alle größeren getrennt gezählt werden. -->
-                  @if (viewer.analysisCombos().length === 0) {
+                  @if (viewer.analysis.analysisCombos().length === 0) {
                     <p class="hint">{{ viewer.i18n.t('deckView.noneFound') }}</p>
                   } @else {
                     <div class="stat-tiles">
                       <button
                         class="stat-tile stat-tile-button"
-                        [disabled]="viewer.twoCardComboList().length === 0"
-                        (click)="viewer.openComboPopup('two')"
+                        [disabled]="viewer.analysis.twoCardComboList().length === 0"
+                        (click)="viewer.analysis.openComboPopup('two')"
                       >
-                        <span class="stat-value">{{ viewer.twoCardComboList().length }}</span>
+                        <span class="stat-value">{{ viewer.analysis.twoCardComboList().length }}</span>
                         <span class="stat-label">{{ viewer.i18n.t('deckView.twoCardComboTileLabel') }}</span>
                       </button>
                       <button
                         class="stat-tile stat-tile-button"
-                        [disabled]="viewer.moreCardComboList().length === 0"
-                        (click)="viewer.openComboPopup('more')"
+                        [disabled]="viewer.analysis.moreCardComboList().length === 0"
+                        (click)="viewer.analysis.openComboPopup('more')"
                       >
-                        <span class="stat-value">{{ viewer.moreCardComboList().length }}</span>
+                        <span class="stat-value">{{ viewer.analysis.moreCardComboList().length }}</span>
                         <span class="stat-label">{{ viewer.i18n.t('deckView.moreCardComboTileLabel') }}</span>
                       </button>
                     </div>
                   }
-                  @if (viewer.bracketEstimateFailed()) {
+                  @if (viewer.analysis.bracketEstimateFailed()) {
                     <p class="hint bracket-caveat">{{ viewer.i18n.t('deckView.spellbookDetailsMissing') }}</p>
-                    @if (viewer.bracketEstimateErrorDetail(); as detail) {
+                    @if (viewer.analysis.bracketEstimateErrorDetail(); as detail) {
                       <p class="hint bracket-caveat">{{ viewer.i18n.t('deckView.technicalMessage', { detail }) }}</p>
                     }
                   }
@@ -1165,10 +1165,10 @@
                   <p class="hint">{{ viewer.i18n.t('deckView.comboFinderIntro') }}</p>
                   <button
                     class="glass-button"
-                    [disabled]="viewer.comboFinderBusy()"
-                    (click)="viewer.openComboFinder()"
+                    [disabled]="viewer.comboFinder.comboFinderBusy()"
+                    (click)="viewer.comboFinder.openComboFinder()"
                   >
-                    {{ viewer.i18n.t(viewer.comboFinderBusy() ? 'deckView.comboFinderLoading' : 'deckView.comboFinderOpen') }}
+                    {{ viewer.i18n.t(viewer.comboFinder.comboFinderBusy() ? 'deckView.comboFinderLoading' : 'deckView.comboFinderOpen') }}
                   </button>
                 </section>
               }
@@ -1234,8 +1234,8 @@
           (ngModelChange)="viewer.keywordFilter.set($event)"
         >
           <option [ngValue]="'all'">{{ viewer.i18n.t('deckView.abilityAll') }}</option>
-          @for (k of viewer.keywordFilters; track k.value) {
-            <option [ngValue]="k.value">{{ viewer.keywordFilterLabel(k.value) }}</option>
+          @for (k of viewer.effects.keywordFilters; track k.value) {
+            <option [ngValue]="k.value">{{ viewer.effects.keywordFilterLabel(k.value) }}</option>
           }
         </select>
         <select
@@ -1244,8 +1244,8 @@
           (ngModelChange)="viewer.setEffectFilter($event)"
         >
           <option [ngValue]="'all'">{{ viewer.i18n.t('deckView.effectAll') }}</option>
-          @for (f of viewer.effectFilters; track f.value) {
-            <option [ngValue]="f.value">{{ viewer.effectFilterLabel(f.value) }}</option>
+          @for (f of viewer.effects.effectFilters; track f.value) {
+            <option [ngValue]="f.value">{{ viewer.effects.effectFilterLabel(f.value) }}</option>
           }
         </select>
         @if (viewer.hasActiveCardFilters()) {
@@ -1270,12 +1270,12 @@
                    direkt unter der Karte, die fünf Werkzeuge stehen in einem eigenen kleinen Kasten
                    darunter. Vorher verdeckten sechs Bedienelemente das Artwork genau dort, wo man
                    beim Bearbeiten hinschaut. Außerhalb des Bearbeiten-Modus bleibt alles wie gehabt. -->
-              <div class="deck-card-cell" [class.editing]="viewer.editMode()" data-tutorial="deck-card-edit-controls">
+              <div class="deck-card-cell" [class.editing]="viewer.state.editMode()" data-tutorial="deck-card-edit-controls">
                 <div
                   class="deck-card-tile"
                   [class.banned-card]="pruefung().markiert.has(card.cardName)"
-                  [class.clickable]="!viewer.editMode()"
-                  (click)="!viewer.editMode() && viewer.openCardPreview(card.cardName)"
+                  [class.clickable]="!viewer.state.editMode()"
+                  (click)="!viewer.state.editMode() && viewer.openCardPreview(card.cardName)"
                 >
                   @if (viewer.isDeckCardFlipped(card.cardName) && viewer.resolvedCardBackImage(card); as img) {
                     <img [src]="img" [alt]="card.cardName" loading="lazy" />
@@ -1284,7 +1284,7 @@
                   } @else {
                     <div class="deck-card-placeholder">{{ card.cardName }}</div>
                   }
-                  @if (!viewer.editMode()) {
+                  @if (!viewer.state.editMode()) {
                     @if (viewer.resolvedCardBackImage(card)) {
                       <button
                         class="deck-card-flip-toggle"
@@ -1300,7 +1300,7 @@
                   }
                 </div>
 
-                @if (viewer.editMode()) {
+                @if (viewer.state.editMode()) {
                   <!-- Umdrehen und Commander stehen mit in der Mengenleiste - links vom − und
                        rechts vom +, jeweils am Rand. Damit bleiben drei Werkzeuge für den Kasten
                        darunter übrig, und der braucht keine zweite Zeile mehr. Die Leiste steht
@@ -1321,27 +1321,27 @@
                         <span>{{ card.quantity }}×</span>
                       } @else {
                         <button
-                          [class.flash-remove]="viewer.isFlashing(card.cardName, 'remove')"
-                          (click)="viewer.decrementCard(card)"
+                          [class.flash-remove]="viewer.edit.isFlashing(card.cardName, 'remove')"
+                          (click)="viewer.edit.decrementCard(card)"
                           [attr.aria-label]="viewer.i18n.t('deckView.oneLess')"
                         >
                           −
                         </button>
                         <span>{{ card.quantity }}</span>
                         <button
-                          [class.flash-add]="viewer.isFlashing(card.cardName, 'add')"
-                          (click)="viewer.incrementCard(card)"
+                          [class.flash-add]="viewer.edit.isFlashing(card.cardName, 'add')"
+                          (click)="viewer.edit.incrementCard(card)"
                           [attr.aria-label]="viewer.i18n.t('deckView.oneMore')"
                         >
                           +
                         </button>
                       }
                     </div>
-                    @if (viewer.showCommanderToggle() && (card.isCommander || viewer.isCommanderEligible(card))) {
+                    @if (viewer.edit.showCommanderToggle() && (card.isCommander || viewer.edit.isCommanderEligible(card))) {
                       <button
                         class="deck-card-commander-toggle"
                         [class.active]="card.isCommander"
-                        (click)="viewer.toggleCommanderMark(card)"
+                        (click)="viewer.edit.toggleCommanderMark(card)"
                         [attr.aria-label]="card.isCommander ? viewer.i18n.t('deckView.removeAsCommander') : viewer.i18n.t('deckView.markAsCommander')"
                       >
                         <app-icon name="crown" />
@@ -1353,16 +1353,16 @@
                     @if (!card.isCommander && !card.isToken) {
                       <button
                         class="deck-card-maybeboard-toggle"
-                        (click)="viewer.toggleCardMaybeboard(card)"
+                        (click)="viewer.edit.toggleCardMaybeboard(card)"
                         [attr.aria-label]="card.isMaybeboard ? viewer.i18n.t('deckView.moveToDeckAria') : viewer.i18n.t('deckView.moveToMaybeboardAria')"
                       >
                         <app-icon [name]="card.isMaybeboard ? 'outbox' : 'inbox'" />
                       </button>
                     }
-                    <button class="deck-card-artwork-toggle" (click)="viewer.openArtworkPicker(card)" [attr.aria-label]="viewer.i18n.t('deckView.chooseOtherArtwork')">
+                    <button class="deck-card-artwork-toggle" (click)="viewer.edit.openArtworkPicker(card)" [attr.aria-label]="viewer.i18n.t('deckView.chooseOtherArtwork')">
                       <app-icon name="palette" />
                     </button>
-                    <button class="deck-card-tag-toggle" (click)="viewer.openTagEditor(card)" [attr.aria-label]="viewer.i18n.t('deckView.editOwnTags')">
+                    <button class="deck-card-tag-toggle" (click)="viewer.edit.openTagEditor(card)" [attr.aria-label]="viewer.i18n.t('deckView.editOwnTags')">
                       <app-icon name="tag" />
                     </button>
                   </div>
@@ -1375,7 +1375,7 @@
             @for (card of section.cards; track card.cardName) {
               <li>
                 <span class="deck-card-qty-text">{{ card.quantity }}×</span>
-                @if (!viewer.editMode()) {
+                @if (!viewer.state.editMode()) {
                   <button class="card-name-link" [class.banned-card-name]="pruefung().markiert.has(card.cardName)" (click)="viewer.openCardPreview(card.cardName)">{{ card.cardName }}</button>
                 } @else {
                   <span [class.banned-card-name]="pruefung().markiert.has(card.cardName)">{{ card.cardName }}</span>
@@ -1383,48 +1383,48 @@
                 @if (pruefung().markiert.has(card.cardName)) {
                   <span class="ban-badge" aria-hidden="true">!</span>
                 }
-                @if (viewer.editMode() && viewer.showCommanderToggle() && (card.isCommander || viewer.isCommanderEligible(card))) {
+                @if (viewer.state.editMode() && viewer.edit.showCommanderToggle() && (card.isCommander || viewer.edit.isCommanderEligible(card))) {
                   <button
                     class="icon-button"
                     [class.active]="card.isCommander"
-                    (click)="viewer.toggleCommanderMark(card)"
+                    (click)="viewer.edit.toggleCommanderMark(card)"
                     [attr.aria-label]="card.isCommander ? viewer.i18n.t('deckView.removeAsCommander') : viewer.i18n.t('deckView.markAsCommander')"
                   >
                     <app-icon name="crown" />
                   </button>
                 }
-                @if (viewer.editMode() && !card.isCommander) {
+                @if (viewer.state.editMode() && !card.isCommander) {
                   <div class="deck-card-stepper inline">
                     <button
-                      [class.flash-remove]="viewer.isFlashing(card.cardName, 'remove')"
-                      (click)="viewer.decrementCard(card)"
+                      [class.flash-remove]="viewer.edit.isFlashing(card.cardName, 'remove')"
+                      (click)="viewer.edit.decrementCard(card)"
                       [attr.aria-label]="viewer.i18n.t('deckView.oneLess')"
                     >
                       −
                     </button>
                     <button
-                      [class.flash-add]="viewer.isFlashing(card.cardName, 'add')"
-                      (click)="viewer.incrementCard(card)"
+                      [class.flash-add]="viewer.edit.isFlashing(card.cardName, 'add')"
+                      (click)="viewer.edit.incrementCard(card)"
                       [attr.aria-label]="viewer.i18n.t('deckView.oneMore')"
                     >
                       +
                     </button>
                   </div>
                 }
-                @if (viewer.editMode() && !card.isCommander && !card.isToken) {
+                @if (viewer.state.editMode() && !card.isCommander && !card.isToken) {
                   <button
                     class="icon-button"
-                    (click)="viewer.toggleCardMaybeboard(card)"
+                    (click)="viewer.edit.toggleCardMaybeboard(card)"
                     [attr.aria-label]="card.isMaybeboard ? viewer.i18n.t('deckView.moveToDeckAria') : viewer.i18n.t('deckView.moveToMaybeboardAria')"
                   >
                     <app-icon [name]="card.isMaybeboard ? 'outbox' : 'inbox'" />
                   </button>
                 }
-                @if (viewer.editMode()) {
-                  <button class="icon-button" (click)="viewer.openArtworkPicker(card)" [attr.aria-label]="viewer.i18n.t('deckView.chooseOtherArtwork')">
+                @if (viewer.state.editMode()) {
+                  <button class="icon-button" (click)="viewer.edit.openArtworkPicker(card)" [attr.aria-label]="viewer.i18n.t('deckView.chooseOtherArtwork')">
                     <app-icon name="palette" />
                   </button>
-                  <button class="icon-button" (click)="viewer.openTagEditor(card)" [attr.aria-label]="viewer.i18n.t('deckView.editOwnTags')">
+                  <button class="icon-button" (click)="viewer.edit.openTagEditor(card)" [attr.aria-label]="viewer.i18n.t('deckView.editOwnTags')">
                     <app-icon name="tag" />
                   </button>
                 }
@@ -1445,40 +1445,40 @@
 </div>
 }
 
-@if (viewer.artworkPickerCard(); as pickCard) {
+@if (viewer.edit.artworkPickerCard(); as pickCard) {
   <!--
     Bewusst AUSSERHALB von .deck-detail-page und erst recht ausserhalb des "klebenden" Kopfes:
     jeder Vorfahr mit backdrop-filter bezieht position:fixed-Nachfahren auf sich selbst statt auf
     den echten Viewport - der Dialog wäre dann verschoben statt zentriert sichtbar.
   -->
-  <div class="options-menu-overlay" (click)="viewer.closeArtworkPicker()">
+  <div class="options-menu-overlay" (click)="viewer.edit.closeArtworkPicker()">
     <div class="options-menu-sheet artwork-picker-sheet" (click)="$event.stopPropagation()">
       <h3>{{ viewer.i18n.t('deckView.chooseArtworkTitle') }}</h3>
       <p class="hint">{{ pickCard.cardName }}</p>
 
-      @if (viewer.artworkPickerBusy() && viewer.artworkOptions().length === 0) {
+      @if (viewer.edit.artworkPickerBusy() && viewer.edit.artworkOptions().length === 0) {
         <p class="hint">{{ viewer.i18n.t('deckView.loadingEditions') }}</p>
       }
-      @if (viewer.artworkPickerError()) {
-        <p class="hint">{{ viewer.artworkPickerError() }}</p>
+      @if (viewer.edit.artworkPickerError()) {
+        <p class="hint">{{ viewer.edit.artworkPickerError() }}</p>
       }
       <label class="glass-button small artwork-upload-label">
-        {{ viewer.artworkPickerBusy() ? viewer.i18n.t('deckView.uploading') : viewer.i18n.t('deckView.uploadOwnImage') }}
+        {{ viewer.edit.artworkPickerBusy() ? viewer.i18n.t('deckView.uploading') : viewer.i18n.t('deckView.uploadOwnImage') }}
         <input
           type="file"
           accept="image/*"
-          [disabled]="viewer.artworkPickerBusy()"
+          [disabled]="viewer.edit.artworkPickerBusy()"
           (change)="onCustomArtworkSelected($event)"
         />
       </label>
 
-      @if (viewer.artworkOptions().length > 0) {
+      @if (viewer.edit.artworkOptions().length > 0) {
         <div class="artwork-picker-grid">
-          @for (option of viewer.artworkOptions(); track option.id) {
+          @for (option of viewer.edit.artworkOptions(); track option.id) {
             <button
               class="artwork-picker-tile"
-              [disabled]="viewer.artworkPickerBusy()"
-              (click)="viewer.selectArtwork(option.imageUrl!)"
+              [disabled]="viewer.edit.artworkPickerBusy()"
+              (click)="viewer.edit.selectArtwork(option.imageUrl!)"
             >
               <img [src]="option.imageUrl" [alt]="option.setName" loading="lazy" />
               <span class="hint">{{ option.setName }}</span>
@@ -1487,16 +1487,16 @@
         </div>
       }
 
-      <button class="glass-button" [disabled]="viewer.artworkPickerBusy()" (click)="viewer.closeArtworkPicker()">
+      <button class="glass-button" [disabled]="viewer.edit.artworkPickerBusy()" (click)="viewer.edit.closeArtworkPicker()">
         {{ viewer.i18n.t('group.cancel') }}
       </button>
     </div>
   </div>
 }
 
-@if (viewer.tagEditorCard(); as tagCard) {
+@if (viewer.edit.tagEditorCard(); as tagCard) {
   <!-- Bewusst außerhalb von .deck-detail-page - gleicher Grund wie beim Artwork-Dialog oben. -->
-  <div class="options-menu-overlay" (click)="viewer.closeTagEditor()">
+  <div class="options-menu-overlay" (click)="viewer.edit.closeTagEditor()">
     <div class="options-menu-sheet tag-editor-sheet" (click)="$event.stopPropagation()">
       <h3>{{ viewer.i18n.t('deckView.ownTagsTitle') }}</h3>
       <p class="hint">{{ tagCard.cardName }}</p>
@@ -1504,7 +1504,7 @@
       @if (tagCard.customTags.length > 0) {
         <div class="tag-chip-row">
           @for (tag of tagCard.customTags; track tag) {
-            <button class="glass-chip small active" [disabled]="viewer.tagEditorBusy()" (click)="viewer.toggleCardTag(tag)">
+            <button class="glass-chip small active" [disabled]="viewer.edit.tagEditorBusy()" (click)="viewer.edit.toggleCardTag(tag)">
               {{ tag }} ✕
             </button>
           }
@@ -1516,7 +1516,7 @@
         <div class="tag-chip-row">
           @for (tag of viewer.availableCustomTags(); track tag) {
             @if (!tagCard.customTags.includes(tag)) {
-              <button class="glass-chip small" [disabled]="viewer.tagEditorBusy()" (click)="viewer.toggleCardTag(tag)">
+              <button class="glass-chip small" [disabled]="viewer.edit.tagEditorBusy()" (click)="viewer.edit.toggleCardTag(tag)">
                 + {{ tag }}
               </button>
             }
@@ -1532,49 +1532,49 @@
             class="glass-input"
             type="text"
             [placeholder]="viewer.i18n.t('deckView.newTagPlaceholder')"
-            [ngModel]="viewer.tagEditorNewTag()"
-            (ngModelChange)="viewer.setTagEditorNewTag($event)"
-            (keyup.enter)="viewer.addNewTagToCard()"
+            [ngModel]="viewer.edit.tagEditorNewTag()"
+            (ngModelChange)="viewer.edit.setTagEditorNewTag($event)"
+            (keyup.enter)="viewer.edit.addNewTagToCard()"
           />
           <button
             class="glass-button small"
-            [disabled]="viewer.tagEditorBusy() || !viewer.tagEditorNewTag().trim()"
-            (click)="viewer.addNewTagToCard()"
+            [disabled]="viewer.edit.tagEditorBusy() || !viewer.edit.tagEditorNewTag().trim()"
+            (click)="viewer.edit.addNewTagToCard()"
           >
             {{ viewer.i18n.t('deckView.create') }}
           </button>
         </div>
       </div>
 
-      <button class="glass-button" [disabled]="viewer.tagEditorBusy()" (click)="viewer.closeTagEditor()">
+      <button class="glass-button" [disabled]="viewer.edit.tagEditorBusy()" (click)="viewer.edit.closeTagEditor()">
         {{ viewer.i18n.t('deckView.done') }}
       </button>
     </div>
   </div>
 }
 
-@if (viewer.effectCategoryPopup(); as popup) {
+@if (viewer.effects.effectCategoryPopup(); as popup) {
   <!-- Bewusst außerhalb von .deck-detail-page - gleicher Grund wie beim Artwork-Dialog oben. -->
-  <div class="options-menu-overlay" (click)="viewer.closeEffectCategoryPopup()">
+  <div class="options-menu-overlay" (click)="viewer.effects.closeEffectCategoryPopup()">
     <div class="options-menu-sheet" (click)="$event.stopPropagation()">
       <h3>{{ popup.label }}</h3>
       <ng-container [ngTemplateOutlet]="analysisCardGrid" [ngTemplateOutletContext]="{ $implicit: popup.cards }"></ng-container>
-      <button class="glass-button" (click)="viewer.closeEffectCategoryPopup()">
+      <button class="glass-button" (click)="viewer.effects.closeEffectCategoryPopup()">
         {{ viewer.i18n.t('deckView.done') }}
       </button>
     </div>
   </div>
 }
 
-@if (viewer.comboPopupKind(); as kind) {
+@if (viewer.analysis.comboPopupKind(); as kind) {
   <!-- Bewusst außerhalb von .deck-detail-page - gleicher Grund wie beim Artwork-Dialog oben. -->
-  <div class="options-menu-overlay" (click)="viewer.closeComboPopup()">
+  <div class="options-menu-overlay" (click)="viewer.analysis.closeComboPopup()">
     <!-- "wide": Kartenbilder und mehrzeilige Ablaufbeschreibungen sind in den 300px eines
          normalen Sheets auf dem Desktop viel zu eng (siehe styles.scss). -->
     <div class="options-menu-sheet wide" (click)="$event.stopPropagation()">
       <h3>{{ viewer.i18n.t(kind === 'more' ? 'deckView.moreCardComboDialogTitle' : 'deckView.twoCardComboDialogTitle') }}</h3>
       <div class="combo-list">
-      @for (combo of viewer.comboPopupCombos(); track combo.id) {
+      @for (combo of viewer.analysis.comboPopupCombos(); track combo.id) {
         <div class="combo-entry">
           <ng-container [ngTemplateOutlet]="analysisCardGrid" [ngTemplateOutletContext]="{ $implicit: comboCardEntries(combo) }"></ng-container>
           <p class="combo-entry-names">{{ combo.cardNames.join(' + ') }}</p>
@@ -1601,29 +1601,29 @@
         </div>
       }
       </div>
-      <button class="glass-button" (click)="viewer.closeComboPopup()">
+      <button class="glass-button" (click)="viewer.analysis.closeComboPopup()">
         {{ viewer.i18n.t('deckView.done') }}
       </button>
     </div>
   </div>
 }
 
-@if (viewer.comboFinderOpen()) {
+@if (viewer.comboFinder.comboFinderOpen()) {
   <!-- Bewusst außerhalb von .deck-detail-page - gleicher Grund wie beim Artwork-Dialog oben.
        Teilt sich Raster und Kartendeckel mit dem Combo-Fenster (.combo-list/.combo-entry in
        styles.scss): ein Eintrag ist hier die fehlende Karte statt eines fertigen Paares. -->
-  <div class="options-menu-overlay" (click)="viewer.closeComboFinder()">
+  <div class="options-menu-overlay" (click)="viewer.comboFinder.closeComboFinder()">
     <div class="options-menu-sheet wide" (click)="$event.stopPropagation()">
       <h3>{{ viewer.i18n.t('deckView.comboFinderDialogTitle') }}</h3>
-      @if (viewer.comboFinderBusy()) {
+      @if (viewer.comboFinder.comboFinderBusy()) {
         <p class="hint">{{ viewer.i18n.t('deckView.comboFinderLoading') }}</p>
-      } @else if (!viewer.comboFinderAvailable()) {
+      } @else if (!viewer.comboFinder.comboFinderAvailable()) {
         <p class="hint bracket-caveat">{{ viewer.i18n.t('deckView.comboFinderNoData') }}</p>
-      } @else if (viewer.comboFinderSuggestions().length === 0) {
+      } @else if (viewer.comboFinder.comboFinderSuggestions().length === 0) {
         <p class="hint">{{ viewer.i18n.t('deckView.comboFinderNone') }}</p>
       } @else {
         <div class="combo-list">
-          @for (suggestion of viewer.comboFinderSuggestions(); track suggestion.key) {
+          @for (suggestion of viewer.comboFinder.comboFinderSuggestions(); track suggestion.key) {
             <div class="combo-entry">
               <p class="combo-entry-names">{{ suggestion.cardName }}</p>
               <p class="hint">{{ viewer.i18n.t('deckView.comboFinderComboCount', { count: suggestion.comboCount }) }}</p>
@@ -1647,7 +1647,7 @@
                     <ng-container [ngTemplateOutlet]="manaCostLine" [ngTemplateOutletContext]="{ $implicit: combo.extraMana }"></ng-container>
                   }
                   @if (combo.steps.length > 0) {
-                    <button class="glass-button small" (click)="viewer.openComboFinderDetail(combo)">
+                    <button class="glass-button small" (click)="viewer.comboFinder.openComboFinderDetail(combo)">
                       {{ viewer.i18n.t('deckView.comboFinderShowSteps') }}
                     </button>
                   }
@@ -1659,22 +1659,22 @@
             </div>
           }
         </div>
-        @if (viewer.comboFinderTotal() > viewer.comboFinderSuggestions().length) {
-          <p class="hint">{{ viewer.i18n.t('deckView.comboFinderShowing', { shown: viewer.comboFinderSuggestions().length, total: viewer.comboFinderTotal() }) }}</p>
+        @if (viewer.comboFinder.comboFinderTotal() > viewer.comboFinder.comboFinderSuggestions().length) {
+          <p class="hint">{{ viewer.i18n.t('deckView.comboFinderShowing', { shown: viewer.comboFinder.comboFinderSuggestions().length, total: viewer.comboFinder.comboFinderTotal() }) }}</p>
         }
         <p class="hint">{{ viewer.i18n.t('deckView.comboFinderSource') }}</p>
       }
-      <button class="glass-button" (click)="viewer.closeComboFinder()">
+      <button class="glass-button" (click)="viewer.comboFinder.closeComboFinder()">
         {{ viewer.i18n.t('deckView.done') }}
       </button>
     </div>
   </div>
 }
 
-@if (viewer.comboFinderDetail(); as combo) {
+@if (viewer.comboFinder.comboFinderDetail(); as combo) {
   <!-- Liegt bewusst NACH dem Finder-Fenster im Dokument: beide tragen dieselbe Ebene, das spätere
        gewinnt und legt sich darüber. Schließen führt zurück in die Vorschlagsliste. -->
-  <div class="options-menu-overlay" (click)="viewer.closeComboFinderDetail()">
+  <div class="options-menu-overlay" (click)="viewer.comboFinder.closeComboFinderDetail()">
     <div class="options-menu-sheet wide" (click)="$event.stopPropagation()">
       <h3>{{ viewer.i18n.t('deckView.comboFinderStepsTitle') }}</h3>
       @if (combo.produces.length > 0) {
@@ -1689,21 +1689,21 @@
       @if (combo.extraMana.length > 0) {
         <ng-container [ngTemplateOutlet]="manaCostLine" [ngTemplateOutletContext]="{ $implicit: combo.extraMana }"></ng-container>
       }
-      <button class="glass-button" (click)="viewer.closeComboFinderDetail()">
+      <button class="glass-button" (click)="viewer.comboFinder.closeComboFinderDetail()">
         {{ viewer.i18n.t('deckView.done') }}
       </button>
     </div>
   </div>
 }
 
-@if (viewer.bracketMathTopic(); as topic) {
+@if (viewer.bracket.bracketMathTopic(); as topic) {
   <!-- Bewusst außerhalb von .deck-detail-page - gleicher Grund wie beim Artwork-Dialog oben.
        Ein Fenster für alle vier Rechenwege: welcher zu sehen ist, entscheidet die Zeile, aus der
        das ⓘ angetippt wurde. -->
-  <div class="options-menu-overlay" (click)="viewer.closeBracketMath()">
+  <div class="options-menu-overlay" (click)="viewer.bracket.closeBracketMath()">
     <div class="options-menu-sheet" (click)="$event.stopPropagation()">
-      @if (viewer.bracketAnalysis(); as analysis) {
-        @if (viewer.bracketMath(); as math) {
+      @if (viewer.bracket.bracketAnalysis(); as analysis) {
+        @if (viewer.bracket.bracketMath(); as math) {
           @switch (topic) {
             @case ('rules') {
               <h3>{{ viewer.i18n.t('deckView.bracketMathRulesTitle') }}</h3>
@@ -1744,7 +1744,7 @@
                     <span class="bracket-caveat">
                       {{ viewer.i18n.t('deckView.bracketMathPartMeasured', { value: (part.value | number: '1.0-2') ?? '' }) }} ·
                       {{ viewer.i18n.t('deckView.bracketMathPartScale', { from: (part.from | number: '1.0-1') ?? '', to: (part.to | number: '1.0-1') ?? '' }) }} ·
-                      {{ viewer.i18n.t('deckView.bracketMathPartScore', { score: (part.score | number: '1.2-2') ?? '' }) }}
+                      {{ viewer.i18n.t('deckView.bracketMathPartScore', { score: (part.score | number: '1.2-2') ?? '', weight: (part.weight | number: '1.2-2') ?? '' }) }}
                     </span>
                     @if (part.from > part.to) {
                       <span class="bracket-caveat">{{ viewer.i18n.t('deckView.bracketMathPartReversed') }}</span>
@@ -1755,9 +1755,9 @@
               <p class="hint">
                 <strong>{{ viewer.i18n.t('deckView.bracketMathSum', { summands: math.summands, divisor: math.divisor, value: (analysis.verdicts.tuning | number: '1.2-2') ?? '', percent: (analysis.verdicts.tuning | percent: '1.0-0') ?? '' }) }}</strong>
               </p>
-              <p class="hint">{{ viewer.i18n.t('deckView.bracketTuningExplain', { bump: viewer.tuningBumpPercent }) }}</p>
+              <p class="hint">{{ viewer.i18n.t('deckView.bracketTuningExplain', { bump: viewer.bracket.tuningBumpPercent }) }}</p>
               @if (math.bumped) {
-                <p class="hint">{{ viewer.i18n.t('deckView.bracketMathStepBump', { percent: (analysis.verdicts.tuning | percent: '1.0-0') ?? '', bump: viewer.tuningBumpPercent, level: analysis.bracket }) }}</p>
+                <p class="hint">{{ viewer.i18n.t('deckView.bracketMathStepBump', { percent: (analysis.verdicts.tuning | percent: '1.0-0') ?? '', bump: viewer.bracket.tuningBumpPercent, level: analysis.bracket }) }}</p>
               }
               @if (analysis.verdicts.precon) {
                 <p class="hint">{{ viewer.i18n.t('deckView.bracketVerdictPrecon') }}</p>
@@ -1766,18 +1766,18 @@
             @case ('price') {
               <h3>{{ viewer.i18n.t('deckView.bracketMathPriceTitle') }}</h3>
               <p class="hint">{{ viewer.i18n.t('deckView.bracketMathPriceIntro') }}</p>
-              <p class="hint">{{ viewer.i18n.t('deckView.bracketMathPriceRule', { threshold: viewer.priceThresholdEur }) }}</p>
+              <p class="hint">{{ viewer.i18n.t('deckView.bracketMathPriceRule', { threshold: viewer.bracket.priceThresholdEur }) }}</p>
               @if (analysis.verdicts.price !== null) {
                 <p class="hint">
                   <strong>
                     @if (math.pricePushed) {
-                      {{ viewer.i18n.t('deckView.bracketPriceFinding', { price: (analysis.verdicts.price | currency: 'EUR') ?? '', threshold: viewer.priceThresholdEur }) }}
+                      {{ viewer.i18n.t('deckView.bracketPriceFinding', { price: (analysis.verdicts.price | currency: 'EUR') ?? '', threshold: viewer.bracket.priceThresholdEur }) }}
                     } @else {
-                      {{ viewer.i18n.t('deckView.bracketPriceBelow', { price: (analysis.verdicts.price | currency: 'EUR') ?? '', threshold: viewer.priceThresholdEur }) }}
+                      {{ viewer.i18n.t('deckView.bracketPriceBelow', { price: (analysis.verdicts.price | currency: 'EUR') ?? '', threshold: viewer.bracket.priceThresholdEur }) }}
                     }
                   </strong>
                 </p>
-                @if (viewer.deckPriceIncomplete()) {
+                @if (viewer.analysis.deckPriceIncomplete()) {
                   <p class="hint bracket-caveat">{{ viewer.i18n.t('deckView.bracketPriceIncompleteNote') }}</p>
                 }
               } @else {
@@ -1797,7 +1797,7 @@
           }
         }
       }
-      <button class="glass-button" (click)="viewer.closeBracketMath()">
+      <button class="glass-button" (click)="viewer.bracket.closeBracketMath()">
         {{ viewer.i18n.t('deckView.done') }}
       </button>
     </div>

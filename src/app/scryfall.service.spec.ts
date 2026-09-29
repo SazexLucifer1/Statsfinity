@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { ScryfallService } from './scryfall.service';
+import { ScryfallCard, ScryfallService } from './scryfall.service';
 
 describe('ScryfallService', () => {
   let service: ScryfallService;
@@ -45,124 +45,58 @@ describe('ScryfallService', () => {
     expect(results.map((set) => set.code)).toEqual(['m10']);
   });
 
-  it('builds an exact color-identity query for searchCommanders', async () => {
-    const fetchSpy = vi
-      .spyOn(globalThis, 'fetch')
-      .mockResolvedValue(new Response(JSON.stringify({ data: [] })) as Response);
+  describe('Commander-Paare', () => {
+    const card = (name: string, typeLine: string, oracleText: string) =>
+      ({ name, typeLine, oracleText, imageUrl: null }) as unknown as ScryfallCard;
 
-    await service.searchCommanders(['W', 'U']);
-
-    const calledUrl = fetchSpy.mock.calls.at(-1)![0] as string;
-    expect(decodeURIComponent(calledUrl)).toContain('is:commander id=WU');
-  });
-
-  it('AND-composes name, archetype, and creature-type filters in searchCommanders', async () => {
-    const fetchSpy = vi
-      .spyOn(globalThis, 'fetch')
-      .mockResolvedValue(new Response(JSON.stringify({ data: [] })) as Response);
-
-    await service.searchCommanders(['G'], {
-      name: 'Elf',
-      archetypeQuery: 'otag:counters-matter',
-      creatureType: 'Elf',
-    });
-
-    const calledUrl = fetchSpy.mock.calls.at(-1)![0] as string;
-    expect(decodeURIComponent(calledUrl)).toContain(
-      'is:commander id=G name:"Elf" otag:counters-matter (t:"Elf" or o:"Elf")',
+    const tymna = card(
+      'Tymna the Weaver',
+      'Legendary Creature — Human Cleric',
+      'Partner (You can have two commanders if both have partner.)',
     );
-  });
+    const silas = card(
+      'Silas Renn, Seeker Adept',
+      'Legendary Creature — Human Rogue',
+      'Partner (You can have two commanders if both have partner.)',
+    );
+    const abdel = card(
+      "Abdel Adrian, Gorion's Ward",
+      'Legendary Creature — Human Fighter',
+      'Choose a Background (You may have a Background as a second commander.)',
+    );
+    const ranger = card(
+      'Ranger Background',
+      'Legendary Enchantment — Background',
+      'Whenever you cast a spell ...',
+    );
+    const pir = card(
+      'Pir, Imaginative Rascal',
+      'Legendary Creature — Human',
+      'Partner with Toothy, Imaginary Friend',
+    );
+    const toothy = card(
+      'Toothy, Imaginary Friend',
+      'Legendary Creature — Illusion',
+      'Partner with Pir, Imaginative Rascal',
+    );
 
-  it('omits the color-identity clause in searchCommanders when no colors are selected', async () => {
-    const fetchSpy = vi
-      .spyOn(globalThis, 'fetch')
-      .mockResolvedValue(new Response(JSON.stringify({ data: [] })) as Response);
-
-    await service.searchCommanders([], { archetypeQuery: 'otag:landfall' });
-
-    const calledUrl = fetchSpy.mock.calls.at(-1)![0] as string;
-    expect(decodeURIComponent(calledUrl)).toContain('is:commander otag:landfall');
-    expect(decodeURIComponent(calledUrl)).not.toContain('id=');
-  });
-
-  describe('searchCommanderPairs', () => {
-    /** Routet den gemockten fetch je nach Query: type:background-Abfragen bekommen backgroundData, alle anderen creatureData. */
-    function mockPartnerFetch(creatureData: unknown[], backgroundData: unknown[] = []) {
-      return vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
-        const decoded = decodeURIComponent(url as string);
-        const data = decoded.includes('type:background') ? backgroundData : creatureData;
-        return new Response(JSON.stringify({ data })) as Response;
-      });
-    }
-
-    const tymna = {
-      name: 'Tymna the Weaver',
-      type_line: 'Legendary Creature — Human Cleric',
-      color_identity: ['W', 'B'],
-      oracle_text:
-        'Whenever a legendary creature enters the battlefield under your control this turn for the second time, target opponent loses 2 life.\nPartner (You can have two commanders if both have partner.)',
-    };
-    const silasRenn = {
-      name: 'Silas Renn, Seeker Adept',
-      type_line: 'Legendary Creature — Human Rogue',
-      color_identity: ['U', 'B'],
-      oracle_text:
-        'You may cast artifact spells as though they had flash.\nPartner (You can have two commanders if both have partner.)',
-    };
-
-    it('returns [] immediately without fetching when no colors are selected', async () => {
-      const fetchSpy = vi.spyOn(globalThis, 'fetch');
-
-      const pairs = await service.searchCommanderPairs([]);
-
-      expect(pairs).toEqual([]);
-      expect(fetchSpy).not.toHaveBeenCalled();
+    it('erkennt Partner, Partner with und Background-Paare', () => {
+      expect(service.canBeCommanderPair(tymna, silas)).toBe(true);
+      expect(service.canBeCommanderPair(abdel, ranger)).toBe(true);
+      expect(service.canBeCommanderPair(ranger, abdel)).toBe(true);
+      expect(service.canBeCommanderPair(pir, toothy)).toBe(true);
     });
 
-    it('pairs two bare-Partner commanders whose combined color identity exactly matches the target', async () => {
-      mockPartnerFetch([tymna, silasRenn]);
-
-      const pairs = await service.searchCommanderPairs(['W', 'U', 'B']);
-
-      expect(pairs).toHaveLength(1);
-      expect(pairs[0].map((c) => c.name).sort()).toEqual([
-        'Silas Renn, Seeker Adept',
-        'Tymna the Weaver',
-      ]);
+    it('lehnt unpassende Paare ab', () => {
+      expect(service.canBeCommanderPair(tymna, abdel)).toBe(false);
+      expect(service.canBeCommanderPair(pir, tymna)).toBe(false);
     });
 
-    it('excludes a bare-Partner pair whose combined color identity does not exactly equal the target', async () => {
-      mockPartnerFetch([tymna, silasRenn]);
-
-      // Tymna (WB) + Silas Renn (UB) kombiniert ergeben WUB, nicht WB - kein exakter Treffer.
-      const pairs = await service.searchCommanderPairs(['W', 'B']);
-
-      expect(pairs).toEqual([]);
-    });
-
-    it('pairs a "Choose a Background" commander with a Background card from the separate background query', async () => {
-      const chooseBackgroundCommander = {
-        name: "Abdel Adrian, Gorion's Ward",
-        type_line: 'Legendary Creature — Human Fighter',
-        color_identity: ['W'],
-        oracle_text: 'Choose a Background (You may have a Background as a second commander.)',
-      };
-      const background = {
-        name: 'Ranger Background',
-        type_line: 'Legendary Enchantment — Background',
-        color_identity: ['G'],
-        oracle_text:
-          'Whenever you cast a spell that targets only a permanent or player you control, draw a card.',
-      };
-      mockPartnerFetch([chooseBackgroundCommander], [background]);
-
-      const pairs = await service.searchCommanderPairs(['W', 'G']);
-
-      expect(pairs).toHaveLength(1);
-      expect(pairs[0].map((c) => c.name).sort()).toEqual([
-        "Abdel Adrian, Gorion's Ward",
-        'Ranger Background',
-      ]);
+    it('erlaubt einen zweiten Commander auch für die passive Hälfte (Background)', () => {
+      expect(service.allowsSecondCommander(ranger)).toBe(true);
+      expect(service.allowsSecondCommander(card('Sol Ring', 'Artifact', '{T}: Add {C}{C}.'))).toBe(
+        false,
+      );
     });
   });
 

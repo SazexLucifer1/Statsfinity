@@ -1,4 +1,4 @@
-import { Injectable, computed, effect, inject, signal } from '@angular/core';
+import { DestroyRef, Injectable, WritableSignal, computed, effect, inject, signal } from '@angular/core';
 import { supabase } from './supabase.client';
 import { AuthService } from './auth.service';
 import { GroupService } from './group.service';
@@ -9,6 +9,7 @@ import { PageVisibilityService } from './page-visibility.service';
 import { DialogService } from './dialog.service';
 import { I18nService } from './i18n.service';
 import { chunk } from './array-utils';
+import { TournamentRealtime } from './tournament-realtime';
 import {
   ParticipantStatus,
   RoundCountMode,
@@ -27,12 +28,10 @@ interface Pairing {
 }
 
 /**
- * Swiss-Turnier, unterstützt sowohl klassisches 1v1 mit Best-of-3 (tableSize=2) als auch
- * Mehrspieler-Pods mit Einzelspiel pro Tisch (tableSize=4, wie normales Commander). Jedes Spiel
- * eines Tisches läuft als ganz normales Match über den bestehenden GameSessionService/
- * ingame-tracker (unterstützt Pods bereits nativ) - dieser Service bildet nur die Turnier-Ebene
- * darüber (Kader, Paarungen, Standings) und hört per effect() auf session.lastFinishedMatch(), um
- * Ergebnisse einzusammeln (gleiches Muster wie PlacementDialog).
+ * Swiss-Turnier: 1v1 Best-of-3 (tableSize=2) oder Pods mit einem Spiel je Tisch (tableSize=4).
+ * Jedes Spiel läuft als normales Match über GameSessionService/Ingame-Tracker; dieser Service
+ * verwaltet nur Kader, Paarungen und Standings und sammelt Ergebnisse per effect() auf
+ * session.lastFinishedMatch() ein.
  */
 @Injectable({ providedIn: 'root' })
 export class TournamentService {
@@ -113,10 +112,29 @@ export class TournamentService {
     return new Date(new Date(match.startedAt).getTime() + roundLengthMinutes * 60_000).toISOString();
   }
 
+  /**
+   * Synchronisation: Realtime meldet Änderungen sofort (TournamentRealtime), ein seltener
+   * Sicherheits-Poll fängt verpasste Ereignisse ab. Ohne Verbindung (oder ohne die Migration
+   * sql/turnier-realtime-2026-09-29.sql) wird entsprechend öfter gepollt.
+   */
+  private static readonly POLL_MS = {
+    live: { active: 30_000, idle: 180_000 },
+    offline: { active: 3_000, idle: 30_000 },
+  };
+
+  private readonly realtimeConnected = signal(false);
+  private readonly realtime = new TournamentRealtime(
+    () => this.reload(),
+    (connected) => this.realtimeConnected.set(connected),
+  );
   private pollTimer: ReturnType<typeof setInterval> | null = null;
 
-  /** True, sobald der Tab einmal im Hintergrund lag - siehe Poll-Effect im Konstruktor. */
+  /** True, sobald der Tab einmal im Hintergrund lag - bei Rückkehr einmal frisch laden. */
   private missedPollsWhileHidden = false;
+
+  /** Laufendes Nachladen; weitere Anstöße währenddessen führen zu genau einem Folgelauf. */
+  private reloadInFlight: Promise<void> | null = null;
+  private reloadQueued = false;
 
   /** Verhindert, dass dieselbe fertig gespielte Partie (matchRowId) innerhalb derselben Sitzung mehrfach verarbeitet wird - zusätzliche Absicherung neben der ohnehin idempotenten Neuberechnung in recordGameResult(). */
   private readonly processedGameResults = new Set<string>();
@@ -124,67 +142,60 @@ export class TournamentService {
   constructor() {
     effect(() => {
       const groupId = this.groupService.groupId();
-      if (groupId) {
-        this.loadForGroup(groupId);
-      } else {
-        this.clear();
-      }
+      this.realtime.watchGroup(groupId, () => this.activeTournament()?.id ?? null);
+      if (groupId) void this.reload();
+      else this.clear();
     });
 
-    // Ersatz für Supabase Realtime (im Repo bisher nirgends verwendet) - reicht für den
-    // Sonntags-Event. Pollt bewusst, sobald überhaupt eine Gruppe aktiv ist (nicht erst, wenn
-    // schon ein Turnier läuft) - sonst bekommt jemand, der die App schon offen hatte, BEVOR die
-    // veranstaltende Person ein neues Turnier erstellt hat, das nie mit (der Turnier-Knopf in der Tab-Leiste taucht
-    // dann für diese Person nie auf, ohne dass sie die Seite manuell neu lädt).
+    // Turnierkanal folgt dem aktiven Turnier und seinen Tischen (neue Runde = neue Tische).
+    effect(() => {
+      const tournament = this.activeTournament();
+      const running = tournament && tournament.status !== 'completed' ? tournament.id : null;
+      this.realtime.watchTournament(running, running ? this.matches().map((m) => m.id) : []);
+    });
+
+    // Sicherheits-Poll, im Hintergrund pausiert (der Browser drosselt ohnehin).
     effect(() => {
       const groupId = this.groupService.groupId();
-      // Im Hintergrund pausieren: der Browser drosselt Timer in versteckten Tabs ohnehin auf ~1x pro
-      // Minute, die Abfragen kommen dort also nur unregelmäßig durch - kosten aber Akku und
-      // Datenvolumen, und beim Zurückkommen prasseln die aufgestauten Antworten auf einmal herein.
-      // Stattdessen wird beim Zurückkommen genau einmal frisch geladen und danach normal weiter
-      // gepollt.
       const visible = this.pageVisibility.visible();
+      const status = this.activeTournament()?.status;
+      const running = status === 'setup' || status === 'active';
+      const ms = TournamentService.POLL_MS[this.realtimeConnected() ? 'live' : 'offline'][running ? 'active' : 'idle'];
       if (this.pollTimer) {
         clearInterval(this.pollTimer);
         this.pollTimer = null;
       }
+      if (!visible) this.missedPollsWhileHidden = true;
       if (!groupId || !visible) return;
 
       if (this.missedPollsWhileHidden) {
         this.missedPollsWhileHidden = false;
-        this.loadForGroup(groupId);
+        void this.reload();
       }
-      this.pollTimer = setInterval(() => this.loadForGroup(groupId), 2_000);
+      this.pollTimer = setInterval(() => void this.reload(), ms);
     });
 
-    // Merkt sich, dass der Tab zwischendurch weg war - nur dann lohnt das sofortige Nachladen oben
-    // (beim allerersten Durchlauf erledigt das schon der Effect auf groupId).
-    effect(() => {
-      if (!this.pageVisibility.visible()) this.missedPollsWhileHidden = true;
+    inject(DestroyRef).onDestroy(() => {
+      this.realtime.stop();
+      if (this.pollTimer) clearInterval(this.pollTimer);
     });
 
-    // Bridge: ein im Turnier-Kontext gespieltes Spiel fließt automatisch ins Tisch-Ergebnis ein.
-    // Bei einem noch unentschiedenen BO3 wird direkt das nächste Spiel gestartet (siehe
-    // handleGameFinished) - erst ein entschiedener Tisch öffnet wieder das Turnier-Panel, statt die
-    // spielende Person einfach im normalen Match-Tab-Setup stehen zu lassen.
+    // Ein Turnierspiel fließt automatisch ins Tisch-Ergebnis; bei offenem BO3 startet direkt das
+    // nächste Spiel, erst ein entschiedener Tisch öffnet das Panel.
     effect(() => {
       const finished = this.session.lastFinishedMatch();
       if (!finished || !finished.tournamentMatchId) return;
       this.handleGameFinished(finished.tournamentMatchId, finished.matchId, finished.winner);
     });
 
-    // Bridge: wurde die eigene Live-Session von einem ANDEREN Gerät beendet (dort gespeichert), hat
-    // dieses Gerät nie selbst lastFinishedMatch gesetzt. Ist der Tisch noch nicht entschieden, startet
-    // das andere Gerät bei sich bereits automatisch das nächste Spiel (siehe handleGameFinished) -
-    // hier wird kurz auf dessen neue Live-Session gewartet und ihr beigetreten, statt unabhängig eine
-    // zweite anzulegen oder einfach im Turnier-Panel hängen zu bleiben.
+    // Eigene Live-Session wurde auf einem ANDEREN Gerät beendet: kurz auf dessen neue Session
+    // warten und beitreten, statt eine zweite anzulegen.
     effect(() => {
       const ended = this.session.remoteSessionEnded();
       if (!ended || !ended.tournamentMatchId) return;
 
-      // Harte Bremse: egal was remoteSessionEnded() wiederholt neu auslöst, für denselben Tisch wird
-      // innerhalb von 5s nur EIN Durchlauf gestartet - ohne das konnte ein sich selbst befeuernder
-      // Loop den Browser in die Knie zwingen (siehe Konsolen-Absturz beim Testen).
+      // Harte Bremse: je Tisch höchstens ein Durchlauf in 5 s (ein sich selbst auslösender Loop
+      // legte sonst den Browser lahm).
       const now = Date.now();
       const last = this.lastRemoteSessionEndedHandledAt.get(ended.tournamentMatchId) ?? 0;
       if (now - last < 5000) {
@@ -200,13 +211,9 @@ export class TournamentService {
   private readonly lastRemoteSessionEndedHandledAt = new Map<string, number>();
 
   /**
-   * Wartet nach einer Fremd-Beendigung darauf, dass entweder der Tisch inzwischen entschieden ist
-   * (dann Panel öffnen) ODER eine neue Live-Session fürs nächste Spiel auftaucht (dann beitreten) -
-   * beide Prüfungen laufen bewusst zusammen in EINER Schleife, statt nacheinander: das andere Gerät
-   * braucht nach dem Löschen der alten Session selbst noch ein paar Netzwerk-Schritte, bis "Tisch
-   * entschieden" tatsächlich in der Datenbank steht, und in dem Fall wird nie eine neue Session
-   * angelegt - ein einmaliger Entschieden-Check ganz am Anfang würde das also verpassen und
-   * stattdessen sinnlos die vollen ~4s auf ein drittes Spiel warten, das nie kommt.
+   * Wartet nach Fremd-Beendigung, bis der Tisch entschieden ist (Panel öffnen) ODER eine neue
+   * Session erscheint (beitreten) - beides in EINER Schleife, weil "entschieden" erst nach einigen
+   * Schritten des anderen Geräts in der DB steht.
    */
   private async handleRemoteSessionEnded(
     tournamentMatchId: string,
@@ -224,9 +231,7 @@ export class TournamentService {
         return;
       }
 
-      // .limit(1) statt .maybeSingle(): robust falls durch frühere Test-/Absturz-Reste mehr als eine
-      // Zeile zu diesem Tisch existiert (maybeSingle() würde dann mit einem Fehler abbrechen) - nimmt
-      // in dem Fall einfach die neueste.
+      // .limit(1) statt .maybeSingle(): robust gegen doppelte Reste-Zeilen, nimmt die neueste.
       const { data, error } = await supabase
         .from('live_game_sessions')
         .select('id')
@@ -237,10 +242,8 @@ export class TournamentService {
       if (data && data.length > 0) {
         await this.session.joinLiveSession(data[0].id);
         this.session.activeTournamentMatchId.set(tournamentMatchId);
-        // Ohne das würde dieses Gerät (das die neue Session nur passiv per Realtime-Bridge
-        // übernimmt statt selbst startGameForMatch() aufzurufen) beim Speichern immer mit dem
-        // Default true zählen - egal was für dieses Turnier eingestellt ist. Betrifft z.B. Spiel 2/3
-        // eines BO3-Tisches, wenn nicht dieselbe Person/dasselbe Gerät jedes Einzelspiel speichert.
+        // Ein passiv beigetretenes Gerät zählte sonst immer mit dem Default true (z. B. Spiel 2/3
+        // eines BO3).
         this.session.activeTournamentCountsInStats.set(this.activeTournament()?.countInGeneralStats ?? true);
         return;
       }
@@ -254,10 +257,8 @@ export class TournamentService {
   }
 
   /**
-   * True, während handleGameFinished() ein gerade beendetes Turnier-Spiel verarbeitet (Server-
-   * Roundtrip für Spielstand/nächstes Spiel) - hält den Ingame-Tracker sichtbar (siehe
-   * ingame-tracker.html), statt kurz auf den leeren Match-Tab zurückzufallen und dann wieder
-   * reinzuspringen, bis feststeht, ob das nächste BO3-Spiel startet oder das Turnier-Panel öffnet.
+   * True, während handleGameFinished() läuft - hält den Tracker sichtbar, statt kurz auf den leeren
+   * Match-Tab zu springen.
    */
   readonly autoAdvancing = signal(false);
 
@@ -269,26 +270,42 @@ export class TournamentService {
     if (!groupId || this.refreshing()) return;
     this.refreshing.set(true);
     try {
-      await this.loadForGroup(groupId);
+      await this.reload();
     } finally {
       this.refreshing.set(false);
     }
   }
 
   private clear(): void {
-    this.activeTournament.set(null);
-    this.participants.set([]);
-    this.rounds.set([]);
-    this.matches.set([]);
+    setIfChanged(this.activeTournament, null);
+    setIfChanged(this.participants, []);
+    setIfChanged(this.rounds, []);
+    setIfChanged(this.matches, []);
+  }
+
+  /** Lädt den Turnierstand der aktiven Gruppe neu - nie zweimal gleichzeitig. */
+  private reload(): Promise<void> {
+    if (this.reloadInFlight) {
+      this.reloadQueued = true;
+      return this.reloadInFlight;
+    }
+    const groupId = this.groupService.groupId();
+    if (!groupId) return Promise.resolve();
+    this.reloadInFlight = this.loadForGroup(groupId).finally(() => {
+      this.reloadInFlight = null;
+      if (this.reloadQueued) {
+        this.reloadQueued = false;
+        void this.reload();
+      }
+    });
+    return this.reloadInFlight;
   }
 
   // --- Laden ---
 
   private async loadForGroup(groupId: string): Promise<void> {
-    // 'completed' wird bewusst mitgeladen (nicht nur 'setup'/'active') - sonst bekommt niemand
-    // außer der Person, die "Turnier beenden" geklickt hat, den Endstand zu sehen. Ein bereits aktiv
-    // weggeklicktes Podium (results_dismissed) zählt hier absichtlich wie "kein Turnier" - persistiert
-    // in der DB statt nur lokal, damit es nach einem Reload nicht wieder auftaucht.
+    // 'completed' mitladen, damit alle den Endstand sehen. Ein weggeklicktes Podium
+    // (results_dismissed, in der DB) zählt wie "kein Turnier".
     const { data, error } = await supabase
       .from('tournaments')
       .select('*')
@@ -308,7 +325,7 @@ export class TournamentService {
       return;
     }
 
-    this.activeTournament.set(this.mapTournament(data));
+    setIfChanged(this.activeTournament, this.mapTournament(data));
     await this.loadParticipants(data.id);
     await this.loadRoundsAndMatches(data.id);
   }
@@ -328,7 +345,7 @@ export class TournamentService {
   }
 
   private async loadParticipants(tournamentId: string): Promise<void> {
-    this.participants.set(await this.fetchParticipants(tournamentId));
+    setIfChanged(this.participants, await this.fetchParticipants(tournamentId));
   }
 
   private async fetchParticipants(tournamentId: string): Promise<TournamentParticipant[]> {
@@ -355,8 +372,8 @@ export class TournamentService {
 
   private async loadRoundsAndMatches(tournamentId: string): Promise<void> {
     const { rounds, matches } = await this.fetchRoundsAndMatches(tournamentId);
-    this.rounds.set(rounds);
-    this.matches.set(matches);
+    setIfChanged(this.rounds, rounds);
+    setIfChanged(this.matches, matches);
   }
 
   private async fetchRoundsAndMatches(
@@ -615,10 +632,8 @@ export class TournamentService {
   }
 
   /**
-   * Beitritt per Einladungscode - für Personen, die die veranstaltende Person beim Erstellen
-   * nicht direkt ausgewählt hat. Setzt voraus, dass die Person bereits Mitglied dieser Gruppe ist
-   * (players-Eintrag vorhanden) - für alle anderen greift weiterhin der normale Gruppen-Beitritt
-   * per Code (group.service.ts), das ist hier bewusst nicht dupliziert.
+   * Beitritt per Einladungscode für nicht ausgewählte Personen - nur für Gruppenmitglieder (sonst
+   * Gruppen-Beitritt in group.service.ts).
    */
   async joinByCode(code: string): Promise<{ success: boolean; messageKey: string; params?: Record<string, string> }> {
     const trimmedCode = code.trim().toUpperCase();
@@ -686,49 +701,14 @@ export class TournamentService {
   }
 
   /**
-   * Accountlose Spieler (players.user_id === null, z.B. Gäste ohne eigenen Login) können sich nie
-   * selbst per confirmJoin() bestätigen - sie treten deshalb sofort als "joined" bei, sobald die
-   * veranstaltende Person sie auswählt. Die veranstaltende Person selbst braucht sich ebenfalls
-   * nicht extra zu bestätigen. Alle anderen Personen mit Account müssen weiterhin selbst bestätigen.
+   * Accountlose Spieler und die veranstaltende Person sind sofort "joined"; alle anderen bestätigen
+   * selbst.
    */
   private initialStatusFor(playerName: string): ParticipantStatus {
     const uid = this.mtg.playerUserIds()[playerName];
     if (!uid) return 'joined';
     if (uid === this.auth.currentUser()?.id) return 'joined';
     return 'invited';
-  }
-
-  async addParticipant(tournamentId: string, playerName: string): Promise<boolean> {
-    const playerId = this.mtg.playerIdFor(playerName);
-    if (!playerId) return false;
-
-    const status = this.initialStatusFor(playerName);
-    const { error } = await supabase.from('tournament_participants').insert({
-      tournament_id: tournamentId,
-      player_id: playerId,
-      status,
-      joined_at: status === 'joined' ? new Date().toISOString() : null,
-    });
-
-    if (error) {
-      console.error('Konnte Teilnehmer nicht hinzufügen:', error);
-      return false;
-    }
-    await this.loadParticipants(tournamentId);
-    return true;
-  }
-
-  async removeParticipant(participantId: string, tournamentId: string): Promise<boolean> {
-    const tournament = this.activeTournament();
-    if (!tournament || tournament.id !== tournamentId || !this.isOrganizer()) return false;
-
-    const { error } = await supabase.from('tournament_participants').delete().eq('id', participantId);
-    if (error) {
-      console.error('Konnte Teilnehmer nicht entfernen:', error);
-      return false;
-    }
-    await this.loadParticipants(tournamentId);
-    return true;
   }
 
   async confirmJoin(tournamentId: string): Promise<boolean> {
@@ -809,9 +789,8 @@ export class TournamentService {
       return false;
     }
 
-    // Tische bewusst einzeln nacheinander anlegen (statt Bulk-Insert), damit jede zurückgegebene
-    // ID sicher der richtigen Paarung zugeordnet werden kann - ein Bulk-Insert garantiert keine
-    // zur Eingabe passende Rückgabe-Reihenfolge, und die Teilnehmer-Zeilen brauchen die echte ID.
+    // Tische einzeln anlegen: ein Bulk-Insert garantiert keine passende Rückgabe-Reihenfolge der
+    // IDs.
     const nowIso = new Date().toISOString();
     const insertedTables: { id: string; playerIds: string[] }[] = [];
     for (let i = 0; i < pairings.length; i++) {
@@ -881,10 +860,8 @@ export class TournamentService {
   }
 
   /**
-   * Bricht ein Turnier unwiderruflich ab (Organizer-only) - löscht die tournaments-Zeile, was
-   * Teilnehmer/Runden/Tische/Tisch-Teilnehmer per on-delete-cascade mitlöscht. Bereits gespielte
-   * Einzelspiele bleiben in der normalen Statistik erhalten (matches.tournament_match_id wird per
-   * on-delete-set-null nur entkoppelt, nicht die Zeile selbst gelöscht).
+   * Bricht ein Turnier ab (nur Organizer): Zeile löschen, der Rest folgt per Cascade. Gespielte
+   * Matches bleiben (tournament_match_id wird nur entkoppelt).
    */
   async cancelTournament(tournamentId: string): Promise<boolean> {
     const tournament = this.activeTournament();
@@ -902,12 +879,8 @@ export class TournamentService {
   }
 
   /**
-   * Ändert nachträglich, ob die Einzelspiele eines (auch bereits abgeschlossenen) Turniers in die
-   * allgemeine Statistik einfließen (host-only, siehe TournamentHistory) - für den Fall, dass die
-   * Checkbox beim Erstellen versehentlich falsch gesetzt war, oder um Altlasten eines früheren Bugs
-   * zu korrigieren (siehe GameSessionService.activeTournamentCountsInStats/handleRemoteSessionEnded).
-   * Aktualisiert sowohl das Turnier selbst als auch ALLE bereits gespeicherten Einzelspiele auf den
-   * neuen Wert.
+   * Ändert nachträglich, ob die Spiele eines Turniers in die allgemeine Statistik zählen (Host) -
+   * für Turnier und alle gespeicherten Spiele.
    */
   async setCountInGeneralStats(tournamentId: string, value: boolean): Promise<boolean> {
     if (!this.groupService.hasPermission('tournament.manage')) return false;
@@ -943,10 +916,8 @@ export class TournamentService {
   }
 
   /**
-   * Löscht unwiderruflich EIN Turnier samt aller seiner Einzelspiele - anders als cancelTournament()
-   * (nur für das eigene, gerade aktive Turnier gedacht; Einzelspiele bleiben als normale Matches
-   * erhalten) funktioniert das für JEDES Turnier der Gruppe (host-only, siehe TournamentHistory) und
-   * löscht auch die matches-Zeilen selbst, das Turnier verschwindet also komplett aus Verlauf/Statistik.
+   * Löscht EIN Turnier samt seiner Matches komplett aus Verlauf und Statistik (Host, jedes Turnier
+   * der Gruppe) - anders als cancelTournament().
    */
   async deleteTournament(tournamentId: string, groupId: string): Promise<{ success: boolean; error?: string }> {
     if (groupId !== this.groupService.groupId() || !this.groupService.hasPermission('tournament.manage')) {
@@ -965,12 +936,7 @@ export class TournamentService {
     return { success: true };
   }
 
-  /**
-   * Löscht Tabelle für Tabelle in Abhängigkeitsreihenfolge (statt sich auf DB-Cascades zu
-   * verlassen) für die übergebenen Turnier-IDs - genutzt von deleteTournament(). Löscht bewusst
-   * auch die matches-Zeilen selbst (anders als cancelTournament(), das sie nur entkoppelt), sie
-   * verschwinden also aus der Statistik.
-   */
+  /** Löscht Tabelle für Tabelle in Abhängigkeitsreihenfolge, inklusive der matches-Zeilen. */
   private async deleteTournamentRows(tournamentIds: string[]): Promise<{ success: boolean; error?: string }> {
     if (tournamentIds.length === 0) return { success: true };
 
@@ -1093,18 +1059,12 @@ export class TournamentService {
   }
 
   /**
-   * Verteilt eine geordnete Spielerliste (Runde 1: zufällig, Swiss: nach Punkten sortiert) auf
-   * Tische der Zielgröße `tableSize`, möglichst gleichmäßig (Größen tableSize oder tableSize-1)
-   * statt eines kleinen Rest-Tisches. Ein einzelner übrig bleibender Spieler bekommt ein Freilos.
-   * Versucht beim Auffüllen jedes Tisches, Personen zu bevorzugen, die laut `history` noch nicht
-   * zusammen an einem Tisch saßen; findet sich niemand Konfliktfreies mehr, wird die Person mit
-   * den wenigsten Wiederholungs-Konflikten genommen (Fallback, wird geloggt).
+   * Verteilt die geordnete Liste (Runde 1 zufällig, sonst nach Punkten) möglichst gleichmäßig auf
+   * Tische (tableSize oder tableSize-1), ein Einzelner bekommt ein Freilos. Bevorzugt Personen, die
+   * noch nicht zusammen saßen; sonst die mit den wenigsten Wiederholungen.
    *
-   * Die Suche nach einer konfliktfreien Person ist bewusst auf ein Fenster der Größe `tableSize`
-   * um die aktuelle Position im (nach Punkten sortierten) Pool begrenzt, statt das gesamte
-   * restliche Feld zu durchsuchen - sonst reißt die Wiederholungs-Vermeidung Punktgruppen
-   * auseinander (z.B. würden zwei punktgleiche Erstplatzierte quer durchs Feld getrennt, nur um
-   * eine Wiederholung zu vermeiden, statt sie für einen klaren Showdown zusammenzulassen).
+   * Gesucht wird nur in einem Fenster der Größe tableSize um die aktuelle Position, damit
+   * Punktgruppen zusammenbleiben.
    */
   private buildTablesAvoidingRepeats(orderedPlayerIds: string[], tableSize: number, history: Set<string>): Pairing[] {
     const n = orderedPlayerIds.length;
@@ -1176,10 +1136,8 @@ export class TournamentService {
   }
 
   /**
-   * Mindestwert für die eigene Match-/Spiel-Sieg-Quote, bevor sie in die Quote ANDERER Personen
-   * einfließt (offizielle Turnierregel) - verhindert, dass eine einzelne frühe Klatsche (z.B. 0
-   * Siege aus Runde 1) die OMW%/OGW% der eigenen späteren Gegner den Rest des Turniers über
-   * unverhältnismäßig nach unten zieht.
+   * Mindestquote für die eigene Match-/Spielquote, bevor sie in OMW%/OGW% anderer einfließt
+   * (offizielle Regel).
    */
   private static readonly TIEBREAKER_FLOOR = 1 / 3;
 
@@ -1293,23 +1251,16 @@ export class TournamentService {
 
   // --- Spiel-Integration ---
 
-  /**
-   * Startet die bestehende Einzel-Match-Session (ingame-tracker/Commander-Pods) für diesen Tisch.
-   * Nutzt bewusst immer die tatsächlichen Namen aller Tisch-Teilnehmer statt einer "ich"-
-   * Perspektive - so kann auch die veranstaltende Person das Spiel stellvertretend für accountlose
-   * Personen starten und deren Ergebnis eintragen, nicht nur die Spielenden selbst.
-   *
-   * Das 50-Minuten-Limit beginnt bewusst erst mit dem ersten "Spiel starten"-Klick an diesem Tisch
-   * (startedAt), nicht schon mit dem Auslosen der Runde - bei Spiel 2/3 desselben 1v1-Tisches
-   * bleibt der einmal gesetzte Zeitpunkt stehen.
-   */
-  /** Tische, für die gerade ein startGameForMatch()-Aufruf läuft - verhindert, dass zwei parallele Aufrufe (z.B. Auto-Weiterschaltung + ein gleichzeitiger Klick) für denselben Tisch je eine eigene Live-Session anlegen. */
+  /** Tische mit laufendem startGameForMatch() - verhindert zwei Live-Sessions bei Klick + Automatik. */
   private readonly startingGameForTable = new Set<string>();
 
+  /**
+   * Startet die Match-Session für diesen Tisch mit den Namen aller Teilnehmer - so kann auch die
+   * Veranstaltung für accountlose Personen starten. Das 50-Minuten-Limit beginnt beim ersten "Spiel
+   * starten" des Tisches (startedAt) und bleibt für Spiel 2/3 stehen.
+   */
   async startGameForMatch(match: TournamentMatch): Promise<void> {
-    // Harte Absicherung: ein bereits entschiedener Tisch (BO3 mit 2 Siegen, Pod mit Ergebnis) darf
-    // nicht erneut gestartet werden - egal ob das versehentlich per Klick oder durch die
-    // automatische Weiterschaltung in handleGameFinished() passieren würde.
+    // Ein entschiedener Tisch darf nie erneut starten (Klick oder Automatik).
     if (match.isBye || match.participants.length < 2 || match.winnerPlayerId || match.isDraw) return;
     if (this.startingGameForTable.has(match.id)) return;
     this.startingGameForTable.add(match.id);
@@ -1335,11 +1286,8 @@ export class TournamentService {
       }
     }
 
-    // Falls für diesen Tisch schon eine laufende Live-Session existiert (z.B. weil die andere Person
-    // bereits "Spiel starten" geklickt hat), an diese ankoppeln statt unabhängig neu aufzusetzen -
-    // beide Geräte sehen dann denselben Live-Stand, siehe GameSessionService.joinLiveSession.
-    // .limit(1) statt .maybeSingle(): robust falls durch frühere Test-/Absturz-Reste mehr als eine
-    // Zeile zu diesem Tisch existiert.
+    // Läuft für den Tisch schon eine Live-Session, ankoppeln statt neu anlegen. .limit(1) statt
+    // .maybeSingle() gegen Reste-Zeilen.
     const { data: existingSessions, error: findError } = await supabase
       .from('live_game_sessions')
       .select('id')
@@ -1368,12 +1316,8 @@ export class TournamentService {
   }
 
   /**
-   * Berechnet den BO3-Spielstand eines 2-Personen-Tisches komplett neu aus den tatsächlich
-   * gespeicherten matches-Zeilen (statt hochzuzählen - siehe Kommentar zur Endlos-Zähler-Absicherung
-   * weiter unten) und schreibt Spielstand + Tisch-Sieger entsprechend fest. Wird sowohl beim
-   * automatischen Eintragen eines fertig gespielten Spiels als auch bei der nachträglichen
-   * Korrektur eines einzelnen Spielergebnisses aufgerufen - kann den Tisch dabei auch wieder von
-   * "entschieden" zurück auf "offen" setzen, falls eine Korrektur das nötig macht.
+   * Berechnet den BO3-Stand aus den gespeicherten Spielen neu (statt hochzuzählen) und schreibt
+   * Stand und Sieger - auch zurück auf "offen", wenn eine Korrektur das verlangt.
    */
   private async recomputeBo3(
     tournamentMatchId: string,
@@ -1386,9 +1330,8 @@ export class TournamentService {
       .eq('tournament_match_id', tournamentMatchId);
 
     if (gameRowsError || !gameRows) {
-      // Bewusst OHNE zu schreiben zurück: mit einem leeren Leseergebnis würde unten sonst
-      // winner_player_id/completed_at auf null gesetzt und damit ein bereits entschiedener Tisch
-      // wieder auf "offen" zurückgedreht.
+      // Ohne Schreiben zurück: ein leeres Leseergebnis würde einen entschiedenen Tisch sonst wieder
+      // öffnen.
       console.error('Konnte Spielstand nicht neu berechnen:', gameRowsError);
       return { winnerWins: 0, otherWins: 0, ok: false };
     }
@@ -1422,10 +1365,8 @@ export class TournamentService {
       .eq('id', tournamentMatchId);
     if (winnerError) console.error('Konnte Turnier-Sieger nicht speichern:', winnerError);
 
-    // ok=false heißt: der Spielstand steht jetzt NICHT so in der Datenbank, wie er hier berechnet
-    // wurde. Die Aufrufer dürfen daraufhin weder den Tisch als entschieden behandeln noch
-    // automatisch das nächste Spiel starten - sonst entsteht die Endlosschleife aus
-    // "speichern schlägt fehl -> Tisch bleibt offen -> nächstes Spiel -> speichern schlägt fehl".
+    // ok=false: der Stand steht nicht so in der DB - dann weder als entschieden behandeln noch das
+    // nächste Spiel starten (sonst Endlosschleife).
     return { winnerWins, otherWins, ok: !error && !otherError && !winnerError };
   }
 
@@ -1448,12 +1389,7 @@ export class TournamentService {
     }));
   }
 
-  /**
-   * Korrigiert, wer ein einzelnes bereits gespeichertes Spiel innerhalb eines BO3-Tisches
-   * gewonnen hat - der eigentliche Grund, warum man überhaupt einen Tisch-Sieger ändern will, ist
-   * ja fast immer, dass genau dieses Einzelspiel falsch gespeichert wurde. Berechnet danach
-   * Spielstand und Tisch-Sieger frisch aus den (jetzt korrigierten) Spielen.
-   */
+  /** Korrigiert den Sieger eines einzelnen BO3-Spiels und rechnet Stand und Tisch-Sieger neu. */
   async correctGameWinner(tournamentMatchId: string, gameRowId: string, newWinnerName: string): Promise<boolean> {
     const match = this.matches().find((m) => m.id === tournamentMatchId);
     if (!match || match.participants.length !== 2) return false;
@@ -1477,9 +1413,7 @@ export class TournamentService {
     winnerName: string
   ): Promise<{ decided: boolean; ok: boolean }> {
     if (this.processedGameResults.has(matchRowId)) return { decided: false, ok: true };
-    // Sperre sofort setzen, damit zwei gleichzeitige Durchläufe dasselbe Spiel nicht doppelt
-    // eintragen - bei einem Fehlschlag unten aber wieder zurücknehmen, sonst könnte dieses Spiel
-    // nie mehr nachgetragen werden (z.B. nachdem eine gestörte Datenbank wieder erreichbar ist).
+    // Sperre sofort setzen (gegen doppeltes Eintragen), bei Fehlschlag wieder lösen.
     this.processedGameResults.add(matchRowId);
     const giveUp = (ok: boolean) => {
       if (!ok) this.processedGameResults.delete(matchRowId);
@@ -1548,31 +1482,24 @@ export class TournamentService {
   }
 
   /**
-   * Reagiert auf ein fertig gespieltes Turnier-Spiel: bei einem noch unentschiedenen BO3-Tisch
-   * (weniger als 2 Siege für beide Seiten) wird direkt das nächste Spiel am selben Tisch gestartet,
-   * statt zurück ins Turnier-Panel zu springen - sonst müsste man nach jedem Einzelspiel manuell
-   * wieder "Spiel starten" klicken. Erst wenn der Tisch entschieden ist (BO3 mit 2 Siegen, oder ein
-   * Pod-Tisch nach seinem einen Spiel), geht es automatisch zurück ins Turnier-Panel.
+   * Nach einem Turnierspiel: offener BO3-Tisch startet direkt das nächste Spiel; ein entschiedener
+   * Tisch führt zurück ins Panel.
    */
   private async handleGameFinished(tournamentMatchId: string, matchRowId: string, winnerName: string): Promise<void> {
     this.autoAdvancing.set(true);
     try {
       const { ok } = await this.recordGameResult(tournamentMatchId, matchRowId, winnerName);
 
-      // Konnte das Ergebnis nicht gespeichert werden, steht der Tisch weiterhin auf "offen" - dann
-      // aber NICHT automatisch das nächste Spiel starten: der nächste Versuch würde genauso
-      // scheitern, und das Ganze liefe endlos weiter (Fehler 42P17 in den RLS-Policies, siehe
-      // sql/fix-tournament-rls-recursion-2026-09-03.sql). Stattdessen einmal sichtbar melden und
-      // zurück ins Turnier-Panel, damit man überhaupt wieder herauskommt.
+      // Speichern gescheitert: nicht automatisch weiterspielen (liefe endlos, z. B. RLS-Fehler
+      // 42P17), sondern melden und zurück ins Panel.
       if (!ok) {
         this.openPanel();
         await this.dialog.alert(this.i18n.t('tournament.msg.saveFailed'));
         return;
       }
 
-      // Bewusst aus dem frisch neu geladenen Tisch selbst abgeleitet (statt nur aus dem Rückgabewert
-      // von recordGameResult) - so bleibt diese Entscheidung immer konsistent mit der Sperre in
-      // startGameForMatch(), die einen bereits entschiedenen Tisch ohnehin nicht mehr startet.
+      // Aus dem frisch geladenen Tisch abgeleitet - konsistent mit der Sperre in
+      // startGameForMatch().
       const match = this.matches().find((m) => m.id === tournamentMatchId);
       const decided = !match || match.participants.length !== 2 || !!match.winnerPlayerId || match.isDraw;
 
@@ -1588,10 +1515,8 @@ export class TournamentService {
   }
 
   /**
-   * Korrigiert den Sieger eines bereits entschiedenen Pod-Tisches (3-4 Personen) - für 2-Personen-
-   * BO3-Tische gibt es stattdessen die genauere correctGameWinner()-Korrektur pro Einzelspiel.
-   * Ein Pod-Tisch hat normalerweise genau ein gespeichertes Spiel; dessen winner_name wird
-   * gleich mit korrigiert, damit die normale Statistik konsistent zur Turnier-Wertung bleibt.
+   * Korrigiert den Sieger eines Pod-Tisches (3-4 Personen) samt winner_name des gespeicherten
+   * Spiels; für BO3 siehe correctGameWinner().
    */
   async correctWinner(tournamentMatchId: string, winnerPlayerId: string): Promise<boolean> {
     const match = this.matches().find((m) => m.id === tournamentMatchId);
@@ -1627,11 +1552,8 @@ export class TournamentService {
   }
 
   /**
-   * "Sieger festlegen"-Override, unabhängig vom bisherigen Spielstand nutzbar (z.B. bei
-   * Zeitablauf). Legt zusätzlich eine ganz normale matches-Zeile an (wie ein live über den
-   * Ingame-Tracker gespieltes Spiel) - sonst würde dieser Tisch zwar in der Turnier-Tabelle
-   * mitzählen, aber nie im Match-Verlauf/in der Statistik auftauchen, weil dort ausschließlich
-   * über addMatch() befüllt wird.
+   * Sieger festlegen (z. B. bei Zeitablauf). Legt zusätzlich eine normale matches-Zeile an, sonst
+   * fehlte der Tisch in Verlauf und Statistik.
    */
   async setManualWinner(tournamentMatchId: string, winnerPlayerId: string): Promise<boolean> {
     const match = this.matches().find((m) => m.id === tournamentMatchId);
@@ -1685,11 +1607,8 @@ export class TournamentService {
   }
 
   /**
-   * Trägt für einen 2-Personen-BO3-Tisch direkt einen Endstand (2:0 oder 2:1) nach, ohne dass die
-   * Einzelspiele über den Ingame-Tracker gespielt wurden - für den Fall, dass die Spieler ihre
-   * Partien nicht live mit der App getrackt haben. Ersetzt dazu alle bisher zu diesem Tisch
-   * gespeicherten matches-Zeilen durch genau winnerWins + loserWins neue Zeilen, damit die
-   * allgemeine Statistik weiterhin pro Einzelspiel (nicht nur pro Tisch) korrekt zählt.
+   * Trägt für einen BO3-Tisch direkt 2:0 oder 2:1 nach und ersetzt die gespeicherten Spiele durch
+   * genau so viele neue Zeilen.
    */
   async setManualScore(tournamentMatchId: string, winnerPlayerId: string, loserWins: 0 | 1): Promise<boolean> {
     const match = this.matches().find((m) => m.id === tournamentMatchId);
@@ -1732,12 +1651,8 @@ export class TournamentService {
   }
 
   /**
-   * Löscht eine ggf. noch laufende Live-Session dieses Tisches - nötig, wenn der Sieger manuell
-   * (nicht durch tatsächliches Zu-Ende-Spielen) festgelegt wird, z.B. per Endstand-Buttons. Ohne das
-   * würde ein Gerät, das gerade live mit diesem Tisch verbunden ist, nie erfahren, dass der Tisch
-   * inzwischen entschieden ist, und im Ingame-Tracker hängen bleiben (die Löschung löst über Realtime
-   * genau denselben Abschluss-Mechanismus aus wie ein normales Speichern - siehe
-   * GameSessionService.subscribeLiveSession/handleRemoteSessionEnded).
+   * Löscht die Live-Session des Tisches bei manuell festgelegtem Sieger - die Löschung beendet per
+   * Realtime auch die verbundenen Geräte.
    */
   private async deleteLiveSessionForTable(tournamentMatchId: string): Promise<void> {
     const { error } = await supabase
@@ -1773,4 +1688,9 @@ export class TournamentService {
       .eq('id', matchRowId);
     if (gameNumberError) console.error('Konnte Spielnummer nicht am Match hinterlegen:', gameNumberError);
   }
+}
+
+/** Setzt ein Signal nur bei geändertem Inhalt - ein Nachladen ohne Änderung löst keine Neuberechnung aus. */
+function setIfChanged<T>(target: WritableSignal<T>, value: T): void {
+  if (JSON.stringify(target()) !== JSON.stringify(value)) target.set(value);
 }

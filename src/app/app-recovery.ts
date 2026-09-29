@@ -159,11 +159,6 @@ export function showCrashScreen(): void {
   document.body.appendChild(overlay);
 }
 
-/** Entfernt den Crash-Screen wieder (die App hat sich doch noch gefangen). */
-export function hideCrashScreen(): void {
-  document.getElementById(CRASH_SCREEN_ID)?.remove();
-}
-
 const CRASH_TEXTS = {
   de: {
     title: 'Die Anzeige hat sich verabschiedet',

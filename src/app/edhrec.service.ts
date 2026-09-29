@@ -49,7 +49,7 @@ export class EdhrecService {
     return [`${slugs[0]}-${slugs[1]}`, `${slugs[1]}-${slugs[0]}`];
   }
 
-  // NEU - dauerhafter Cache mit 24h-TTL (anders als Scryfalls Tag-Cache, siehe ScryfallService,
+  // dauerhafter Cache mit 24h-TTL (anders als Scryfalls Tag-Cache, siehe ScryfallService,
   // ändern sich EDHRECs Empfehlungen mit der Zeit - deshalb TTL statt für immer). Hält die
   // Zusage aus der Erlaubnis-Anfrage an EDHREC ein ("cache all responses for 24 hours") und
   // reduziert die Anfragelast deutlich, da dieselbe Commander-Seite bei jedem Deck-Öffnen bzw.
@@ -80,7 +80,7 @@ export class EdhrecService {
   /**
    * EDHRECs Nutzungsrichtlinie erlaubt max. 1 Request/Sekunde (besonders wichtig bei Fehlern) -
    * instanzweiter statt pro-Aufruf-Zeitstempel, damit sich ALLE Aufrufer denselben Takt teilen.
-   * Nötig, weil z.B. deck-viewer.service.ts Tags und Empfehlungen aus zwei unabhängigen Angular-
+   * Nötig, weil z.B. deck-edhrec.service.ts Tags und Empfehlungen aus zwei unabhängigen Angular-
    * effect()s gleichzeitig laden kann, sobald sich der betrachtete Commander ändert - ohne
    * gemeinsame Bremse hier würden diese (und ggf. mehrere sequentielle Fallback-Versuche bei
    * seltenen Commander/Tag-Kombinationen) das Limit reißen, ohne dass jede Aufrufstelle das selbst
@@ -127,15 +127,8 @@ export class EdhrecService {
   }
 
   /**
-   * Laedt EDHRECs Kartenempfehlungen fuer einen Commander oder ein Commander-Paar (optional
-   * kombiniert mit einem Theme-Tag, z.B. "ramp" oder "aristocrats" - dieselben Tags, die EDHREC
-   * auf der Commander-Seite selbst als anklickbare Links zeigt) direkt vom selben JSON, das ihre
-   * eigene Webseite nutzt (kein offizieller API-Key noetig, CORS ist offen) -
-   * inoffiziell/undokumentiert, kann sich also theoretisch ohne Vorwarnung aendern. Nur noch für
-   * die Empfehlungen zu einem konkreten, per Namen ausgewählten Commander im Einsatz - das
-   * allgemeine "Commander nach Farbe/Archetyp entdecken" läuft seit einem gescheiterten mehrfachen
-   * Anlauf mit EDHRECs undokumentierter API stattdessen über Scryfalls eigene, dokumentierte API
-   * (ScryfallService.searchCommanders(), order=edhrec).
+   * EDHRECs Kartenempfehlungen für einen Commander oder ein Paar, optional mit Theme-Tag ("ramp").
+   * Liest dasselbe JSON wie EDHRECs Webseite - inoffiziell, kann sich ohne Vorwarnung ändern.
    */
   async getCommanderRecommendations(
     commanderNames: string[],

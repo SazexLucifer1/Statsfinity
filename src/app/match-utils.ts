@@ -7,6 +7,18 @@ export const ARCHENEMY_OTHERS = '__OTHERS__';
 export const DRAW = '__DRAW__';
 
 /**
+ * Platzhalter-Gewinner der früheren Excel-Importe: dort steht je Verlierer ein eigener Datensatz
+ * mit diesem "Gewinner". Solche Datensätze sind keine eigenen Partien.
+ */
+export const IMPORT_LOSS_PLACEHOLDER = 'Unbekannt (Import)';
+export const IMPORT_ARCHENEMY_LOSS_PLACEHOLDER = 'Archenemy (Import)';
+
+/** true = Verlierer-Duplikat eines Excel-Imports (keine eigenständige Partie). */
+export function isImportLossDuplicate(match: Pick<Match, 'winner'>): boolean {
+  return match.winner === IMPORT_LOSS_PLACEHOLDER || match.winner === IMPORT_ARCHENEMY_LOSS_PLACEHOLDER;
+}
+
+/**
  * Ermittelt, ob ein Spieler ein Match gewonnen hat - modusabhängig (Two-Headed Giant zählt über
  * das Team, Archenemy über den Archenemy-Status). Bewusst als reine Funktion mit primitiven
  * Parametern statt an das Match/MatchPlayer-Modell gebunden, damit sie auch für Abfragen nutzbar

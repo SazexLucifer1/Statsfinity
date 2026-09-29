@@ -224,7 +224,7 @@ export class TutorialService {
 
     // Deck-Detailansicht: startet beim ersten Öffnen eines Decks.
     effect(() => {
-      const deck = this.deckViewer.viewingDeck();
+      const deck = this.deckViewer.state.viewingDeck();
       const profile = this.profileService.profile();
       if (!deck || !profile || this.activeTutorialId() !== null) return;
       if (!profile.tutorialsSeen.includes('intro')) return;
@@ -235,7 +235,7 @@ export class TutorialService {
     // Deck bauen (Bearbeiten-Modus): startet beim ersten Aktivieren von "Bearbeiten" in der
     // Deck-Detailansicht - unabhängig von "deckDetail" oben, da es eine eigene, tiefere Tour ist.
     effect(() => {
-      const editing = this.deckViewer.editMode();
+      const editing = this.deckViewer.state.editMode();
       const profile = this.profileService.profile();
       if (!editing || !profile || this.activeTutorialId() !== null) return;
       if (!profile.tutorialsSeen.includes('intro')) return;

@@ -1,4 +1,3 @@
-// NEU
 import { Injectable, signal } from '@angular/core';
 
 export type LegalPage = 'impressum' | 'datenschutz' | 'nutzungsbedingungen';

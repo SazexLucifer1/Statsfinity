@@ -11,9 +11,8 @@ import {
 } from './bracket';
 
 /**
- * Die drei kuratierten Markierungen von Commander Spellbook, die es bei Scryfall nicht gibt und
- * die die offiziellen Bracket-Kriterien brauchen. Gefüllt von scripts/sync-spellbook-bracket.js,
- * Tabelle in sql/spellbook-cache-2026-09-06.sql.
+ * Die drei kuratierten Spellbook-Markierungen, die Scryfall nicht hat (sync-spellbook-bracket.js,
+ * sql/spellbook-cache-2026-09-06.sql).
  */
 export interface SpellbookCardFlags {
   massLandDenial: boolean;
@@ -21,10 +20,7 @@ export interface SpellbookCardFlags {
   tutor: boolean;
 }
 
-/**
- * Eine Zwei-Karten-Combo aus Commander Spellbook. cardA/cardB sind normalisierte
- * Vorderseiten-Namen, also derselbe Schlüssel wie in SpellbookCardFlags.
- */
+/** Zwei-Karten-Combo aus Spellbook; cardA/cardB sind normalisierte Vorderseiten-Namen. */
 export interface SpellbookTwoCardCombo {
   id: string;
   cardA: string;
@@ -39,10 +35,7 @@ export interface SpellbookTwoCardCombo {
   popularity: number | null;
 }
 
-/**
- * Eine Zeile aus der Combo-Finder-Suche: eine Combo, der bei der abgefragten Deckliste genau eine
- * Karte fehlt. Namen sind normalisierte Vorderseiten-Namen, also derselbe Schlüssel wie überall.
- */
+/** Combo-Finder-Zeile: eine Combo, der genau eine Karte fehlt (normalisierte Namen). */
 export interface ComboSuggestionRow {
   comboId: string;
   /** Die eine Karte, die dem Deck für diese Combo noch fehlt. */
@@ -65,18 +58,9 @@ export interface ComboSuggestionRow {
 }
 
 /**
- * Lesezugriff auf den eigenen Kartendatenbestand, den der nächtliche Abgleich füllt
- * (scripts/sync-scryfall-bulk.js, Tabellen in sql/scryfall-cache-2026-09-06.sql).
- *
- * Warum es diesen Service gibt: Die Analyse-Kacheln der Deck-Ansicht liefen über
- * ScryfallService.classifyCards() und lösten dabei rund 100 aufeinander folgende Suchanfragen pro
- * Deck aus - 12 Kategorien, je in Chunks von ~15 Kartennamen, mit 300 ms Zwangspause. Das dauerte
- * etwa eine Minute, und zwar bei jedem neuen Nutzer und auf jedem neuen Gerät erneut, weil der
- * bisherige Cache im localStorage liegt. Dieselbe Auskunft steht jetzt in einer Tabelle und
- * braucht eine einzige Abfrage.
- *
- * Bewusst NICHT ScryfallService erweitert: der spricht ausschließlich mit Scryfall, hier geht es
- * um die eigene Datenbank. Gleiche Trennung wie bei PublicDeckService gegenüber DeckService.
+ * Lesezugriff auf den eigenen, nachts gefüllten Kartenbestand (sync-scryfall-bulk.js,
+ * sql/scryfall-cache-2026-09-06.sql). Ersetzt ~100 Scryfall-Suchen je Deck durch eine Abfrage.
+ * Getrennt von ScryfallService, der nur mit Scryfall spricht.
  */
 @Injectable({ providedIn: 'root' })
 export class CardDataService {
@@ -87,30 +71,21 @@ export class CardDataService {
     'oracle_id, name, front_name_normalized, type_line, cmc, mana_cost, color_identity, produced_mana, game_changer, oracle_text, keywords, image_url, back_image_url, back_type_line, all_parts';
 
   /**
-   * Nachgeschlagen wird immer mit dem normalisierten Vorderseiten-Namen - genau der Schlüssel, den
-   * der Abgleich in front_name_normalized ablegt (siehe normalizedFrontName() im Sync-Skript) und
-   * unter dem auch ScryfallService.classifyCards() klassifiziert. Der volle Doppelkartenname
-   * ("A // B") würde nie treffen.
+   * Schlüssel ist der normalisierte Vorderseiten-Name (front_name_normalized), "A // B" träfe nie.
    */
   private lookupKey(cardName: string): string {
     return normalizeCardName(cardName.split(' // ')[0].trim());
   }
 
   /**
-   * Obergrenze für Namen je Abfrage. Klein gehalten, weil je Name bis zu 12 Zeilen zurückkommen
-   * (eine pro Kategorie): 75 Namen sind höchstens 900 Zeilen und bleiben damit sicher unter der
-   * 1000-Zeilen-Grenze, die PostgREST je nach Projekteinstellung setzt - sonst würden Treffer
-   * still abgeschnitten und einzelne Kacheln zeigten zu niedrige Zahlen.
+   * Höchstens 75 Namen je Abfrage: bis zu 12 Zeilen je Name bleiben unter der 1000-Zeilen-Grenze
+   * von PostgREST.
    */
   private static readonly NAMEN_PRO_ABFRAGE = 75;
 
   /**
-   * Liefert je Kategorie-Key die Menge der zutreffenden (normalisierten Vorderseiten-)Namen.
-   *
-   * Schlägt die Abfrage fehl (kein Netz, Tabelle noch nicht angelegt), kommt eine leere Map
-   * zurück statt eines Fehlers. Der Aufrufer behandelt dann alle Karten als "unbekannt" und fällt
-   * auf die bisherige Live-Abfrage bei Scryfall zurück - im schlimmsten Fall ist die App also
-   * genauso langsam wie vorher, aber nie kaputt.
+   * Je Kategorie-Key die zutreffenden Namen. Bei Fehler eine leere Map - der Aufrufer fällt dann
+   * auf Scryfall zurück.
    */
   async effectCategories(cardNames: string[]): Promise<Map<string, Set<string>>> {
     const result = new Map<string, Set<string>>();
@@ -142,12 +117,8 @@ export class CardDataService {
   }
 
   /**
-   * Welche der übergebenen Namen kennt der Abgleich überhaupt?
-   *
-   * Nötig, um "diese Karte hat keinen einzigen Effekt-Tag" von "diese Karte kennen wir noch gar
-   * nicht" zu unterscheiden. Ohne diese Unterscheidung würde eine brandneue, erst nach dem letzten
-   * Nachtlauf erschienene Karte stillschweigend in allen Kacheln fehlen, statt bei Scryfall
-   * nachgeschlagen zu werden.
+   * Welche Namen kennt der Abgleich? Unterscheidet "kein Tag" von "Karte unbekannt" (neue Karten
+   * gehen an Scryfall).
    */
   async knownCardNames(cardNames: string[]): Promise<Set<string>> {
     const bekannt = new Set<string>();
@@ -198,22 +169,9 @@ export class CardDataService {
   }
 
   /**
-   * Wie ScryfallService.findCardsBulk(), aber erst aus der eigenen Datenbank - nur die dort
-   * unbekannten Namen gehen noch ins Netz.
-   *
-   * Das behebt mehr als nur Wartezeit: Scheitert die Scryfall-Abfrage (unter Last antwortet
-   * Scryfall mit 429, was im Browser als CORS-Fehler ankommt und den Chunk stillschweigend
-   * verschluckt), fehlen in der Deck-Analyse schlagartig Pip-Verteilung, Manaquellen, Game-Changer-
-   * Kennzeichnung, Tutoren-Erkennung und die Kartenbilder - ohne dass irgendwo ein Fehler sichtbar
-   * wäre. Manakurve und Typverteilung bleiben dabei korrekt, weil sie aus deck_cards kommen; genau
-   * dieses halb gefüllte Bild war reproduzierbar zu sehen.
-   *
-   * Die Schlüssel der Ergebnis-Map sind identisch zu ScryfallService.findCardsBulk(): der
-   * ursprüngliche (volle) Kartenname in Kleinschreibung, denn genau so schlägt die Deck-Ansicht
-   * nach (details.get(card.cardName.toLowerCase())). Nachgeschlagen wird dagegen über den
-   * normalisierten Vorderseiten-Namen - dieselbe Trennung wie dort, aus demselben Grund
-   * (Scryfall liefert Apostrophe teils in einer anderen Unicode-Variante als die gespeicherten
-   * Decklisten).
+   * Wie ScryfallService.findCardsBulk(), aber zuerst aus der eigenen DB. Verhindert auch halb
+   * gefüllte Analysen, wenn Scryfall mit 429 still Chunks verschluckt. Schlüssel: voller Name klein
+   * (wie dort), nachgeschlagen über den normalisierten Vorderseiten-Namen.
    */
   async findCardsBulk(cardNames: string[]): Promise<Map<string, ScryfallCard>> {
     const result = new Map<string, ScryfallCard>();
@@ -250,19 +208,13 @@ export class CardDataService {
       for (const [key, card] of await this.scryfall.findCardsBulk(fehlend)) result.set(key, card);
     }
 
-    // Die eigene Tabelle kennt nur die englischen Bilder (der nächtliche Abgleich liest Scryfalls
-    // englische Bulk-Datei). Steht die Artwork-Sprache auf etwas anderes, werden die Bild-URLs
-    // hier noch einmal gebündelt getauscht - auf Englisch kostet das keine einzige Anfrage.
+    // Die Tabelle kennt nur englische Bilder; bei anderer Artwork-Sprache gebündelt tauschen.
     return this.scryfall.karteMapInKartensprache(result);
   }
 
   /**
-   * Wie ScryfallService.findCard(), aber erst exakt in der eigenen Datenbank.
-   *
-   * Der Rückfall auf Scryfall ist hier keine reine Absicherung, sondern fachlich nötig: Diese
-   * Methode bekommt von Hand getippte Namen und muss deshalb Tippfehler und fremdsprachige
-   * gedruckte Namen auffangen. Beides kann nur Scryfalls Fuzzy-Suche - unsere Tabelle enthält
-   * ausschließlich die englischen Namen in exakter Schreibweise.
+   * Wie ScryfallService.findCard(), erst exakt in der DB. Der Scryfall-Rückfall fängt Tippfehler
+   * und fremdsprachige Namen auf (Fuzzy-Suche).
    */
   async findCard(cardName: string): Promise<ScryfallCard | null> {
     if (!cardName.trim()) return null;
@@ -280,22 +232,12 @@ export class CardDataService {
     return this.scryfall.findCard(cardName);
   }
 
-  /**
-   * Einmal je Sitzung geladen und dann wiederverwendet: die Tabelle hat nur rund 200 Zeilen, und
-   * die Liste ändert sich höchstens einmal pro Nacht.
-   */
+  /** Einmal je Sitzung geladen (~200 Zeilen, ändert sich nur nachts). */
   private spellbookFlagsPromise: Promise<Map<string, SpellbookCardFlags>> | null = null;
 
   /**
-   * Die kuratierten Kartenmarkierungen von Commander Spellbook (Mass Land Denial, Extra-Turns,
-   * Tutoren), Schlüssel ist der normalisierte Vorderseiten-Name.
-   *
-   * Bewusst die GANZE Tabelle statt einer .in()-Abfrage über die Decknamen. Sie enthält nur
-   * Karten mit mindestens einem Flag (~200 Zeilen), und deshalb wäre bei einer gefilterten
-   * Abfrage "null Treffer" nicht mehr von "Tabelle noch leer" zu unterscheiden - genau diese
-   * Unterscheidung braucht der Aufrufer aber, um zu entscheiden, ob er auf seine alte Näherung
-   * zurückfallen muss. Eine leere Map heißt hier also eindeutig: noch kein Nachtlauf (oder die
-   * Migration ist noch nicht ausgeführt).
+   * Spellbook-Markierungen (MLD, Extra-Turns, Tutoren) je normalisiertem Namen. Bewusst die ganze
+   * Tabelle: eine leere Map heißt dann eindeutig "noch kein Nachtlauf", nicht "keine Treffer".
    */
   async spellbookCardFlags(): Promise<Map<string, SpellbookCardFlags>> {
     this.spellbookFlagsPromise ??= (async () => {
@@ -331,21 +273,14 @@ export class CardDataService {
 
   private bracketBenchmarkPromise: Promise<BracketBenchmark> | null = null;
 
-  /**
-   * Die gemessenen Schwellen der Bracket-Einstufung (Tuning-Spannen, Urteil F), einmal je Sitzung
-   * geladen - die Tabelle ändert sich nur nachts.
-   *
-   * Fehlt die Tabelle (Migration sql/bracket-benchmark-2026-09-29.sql noch nicht ausgeführt) oder
-   * gibt es kein Netz, kommen die Startwerte zurück - dieselben Werte, die vorher fest im Code
-   * standen. Die Einstufung läuft also genauso weiter wie bisher.
-   */
+  /** Gemessene Bracket-Schwellen, einmal je Sitzung. Ohne Tabelle oder Netz die Startwerte. */
   bracketBenchmark(): Promise<BracketBenchmark> {
     this.bracketBenchmarkPromise ??= (async () => {
-      const { data, error } = await supabase
-        .from('bracket_benchmark')
-        .select(
-          'bracket, tutor_density, avg_cmc, untapped_land_percent, game_changers, combo_tutor_min',
-        );
+      const basis = 'bracket, tutor_density, avg_cmc, untapped_land_percent, game_changers, combo_tutor_min';
+      const gewichte = 'weight_tutors, weight_avg_cmc, weight_untapped_lands, weight_game_changers';
+      let { data, error } = await supabase.from('bracket_benchmark').select(`${basis}, ${gewichte}`);
+      // Gewichte-Migration noch nicht ausgeführt: ohne die Spalten, dann gelten die Start-Gewichte.
+      if (error?.code === '42703') ({ data, error } = await supabase.from('bracket_benchmark').select(basis));
 
       if (error) {
         console.warn('Bracket-Benchmark nicht verfügbar, es gelten die Startwerte:', error.message);
@@ -364,28 +299,8 @@ export class CardDataService {
   }
 
   /**
-   * Alle Zwei-Karten-Combos, bei denen die ERSTE Karte im Deck liegt.
-   *
-   * Bewusst nur über card_a_normalized abgefragt, obwohl die Reihenfolge in der Quelle beliebig
-   * ist: eine Combo ist nur dann vollständig, wenn BEIDE Karten im Deck liegen - dann ist auch
-   * die erste dabei und die Abfrage findet sie. Die zweite Karte prüft presentCombos() in
-   * bracket.ts, zusammen mit der mustBeCommander-Bedingung. Eine zusätzliche Abfrage über
-   * card_b_normalized würde also nur Zeilen liefern, die ohnehin wieder wegfielen.
-   *
-   * Leeres Ergebnis bei einem Fehler (Tabelle noch nicht angelegt, kein Netz): die Einstufung
-   * läuft dann ohne Combo-Kriterium weiter, statt ganz auszufallen.
-   */
-  /**
-   * Wie viele SPIELBEENDENDE Combos stecken vollständig in dieser Deckliste?
-   *
-   * Grundlage von Urteil F in bracket.ts. Die Frage lautet "welche Combos sind VOLLSTÄNDIG
-   * enthalten", und die lässt sich mit PostgREST-Filtern nicht stellen - deshalb die
-   * Datenbankfunktion winning_combos_in_deck (sql/winning-combos-in-deck-2026-09-16.sql). Sie
-   * nimmt die rund hundert Kartennamen im Rumpf der Anfrage entgegen; als Filter in der
-   * Adresszeile wären das mehrere Kilobyte URL.
-   *
-   * 0 bei einem Fehler (Funktion noch nicht angelegt, kein Netz): Die Einstufung läuft dann ohne
-   * Urteil F weiter, statt ganz auszufallen - dieselbe Haltung wie bei twoCardCombosFor().
+   * Anzahl spielbeendender Combos, vollständig im Deck (Urteil F), über die Funktion
+   * winning_combos_in_deck (Namen im Rumpf statt kilobytelanger URL). 0 bei Fehler.
    */
   async winningCombosIn(cardNames: string[], commanderNames: string[]): Promise<number> {
     const keys = [...new Set(cardNames.map((n) => this.lookupKey(n)).filter(Boolean))];
@@ -406,14 +321,17 @@ export class CardDataService {
     return typeof data === 'number' ? data : 0;
   }
 
+  /**
+   * Zwei-Karten-Combos, deren ERSTE Karte im Deck liegt - reicht, weil eine vollständige Combo
+   * beide enthält; die zweite prüft presentCombos(). Bei Fehler leer, die Einstufung läuft ohne
+   * Combos weiter.
+   */
   async twoCardCombosFor(cardNames: string[]): Promise<SpellbookTwoCardCombo[]> {
     const keys = [...new Set(cardNames.map((n) => this.lookupKey(n)).filter(Boolean))];
     if (keys.length === 0) return [];
 
     const combos: SpellbookTwoCardCombo[] = [];
-    // Klein gehalten, weil eine einzelne verbreitete Karte (Sol Ring & Co.) in vielen Combos
-    // steckt - so bleibt jeder Block sicher unter der 1000-Zeilen-Grenze von PostgREST, ab der
-    // Treffer stillschweigend abgeschnitten würden.
+    // Blöcke à 40, damit verbreitete Karten (Sol Ring) unter der 1000-Zeilen-Grenze bleiben.
     for (const block of chunk(keys, 40)) {
       const { data, error } = await supabase
         .from('spellbook_two_card_combos')
@@ -448,18 +366,9 @@ export class CardDataService {
   }
 
   /**
-   * Combo-Finder: alle Combos, denen bei dieser Deckliste genau EINE Karte fehlt.
-   *
-   * Die eigentliche Arbeit macht die Datenbankfunktion spellbook_combos_missing_one (siehe
-   * sql/spellbook-combos-2026-09-07.sql). Aus der App heraus wäre die Frage gar nicht stellbar:
-   * "genau eine Karte fehlt" verlangt eine Gruppierung über die Karten je Combo, und ohne sie
-   * müsste der Browser alle Combos herunterladen, die irgendeine Deckkarte enthalten - bei
-   * 108.500 Combos und einer verbreiteten Karte wie Sol Ring zehntausende Zeilen für am Ende
-   * vierzig Vorschläge.
-   *
-   * available === false heißt "die Funktion oder die Tabellen gibt es noch nicht" (Migration noch
-   * nicht ausgeführt, Nachtlauf noch nicht gelaufen). Bewusst unterschieden von "keine Treffer":
-   * die Oberfläche sagt in dem Fall, woran es liegt, statt "nichts gefunden" zu behaupten.
+   * Combo-Finder: Combos, denen genau EINE Karte fehlt, über spellbook_combos_missing_one (die
+   * Gruppierung geht nur in der DB). available === false = Funktion/Tabellen fehlen - unterschieden
+   * von "keine Treffer".
    */
   async combosMissingOneCard(
     deckNames: string[],
@@ -478,11 +387,8 @@ export class CardDataService {
       return { rows: [], available: false };
     }
 
-    // Null Treffer heißt zweierlei, und der Unterschied ist für den Nutzer alles: Entweder gibt es
-    // zu diesem Deck wirklich nichts vorzuschlagen - oder die Combo-Tabelle ist noch leer, weil
-    // der Nachtlauf sie noch nie gefüllt hat. Ohne diese eine zusätzliche Abfrage behauptet die
-    // Oberfläche im zweiten Fall "nichts gefunden", und niemand kommt darauf, dass schlicht die
-    // Daten fehlen. Sie läuft nur im Null-Fall, kostet also im Normalbetrieb nichts.
+    // Null Treffer: prüfen, ob die Combo-Tabelle überhaupt gefüllt ist (nur im Null-Fall, kostet
+    // sonst nichts).
     if ((data ?? []).length === 0) {
       const { data: probe, error: probeError } = await supabase
         .from('spellbook_combos')
@@ -510,14 +416,8 @@ export class CardDataService {
   }
 
   /**
-   * Volle Kartendaten zu normalisierten Vorderseiten-Namen, wie sie in den Spellbook-Tabellen
-   * stehen - Schlüssel der Ergebnis-Map ist genau dieser normalisierte Name.
-   *
-   * Nötig, weil die Combo-Tabelle nur Namen kennt: Für Karten, die NICHT im Deck liegen (die
-   * Vorschläge des Combo-Finders), fehlen sonst Farbidentität und Bild. Bewusst ohne den
-   * Scryfall-Rückfall aus findCardsBulk(): hier geht es um Hunderte Namen auf einmal, und eine
-   * Handvoll frisch erschienener Karten, die der Nachtlauf noch nicht kennt, ist als fehlender
-   * Vorschlag verkraftbar - Hunderte Einzelabfragen ins Netz wären es nicht.
+   * Volle Kartendaten zu normalisierten Namen (für Combo-Finder-Vorschläge außerhalb des Decks).
+   * Ohne Scryfall-Rückfall - hunderte Einzelabfragen lohnen nicht für ein paar neue Karten.
    */
   async cardsByNormalizedNames(keys: string[]): Promise<Map<string, ScryfallCard>> {
     const result = new Map<string, ScryfallCard>();

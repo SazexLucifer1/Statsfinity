@@ -31,7 +31,7 @@
   </header>
 
 <main class="content">
-  @if (deckViewer.viewingDeck()) {
+  @if (deckViewer.state.viewingDeck()) {
   <!-- Die Deck-Detailansicht ist eine eigene Seite im Inhaltsbereich statt eines Vollbild-Popups:
        so scrollt nur das Fenster selbst (statt Seite + Overlay gleichzeitig) und der App-Hintergrund
        bleibt wie in den Tabs sichtbar. -->
@@ -67,7 +67,7 @@
 <!-- In der Deck-Detailansicht ausgeblendet: sie ist eine eigene Seite, verlassen wird sie über
      "Zurück" bzw. die Zurück-Geste - die Leiste würde dort nur Platz kosten und über den Inhalt
      ragen. Der Tutorial-Schritt zur Leiste steckt im Intro-Rundgang, der ohne offenes Deck läuft. -->
-@if (!deckViewer.viewingDeck()) {
+@if (!deckViewer.state.viewingDeck()) {
 <nav class="tab-bar" data-tutorial="tab-bar">
   @for (tab of tabs; track tab.id) {
   <button
@@ -109,7 +109,7 @@
   }
 </nav>
 }
-<app-legal-footer [class.without-tab-bar]="deckViewer.viewingDeck()" />
+<app-legal-footer [class.without-tab-bar]="deckViewer.state.viewingDeck()" />
 }
 
 @if (loginOverlay.active()) {

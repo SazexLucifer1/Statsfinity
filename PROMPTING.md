@@ -68,7 +68,7 @@ Wenn du diese Begriffe benutzt, entfällt die Suche.
 | Profil, Konto, Einstellungen                       | `src/app/profile-tab/`, `profile.service.ts`          |
 | Lebenspunkte-Zähler, In-Game, laufendes Spiel      | `src/app/ingame-tracker/`                             |
 | Goldfish, Solo-Testen                              | `src/app/goldfish-tracker/`                           |
-| Deck-Ansicht, Deck öffnen, Kartenliste eines Decks | `src/app/deck-detail-view/`, `deck-viewer.service.ts` |
+| Deck-Ansicht, Deck öffnen, Kartenliste eines Decks | `src/app/deck-detail-view/`, `deck-viewer.service.ts` (+ `deck-*.service.ts`) |
 | Deck importieren, Moxfield/Archidekt-Link          | `deck-import.service.ts`, `deck-import-dialogs/`      |
 | Deck-PDF, Proxys drucken                           | `deck-pdf.service.ts`, `deck-pdf-dialog/`             |
 | Turnier, Bracket, Platzierungen                    | `src/app/tournament-panel/`, `tournament.service.ts`  |

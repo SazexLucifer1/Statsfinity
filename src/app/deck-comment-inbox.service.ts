@@ -44,8 +44,6 @@ export class DeckCommentInboxService {
   /** Wie in DeckCommentService: fehlt die Migration, verschwindet das Postfach still, statt zu meckern. */
   readonly verfuegbar = signal(true);
 
-  readonly hatUngelesene = computed(() => this.unreadCount() > 0);
-
   constructor() {
     // Login/Logout: frisch zählen bzw. alles wegwerfen. Ohne das zeigte das Abzeichen nach einem
     // Kontowechsel weiter die Zahl des vorigen Kontos.

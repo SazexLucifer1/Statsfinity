@@ -107,4 +107,4 @@ Seit dem 29.09.2026 (`sql/bracket-benchmark-2026-09-29.sql`):
 - **Nicht gelernt:** die offiziellen Kriterien (Game Changer, Mass Land Denial, Extra-Turn-Schleifen, Combos).
 
 Wer die Messung ändert, ändert sie an **beiden** Stellen: SQL-Funktion und die Merkmale im Client
-(`deck-viewer.service.ts`) müssen dasselbe messen, sonst vergleicht der Tuning-Grad Äpfel mit Birnen.
+(`deck-analysis.service.ts`) müssen dasselbe messen, sonst vergleicht der Tuning-Grad Äpfel mit Birnen.

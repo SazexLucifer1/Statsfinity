@@ -38,19 +38,9 @@ import { ManaSymbol } from '../ui/mana-symbol/mana-symbol';
 import { Podium, PodiumEntry, PODIUM_SIZE } from '../ui/podium/podium';
 import { PlayerMatchHistory } from '../player-match-history/player-match-history';
 import { splitPodium } from '../rank-sort';
-import { colorComboName, sortColors } from '../color-combo-names';
-import { COLORLESS, FILTER_COLORS } from '../color-filter-match';
+import { colorComboLabel, colorLabel, colorRadarData, colorVar, sortColors } from '../color-combo-names';
 import { Icon } from '../ui/icon/icon';
 import { CommentInbox } from '../comment-inbox/comment-inbox';
-
-/**
- * Achsen des Farb-Netzdiagramms: die fünf Manafarben in WUBRG-Reihenfolge, farblos als sechste.
- *
- * Bewusst fest und NIE nach Häufigkeit sortiert - ein Netz, dessen Achsen die Plätze tauschen,
- * ist weder mit dem eigenen Diagramm von letzter Woche noch mit dem eines anderen Spielers
- * vergleichbar, und genau die Form ist der Punkt an dieser Darstellung.
- */
-const COLOR_RADAR_AXES: readonly string[] = [...FILTER_COLORS, COLORLESS];
 
 @Component({
   selector: 'app-profile-tab',
@@ -91,18 +81,18 @@ export class ProfileTab {
   readonly viewingCommanderListRef = viewChild<CommanderStatList>('viewingCommanderListRef');
   readonly viewingNpcCommanderListRef = viewChild<CommanderStatList>('viewingNpcCommanderListRef');
 
-  /** Ob beim Ansehen eines FREMDEN Profils oder NPC-Profils die Statistiken (Deck-Winrates,
-   * Platzierungsverteilung, Commander ohne Deck) ausgeblendet werden müssen, weil der Host dem
-   * eingeloggten Viewer in der Sichtbarkeits-Matrix alle Modi gesperrt hat - der Host selbst ist
-   * davon ausgenommen. */
+  /**
+   * Stats eines fremden/NPC-Profils ausblenden, wenn der Host dem Viewer alle Modi gesperrt hat
+   * (Host ausgenommen).
+   */
   readonly othersStatsHidden = computed(
     () => this.isViewingOther() && this.mtg.allModesHiddenForMe() && !this.groupService.isOwner()
   );
 
-  /** Als computed() statt eines Inline-Objektliterals im Template gehalten - sonst würde bei jedem
-   * Change-Detection-Durchlauf ein neues Objekt entstehen und der owner-Input von DeckList (ein
-   * Signal-Input) bei jedem Tick als "geändert" gelten, was den internen Lade-Effect dort in eine
-   * Dauerschleife von Deck-Neuladungen schickt. */
+  /**
+   * computed statt Objektliteral im Template - sonst gälte der Signal-Input von DeckList bei jedem
+   * Tick als geändert (Lade-Dauerschleife).
+   */
   readonly ownDeckOwner = computed<DeckOwner | null>(() => {
     const userId = this.profileService.profile()?.id;
     return userId ? { kind: 'user', userId } : null;
@@ -132,16 +122,9 @@ export class ProfileTab {
   private readonly devFullViewChoice = signal(false);
 
   /**
-   * Developer-Vollansicht: zeigt beim Ansehen eines fremden Profils exakt denselben Statistik- und
-   * Deck-Bereich, den der Spieler in seinem eigenen Profil sieht - alle Kacheln, der Jahres-Filter
-   * und alle drei "kein eigenes Deck"-Listen inklusive der ausgeliehenen Decks. Gedacht zum
-   * Nachvollziehen von Fehlern, deshalb rein lesend: die Bearbeiten-Knöpfe hängen weiter an der
-   * Berechtigung deck.editOthers, und die Sichtbarkeits-Matrix (othersStatsHidden) greift hier
-   * nicht, weil dieser Bereich sie gar nicht abfragt.
-   *
-   * Bewusst ein Umschalter und nicht automatisch an: ein Developer muss auch sehen können, was ein
-   * normales Mitglied an dieser Stelle sieht - sonst lässt sich genau der Fehlerbericht nicht
-   * nachstellen, um den es meistens geht.
+   * Developer-Vollansicht: zeigt bei einem fremden Profil denselben Statistik- und Deckbereich wie
+   * dessen eigenes Profil, rein lesend, zum Nachvollziehen von Fehlern. Bewusst ein Umschalter,
+   * damit ein Developer auch die normale Ansicht sehen kann.
    */
   readonly devFullView = computed(() => this.canDevFullView() && this.devFullViewChoice());
 
@@ -150,44 +133,36 @@ export class ProfileTab {
   }
 
   /**
-   * Der Besitzer, auf den sich der Haupt-Bereich (Statistiken + Decks) bezieht: normalerweise der
-   * eigene Account, in der Developer-Vollansicht das angesehene fremde Profil. Alle Ladevorgänge
-   * dieses Bereichs hängen daran, damit derselbe Block ohne Kopie für beide Fälle gilt.
+   * Besitzer des Hauptbereichs: der eigene Account, in der Developer-Vollansicht das fremde Profil.
    */
   readonly statsOwner = computed<DeckOwner | null>(() =>
     this.devFullView() ? this.viewingDeckOwner() ?? this.viewingNpcDeckOwner() : this.ownDeckOwner()
   );
 
   /**
-   * Account-ID für die gruppenübergreifende Gesamt-Statistik. Anders als statsOwner kann das null
-   * sein, obwohl ein Profil angezeigt wird: ein NPC-Profil gehört keinem Account, und ohne Account
-   * gibt es keine Partien in anderen Gruppen, die man zusammenzählen könnte.
+   * Account-ID für die gruppenübergreifende Statistik; null bei NPC-Profilen (kein Account, keine
+   * anderen Gruppen).
    */
   readonly statsUserId = computed<string | null>(() =>
     this.devFullView() ? this.profileService.viewingUserId() : this.profileService.profile()?.id ?? null
   );
 
-  /** Lieblingscommander des gerade angesehenen NPC-Profils (players.favorite_commanders, vom Host
-   * gepflegt) - kommt direkt aus MtgService statt aus einem eigenen Ladevorgang, siehe
-   * ProfileService.viewingPlayerId. */
+  /** Lieblingscommander des angesehenen NPC-Profils, direkt aus MtgService. */
   readonly viewingNpcFavoriteCommanders = computed<string[]>(() => {
     const name = this.profileService.viewingPlayerName();
     return name ? this.mtg.playerFavoriteCommanders()[name] ?? [] : [];
   });
 
   /**
-   * Spielername des gerade angezeigten Profils (eigenes, ein fremder Account oder ein NPC) - die
-   * Eingabe der persönlichen Match-Historie. Dieselbe Auflösung wie in countPlacements: ein NPC hat
-   * nur einen Namen, ein Account wird über die players-Verknüpfung gefunden.
-   */
-  /**
-   * Matches eines FREMDEN Accounts, der nicht in der Gruppe des Betrachters spielt (oder der
-   * Betrachter ist gar nicht eingeloggt): Dann kennt mtg.history() seine Partien nicht, und die
-   * Liste stünde leer da. Stattdessen über MtgService.loadPublicMatchesForUser() aus allen
-   * Gruppen. null = die normale Gruppen-Historie gilt.
+   * Matches eines fremden Accounts außerhalb der eigenen Gruppe (oder ohne Login) über
+   * loadPublicMatchesForUser(); null = normale Gruppen-Historie.
    */
   readonly publicViewedMatches = signal<{ match: Match; selfName: string }[] | null>(null);
 
+  /**
+   * Spielername des angezeigten Profils (eigenes, fremder Account oder NPC) für die Match-Historie
+   * (aufgelöst wie in countPlacements).
+   */
   readonly profileHistoryName = computed(() => {
     const npcName = this.profileService.viewingPlayerName();
     if (npcName) return npcName;
@@ -203,19 +178,15 @@ export class ProfileTab {
   }
 
   /**
-   * Wie oft welcher Platz (1., 2., ...) erreicht wurde - nur Matches mit eingetragener
-   * Platzierung zählen mit (rein optionale Zusatz-Info, siehe models.ts MatchPlayer.placement).
-   * Gilt für das gerade angezeigte Profil (eigenes, ein fremder Account oder ein NPC).
+   * Wie oft welcher Platz erreicht wurde (nur Matches mit Platzierung), für das angezeigte Profil.
    */
   readonly placementDistribution = computed<{ placement: number; count: number }[]>(() =>
     this.countPlacements('Alle'),
   );
 
   /**
-   * Dieselbe Verteilung, aber auf das im eigenen Profil gewählte Jahr eingegrenzt (siehe
-   * statsYear). Bewusst eine zweite Ableitung statt eines Filters in placementDistribution: der
-   * Jahres-Umschalter steht nur in der Statistik-Ansicht des EIGENEN Profils, ein fremdes oder
-   * NPC-Profil würde sonst still nach einem Jahr gefiltert, das dort niemand sieht.
+   * Dasselbe, eingegrenzt auf das Jahr des eigenen Profils - eigene Ableitung, damit fremde Profile
+   * nicht still nach einem unsichtbaren Jahr gefiltert werden.
    */
   readonly ownPlacementDistribution = computed<{ placement: number; count: number }[]>(() =>
     this.countPlacements(this.statsYear()),
@@ -237,13 +208,7 @@ export class ProfileTab {
     return [...counts.entries()].sort((a, b) => a[0] - b[0]).map(([placement, count]) => ({ placement, count }));
   }
 
-  /**
-   * Die Platzierungsverteilung als Säulendiagramm.
-   *
-   * Das ist ein klassisches Histogramm (1. Platz: 12x, 2. Platz: 7x, ...) und stand vorher an drei
-   * Stellen im Profil als reine Aufzählung - eine Form, aus der sich die Verteilung erst durch
-   * Kopfrechnen ergibt.
-   */
+  /** Platzierungsverteilung als Säulendiagramm. */
   readonly placementChart = computed<BarChartDatum[]>(() =>
     this.toPlacementChart(this.placementDistribution()),
   );
@@ -267,10 +232,7 @@ export class ProfileTab {
 
   // --- Umschalter der drei "kein eigenes Deck"-Listen im eigenen Profil ---
 
-  /**
-   * Reihenfolge der Listen im Umschalter. 'none' zuerst: nur dort gibt es überhaupt etwas zu tun
-   * (Deck anlegen oder verlinken), die beiden anderen sind reine Nachschlage-Listen.
-   */
+  /** Reihenfolge der Listen: 'none' zuerst, nur dort gibt es etwas zu tun. */
   private static readonly COMMANDER_LIST_MODES: UnassignedCommanderCategory[] = ['none', 'borrowed', 'cube'];
 
   private readonly commanderListModeChoice = signal<UnassignedCommanderCategory>('none');
@@ -340,10 +302,7 @@ export class ProfileTab {
    * bewusst nur fürs eigene Profil, nicht beim Ansehen eines fremden. Das Stats-Tab bleibt unverändert pro aktiver Gruppe. */
   readonly crossGroupStats = signal<CrossGroupPersonalStats | null>(null);
 
-  /** Umschalter zwischen den Statistik-Sektionen und dem Deck-Bereich im eigenen Profil - ohne den
-   * hätte man immer erst an allen Statistiken vorbeiscrollen müssen, um zu den Decks zu kommen.
-   * Startet auf den Decks: das ist der Bereich, in dem im Profil tatsächlich gearbeitet wird
-   * (Deck ansehen, importieren, bearbeiten), die Statistiken liest man seltener und gezielt. */
+  /** Umschalter Statistik/Decks im eigenen Profil, Start auf den Decks (dort wird gearbeitet). */
   readonly profileViewTab = signal<'stats' | 'decks'>('decks');
 
   // --- Zeitraum-Filter der Profil-Statistiken ---
@@ -352,10 +311,8 @@ export class ProfileTab {
   readonly statsYear = signal<number | 'Alle'>(new Date().getFullYear());
 
   /**
-   * Auswahlliste der Jahre. Das laufende Jahr steht immer darin, auch ohne Match darin - sonst
-   * zeigte das Feld eine Vorauswahl, die es in der Liste gar nicht gibt. Die übrigen Jahre kommen
-   * aus dem Match-Verlauf der aktiven Gruppe; die gruppenübergreifenden Kacheln darunter können
-   * dadurch Jahre enthalten, die hier nicht einzeln anwählbar sind - dafür bleibt 'Alle'.
+   * Jahre zur Auswahl: das laufende Jahr immer, dazu die Jahre aus dem Match-Verlauf der aktiven
+   * Gruppe.
    */
   readonly availableStatsYears = computed<number[]>(() => {
     const years = new Set<number>([new Date().getFullYear()]);
@@ -371,44 +328,19 @@ export class ProfileTab {
     this.profileViewTab.set(tab);
   }
 
-  /** Meistgespielte Karten (ohne Länder), vollständige Farb-Rangliste und Farbkombinations-Rangliste
-   * über ALLE Gruppen des eigenen Accounts hinweg (siehe DeckService.getCardAndColorStats) - wie
-   * crossGroupStats bewusst nur fürs eigene Profil. Precons fließen dort bewusst nicht mit ein. */
+  /**
+   * Meistgespielte Karten, Farben und Farbkombinationen über alle eigenen Gruppen (ohne Precons),
+   * nur fürs eigene Profil.
+   */
   readonly cardAndColorStats = signal<CardAndColorStats | null>(null);
 
-  /** CSS-Farbe einer Manafarbe, für Farbtupfer und Balken.
-   *
-   * Kommt aus den globalen --pip-*-Tokens (styles.scss). Hier stand vorher eine eigene Hex-Tabelle
-   * mit exakt denselben fünf Werten - dieselbe Palette ein zweites Mal zu pflegen ist genau die
-   * Duplizierung, die die Tokens abschaffen. Farblos bekommt den neutralen Serienton. */
-  readonly colorVar = (color: string): string =>
-    'WUBRG'.includes(color) ? `var(--pip-${color.toLowerCase()})` : 'var(--series-neutral)';
-
-  /** Anzeigename einer Achse. Farblos hat bewusst keinen pip-Schlüssel, sondern denselben Namen
-   * wie im Farbfilter und in der Farbkombinations-Rangliste. */
-  readonly colorLabel = (color: string): string =>
-    color === COLORLESS ? this.i18n.t('deckView.colorless') : this.i18n.t(`pip.${color}`);
-
-  /**
-   * Anzeigename einer Farbkombination: der Eigenname aus dem Spiel ("Azorius", "Grixis",
-   * "Yore-Tiller"). Vorher standen hier die aneinandergereihten Farbnamen ("Blau / Schwarz /
-   * Rot") - die sagen neben den Symbolen dasselbe zweimal, während der Eigenname etwas
-   * hinzufügt. Für die Fälle ohne Eigennamen (eine Farbe, farblos, fünffarbig) bleibt Text.
-   */
-  readonly colorComboLabel = (colors: string[]): string => {
-    if (colors.length === 0) return this.i18n.t('deckView.colorless');
-    if (colors.length === 1) return this.i18n.t('colorCombo.mono', { color: this.colorLabel(colors[0]) });
-    if (colors.length >= 5) return this.i18n.t('colorCombo.fiveColor');
-    return colorComboName(colors) ?? colors.map((c) => this.colorLabel(c)).join(' / ');
-  };
-
-  /** Farben einer Kombination in der üblichen WUBRG-Reihenfolge - so, wie der Eigenname sie liest. */
+  // Farb-Hilfen für die Vorlage, Logik in color-combo-names.ts.
+  readonly colorVar = colorVar;
+  readonly colorLabel = (color: string): string => colorLabel(this.i18n, color);
+  readonly colorComboLabel = (colors: string[]): string => colorComboLabel(this.i18n, colors);
   readonly comboColors = (colors: string[]): string[] => sortColors(colors);
 
-  /** Umschalter für Karten-/Farb-/Farbkombinations-Statistik: "games" gewichtet nach tatsächlich
-   * gespielten Partien je Deck (Standard), "decks" zählt jedes Deck nur 1x, unabhängig davon, wie
-   * oft es gespielt wurde. Wirkt auf alle drei Ranglisten gemeinsam, da sie aus derselben Abfrage
-   * (DeckService.getCardAndColorStats) stammen, die beide Zählweisen mitliefert. */
+  /** Gewichtung der drei Ranglisten: "games" nach Partien je Deck, "decks" jedes Deck einmal. */
   readonly statsWeightMode = signal<'games' | 'decks'>('games');
 
   setStatsWeightMode(mode: 'games' | 'decks'): void {
@@ -426,23 +358,10 @@ export class ProfileTab {
     return [...cards].sort((a, b) => this.countFor(b) - this.countFor(a)).slice(0, 5);
   });
 
-  /**
-   * Farbverteilung als Netzdiagramm. Sucht die Werte über die feste Achsenliste, statt die
-   * Rangliste durchzureichen: die kommt nach Häufigkeit sortiert aus dem Service, und genau diese
-   * Reihenfolge darf hier nicht durchschlagen. Eine Achse ohne Daten steht mit 0 im Netz.
-   */
-  readonly colorRadarChart = computed<RadarChartDatum[]>(() => {
-    const stats = this.cardAndColorStats()?.colorRanking ?? [];
-    return COLOR_RADAR_AXES.map((color) => {
-      const stat = stats.find((c) => c.color === color);
-      return {
-        label: this.colorLabel(color),
-        value: stat ? this.countFor(stat) : 0,
-        color: this.colorVar(color),
-        symbol: color,
-      };
-    });
-  });
+  /** Farbverteilung als Netzdiagramm in fester Achsenreihenfolge. */
+  readonly colorRadarChart = computed<RadarChartDatum[]>(() =>
+    colorRadarData(this.i18n, this.cardAndColorStats()?.colorRanking ?? [], this.countFor),
+  );
 
   readonly rankedColorComboRanking = computed(() => {
     const combos = this.cardAndColorStats()?.colorComboRanking ?? [];
@@ -459,9 +378,8 @@ export class ProfileTab {
     Math.max(1, ...this.rankedColorComboRanking().map((c) => this.countFor(c)))
   );
 
-  // --- Siegertreppchen (ui/podium) für die ersten drei Plätze der beiden Ranglisten. Anders als
-  // im Statistik-Tab sind beide Listen hier nicht seitenweise, deshalb steht splitPodium() fest
-  // auf Seite 0 und die Nummerierung darunter beginnt immer bei PODIUM_SIZE + 1 (also "4."). ---
+  // --- Siegertreppchen für die ersten drei Plätze; die Listen sind hier nicht seitenweise, die
+  // Nummerierung darunter beginnt bei PODIUM_SIZE + 1. ---
 
   readonly podiumSize = PODIUM_SIZE;
 
@@ -496,11 +414,7 @@ export class ProfileTab {
     }))
   );
 
-  /**
-   * Klick auf das geliehene Deck in der Commander-Liste: öffnet die Deck-Ansicht wie aus der
-   * Deck-Liste heraus. Das Deck gehört jemand anderem - die Detailansicht schaltet die
-   * Bearbeiten-Knöpfe selbst ab (DeckViewerService.canEditViewingDeck).
-   */
+  /** Öffnet das geliehene (fremde) Deck; Bearbeiten schaltet die Detailansicht selbst ab. */
   async openBorrowedDeck(borrowed: BorrowedDeckInfo): Promise<void> {
     const deck = await this.deckService.getDeckById(borrowed.id);
     if (deck) await this.deckViewer.open(deck);
@@ -524,10 +438,8 @@ export class ProfileTab {
   }
 
   /**
-   * Lädt die "kein eigenes Deck"-Liste nach einem Reparieren oder Verlinken neu. Welches Signal
-   * dabei zu füllen ist, hängt davon ab, welcher Block gerade sichtbar ist: der gemeinsame
-   * Haupt-Bereich (eigenes Profil oder Developer-Vollansicht) liest unassignedCommanderStats, die
-   * reduzierte Fremdansicht dagegen die viewing*-Signale.
+   * Lädt die "kein eigenes Deck"-Liste neu - in das Signal des gerade sichtbaren Blocks
+   * (Hauptbereich oder Fremdansicht).
    */
   private async reloadUnassignedFor(owner: DeckOwner): Promise<void> {
     if (this.devFullView() || !this.isViewingOther()) {
@@ -615,9 +527,7 @@ export class ProfileTab {
     });
 
     effect(() => {
-      // Lädt Bilder für die eigenen, die eines gerade angesehenen fremden Accounts UND die eines
-      // gerade angesehenen NPC-Profils - die Karte ist nach Namen (nicht nach Nutzer) geschlüsselt,
-      // ein gemeinsamer Cache reicht also.
+      // Bilder für eigene, fremde und NPC-Lieblingscommander - ein Cache nach Kartenname.
       const ownNames = this.profileService.profile()?.favoriteCommanders ?? [];
       const viewedNames = this.profileService.viewingProfile()?.favoriteCommanders ?? [];
       const npcNames = this.viewingNpcFavoriteCommanders();
@@ -636,10 +546,7 @@ export class ProfileTab {
         ...this.unassignedCommanderStats().map((c) => c.commander),
         ...this.viewingUnassignedCommanderStats().map((c) => c.commander),
         ...this.viewingNpcUnassignedCommanderStats().map((c) => c.commander),
-        // Meistgespielte Karten: deck_cards.image_url ist in der Praxis nur beim Commander
-        // gefüllt (Precon-/Decklisten-Import legt für normale Karten kein Bild ab), sonst bliebe
-        // in der Karten-Rangliste überall der Platzhalter stehen. Nur die tatsächlich
-        // angezeigten Top 5 werden nachgeschlagen, nicht die volle Kartenliste.
+        // image_url ist meist nur beim Commander gefüllt; deshalb die Top 5 per Name nachschlagen.
         ...this.rankedMostUsedCards()
           .filter((c) => !c.imageUrl)
           .map((c) => c.cardName),
@@ -684,9 +591,7 @@ export class ProfileTab {
   private readonly commanderCardsRetry = signal(0);
   private commanderCardsRetryCount = 0;
 
-  /** Als gebundene Arrow-Function-Property statt Methode gehalten, damit sie unverändert als
-   * Input an app-commander-stat-list durchgereicht werden kann (eine normale Methode würde dabei
-   * ihren this-Bezug verlieren). */
+  /** Arrow-Function, damit sie als Input weitergereicht werden kann, ohne `this` zu verlieren. */
   readonly commanderImage = (name: string | undefined): string | null => {
     if (!name) return null;
     return this.commanderCards()[name.toLowerCase()]?.imageUrl ?? null;
@@ -783,9 +688,8 @@ export class ProfileTab {
     this.favoriteCommanderBusy.set(false);
   }
 
-  // --- Lieblingscommander eines gerade angesehenen NPC-Profils (nur Host, siehe group-tab.ts
-  // openNpcProfileView) - gleiche Logik wie oben fürs eigene Profil, nur gegen
-  // MtgService.setPlayerFavoriteCommanders statt ProfileService.updateFavoriteCommanders. ---
+  // --- Lieblingscommander eines NPC-Profils (nur Host), wie oben, aber über
+  // MtgService.setPlayerFavoriteCommanders. ---
 
   readonly addNpcFavoriteCommander = async (name: string): Promise<void> => {
     const playerName = this.profileService.viewingPlayerName();
@@ -836,11 +740,7 @@ export class ProfileTab {
     this.npcFavoriteCommanderBusy.set(false);
   }
 
-  /**
-   * Vereinheitlicht die Lieblingscommander-Bindings für den Bearbeiten-Dialog, je nachdem ob
-   * gerade das eigene Profil oder ein NPC-Profil offen ist - hält das Template frei von Ternaries
-   * an jeder einzelnen Stelle im Dialog.
-   */
+  /** Bündelt die Dialog-Bindings für eigenes bzw. NPC-Profil (keine Ternaries im Template). */
   readonly favoriteCommandersDialogTarget = computed(() => {
     if (this.profileService.viewingPlayerId()) {
       return {

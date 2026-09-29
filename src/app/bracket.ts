@@ -2,35 +2,20 @@ import type { SpellbookCardFlags, SpellbookTwoCardCombo } from './card-data.serv
 import type { SpellbookBracketTag } from './commander-spellbook.service';
 
 /**
- * Einstufung eines Commander-Decks in die offiziellen Brackets 1-5.
+ * Einstufung eines Commander-Decks in die offiziellen Brackets 1-5 (Exhibition, Core, Upgraded,
+ * Optimized, cEDH). Reine Rechenfunktionen ohne Angular/Netzwerk, damit bracket.spec.ts jede Regel
+ * einzeln prüfen kann.
  *
- * Reine Rechenfunktionen ohne Angular- und ohne Netzwerkbezug - alle Eingaben kommen als Parameter
- * herein, damit sich jede Regel in bracket.spec.ts einzeln festnageln lässt. Die Daten selbst
- * stehen beim Öffnen eines Decks bereits bereit (Kartendetails aus scryfall_cards, Markierungen
- * und Combos aus den Spellbook-Tabellen), es wird hier also nichts nachgeladen.
- *
- * Die offiziellen Stufen: 1 Exhibition, 2 Core, 3 Upgraded, 4 Optimized, 5 cEDH.
- *
- * Zwei Dinge, die diese Einstufung bewusst NICHT tut:
- *
- * 1. Sie vergibt nie 1 oder 5. Beide unterscheiden sich von ihren Nachbarn nicht durch Karten,
- *    sondern durch Absicht - Bracket 1 ist "ich will gar nicht gewinnen", Bracket 5 ist "gebaut
- *    für ein Turniermetagame". Aus einer Kartenliste ist das nicht ableitbar; wer dort hin will,
- *    stellt es selbst ein. Bei sehr hoch bewerteten Bracket-4-Decks weist suggestsCedh darauf hin.
- * 2. Sie behauptet keine Obergrenze. Das Ergebnis ist eine UNTERGRENZE ("mindestens Bracket 3"):
- *    jeder Tisch kann sich einigen, höher zu spielen, aber die harten Kriterien nach unten zu
- *    unterbieten geht nicht.
+ * Bewusst NICHT: 1. Nie 1 oder 5 vergeben - die unterscheiden sich durch Absicht, nicht durch
+ * Karten (suggestsCedh weist bei starken B4-Decks darauf hin). 2. Keine Obergrenze - das Ergebnis
+ * ist immer "mindestens Bracket X".
  */
 
 export type BracketLevel = 1 | 2 | 3 | 4 | 5;
 
 /**
- * Welche Stufe für ein Deck anzuzeigen ist, wenn nur die gespeicherten Werte vorliegen - also
- * überall dort, wo nicht die ganze Kartenliste geladen ist (Deck-Liste, Deck-Auswahl im Match-Tab).
- *
- * Die selbst gewählte Stufe schlägt immer die Automatik. Brackets gibt es nur im Commander; für
- * Brawl, Pauper Commander und den Rest kommt bewusst null zurück, damit dort gar kein Abzeichen
- * erscheint.
+ * Anzuzeigende Stufe aus den gespeicherten Werten (Listen ohne geladene Karten). Manuell schlägt
+ * Automatik; außerhalb von Commander null, damit kein Abzeichen erscheint.
  */
 export function storedDeckBracket(deck: {
   format: string | null;
@@ -42,108 +27,68 @@ export function storedDeckBracket(deck: {
   return deck.bracketAuto != null ? { level: deck.bracketAuto, source: 'auto' } : null;
 }
 
-/** Stufen, die die Automatik überhaupt vergeben darf - siehe Punkt 1 oben. */
-export const AUTO_BRACKET_MIN = 2;
+/** Höchste Stufe, die die Automatik vergibt - siehe Punkt 1 oben. */
 export const AUTO_BRACKET_MAX = 4;
 
 /**
- * Ab diesem Tuning-Grad (0-1) bekommt ein Bracket-4-Deck den cEDH-Hinweis.
- *
- * Bewusst an den Tuning-Grad gehängt und nicht an den Power-Wert: der Power-Wert ist aus dem
- * Bracket abgeleitet, ihn wieder zur Bedingung zu machen wäre im Kreis gerechnet. Beim Prüfen in
- * der laufenden App fiel genau das auf - ein Deck mit fünf Game Changern und Tuning-Grad 0,64 kam
- * auf Power 8,6 und bekam den cEDH-Hinweis, obwohl "recht durchgebaut" noch lange kein
- * Turnierdeck ist. 0,85 verlangt, dass praktisch alle Anzeichen zugleich zutreffen.
+ * Ab diesem Tuning-Grad (0-1) bekommt ein B4-Deck den cEDH-Hinweis. Am Tuning-Grad statt am
+ * Power-Wert, weil der aus dem Bracket abgeleitet ist (Zirkelschluss). 0,85 verlangt praktisch alle
+ * Anzeichen zugleich.
  */
 export const CEDH_TUNING_HINT = 0.85;
 
 /**
- * Ab diesem Tuning-Wert (0-1) hebt die Feinbewertung das Bracket um eine Stufe an. Bewusst hoch
- * angesetzt: die harten Kriterien sollen die Einstufung bestimmen, die Feinbewertung nur den
- * Grenzfall auflösen, bei dem ein Deck zwar keine verbotene Karte enthält, aber erkennbar
- * durchoptimiert ist.
+ * Ab diesem Tuning-Wert (0-1) hebt die Feinbewertung um eine Stufe an. Bewusst hoch: harte
+ * Kriterien entscheiden, die Feinbewertung löst nur Grenzfälle. Mit der Gewichtung (Game Changer
+ * zählen am meisten) heißt 0,7: alle übrigen Anzeichen voll und mindestens zwei Game Changer.
+ * Ungewichtet lag die Schwelle bei 0,8 - bei Gewichtung erreicht ein Deck mit höchstens drei
+ * Game Changern (Bracket 3) aber höchstens 0,79, die Anhebung wäre sonst nie mehr möglich.
  */
-export const TUNING_BUMP_SCHWELLE = 0.8;
+export const TUNING_BUMP_SCHWELLE = 0.7;
 
 /**
- * Ab diesem Kartenwert in Euro gilt mindestens Bracket 3.
+ * Ab diesem Kartenwert (€) gilt mindestens Bracket 3. Einzige Regel ohne offizielle Grundlage: Die
+ * 92 Precons 2023-2026 liegen im Schnitt bei 74 €, keiner über 150 € (teuerster 147 €). Deutlich
+ * darüber heißt gezielt eingekauft - gemessen wird Absicht, nicht Stärke.
  *
- * Achtung, das ist die EINZIGE Regel hier, die NICHT aus dem offiziellen Regelwerk stammt - WotC
- * kennt kein Preiskriterium. Sie steht trotzdem hier, und zwar aus einer nachgemessenen
- * Beobachtung: Über alle 92 Commander-Precons aus 2023-2026 liegt der Kartenwert im Schnitt bei
- * 74 € und keiner der regulären Precons über 150 € (teuerster: Eldrazi Unbound, 147 €). Wer
- * deutlich darüber liegt, hat gezielt eingekauft - und damit das verlassen, was Bracket 2 als
- * "Precon-Niveau" beschreibt. Der Preis misst also nicht Stärke, sondern Absicht.
- *
- * Wie jedes harte Kriterium ist das eine UNTERGRENZE und gilt auch für unveränderte Precons (vier
- * Secret-Lair-Commander-Decks liegen tatsächlich darüber). Nach oben rechnet der Preis nichts: ein
- * teures Deck wird dadurch nie Bracket 4.
+ * Nur Untergrenze (gilt auch für Precons, einige Secret-Lair-Decks liegen darüber); nach oben
+ * bewirkt der Preis nichts.
  */
 export const PREIS_SCHWELLE_EUR = 150;
 
 /**
- * Urteil F, die beiden Schwellen: mindestens eine spielbeendende Combo UND mindestens N Tutoren
- * heißt mindestens Bracket 4.
+ * Urteil F: mindestens eine spielbeendende Combo UND mindestens N Tutoren ergibt mindestens Bracket
+ * 4. Empirisch statt aus dem Regelwerk: Von 48.638 Decks mit selbst angegebener Stufe
+ * (docs/bracket-benchmark-2026-09.md) liegen 93 % der Decks mit beiden Merkmalen in B4/B5; von B2
+ * zu B4 Faktor 30.
  *
- * Das ist das erste Kriterium dieser Einstufung, das NICHT aus dem Regelwerk stammt, sondern aus
- * gemessenen Decks. Der Startwert N = 2 kommt aus einer Auswertung von 48.638 Commander-Decks,
- * deren Stufe ihr jeweiliger Ersteller selbst angegeben hat (docs/bracket-benchmark-2026-09.md).
- * Decks mit beiden Merkmalen verteilten sich dort so:
+ * Nur beides zusammen trennt: Combo allein haben 9,9 % der B2-Decks (dort erlaubt), zwei Tutoren
+ * allein 6,0 %. 61 % der B4-Decks zeigen keins der Merkmale - das Urteil ist also nur eine
+ * Untergrenze.
  *
- *   Bracket 1     75 Decks   (0,8 % der Stufe)
- *   Bracket 2     68 Decks   (0,7 %)
- *   Bracket 3    457 Decks   (4,7 %)
- *   Bracket 4  2.120 Decks  (21,2 %)
- *   Bracket 5  5.595 Decks  (57,3 %)
- *
- * 93 % aller Decks mit beiden Merkmalen liegen also in Bracket 4 oder 5, und von Stufe 2 zu Stufe
- * 4 ist es ein Faktor 30.
- *
- * Seit dem 29.09.2026 misst die Datenbank N jede Nacht an den Statsfinity-Decks mit selbst
- * gewähltem Bracket nach (bracket_benchmark.combo_tutor_min, siehe BracketBenchmark) - aber erst,
- * wenn Bracket 2, 3 und 4 je mindestens 100 Decks haben. Bis dahin gilt der Startwert.
- *
- * WARUM BEIDES ZUSAMMEN und nicht jedes für sich: Einzeln trennen sie viel schwächer. Eine Combo
- * allein haben 9,9 % der Bracket-2-Decks - das Regelwerk erlaubt in Bracket 2 ausdrücklich
- * langsame Combos. Zwei Tutoren allein haben 6,0 %. Erst die Verbindung beschreibt, worum es
- * geht: ein Deck, das einen Gewinnweg hat UND danach sucht.
- *
- * WAS DAS URTEIL NICHT KANN: 61 % der Bracket-4-Decks zeigen keines der beiden Merkmale. Es ist
- * also ein Marker, der in genau eine Richtung funktioniert - er sagt nie "das ist höchstens
- * Bracket 2", nur "das ist mindestens Bracket 4". Genau dazu passt der Aufbau dieser Datei: Jedes
- * Urteil hier ist eine Untergrenze, keines eine Obergrenze.
+ * N (Start 2) wird seit 29.09.2026 nachts neu gemessen (bracket_benchmark.combo_tutor_min), sobald
+ * B2, B3 und B4 je 100 Decks haben.
  */
 export const EMPIRISCH_MIN_COMBOS = 1;
 
 /**
- * Die gemessenen Teile der Einstufung - alles, was nicht aus dem offiziellen Regelwerk stammt,
- * sondern aus Decks mit selbst gewähltem Bracket gelernt wird.
- *
- * Kommt aus der Tabelle bracket_benchmark (sql/bracket-benchmark-2026-09-29.sql), die jede Nacht
- * neu gemessen wird - je Bracket erst, wenn mindestens 100 Decks davon vorliegen. Solange die
- * Tabelle fehlt oder nicht geladen ist, gilt DEFAULT_BRACKET_BENCHMARK.
+ * Gemessene (nicht-offizielle) Teile der Einstufung, aus der Tabelle bracket_benchmark (nachts
+ * gelernt, je Bracket ab 100 Decks). Ohne Tabelle gilt DEFAULT_BRACKET_BENCHMARK.
  */
 export interface BracketBenchmark {
-  /**
-   * Spannen des Tuning-Grads je Messgröße: [zählt 0, zählt 1]. In der Datenbank der Median von
-   * Bracket 2 bzw. Bracket 5 - "voll getunt" heißt also "wie ein typisches cEDH-Deck".
-   */
+  /** Tuning-Spanne je Messgröße: [zählt 0, zählt 1] = Median von Bracket 2 bzw. 5. */
   tuning: Record<TuningPart['key'], [number, number]>;
   /** Urteil F: so viele Tutoren braucht es zusätzlich zur Gewinn-Combo. */
   comboTutorMin: number;
+  /** Gewicht je Messgröße im Tuning-Grad = Trennschärfe (|AUC - 0,5|, Bracket 2 gegen 4). */
+  weights: Record<TuningPart['key'], number>;
 }
 
 /**
- * Startwerte, identisch mit den Startwerten in der Tabelle - gelten, bis die Datenbank etwas
- * anderes sagt.
- *
- * - Tutoren: acht auf 100 Karten sind dicht; das erreichen sonst nur sehr zielgerichtete Decks.
- * - Ø Manawert: niedriger ist stärker, deshalb die Spanne andersherum.
- * - Ungetappte Länder: Precons liegen bei 70-80 %, ab ~95 % ist die Manabasis praktisch
- *   durchgängig ungetappt. Was das Maß bewusst nicht kann: Ein einfarbiges Deck aus lauter
- *   Standardländern braucht kein Fixing und bekommt die volle Punktzahl geschenkt. Der Preis
- *   dafür, Tempo statt Fixing zu messen - und einer von vier gemittelten Werten, also gedämpft.
- * - Game Changer: sechs sind ein Deck, das die Liste gezielt ausreizt.
+ * Startwerte (identisch mit der Tabelle). Tutoren: acht auf 100 Karten sind dicht. Ø Manawert:
+ * niedriger ist stärker, Spanne daher umgekehrt. Ungetappte Länder: Precons 70-80 %, ab ~95 %
+ * praktisch durchgängig schnell (einfarbige Basisland-Decks bekommen die volle Punktzahl geschenkt,
+ * ein bewusst gedämpfter Nebeneffekt). Game Changer: sechs reizen die Liste aus.
  */
 export const DEFAULT_BRACKET_BENCHMARK: BracketBenchmark = {
   tuning: {
@@ -153,6 +98,9 @@ export const DEFAULT_BRACKET_BENCHMARK: BracketBenchmark = {
     gameChangers: [0, 6],
   },
   comboTutorMin: 2,
+  // Aus docs/bracket-benchmark-2026-09.md: Game Changer 0,40, Tutoren 0,27. Für die beiden anderen
+  // gibt es dort nur Näherungen (Mana in Zug 3: 0,16, Länder/Rampe: 0,13).
+  weights: { gameChangers: 0.4, tutors: 0.27, untappedLands: 0.16, averageCmc: 0.13 },
 };
 
 /** Welcher Befund die Einstufung getrieben hat - Grundlage der Begründung in der Oberfläche. */
@@ -233,23 +181,14 @@ export interface BracketInput {
   /** Anzahl Tutoren im Deck (aus der kuratierten Liste). */
   tutorCount: number;
   /**
-   * Wie viele SPIELBEENDENDE Combos stecken vollständig im Deck?
-   *
-   * Nicht dasselbe wie `combos`: Dort stehen Zwei-Karten-Combos jeder Art, hier zählen nur die,
-   * deren Ergebnis ein Spiel beendet - und zwar über beliebig viele Karten. Kommt aus der
-   * Datenbankfunktion winning_combos_in_deck (sql/winning-combos-in-deck-2026-09-16.sql).
-   *
-   * 0, solange die Zahl nicht vorliegt. Das ist die vorsichtige Richtung: Urteil F hebt dann
-   * nicht an, statt auf einer fehlenden Angabe eine Stufe zu behaupten.
+   * Anzahl SPIELBEENDENDER Combos (beliebig viele Karten), die vollständig im Deck liegen - anders
+   * als `combos` (Zwei-Karten-Combos jeder Art). Aus winning_combos_in_deck; 0 solange unbekannt,
+   * dann hebt Urteil F nicht an.
    */
   winningCombos: number;
   /** Gesamtzahl Karten - Bezugsgröße für die Tutorendichte. */
   totalCards: number;
-  /**
-   * Kartenwert des Decks in Euro (billigste Druckvariante je Karte), null solange der Preis noch
-   * lädt oder gar nicht abgerufen wurde. null heißt "unbekannt" und löst nichts aus - ein noch
-   * nicht geladener Preis darf ein Deck weder anheben noch von einer Anhebung befreien.
-   */
+  /** Kartenwert in Euro (billigste Druckvariante), null = unbekannt und löst nichts aus. */
   totalPrice: number | null;
   /** Gemessene Schwellen aus der Datenbank. Fehlt die Angabe, gelten die Startwerte. */
   benchmark?: BracketBenchmark;
@@ -266,12 +205,9 @@ export interface PresentCombo {
 }
 
 /**
- * Welche der Combos sind im Deck wirklich VOLLSTÄNDIG vorhanden?
- *
- * "Vollständig" heißt: beide Karten liegen im Deck, und wenn die Quelle für eine davon
- * mustBeCommander verlangt, ist sie auch als Commander markiert (42 der rund 4.000 Combos haben
- * das, z.B. Combos, die auf die Commander-Zone angewiesen sind). Ohne diese Prüfung würde ein Deck
- * für eine Combo bestraft, die es gar nicht ausführen kann.
+ * Combos, die im Deck vollständig vorhanden sind: beide Karten da, und mustBeCommander-Karten auch
+ * als Commander markiert (sonst würde ein Deck für eine Combo bestraft, die es nicht ausführen
+ * kann).
  */
 export function presentCombos(
   cards: BracketCard[],
@@ -300,18 +236,10 @@ export function presentCombos(
 }
 
 /**
- * Urteil A - die offiziellen Ausschlusskriterien, als Untergrenze.
- *
- * Reihenfolge und Schwellen folgen dem offiziellen Wortlaut, an drei Stellen geschärft durch die
- * offengelegte Methodik von Draftsims Rechner:
- *
- * - Combos werden DREISTUFIG bewertet, nicht zweistufig: schnell (Bracket 4), mittel/spät
- *   (Bracket 3), schwierig/bedingt (kein Aufschlag). Für die Einordnung nehmen wir Spellbooks
- *   eigene Note für genau diese Combo statt einer selbst geratenen Schwelle - dort steckt die
- *   Kuratierung schon drin.
- * - Extra-Turn-Karten allein sind KEIN Aufschlag. Verboten ist laut Regelwerk das Verketten, nicht
- *   der Besitz; erst eine Combo mit einer Extra-Turn-Karte darin ist eine Zugschleife.
- * - Mass Land Denial und vier oder mehr Game Changer schlagen unverändert auf Bracket 4 durch.
+ * Urteil A - offizielle Ausschlusskriterien als Untergrenze, geschärft nach Draftsims offengelegter
+ * Methodik: Combos dreistufig nach Spellbooks eigener Note (schnell → B4, mittel/spät → B3,
+ * schwierig → nichts). Extra-Turn-Karten allein sind kein Aufschlag (verboten ist das Verketten).
+ * Mass Land Denial und ab vier Game Changern → B4.
  */
 export function rulesVerdict(input: BracketInput): {
   level: BracketLevel;
@@ -345,9 +273,8 @@ export function rulesVerdict(input: BracketInput): {
     reasons.push({ key: 'comboRuthless', minimum: 4, cards: comboNamen(ruthless) });
   }
 
-  // "Vor Zug 4 aufstellbar" - fünf Mana sind mit einem einzigen Ramp-Zauber im dritten oder
-  // vierten Zug beieinander. Alles darüber ist frühestens ab Zug fünf realistisch und fällt damit
-  // unter das, was Bracket 3 ausdrücklich erlaubt.
+  // "Vor Zug 4": fünf Mana sind mit einem Ramp-Zauber in Zug 3-4 da; mehr ist frühestens Zug 5 und
+  // in B3 erlaubt.
   const schnell = anwesend.filter(
     (c) => c.totalMana <= 5 && c.combo.bracketTag !== 'R' && !c.isExtraTurnLoop,
   );
@@ -355,9 +282,8 @@ export function rulesVerdict(input: BracketInput): {
     reasons.push({ key: 'comboFast', minimum: 4, cards: comboNamen(schnell) });
   }
 
-  // S (spicy) und P (powerful) sind ernstzunehmende, aber langsamere Combos. E, C und O sind
-  // Spellbooks milde Noten - bedingte, umständliche Combos, die laut Regelwerk auch in Bracket 3
-  // noch in Ordnung gehen und deshalb gar keinen Aufschlag auslösen.
+  // S (spicy) und P (powerful) sind ernst, aber langsamer. E, C, O sind milde Noten und lösen
+  // keinen Aufschlag aus.
   const mittel = anwesend.filter(
     (c) =>
       (c.combo.bracketTag === 'S' || c.combo.bracketTag === 'P') &&
@@ -384,15 +310,9 @@ function maxLevel(a: BracketLevel, b: BracketLevel): BracketLevel {
 }
 
 /**
- * Urteil B - Commander Spellbooks Live-Auswertung, richtig gelesen.
- *
- * Deren bracketTag ist KEINE Deck-Einstufung, auch wenn der Name das nahelegt: nachgemessen
- * liefert die API für 98 Gebirge plus ein einzelnes Armageddon ein "R" (Ruthless). Die Skala
- * beschreibt das STÄRKSTE im Deck gefundene Einzelelement - dieselbe Skala, mit der Spellbook auch
- * einzelne Combos benotet. So gelesen ist sie brauchbar: sie liefert eine Untergrenze.
- *
- * "B" heißt "enthält eine im Commander gesperrte Karte" und sagt über die Stufe gar nichts -
- * deshalb null statt einer Zahl.
+ * Urteil B - Spellbooks bracketTag. Das ist KEINE Deck-Einstufung (98 Gebirge + Armageddon ergeben
+ * "R"), sondern das stärkste Einzelelement - als Untergrenze brauchbar. "B" (gesperrte Karte) sagt
+ * nichts über die Stufe → null.
  */
 export function spellbookVerdict(tag: SpellbookBracketTag | null): BracketLevel | null {
   switch (tag) {
@@ -411,16 +331,9 @@ export function spellbookVerdict(tag: SpellbookBracketTag | null): BracketLevel 
 }
 
 /**
- * Urteil E - der Kartenwert, als Untergrenze.
- *
- * Liefert 3, sobald das Deck PREIS_SCHWELLE_EUR erreicht, sonst null ("kein Aufschlag"). Bei
- * unbekanntem Preis (null) ebenfalls null: Ein noch nicht geladener Preis darf nichts auslösen,
- * sonst stünde die Stufe beim Öffnen kurz zu niedrig und spränge dann.
- *
- * Bewusst getrennt von rulesVerdict(): Die Zeile "Offiziell" in der Oberfläche soll weiter genau
- * die offiziellen Kriterien wiedergeben, und der Preis ist keines davon (siehe
- * PREIS_SCHWELLE_EUR). Auch die Verlässlichkeitsangabe vergleicht deshalb weiter nur die beiden
- * kartenbasierten Urteile A und B miteinander.
+ * Urteil E - Kartenwert als Untergrenze: 3 ab PREIS_SCHWELLE_EUR, sonst oder bei unbekanntem Preis
+ * null. Getrennt von rulesVerdict(), weil "Offiziell" nur offizielle Kriterien zeigen soll und die
+ * Verlässlichkeit nur A und B vergleicht.
  */
 export function priceVerdict(totalPrice: number | null): BracketLevel | null {
   if (totalPrice === null) return null;
@@ -428,17 +341,15 @@ export function priceVerdict(totalPrice: number | null): BracketLevel | null {
 }
 
 /**
- * Urteil C - Tuning-Grad von 0 bis 1.
- *
- * Vier Anzeichen dafür, dass ein Deck durchoptimiert ist, ohne dass eine einzelne Karte ein hartes
- * Kriterium verletzt: viele Tutoren, niedrige Manakurve, schnelle Manabasis, viele Game Changer.
- * Fehlt ein Wert (z.B. weil die Kartendetails noch laden), fließt er nicht ein, statt als Null zu
- * zählen - sonst würde ein halb geladenes Deck systematisch zu niedrig bewertet.
+ * Urteil C - Tuning-Grad 0-1 aus vier Anzeichen: Tutoren, Manakurve, schnelle Manabasis, Game
+ * Changer, gewichtet nach Trennschärfe (BracketBenchmark.weights). Fehlende Werte fließen nicht ein,
+ * statt als 0 zu zählen (halb geladene Decks wären sonst zu niedrig).
  */
 export function tuningVerdict(input: BracketInput): number {
   const teile = tuningParts(input);
-  if (teile.length === 0) return 0;
-  return teile.reduce((summe, t) => summe + t.score, 0) / teile.length;
+  const gewichte = teile.reduce((summe, t) => summe + t.weight, 0);
+  if (gewichte === 0) return 0;
+  return teile.reduce((summe, t) => summe + t.score * t.weight, 0) / gewichte;
 }
 
 /** Eine der Messgrößen, aus denen sich der Tuning-Grad mittelt. */
@@ -452,22 +363,21 @@ export interface TuningPart {
   to: number;
   /** Beitrag dieses Teils, 0 bis 1. */
   score: number;
+  /** Gewicht im Tuning-Grad (siehe BracketBenchmark.weights). */
+  weight: number;
 }
 
 /**
- * Die Messgrößen einzeln - dieselbe Rechnung wie tuningVerdict(), nur aufgeschlüsselt.
- *
- * Existiert, damit die Oberfläche nicht bloß "36 %" hinschreiben muss: ohne die gemessenen Werte
- * UND die Spannenenden ist so ein Prozentwert nicht nachvollziehbar. Weil tuningVerdict() über
- * genau diese Liste mittelt, können angezeigte Aufschlüsselung und angezeigte Prozentzahl nicht
- * auseinanderlaufen - bracket.spec.ts nagelt das als Invariante fest.
+ * Die Messgrößen einzeln, damit die Oberfläche die Prozentzahl erklären kann. tuningVerdict()
+ * mittelt gewichtet über genau diese Liste - Anzeige und Zahl können nicht auseinanderlaufen (Invariante in
+ * bracket.spec.ts).
  */
 export function tuningParts(input: BracketInput): TuningPart[] {
   const teile: TuningPart[] = [];
-  const spannen = (input.benchmark ?? DEFAULT_BRACKET_BENCHMARK).tuning;
+  const benchmark = input.benchmark ?? DEFAULT_BRACKET_BENCHMARK;
   const teil = (key: TuningPart['key'], value: number) => {
-    const [from, to] = spannen[key];
-    teile.push({ key, value, from, to, score: anteil(value, from, to) });
+    const [from, to] = benchmark.tuning[key];
+    teile.push({ key, value, from, to, score: anteil(value, from, to), weight: benchmark.weights[key] });
   };
 
   if (input.totalCards > 0) {
@@ -495,15 +405,16 @@ export interface BracketBenchmarkRow {
   untapped_land_percent: number | null;
   game_changers: number | null;
   combo_tutor_min: number | null;
+  /** Gelernte Gewichte, nur in der Zeile von Bracket 4 (sql/bracket-gewichte-2026-09-29.sql). */
+  weight_tutors?: number | null;
+  weight_avg_cmc?: number | null;
+  weight_untapped_lands?: number | null;
+  weight_game_changers?: number | null;
 }
 
 /**
- * Macht aus den Tabellenzeilen die Schwellen der Einstufung: Tuning-Spannen von Bracket 2 bis
- * Bracket 5, Urteil F aus der Zeile von Bracket 4.
- *
- * Je Merkmal einzeln abgesichert: Fehlt ein Wert oder fallen beide Enden zusammen (eine Spanne
- * der Breite null zählt nichts), gilt für DIESES Merkmal der Startwert - ein einzelner schiefer
- * Wert soll nicht den ganzen Tuning-Grad lahmlegen.
+ * Tabellenzeilen → Schwellen: Tuning-Spannen B2 bis B5, Urteil F aus der B4-Zeile. Je Merkmal
+ * abgesichert: fehlt ein Wert oder ist die Spanne 0 breit, gilt der Startwert.
  */
 export function bracketBenchmarkFromRows(rows: BracketBenchmarkRow[]): BracketBenchmark {
   const zeile = (b: number) => rows.find((r) => r.bracket === b);
@@ -513,7 +424,7 @@ export function bracketBenchmarkFromRows(rows: BracketBenchmarkRow[]): BracketBe
 
   const spanne = (
     key: TuningPart['key'],
-    spalte: keyof Omit<BracketBenchmarkRow, 'bracket' | 'combo_tutor_min'>,
+    spalte: 'tutor_density' | 'avg_cmc' | 'untapped_land_percent' | 'game_changers',
   ): [number, number] => {
     const von = unten?.[spalte];
     const bis = oben?.[spalte];
@@ -522,6 +433,9 @@ export function bracketBenchmarkFromRows(rows: BracketBenchmarkRow[]): BracketBe
   };
 
   const tutoren = zeile(4)?.combo_tutor_min;
+  const b4 = zeile(4);
+  const gewicht = (key: TuningPart['key'], wert: number | null | undefined): number =>
+    wert != null && wert > 0 ? wert : DEFAULT_BRACKET_BENCHMARK.weights[key];
   return {
     tuning: {
       tutors: spanne('tutors', 'tutor_density'),
@@ -531,6 +445,12 @@ export function bracketBenchmarkFromRows(rows: BracketBenchmarkRow[]): BracketBe
     },
     comboTutorMin:
       tutoren != null && tutoren >= 1 ? tutoren : DEFAULT_BRACKET_BENCHMARK.comboTutorMin,
+    weights: {
+      tutors: gewicht('tutors', b4?.weight_tutors),
+      averageCmc: gewicht('averageCmc', b4?.weight_avg_cmc),
+      untappedLands: gewicht('untappedLands', b4?.weight_untapped_lands),
+      gameChangers: gewicht('gameChangers', b4?.weight_game_changers),
+    },
   };
 }
 
@@ -542,10 +462,8 @@ function anteil(wert: number, von: number, bis: number): number {
 }
 
 /**
- * Power-Spanne je Bracket. Die 1-10-Skala rastet paarweise auf den Brackets ein: 1-2 Exhibition,
- * 3-4 Core, 5-6 Upgraded, 7-8 Optimized, 9-10 cEDH. Bewusst genau diese Paarung und keine
- * gedehnte Spanne für Bracket 4 - nur so bleibt der Wert gegen die verbreitete 1-10-Skala
- * lesbar, statt eine eigene zu sein, die zufällig auch von 1 bis 10 geht.
+ * Power-Spanne je Bracket, paarweise auf der gängigen 1-10-Skala: 1-2 Exhibition, 3-4 Core, 5-6
+ * Upgraded, 7-8 Optimized, 9-10 cEDH.
  */
 const POWER_SPANNE: Record<BracketLevel, [number, number]> = {
   1: [1, 2.9],
@@ -555,12 +473,7 @@ const POWER_SPANNE: Record<BracketLevel, [number, number]> = {
   5: [9, 10],
 };
 
-/**
- * Die Power-Spanne eines Brackets, also die beiden Werte, zwischen denen powerLevel() interpoliert.
- *
- * Existiert, damit die Erklärung in der Oberfläche die Rechnung ("Bracket 3 belegt 5,0 bis 6,9")
- * vorführen kann, ohne die Zahlen ein zweites Mal abzuschreiben.
- */
+/** Power-Spanne eines Brackets (für die Rechenweg-Erklärung in der Oberfläche). */
 export function powerRange(bracket: BracketLevel): [number, number] {
   return POWER_SPANNE[bracket];
 }
@@ -572,19 +485,12 @@ export function powerLevel(bracket: BracketLevel, tuning: number): number {
 }
 
 /**
- * Führt die Urteile zusammen.
+ * Führt die Urteile zusammen. Untergrenze = Maximum aus A, B und E; C darf danach um höchstens eine
+ * Stufe anheben, nie senken.
  *
- * Untergrenze ist das höchste aus A, B und E (Kartenwert, siehe PREIS_SCHWELLE_EUR). Die Feinbewertung (C) darf danach um höchstens eine
- * Stufe ANHEBEN und niemals senken - ein hartes Kriterium aus A lässt sich so nie wegrechnen.
- *
- * Bei unveränderten Precons hebt C gar nicht an (Urteil D). Achtung, der Grund dafür ist NICHT
- * "Precons sind Bracket 2": das Bracket-Update vom 9.2.2026 hat Precons ausdrücklich von Bracket 2
- * entkoppelt, seither ist das keine Regel mehr. Der Grund ist enger: die Feinbewertung ist eine
- * weiche Heuristik über Manakurve und Manabasis, und ein Precon ist genau dafür gebaut - ihn
- * deswegen eine Stufe hochzuschieben, obwohl niemand etwas daran geändert hat, wäre falsch. Die
- * HARTEN Kriterien aus A gelten für Precons dagegen unverändert: eine einzige Game-Changer-Karte
- * hebt auch einen fabrikfrischen Precon auf mindestens Bracket 3 (aktueller Fall: Farewell, im
- * selben Februar-Update neu auf die Game-Changer-Liste gesetzt).
+ * Unveränderte Precons hebt C nicht an (Urteil D) - nicht weil Precons B2 wären (seit 9.2.2026
+ * entkoppelt), sondern weil die weiche Heuristik ein unverändertes Precon nicht hochschieben soll.
+ * Harte Kriterien aus A gelten für Precons unverändert.
  */
 export function analyzeBracket(input: BracketInput): BracketAnalysis {
   const benchmark = input.benchmark ?? DEFAULT_BRACKET_BENCHMARK;
@@ -603,9 +509,8 @@ export function analyzeBracket(input: BracketInput): BracketAnalysis {
     bracket = maxLevel(bracket, price);
   }
 
-  // Urteil F: der gemessene Befund (siehe EMPIRISCH_MIN_COMBOS und BracketBenchmark). Steht
-  // bewusst VOR der Feinbewertung: Es ist ein harter Befund wie die übrigen Untergrenzen, kein
-  // weiches Anheben um eine Stufe.
+  // Urteil F (siehe EMPIRISCH_MIN_COMBOS) ist ein harter Befund und steht deshalb vor der
+  // Feinbewertung.
   if (
     input.winningCombos >= EMPIRISCH_MIN_COMBOS &&
     input.tutorCount >= benchmark.comboTutorMin &&
@@ -624,9 +529,8 @@ export function analyzeBracket(input: BracketInput): BracketAnalysis {
 
   const power = powerLevel(bracket, tuning);
 
-  // Stimmen die beiden unabhängigen Urteile überein, ist die Einstufung belastbar. Fehlt die
-  // Zweitmeinung oder weicht sie um eine Stufe ab, bleibt es eine Schätzung; zwei Stufen
-  // Abweichung heißt, dass eine der beiden Quellen etwas sieht, das die andere nicht kennt.
+  // Übereinstimmung von A und B = belastbar; fehlt B oder weicht es um eine Stufe ab = Schätzung;
+  // zwei Stufen = eine Quelle sieht, was die andere nicht kennt.
   let confidence: BracketAnalysis['confidence'] = 'medium';
   if (spellbook !== null) {
     const abstand = Math.abs(rules - spellbook);

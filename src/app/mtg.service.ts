@@ -38,11 +38,8 @@ const MATCH_HISTORY_SELECT = `
 `;
 
 /**
- * Dieselbe Select-Liste ohne game_format - Rückfallebene, solange
- * sql/match-category-format-split-2026-09-03.sql noch nicht im Supabase-Editor ausgeführt wurde.
- * Eine Abfrage auf eine nicht existierende Spalte lässt Postgres komplett scheitern, und da
- * loadHistory() bei einem Fehler das history-Signal unangetastet lässt, stand dann die gesamte App
- * ohne einen einzigen Match da (Verlauf UND Statistik) - siehe fetchMatchRows().
+ * Select-Liste ohne game_format - Rückfall, solange sql/match-category-format-split-2026-09-03.sql
+ * fehlt. Sonst scheitert die Abfrage und die App steht ohne Matches da (siehe fetchMatchRows()).
  */
 const MATCH_HISTORY_SELECT_WITHOUT_FORMAT = MATCH_HISTORY_SELECT.replace('  game_format,\n', '');
 
@@ -65,10 +62,10 @@ export class MtgService {
   readonly playerUserIds = signal<Record<string, string | null>>({});
   /** Spielername -> Profilbild-URL des verknüpften Accounts (null = kein Account/kein Bild). */
   readonly playerAvatars = signal<Record<string, string | null>>({});
-  /** Spielername -> Lieblingscommander eines accountlosen NPC-Profils (players.favorite_commanders,
-   * vom Host gepflegt - siehe setPlayerFavoriteCommanders). Sobald der Spieler verknüpft wird, geht
-   * dieses Feld per Alles-oder-nichts-Regel in profiles.favorite_commanders auf (siehe
-   * linkPlayerToUser) und wird hier wieder geleert. */
+  /**
+   * Spielername → Lieblingscommander eines NPC-Profils (vom Host gepflegt). Geht bei der
+   * Verknüpfung per Alles-oder-nichts in profiles.favorite_commanders auf (linkPlayerToUser).
+   */
   readonly playerFavoriteCommanders = signal<Record<string, string[]>>({});
   // ... der Rest bleibt unverändert
   readonly history = signal<Match[]>([]);
@@ -77,16 +74,13 @@ export class MtgService {
   readonly playerBackgrounds = signal<Record<string, string>>({});
 
   /**
-   * Spielername (= Account) -> (Modus -> darf dieser Account den Modus im Stats-Tab sehen?).
-   * Nicht konfigurierte Modi fehlen in der inneren Map (Default: Zugriff erlaubt) - siehe
-   * canViewMode in stats-tab.ts.
+   * Spielername → (Modus → darf der Account ihn im Stats-Tab sehen?). Nicht konfiguriert = erlaubt.
    */
   readonly statVisibility = signal<Map<string, Map<GameMode, boolean>>>(new Map());
 
   /**
-   * Modus (oder 'Alle' für die Aggregat-Ansicht) -> Mindestanzahl Spiele, ab der ein Eintrag
-   * in den Ranglisten (Spieler/Decks/Commander) für diesen Modus erscheint. 0 = keine
-   * Mindestspielzahl. Nicht konfigurierte Modi fehlen (Default: siehe stats-tab.ts).
+   * Modus (oder 'Alle') → Mindestspielzahl für die Ranglisten; 0 = keine. Nicht konfiguriert:
+   * Default in stats-tab.ts.
    */
   readonly qualificationSettings = signal<Map<string, number>>(new Map());
 
@@ -94,14 +88,9 @@ export class MtgService {
   readonly myPlayerName = computed(() => this.playerNameForUserId(this.auth.currentUser()?.id));
 
   /**
-   * Ob für den eingeloggten Account (den Viewer) ALLE Modi in der Sichtbarkeits-Matrix
-   * (player_stat_visibility) gesperrt sind - ersetzt das frühere separate groups.stats_locked-
-   * Flag. Statt eines zweiten, unabhängigen Schalters (der die Matrix beim Nachjustieren einzelner
-   * Zellen komplett übersteuert hätte) ist "alles gesperrt" jetzt einfach der Zustand, in dem die
-   * Matrix für diese Person überall auf false steht - der Host kann eine einzelne Zelle wieder
-   * freigeben und das wirkt sich sofort aus, ohne dass irgendwas das noch überschreibt. "Alle
-   * sperren"/"Alle freigeben" im Gruppen-Tab sind nur noch Komfort-Buttons, die diese Matrix in
-   * einem Rutsch für alle Spieler setzen, keine eigene Datenquelle mehr.
+   * Sind für den Viewer ALLE Modi in player_stat_visibility gesperrt? Ersetzt das frühere
+   * groups.stats_locked: "alles gesperrt" ist nur ein Zustand der Matrix, einzelne Zellen lassen
+   * sich wieder freigeben. "Alle sperren/freigeben" setzen nur die Matrix.
    */
   readonly allModesHiddenForMe = computed(() => {
     const name = this.myPlayerName();
@@ -130,9 +119,8 @@ export class MtgService {
   }
 
   /**
-   * Spielername des Deck-Besitzers zu ownerId (Account-User-ID, für account-gebundene Decks) oder
-   * ownerPlayerId (players.id, für Decks eines accountlosen/virtuellen Spielers) - für
-   * "ausgeliehen von X"-Anzeigen im Match-Verlauf und in den Statistiken.
+   * Spielername des Deck-Besitzers per ownerId (Account) oder ownerPlayerId (virtueller Spieler) -
+   * für "ausgeliehen von X".
    */
   deckOwnerName(ownerId: string | undefined, ownerPlayerId?: string): string | null {
     if (ownerPlayerId) return this.playerNameForId(ownerPlayerId);
@@ -386,11 +374,7 @@ export class MtgService {
     this.playerFavoriteCommanders.set(favoriteCommanderMap);
   }
 
-  /**
-   * Setzt die Lieblingscommander eines NPC-Profils (accountloser Spieler) - vom Host in
-   * group-tab.ts gepflegt, analog zu profiles.favorite_commanders bei echten Accounts. Maximal 3,
-   * gleiche Regel wie ProfileService.updateFavoriteCommanders.
-   */
+  /** Lieblingscommander eines NPC-Profils setzen (Host), höchstens 3 wie bei Accounts. */
   async setPlayerFavoriteCommanders(name: string, commanders: string[]): Promise<boolean> {
     const groupId = this.groupService.groupId();
     const playerId = this.playerIdsByName()[name];
@@ -462,9 +446,8 @@ export class MtgService {
       return false;
     }
 
-    // Der Name ist zusätzlich als Text direkt in match_players/matches gespeichert (siehe
-    // player_name/winner_name - überlebt so eine spätere Spieler-Löschung), muss beim Umbenennen
-    // also explizit mitgezogen werden, sonst zeigen alte Matches weiterhin den alten Namen.
+    // Der Name steht auch als Text in match_players/matches (überlebt Löschungen) und muss mit
+    // umbenannt werden.
     if (playerId) {
       const { error: mpError } = await supabase
         .from('match_players')
@@ -489,9 +472,7 @@ export class MtgService {
       }))
     );
 
-    // Die Account-Verknüpfung (playerUserIds u.a.) ist name-indiziert - ohne dieses Umschlüsseln
-    // würde sie unter dem alten Namen "hängen bleiben" und wirkt dann bis zum nächsten Neuladen
-    // wie verloren (z.B. Avatar/Sichtbarkeit unter dem neuen Namen nicht mehr auffindbar).
+    // Name-indizierte Zuordnungen (playerUserIds u. a.) auf den neuen Namen umschlüsseln.
     const rekey = <T,>(map: Record<string, T>): Record<string, T> => {
       if (!(oldName in map)) return map;
       const { [oldName]: value, ...rest } = map;
@@ -510,10 +491,8 @@ export class MtgService {
     const groupId = this.groupService.groupId();
     if (!groupId || !this.groupService.hasPermission('player.delete')) return;
 
-    // Falls der Spieler mit einem echten Account verknüpft ist, muss diese Person auch als
-    // Gruppenmitglied entfernt werden - sonst löscht dieser Aufruf nur die Stat-Tracking-Identität
-    // (players-Zeile), die Person bleibt aber vollwertiges Mitglied (sieht die Gruppe weiterhin
-    // unter "Meine Gruppen", hat weiterhin Zugriff auf alle Gruppendaten).
+    // Verknüpfte Accounts auch als Gruppenmitglied entfernen - sonst bliebe die Person Mitglied mit
+    // vollem Zugriff.
     const linkedUserId = this.playerUserIds()[name];
 
     const { error } = await supabase
@@ -540,15 +519,11 @@ export class MtgService {
   }
 
   /**
-   * Führt mehrere Spieler-Einträge zu einem zusammen (z.B. wenn ein per Excel-Import angelegter
-   * Name wie "Theo"/"Theos" in Wahrheit derselbe Mensch ist wie der später beigetretene Account
-   * "Theodor", oder ein doppelt angelegter Account wie "Jakob"/"Jakob2"). Hängt ALLE Datensätze der
-   * Quell-Spieler auf den Ziel-Spieler um (Matches, Turnier-Teilnahmen/-Tische, Sichtbarkeits- und
-   * Hintergrund-Einstellungen), die Quell-Spieler-Einträge werden danach gelöscht. Bewusst NICHT
-   * über deletePlayer(), da dort die Spiele beim gelöschten (Alt-)Namen verbleiben würden statt zum
-   * Ziel-Spieler zu wandern.
+   * Führt mehrere Spieler-Einträge zu einem zusammen (z. B. Excel-"Theo" und Account "Theodor"):
+   * hängt Matches, Turnier-Teilnahmen, Sichtbarkeit und Hintergründe auf das Ziel um und löscht die
+   * Quellen. Nicht über deletePlayer(), da die Spiele sonst beim alten Namen blieben. Nur für Host
+   * oder freigeschaltete Mitglieder.
    */
-  /** Nur für Host oder freigeschaltetes Mitglied - hängt fremde Match-/Turnier-Historie um, darf kein normales Mitglied auslösen können. */
   async mergePlayers(targetName: string, sourceNames: string[]): Promise<boolean> {
     const groupId = this.groupService.groupId();
     if (!groupId || sourceNames.length === 0 || !this.groupService.hasPermission('player.merge')) return false;
@@ -593,21 +568,16 @@ export class MtgService {
         return false;
       }
 
-      // Sichtbarkeits-/Hintergrund-Einstellungen sind reine Kosmetik pro Spieler-Identität und je
-      // Spalte (group_id, player_id[, game_mode]) eindeutig - ein blindes Umschreiben auf targetId
-      // würde bei bereits vorhandenen Ziel-Einträgen die Unique-Constraint verletzen. Da die
-      // verschwindende Quell-Identität ohnehin aufhört zu existieren, gewinnt einfach die bereits
-      // für targetId gesetzte Einstellung (falls vorhanden); die Quell-Zeilen werden schlicht mit
-      // gelöscht statt fehlschlagend zusammengeführt.
+      // Sichtbarkeit/Hintergrund sind je (Gruppe, Spieler[, Modus]) eindeutig - bei Konflikt
+      // gewinnt die Einstellung des Ziels, die Quellzeilen werden gelöscht.
       const { error: visibilityError } = await supabase.from('player_stat_visibility').delete().eq('player_id', sourceId);
       if (visibilityError) console.error('Konnte Sichtbarkeits-Einstellungen des zusammengeführten Spielers nicht löschen:', visibilityError);
 
       const { error: backgroundError } = await supabase.from('player_backgrounds').delete().eq('player_id', sourceId);
       if (backgroundError) console.error('Konnte Hintergrund des zusammengeführten Spielers nicht löschen:', backgroundError);
 
-      // Decks eines virtuellen (accountlosen) Quell-Spielers müssen VOR dem Löschen der
-      // players-Zeile auf den Ziel-Spieler umgehängt werden - decks.player_id hat inzwischen
-      // ON DELETE CASCADE, ohne dieses Umhängen würden sie beim Löschen sonst mit verschwinden.
+      // Decks eines virtuellen Quell-Spielers VOR dem Löschen umhängen (decks.player_id hat ON
+      // DELETE CASCADE).
       const { error: deckMergeError } = await supabase.from('decks').update({ player_id: targetId }).eq('player_id', sourceId);
       if (deckMergeError) {
         console.error('Konnte Decks des zusammengeführten Spielers nicht übertragen:', deckMergeError);
@@ -633,13 +603,8 @@ export class MtgService {
   }
 
   /**
-   * Hängt Turnier-Teilnahme (tournament_participants) und Tisch-Zuordnungen
-   * (tournament_match_players) eines Quell-Spielers auf den Ziel-Spieler um. Für Turniere, an denen
-   * BEIDE bereits als eigene Teilnehmer-Zeile hängen (ein in der Praxis kaum vorkommender Fall -
-   * zwei getrennte Kader-Einträge, die in DEMSELBEN Turnier gegeneinander/nebeneinander gespielt
-   * haben), lässt sich die Teilnahme nicht widerspruchsfrei zusammenführen (Unique Constraint
-   * tournament_id+player_id) - dort bleibt die Quell-Teilnahme unangetastet stehen, statt die
-   * Zusammenführung abzubrechen.
+   * Hängt Turnier-Teilnahme und Tischzuordnungen um. Nahmen beide am selben Turnier teil (Unique
+   * tournament_id+player_id), bleibt die Quell-Teilnahme stehen.
    */
   private async mergeTournamentParticipation(sourceId: string, targetId: string): Promise<boolean> {
     const { data: sourceRows, error: sourceError } = await supabase
@@ -691,9 +656,8 @@ export class MtgService {
   }
 
   /**
-   * Verknüpft einen bestehenden (noch account-losen) Spieler-Eintrag nachträglich mit einem
-   * Gruppenmitglied, damit dessen alte Stats (z.B. aus dem Excel-Import) zu seinem Account gehören.
-   * Schlägt gezielt fehl, falls der Spieler zwischenzeitlich schon verknüpft wurde.
+   * Verknüpft einen accountlosen Spieler mit einem Gruppenmitglied (alte Stats gehören dann dem
+   * Account). Scheitert, wenn er inzwischen verknüpft ist.
    */
   async linkPlayerToUser(playerName: string, userId: string): Promise<boolean> {
     const groupId = this.groupService.groupId();
@@ -713,9 +677,7 @@ export class MtgService {
 
     this.playerUserIds.update((map) => ({ ...map, [playerName]: userId }));
 
-    // Decks, die dieser Spieler bekam, als er noch accountlos war, müssen auf den jetzt
-    // verknüpften Account umgehängt werden - sonst wären sie danach unsichtbar (die Profilseite
-    // liest nur noch user_id-Decks, die player_id-Zeile hat ab jetzt keinen eigenen Ort mehr).
+    // Decks aus der accountlosen Zeit auf den Account umhängen, sonst wären sie unsichtbar.
     const playerId = this.playerIdsByName()[playerName];
     if (playerId) {
       const { error: deckMigrateError } = await supabase
@@ -732,16 +694,9 @@ export class MtgService {
       .single();
     this.playerAvatars.update((map) => ({ ...map, [playerName]: profile?.avatar_url ?? null }));
 
-    // Lieblingscommander per Alles-oder-nichts-Regel zusammenführen: hat der Account schon
-    // mindestens einen gesetzt, bleibt dessen Liste unverändert (der Account ist die "Wahrheit"
-    // für die Person). Nur wenn der Account noch komplett leer ist, übernimmt er die NPC-Liste -
-    // die dann am NPC-Eintrag geleert wird, damit sie nicht doppelt/veraltet irgendwo weiterlebt.
-    //
-    // Der Schreibzugriff auf profiles.favorite_commanders eines ANDEREN Accounts ist nur erlaubt,
-    // wenn die Person sich selbst verknüpft (isSelfLink) oder Developer ist - sonst dürfte ein
-    // Host, der eine NPC mit dem Account eines anderen Spielers verknüpft, sonst unbemerkt in
-    // dessen echtes Profil schreiben (siehe group-permissions.ts: Gruppenrechte decken nur
-    // Stats/NPC-Daten ab, nicht das Profil eines fremden echten Accounts).
+    // Lieblingscommander per Alles-oder-nichts: hat der Account schon welche, bleiben sie; sonst
+    // übernimmt er die NPC-Liste (die dort geleert wird). Ins Profil eines ANDEREN Accounts nur bei
+    // Selbstverknüpfung oder als Developer schreiben.
     const isSelfLink = this.auth.currentUser()?.id === userId;
     const npcFavorites = this.playerFavoriteCommanders()[playerName] ?? [];
     const accountFavorites = profile?.favorite_commanders ?? [];
@@ -757,10 +712,7 @@ export class MtgService {
         await supabase.from('players').update({ favorite_commanders: [] }).eq('id', playerId);
         this.playerFavoriteCommanders.update((map) => ({ ...map, [playerName]: [] }));
 
-        // Falls der verknüpfte Account der gerade eingeloggte User selbst ist (Host verknüpft sich
-        // z.B. selbst, oder der Spieler verknüpft während einer laufenden Session), muss auch das
-        // schon geladene eigene Profil-Signal aktualisiert werden - sonst zeigt der Profil-Tab bis
-        // zum nächsten Neuladen noch die alte (leere) Liste.
+        // Ist der verknüpfte Account der eingeloggte, auch das geladene Profil-Signal auffrischen.
         if (this.auth.currentUser()?.id === userId) {
           this.profileService.profile.update((p) => (p ? { ...p, favoriteCommanders: npcFavorites } : p));
         }
@@ -781,11 +733,8 @@ export class MtgService {
   }
 
   /**
-   * Führt eine "matches"-Abfrage aus und wiederholt sie einmal ohne die game_format-Spalte, falls
-   * die in der Datenbank noch fehlt (Migration noch nicht ausgeführt, siehe
-   * MATCH_HISTORY_SELECT_WITHOUT_FORMAT). Ohne diesen Rückfall macht eine ausstehende Migration den
-   * kompletten Verlauf samt aller Statistiken unsichtbar, obwohl in der Datenbank alles unverändert
-   * daliegt. Liefert null, wenn auch der zweite Versuch scheitert.
+   * matches-Abfrage mit einem Wiederholungsversuch ohne game_format, falls die Spalte fehlt. null,
+   * wenn beides scheitert.
    */
   private async fetchMatchRows(
     run: (select: string) => PromiseLike<{ data: any[] | null; error: any }>,
@@ -822,9 +771,8 @@ export class MtgService {
   }
 
   /**
-   * Wie loadHistory(), aber für eine Liste von Gruppen statt einer einzelnen, und gibt die Matches
-   * direkt zurück statt State zu setzen - für gruppenübergreifende Auswertungen im Stats-Tab (lokal
-   * gewählte Fremdgruppe), die NICHT die echte aktive Gruppe (history()) verändern sollen.
+   * Wie loadHistory() für mehrere Gruppen, gibt die Matches zurück statt history() zu ändern
+   * (Stats-Tab, fremde Gruppe).
    */
   async loadMatchesForGroups(groupIds: string[]): Promise<Match[]> {
     if (groupIds.length === 0) return [];
@@ -843,11 +791,9 @@ export class MtgService {
   }
 
   /**
-   * Alle Matches, an denen ein Account teilgenommen hat, aus ALLEN Gruppen - für die Match-Liste
-   * eines fremden Profils, wenn der Betrachter nicht in derselben Gruppe ist oder gar nicht
-   * eingeloggt (sql/oeffentliche-matches-2026-09-23.sql). selfName ist der Name, unter dem die
-   * Person im jeweiligen Match gespielt hat; er kann je Gruppe anders lauten. null = die Funktion
-   * fehlt noch oder der Aufruf schlug fehl.
+   * Alle Matches eines Accounts aus ALLEN Gruppen - für fremde Profile
+   * (sql/oeffentliche-matches-2026-09-23.sql). selfName = Name im jeweiligen Match. null = Funktion
+   * fehlt oder Fehler.
    */
   async loadPublicMatchesForUser(userId: string): Promise<{ match: Match; selfName: string }[] | null> {
     const { data, error } = await supabase.rpc('public_player_matches', { p_user_id: userId });
@@ -861,12 +807,8 @@ export class MtgService {
   }
 
   /**
-   * Ergänzt fehlende deck_id-Werte automatisch: falls ein Spieler keine explizite Deck-Auswahl
-   * hat (weder eigenes noch geliehenes Deck), aber einen Commander-Namen, der zu einem seiner
-   * eigenen Decks passt, wird das Deck automatisch verknüpft - sonst müsste man Alt-Matches ohne
-   * Deck-Auswahl (z.B. aus dem Excel-Import) immer manuell nachpflegen. Bei Cube- und Draft-Spielen
-   * bewusst NIE automatisch verknüpft (auch wenn zufällig ein commander-ähnlicher Name eingetragen
-   * ist) - das sind keine Commander-Decks, eine automatische Verknüpfung wäre dort immer falsch.
+   * Ergänzt fehlende deck_ids: passt der Commander zu einem eigenen Deck des Spielers, wird
+   * verknüpft. Nie bei Cube/Draft.
    */
   private async resolveAutoDeckLinks(players: MatchPlayer[], mode: GameMode): Promise<MatchPlayer[]> {
     if (mode === 'Cube' || mode === 'Draft') return players;
@@ -955,10 +897,7 @@ export class MtgService {
       return null;
     }
 
-    // Schritt 3: Lokal ans Signal anhängen, damit die UI sofort aktualisiert.
-    // Deck-Namen müssen extra nachgeladen werden - players kennt nur die deckId (kommt aus der
-    // Session oder der Auto-Verknüpfung oben), nicht den Namen (der wird sonst erst beim
-    // Neuladen aus der DB per Join befüllt).
+    // Schritt 3: lokal anhängen; Deck-Namen extra nachladen (players kennt nur die deckId).
     const deckIds = [...new Set(players.map((p) => p.deckId).filter((id): id is string => !!id))];
     let deckNames: Record<string, string> = {};
     let deckOwners: Record<string, string> = {};
@@ -993,9 +932,7 @@ export class MtgService {
   }
 
   /**
-   * Trägt nachträglich die Platzierung (1 = Sieger, 2 = zweiter Platz, ...) einzelner Spieler
-   * eines Matches ein oder ändert sie - rein optionale Zusatz-Info, der Sieger/Verlierer-Status
-   * (matches.winner_name) bleibt davon komplett unberührt.
+   * Platzierungen (1 = Sieger, ...) nachtragen - reine Zusatzinfo, winner_name bleibt unberührt.
    */
   async setPlacements(matchId: string, placements: { name: string; placement: number | null }[]): Promise<void> {
     if (!this.groupService.hasPermission('match.editResult')) return;
@@ -1028,11 +965,8 @@ export class MtgService {
   }
 
   /**
-   * Trägt nachträglich fehlende (oder falsche) Commander samt optionalem Partner/Background
-   * einzelner Spieler eines bereits gespeicherten Matches ein - z.B. wenn das beim Live-Tracking
-   * vergessen wurde. Ist noch keine Deck-Verknüpfung vorhanden, wird - wie beim Anlegen eines
-   * Matches - automatisch versucht, anhand des neuen Commander-Namens ein passendes eigenes Deck
-   * zu finden (siehe resolveAutoDeckLinks); eine bereits bestehende Deck-Verknüpfung bleibt unangetastet.
+   * Commander (samt Partner/Background) nachträglich eintragen; ohne Deck-Verknüpfung wird wie beim
+   * Anlegen ein passendes eigenes Deck gesucht, bestehende Verknüpfungen bleiben.
    */
   async setCommanders(
     matchId: string,
@@ -1076,16 +1010,6 @@ export class MtgService {
     await this.refreshHistory();
   }
 
-  /** crypto.randomUUID() existiert nur in sicheren Kontexten (HTTPS/localhost) – daher Fallback. */
-  private createId(): string {
-    if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-      return crypto.randomUUID();
-    }
-    return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-  }
-
-  // NEU
-  // NEU
   async deleteMatch(id: string): Promise<void> {
     const groupId = this.groupService.groupId();
     if (!groupId || !this.groupService.hasPermission('match.delete')) return;
@@ -1148,11 +1072,8 @@ export class MtgService {
   }
 
   /**
-   * Setzt counts_in_general_stats für ALLE Einzelspiele der übergebenen Turnier-Tische auf `value` -
-   * genutzt, um nachträglich Matches zu korrigieren, die trotz deaktiviertem "Auch in der
-   * allgemeinen Statistik zählen" fälschlich mitgezählt wurden (siehe
-   * TournamentService.repairCountsInGeneralStats, betraf Tische, deren Session ein Gerät nur passiv
-   * per Realtime-Bridge übernommen hat statt sie selbst zu starten).
+   * Setzt counts_in_general_stats für alle Spiele der Turnier-Tische - Korrektur für fälschlich
+   * mitgezählte Spiele (passiv übernommene Sessions).
    */
   async setCountsInGeneralStatsForTournamentMatchIds(tournamentMatchIds: string[], value: boolean): Promise<boolean> {
     if (tournamentMatchIds.length === 0) return true;
@@ -1314,166 +1235,6 @@ export class MtgService {
 
     return { success: true };
   }
-  /** Fügt Bulk-importierte Matches an (Datum wird mitgegeben statt automatisch gesetzt). Zählen immer in die allgemeine Statistik (kein Turnier-Bezug beim Import). */
-  async importMatches(newMatches: (Omit<Match, 'id' | 'countsInGeneralStats'> & { countsInGeneralStats?: boolean })[]): Promise<void> {
-    if (newMatches.length === 0) return;
-
-    const groupId = this.groupService.groupId();
-    if (!groupId) return;
-
-    // Schritt 1: Herausfinden, welche Spielernamen noch NICHT existieren.
-    const knownPlayers = new Set(this.allPlayers().map((p) => p.toLowerCase()));
-    const newPlayerNames = new Set<string>();
-    for (const match of newMatches) {
-      for (const p of match.players) {
-        if (!knownPlayers.has(p.name.toLowerCase())) {
-          newPlayerNames.add(p.name);
-          knownPlayers.add(p.name.toLowerCase());
-        }
-      }
-    }
-
-    // Schritt 2: Neue Spieler in Supabase anlegen (alle auf einmal).
-    if (newPlayerNames.size > 0) {
-      const rows = [...newPlayerNames].map((name) => ({ group_id: groupId, display_name: name }));
-      const { data: newPlayerRows, error: playersError } = await supabase
-        .from('players')
-        .insert(rows)
-        .select('id, display_name');
-
-      if (playersError || !newPlayerRows) {
-        console.error('Konnte neue Spieler nicht anlegen:', playersError);
-        return;
-      }
-
-      this.allPlayers.update((players) => [...players, ...newPlayerNames]);
-      this.playerIdsByName.update((map) => {
-        const next = { ...map };
-        for (const row of newPlayerRows) {
-          next[row.display_name] = row.id;
-        }
-        return next;
-      });
-    }
-
-    // Schritt 3: Jedes Match einzeln anlegen (matches + match_players).
-    // Deck-Auto-Verknüpfung wird über einen gemeinsamen Cache dedupliziert, da z.B. beim
-    // Excel-Import derselbe Spieler/Commander über sehr viele synthetische Matches wiederkehrt.
-    const deckIdCache = new Map<string, string | null>();
-    const resolveDeckId = async (playerName: string, commander: string | undefined): Promise<string | null> => {
-      if (!commander) return null;
-      const userId = this.playerUserIds()[playerName];
-      const playerId = this.playerIdFor(playerName);
-      if (!userId && !playerId) return null;
-      const key = `${playerName.toLowerCase()}::${commander.toLowerCase()}`;
-      if (!deckIdCache.has(key)) {
-        let deckId: string | null = null;
-        if (userId) deckId = await this.deckService.findDeckIdByCommander({ kind: 'user', userId }, commander);
-        if (!deckId && playerId) deckId = await this.deckService.findDeckIdByCommander({ kind: 'player', playerId }, commander);
-        deckIdCache.set(key, deckId);
-      }
-      return deckIdCache.get(key) ?? null;
-    };
-
-    const importedMatches: Match[] = [];
-    for (const match of newMatches) {
-      const { data: matchRow, error: matchError } = await supabase
-        .from('matches')
-        .insert({
-          group_id: groupId,
-          game_mode: match.mode,
-          game_format: match.format ?? null,
-          cube_id: match.cube?.id ?? null,
-          winner_name: match.winner,
-          played_at: match.date,
-          draft_set_id: match.draftSet?.id ?? null,
-          draft_set_code: match.draftSet?.code ?? null,
-          draft_set_name: match.draftSet?.name ?? null,
-          draft_set_released_at: match.draftSet?.releasedAt ?? null,
-        })
-        .select('id, played_at')
-        .single();
-
-      if (matchError || !matchRow) {
-        console.error('Konnte importiertes Match nicht anlegen:', matchError);
-        continue;
-      }
-
-      // Cube-/Draft-Spiele nie automatisch mit einem Commander-Deck verknüpfen, auch wenn zufällig
-      // ein commander-ähnlicher Name im Import-Datensatz steht (siehe resolveAutoDeckLinks).
-      const resolvedPlayers: MatchPlayer[] = [];
-      for (const p of match.players) {
-        const deckId =
-          p.deckId ??
-          (match.mode !== 'Cube' && match.mode !== 'Draft' ? await resolveDeckId(p.name, p.commander) : null) ??
-          undefined;
-        resolvedPlayers.push(deckId ? { ...p, deckId } : p);
-      }
-
-      const playerRows = resolvedPlayers.map((p) => ({
-        match_id: matchRow.id,
-        player_id: this.playerIdsByName()[p.name] ?? null,
-        player_name: p.name,
-        commander_name: p.commander ?? null,
-        partner_commander_name: p.partnerCommander ?? null,
-        team: p.team ?? null,
-        is_archenemy: p.isArchenemy ?? false,
-        deck_id: p.deckId ?? null,
-      }));
-
-      const { error: playersError } = await supabase.from('match_players').insert(playerRows);
-
-      if (playersError) {
-        console.error('Konnte Spieler für importiertes Match nicht anlegen:', playersError);
-        continue;
-      }
-
-      importedMatches.push({
-        ...match,
-        id: matchRow.id,
-        date: matchRow.played_at,
-        players: resolvedPlayers,
-        countsInGeneralStats: match.countsInGeneralStats ?? true,
-      });
-    }
-
-    // Deck-Namen/Besitzer/Precon-Flag für die neu verknüpften Decks nachladen, damit die lokal
-    // angehängten Matches sofort korrekt angezeigt werden (statt erst nach einem Neuladen).
-    const deckIds = [
-      ...new Set(
-        importedMatches.flatMap((m) => m.players.map((p) => p.deckId).filter((id): id is string => !!id))
-      ),
-    ];
-    if (deckIds.length > 0) {
-      const { data: deckRows } = await supabase
-        .from('decks')
-        .select('id, name, user_id, player_id, is_precon')
-        .in('id', deckIds);
-      const deckNames = Object.fromEntries((deckRows ?? []).map((d) => [d.id, d.name]));
-      const deckOwners = Object.fromEntries((deckRows ?? []).map((d) => [d.id, d.user_id]));
-      const deckOwnerPlayerIds = Object.fromEntries((deckRows ?? []).map((d) => [d.id, d.player_id]));
-      const deckPrecons = Object.fromEntries((deckRows ?? []).map((d) => [d.id, d.is_precon]));
-
-      for (const m of importedMatches) {
-        m.players = m.players.map((p) =>
-          p.deckId
-            ? {
-                ...p,
-                deckName: deckNames[p.deckId],
-                deckOwnerId: deckOwners[p.deckId],
-                deckOwnerPlayerId: deckOwnerPlayerIds[p.deckId],
-                deckIsPrecon: deckPrecons[p.deckId],
-              }
-            : p
-        );
-      }
-    }
-
-    // Schritt 4: Lokal ans Signal anhängen.
-    this.history.update((matches) => [...matches, ...importedMatches]);
-  }
-
-  // --- Cubes ---
 
   // --- Cubes ---
 

@@ -367,7 +367,6 @@ export class ProfileService {
     return true;
   }
 
-  // NEU
   /**
    * Sammelt die eigenen Daten für den Selbstbedienungs-Export (Art. 20 DSGVO) und liefert sie als
    * einfaches JSON-Objekt - der Aufrufer bietet es zum Download an (siehe profile-tab.ts). Deckt
