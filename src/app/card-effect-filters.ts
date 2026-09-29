@@ -1,8 +1,8 @@
 /**
  * Scryfall-Oracle-Tag-Filter für "was tut eine Karte" (z.B. Sacrifice-Outlet, Removal, Ramp) - aus
- * public-card-search.ts/deck-viewer.service.ts extrahiert, damit beide Stellen (und die Commander-
+ * public-card-search.ts/deck-effects.service.ts extrahiert, damit beide Stellen (und die Commander-
  * Suche nach Farbe/Mechanik) dieselbe, einmal gepflegte Liste nutzen. Bewusst OHNE die 3 rein
- * deck-lokalen Einträge aus deck-viewer.service.ts (tutor/extraturn/mld, query: '' - laufen dort
+ * deck-lokalen Einträge aus deck-effects.service.ts (tutor/extraturn/mld, query: '' - laufen dort
  * über deck-spezifische Analyse statt Scryfall-Abfrage, ohne Deck-Kontext nicht möglich).
  */
 export interface CardEffectFilter {

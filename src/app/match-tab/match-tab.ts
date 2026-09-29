@@ -676,7 +676,7 @@ export class MatchTab {
   /**
    * Klick auf eine Verlaufs-Kachel mit hinterlegtem Deck: öffnet die Deck-Detailansicht wie aus der
    * Deck-Liste heraus. Fremde und geliehene Decks schaltet die Detailansicht selbst
-   * schreibgeschützt (DeckViewerService.canEditViewingDeck).
+   * schreibgeschützt (DeckViewerState.canEditViewingDeck).
    */
   async openPlayerDeck(deckId: string): Promise<void> {
     const deck = await this.deckService.getDeckById(deckId);

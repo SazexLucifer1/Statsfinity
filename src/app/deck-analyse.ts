@@ -7,7 +7,7 @@ import { ColorSelection, EMPTY_COLOR_SELECTION, matchesColorSelection } from './
 
 /**
  * Deck-Analyse (Manakurve, Pips, Typen, Länder) und Typ-Gruppierung der Kartenliste - gemeinsam für
- * deck-viewer.service.ts, precon-browser und public-deck-browser. Vorher stand alles dreimal da.
+ * deck-analysis.service.ts, precon-browser und public-deck-browser. Vorher stand alles dreimal da.
  */
 
 export interface ManaCurveBucket {

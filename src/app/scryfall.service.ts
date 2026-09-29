@@ -514,7 +514,7 @@ export class ScryfallService {
       /** Auswahl des Farbfilters samt Lesart (siehe color-filter-match.ts). */
       colors?: ColorSelection;
       colorIdentitySubset?: string[] | null;
-      /** Fertiges Scryfall-Query-Fragment für eine Effekt-Kategorie, z.B. "otag:removal" - siehe effectFilters in deck-viewer.service.ts. */
+      /** Fertiges Scryfall-Query-Fragment für eine Effekt-Kategorie, z.B. "otag:removal" - siehe effectFilters in deck-effects.service.ts. */
       effectQuery?: string;
       /** Fähigkeits-Keyword wie "lifelink" oder "first strike" (native Scryfall-Abfrage, kein Tagger-Tag). */
       keyword?: string;
@@ -576,7 +576,7 @@ export class ScryfallService {
     if (!res?.ok) return [];
     const data = await res.json();
     // Scryfall liefert pro Seite ohnehin maximal 175 Treffer - keine zusätzliche Begrenzung nötig,
-    // die Aufteilung in Seiten für die Anzeige übernimmt deck-viewer.service.ts (pagedAddCardResults).
+    // die Aufteilung in Seiten für die Anzeige übernimmt deck-edit.service.ts (pagedAddCardResults).
     const rohdaten = (data.data as any[]) ?? [];
     return this.inKartensprache(
       rohdaten.map((c) => this.toCard(c)),

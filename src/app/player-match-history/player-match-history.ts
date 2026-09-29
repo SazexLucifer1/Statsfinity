@@ -210,7 +210,7 @@ export class PlayerMatchHistory {
   /**
    * Klick auf eine Kachel mit hinterlegtem Deck: öffnet die Deck-Detailansicht wie aus der
    * Deck-Liste heraus (root-level Overlay, funktioniert aus jedem Tab). Fremde Decks schaltet die
-   * Detailansicht selbst schreibgeschützt (DeckViewerService.canEditViewingDeck).
+   * Detailansicht selbst schreibgeschützt (DeckViewerState.canEditViewingDeck).
    */
   async openDeck(deckId: string): Promise<void> {
     const deck = await this.deckService.getDeckById(deckId);

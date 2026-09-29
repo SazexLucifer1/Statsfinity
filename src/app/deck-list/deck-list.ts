@@ -171,7 +171,7 @@ export class DeckList {
     // sonst erst nach einem manuellen Neuladen der Seite in dieser Liste zeigen würden.
     let wasViewingDeck = false;
     effect(() => {
-      const isViewing = this.viewer.viewingDeck() !== null;
+      const isViewing = this.viewer.state.viewingDeck() !== null;
       if (wasViewingDeck && !isViewing) this.refreshDecks();
       wasViewingDeck = isViewing;
     });
@@ -207,7 +207,7 @@ export class DeckList {
   /**
    * Bracket-Abzeichen der Kachel. Kommt ausschließlich aus den gespeicherten Spalten - die Liste
    * darf für ein Abzeichen nicht die Kartenlisten aller Decks nachladen. Gefüllt werden sie beim
-   * Öffnen des jeweiligen Decks (siehe DeckViewerService.autoBracketPersist).
+   * Öffnen des jeweiligen Decks (siehe DeckBracketService.autoBracketPersist).
    */
   bracketOf(deck: DeckWithStats): { level: number; source: 'manual' | 'auto' } | null {
     return storedDeckBracket(deck);
@@ -373,7 +373,7 @@ export class DeckList {
       return;
     }
 
-    if (this.viewer.viewingDeck()?.id === deck.id) this.viewer.close();
+    if (this.viewer.state.viewingDeck()?.id === deck.id) this.viewer.close();
     await this.refreshDecks();
   }
 

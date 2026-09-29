@@ -80,7 +80,7 @@ export class EdhrecService {
   /**
    * EDHRECs Nutzungsrichtlinie erlaubt max. 1 Request/Sekunde (besonders wichtig bei Fehlern) -
    * instanzweiter statt pro-Aufruf-Zeitstempel, damit sich ALLE Aufrufer denselben Takt teilen.
-   * Nötig, weil z.B. deck-viewer.service.ts Tags und Empfehlungen aus zwei unabhängigen Angular-
+   * Nötig, weil z.B. deck-edhrec.service.ts Tags und Empfehlungen aus zwei unabhängigen Angular-
    * effect()s gleichzeitig laden kann, sobald sich der betrachtete Commander ändert - ohne
    * gemeinsame Bremse hier würden diese (und ggf. mehrere sequentielle Fallback-Versuche bei
    * seltenen Commander/Tag-Kombinationen) das Limit reißen, ohne dass jede Aufrufstelle das selbst

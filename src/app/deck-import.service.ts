@@ -268,7 +268,7 @@ export class DeckImportService {
    * Übernimmt den zweiten Commander - aber nur, wenn er mit dem ersten zusammen ein regelkonformes
    * Paar bildet. Sonst bleibt die Auswahl leer und der Grund steht als Fehlermeldung im Dialog
    * (dieselbe Prüfung wie beim nachträglichen Markieren im Deck-Editor, siehe
-   * DeckViewerService.toggleCommanderMark()).
+   * DeckEditService.toggleCommanderMark()).
    */
   async selectNewDeckPartner(name: string): Promise<void> {
     this.newDeckPartnerQuery.set(name);

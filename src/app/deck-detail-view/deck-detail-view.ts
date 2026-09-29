@@ -48,13 +48,13 @@ export class DeckDetailView {
    * Bearbeiten-Feld - so stimmt die Anzeige schon vor dem Speichern.
    */
   readonly pruefung = computed(() => {
-    const format = this.viewer.editMode()
-      ? this.viewer.deckFormatDraft()
-      : (this.viewer.viewingDeck()?.format ?? null);
-    const details = this.viewer.viewingCardDetails();
+    const format = this.viewer.state.editMode()
+      ? this.viewer.state.deckFormatDraft()
+      : (this.viewer.state.viewingDeck()?.format ?? null);
+    const details = this.viewer.state.viewingCardDetails();
     return this.banlist.pruefe(
       format,
-      this.viewer.editedDeckCards().map((c) => ({
+      this.viewer.state.editedDeckCards().map((c) => ({
         ...c,
         oracleText: details.get(c.cardName.toLowerCase())?.oracleText,
       })),
@@ -104,8 +104,8 @@ export class DeckDetailView {
    * nach, da der Dialog dabei auch Name/Tag mitändern kann.
    */
   async reimportDecklist(): Promise<void> {
-    const deck = this.viewer.viewingDeck();
-    if (!deck || !this.viewer.canEditViewingDeck()) return;
+    const deck = this.viewer.state.viewingDeck();
+    if (!deck || !this.viewer.state.canEditViewingDeck()) return;
     const owner: DeckOwner = deck.playerId
       ? { kind: 'player', playerId: deck.playerId }
       : { kind: 'user', userId: deck.userId! };
@@ -117,12 +117,12 @@ export class DeckDetailView {
   }
 
   async openPdfExport(): Promise<void> {
-    const deck = this.viewer.viewingDeck();
+    const deck = this.viewer.state.viewingDeck();
     if (!deck) return;
     // Ohne dieses Warten könnten die Scryfall-Zusatzdaten (u.a. Rückseiten-Bilder) noch nicht
     // geladen sein, wenn direkt nach dem Öffnen eines Decks exportiert wird - Rückseiten würden
     // dann im PDF fehlen, obwohl die Karte im Deck korrekt doppelseitig ist.
-    await this.viewer.ensureCardDetailsLoaded();
+    await this.viewer.state.ensureCardDetailsLoaded();
     const orderedCards = this.viewer
       .groupedDeckCards()
       .filter((section) => section.label !== 'Maybeboard')
@@ -137,7 +137,7 @@ export class DeckDetailView {
         isToken: c.isToken,
         oracleId: c.scryfallOracleId,
       })),
-      { deckId: deck.id, canSave: this.viewer.canEditViewingDeck() }
+      { deckId: deck.id, canSave: this.viewer.state.canEditViewingDeck() }
     );
   }
 
@@ -147,7 +147,7 @@ export class DeckDetailView {
    * gedruckte Bögen desselben Decks auseinanderhalten lassen.
    */
   async printChangeGroup(group: DeckChangeGroup): Promise<void> {
-    const deck = this.viewer.viewingDeck();
+    const deck = this.viewer.state.viewingDeck();
     if (!deck) return;
     const cards = await this.viewer.addedCardsForPrint(group);
     if (cards.length === 0) return;
@@ -156,7 +156,7 @@ export class DeckDetailView {
     // würde damit "592026".
     this.pdfService.open(`${deck.name} ${group.changedAt.slice(0, 10)}`, cards, {
       deckId: deck.id,
-      canSave: this.viewer.canEditViewingDeck(),
+      canSave: this.viewer.state.canEditViewingDeck(),
     });
   }
 
@@ -165,7 +165,7 @@ export class DeckDetailView {
     const file = input.files?.[0];
     input.value = '';
     if (!file) return;
-    await this.viewer.uploadCustomArtwork(file);
+    await this.viewer.edit.uploadCustomArtwork(file);
   }
 
   /** Summe der Kartenanzahl (nicht Anzahl unterschiedlicher Kartennamen) für den Zähler in der Abschnitts-Überschrift, z.B. "Land (12)" bei 7 Forest + 5 Island statt fälschlich nur 2 (Zeilenanzahl). */
@@ -182,7 +182,7 @@ export class DeckDetailView {
     // Bannliste des Deck-Formats nachladen (einmal je Format und Sitzung).
     effect(() =>
       void this.banlist.loadFormat(
-        this.viewer.editMode() ? this.viewer.deckFormatDraft() : (this.viewer.viewingDeck()?.format ?? null)
+        this.viewer.state.editMode() ? this.viewer.state.deckFormatDraft() : (this.viewer.state.viewingDeck()?.format ?? null)
       )
     );
 
@@ -192,11 +192,11 @@ export class DeckDetailView {
     // passenden) alten Bilder oder gar keine, bis man von Hand ein-/wieder ausklappt.
     // loadEdhrecCategoryImages() lädt intern ohnehin nur Karten nach, die noch nicht im Cache sind.
     effect(() => {
-      const lists = this.viewer.edhrecLists();
+      const lists = this.viewer.edhrecPanel.edhrecLists();
       if (!lists) return;
       for (const list of lists) {
         if (this.expandedEdhrecCategories.has(list.tag)) {
-          this.viewer.loadEdhrecCategoryImages(
+          this.viewer.edhrecPanel.loadEdhrecCategoryImages(
             list.tag,
             list.cards.map((c) => c.name)
           );
@@ -214,7 +214,7 @@ export class DeckDetailView {
       this.expandedEdhrecCategories.delete(list.tag);
     } else {
       this.expandedEdhrecCategories.add(list.tag);
-      this.viewer.loadEdhrecCategoryImages(
+      this.viewer.edhrecPanel.loadEdhrecCategoryImages(
         list.tag,
         list.cards.map((c) => c.name)
       );
