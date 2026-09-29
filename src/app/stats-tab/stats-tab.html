@@ -415,7 +415,10 @@
         }
       </span>
       <span class="rate elo-rate">
-        {{ e.rating }}
+        <span>
+          <app-rank-badge [tier]="e.rank.tier" [division]="e.rank.division" [size]="26" [label]="rankLabel(e.rank)" [title]="rankLabel(e.rank)" />
+          {{ e.lp }}
+        </span>
         <small class="elo-lp" [class.up]="e.lastChange > 0" [class.down]="e.lastChange < 0">
           {{ e.lastChange > 0 ? '+' : '' }}{{ e.lastChange }} LP
         </small>

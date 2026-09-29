@@ -1,7 +1,13 @@
 import {
+  ELO_K,
   ELO_K_PROVISIONAL,
+  ELO_LP_BONUS,
   ELO_START,
+  divisionLabel,
+  rankFromLp,
   eloRanking,
+  lpChangesByMatch,
+  ratedFormatsFor,
   expectedScore,
   isRatedMatch,
   ratedModes,
@@ -24,7 +30,7 @@ const p = (name: string, extra: Partial<MatchPlayer> = {}): MatchPlayer => ({ na
 describe('elo', () => {
   it('erwartet 50 % bei gleicher Wertung und mehr gegen Schwächere', () => {
     expect(expectedScore(1000, 1000)).toBe(0.5);
-    expect(expectedScore(1200, 1000)).toBeGreaterThan(0.75);
+    expect(expectedScore(1600, 1000)).toBeGreaterThan(0.75);
   });
 
   it('verteilt einen Pod-Sieg auf alle Gegner, Summe bleibt null', () => {
@@ -37,6 +43,57 @@ describe('elo', () => {
     expect(a.wins).toBe(1);
     const sum = [a, b, c, d].reduce((s, e) => s + e.rating - ELO_START, 0);
     expect(sum).toBeCloseTo(0);
+    expect(a.lp).toBeCloseTo(a.rating + ELO_LP_BONUS);
+  });
+
+  it('gibt rund 50 LP für einen Pod-Sieg und steigt bei 25 % Siegquote langsam auf', () => {
+    const games: Match[] = [];
+    // Zehn Runden reihum: jeder gewinnt genau jede vierte Partie.
+    const names = ['A', 'B', 'C', 'D'];
+    for (let i = 0; i < 40; i++) {
+      const minute = String(i).padStart(2, '0');
+      games.push(
+        match(
+          'Normal',
+          names[i % 4],
+          names.map((n) => p(n)),
+          `2026-08-01T10:${minute}:00Z`,
+        ),
+      );
+    }
+    const ranking = eloRanking(games, 'Normal');
+    for (const e of ranking) expect(e.lp).toBeGreaterThan(ELO_START);
+    expect(ELO_K / 2).toBe(50);
+    const byMatch = lpChangesByMatch(games);
+    expect(byMatch.size).toBe(40);
+    const last = ranking.find((e) => e.name === 'A')!;
+    expect(byMatch.get(games[39].id)!.get('A')).toBeCloseTo(last.lastChange);
+  });
+
+  it('wertet Formate getrennt, wenn eines angegeben ist', () => {
+    const commander = match('Normal', 'A', [p('A'), p('B')], '2026-08-01T10:00:00Z');
+    const modern = {
+      ...match('Normal', 'B', [p('A'), p('B')], '2026-08-01T11:00:00Z'),
+      format: 'Modern',
+    } as Match;
+    const nurCommander = eloRanking([commander, modern], 'Normal', { format: 'Commander' });
+    expect(nurCommander.find((e) => e.name === 'A')!.games).toBe(1);
+    expect(eloRanking([commander, modern], 'Normal').find((e) => e.name === 'A')!.games).toBe(2);
+    expect(ratedFormatsFor([commander, modern], 'Normal', 'A', ['Commander', 'Modern'])).toEqual([
+      'Commander',
+      'Modern',
+    ]);
+  });
+
+  it('ordnet LP Rängen und Divisionen zu', () => {
+    expect(rankFromLp(ELO_START)).toEqual({ tier: 'wood', division: 5, lp: 0 });
+    expect(rankFromLp(0)).toEqual({ tier: 'wood', division: 5, lp: 0 });
+    expect(rankFromLp(1250)).toEqual({ tier: 'wood', division: 1, lp: 50 });
+    expect(rankFromLp(1300)).toEqual({ tier: 'iron', division: 5, lp: 0 });
+    expect(rankFromLp(1799)).toEqual({ tier: 'iron', division: 1, lp: 99 });
+    expect(rankFromLp(4250)).toEqual({ tier: 'diamond', division: 1, lp: 50 });
+    expect(rankFromLp(4621)).toEqual({ tier: 'infinity', division: null, lp: 321 });
+    expect(divisionLabel(5)).toBe('V');
   });
 
   it('belohnt eine gute Platzierung auch ohne Sieg', () => {

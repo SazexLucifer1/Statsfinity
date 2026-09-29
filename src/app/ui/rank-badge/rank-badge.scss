@@ -1,0 +1,23 @@
+:host {
+  display: inline-block;
+  flex-shrink: 0;
+  width: var(--badge-size, 64px);
+  height: var(--badge-size, 64px);
+  line-height: 0;
+  // Steht meist mitten in einer Textzeile (Elo-Liste) - dort mittig zur Schrift.
+  vertical-align: middle;
+}
+
+svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.numeral {
+  font:
+    700 13px/1 system-ui,
+    -apple-system,
+    sans-serif;
+  letter-spacing: 0.5px;
+}

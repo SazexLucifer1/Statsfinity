@@ -1077,3 +1077,24 @@ h3 {
 .combo-step-list app-mana-symbol {
   vertical-align: -0.1em;
 }
+
+// Elo-Rang im Profil (profile-tab, profile-rank): Rahmen um den Profilkopf und Ring ums
+// Profilbild in der Rangfarbe. Die Farben kommen als --rank-light/--rank-dark aus rankStyle() in
+// ui/rank-badge - die einzige Farbtabelle der Ränge, damit Rahmen und Abzeichen zusammenpassen.
+// Global statt im Profil-Stylesheet, weil das am Style-Budget steht; die dreifache Klasse schlägt
+// den Rand, den .avatar-circle im Profil-Tab selbst setzt.
+.glass-card.rank-frame {
+  border: 2px solid var(--rank-light);
+  box-shadow:
+    0 0 0 1px var(--rank-dark),
+    0 0 26px color-mix(in srgb, var(--rank-light) 38%, transparent),
+    0 8px 30px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 var(--glass-highlight);
+
+  .avatar-circle.avatar-circle {
+    border: 3px solid var(--rank-light);
+    box-shadow:
+      0 0 0 2px var(--rank-dark),
+      0 0 18px color-mix(in srgb, var(--rank-light) 55%, transparent);
+  }
+}

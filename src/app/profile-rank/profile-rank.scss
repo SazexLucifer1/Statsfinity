@@ -1,0 +1,80 @@
+:host {
+  display: block;
+  margin-top: var(--sp-3, 12px);
+}
+
+// Rang links, Modus-Chips rechts daneben, sobald Platz ist (Desktop: eine Zeile unter den
+// Lieblingscommandern); auf dem Handy rutschen die Chips darunter.
+.rank-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 24px;
+}
+
+.rank-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1 1 260px;
+  max-width: 420px;
+}
+
+.badge-muted {
+  filter: grayscale(1);
+  opacity: 0.45;
+}
+
+.rank-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+
+.rank-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  .icon-button {
+    color: inherit;
+  }
+}
+
+.rank-name {
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  color: var(--rank-light, inherit);
+  text-shadow: 0 0 12px color-mix(in srgb, var(--rank-light, transparent) 45%, transparent);
+}
+
+.unranked .rank-name {
+  color: inherit;
+  opacity: 0.8;
+}
+
+.rank-lp {
+  font-weight: 700;
+}
+
+.rank-meter {
+  max-width: 220px;
+}
+
+.rank-info {
+  margin: 8px 0 0;
+}
+
+.rank-modes {
+  flex: 0 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rank-format-select {
+  max-width: 220px;
+}

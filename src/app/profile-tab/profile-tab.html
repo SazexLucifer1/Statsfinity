@@ -1,6 +1,6 @@
 @if (profileService.viewingUserId()) {
 <div class="profile-grid">
-  <section class="glass-card span-full">
+  <section class="glass-card span-full" [class.rank-frame]="!!rankFrameStyle()" [style]="rankFrameStyle()">
     @if (profileService.viewingBusy()) {
       <p class="hint">{{ i18n.t('profile.loadingProfile') }}</p>
       <button class="glass-button small" (click)="profileService.stopViewingProfile()">{{ i18n.t('profile.backToMyProfile') }}</button>
@@ -26,6 +26,7 @@
           <button class="glass-button small" (click)="profileService.stopViewingProfile()">{{ i18n.t('profile.backToMyProfile') }}</button>
         </div>
       </div>
+      <app-profile-rank [entry]="rankEntry()" [mode]="rankChoice().mode" [format]="rankChoice().format" />
 
       @if (viewed.favoriteCommanders.length > 0) {
         <div class="favorite-commanders-col" data-tutorial="profile-favorites">
@@ -121,7 +122,7 @@
 } @else if (profileService.viewingPlayerId(); as npcPlayerId) {
 
 <div class="profile-grid">
-<section class="glass-card span-full">
+<section class="glass-card span-full" [class.rank-frame]="!!rankFrameStyle()" [style]="rankFrameStyle()">
   <div class="viewing-profile-header-row">
     <div class="avatar-row">
       <div class="avatar-circle">
@@ -139,6 +140,7 @@
       <button class="glass-button small" (click)="profileService.stopViewingProfile()">{{ i18n.t('profile.backToMyProfile') }}</button>
     </div>
   </div>
+  <app-profile-rank [entry]="rankEntry()" [mode]="rankChoice().mode" [format]="rankChoice().format" />
 
   @if (viewingNpcFavoriteCommanders().length > 0 || groupService.hasPermission('npc.favoriteCommanders')) {
     <div class="favorite-commanders-col" data-tutorial="profile-favorites">
@@ -240,7 +242,7 @@
      nichts zu tun. -->
 <app-comment-inbox />
 
-<section class="glass-card span-full">
+<section class="glass-card span-full" [class.rank-frame]="!!rankFrameStyle()" [style]="rankFrameStyle()">
     <div class="profile-main-row">
       <div class="profile-left" data-tutorial="profile-header">
         <h2>{{ i18n.t('profile.myProfile') }}</h2>
@@ -324,7 +326,51 @@
             }
           </ul>
         }
+
+        <!-- Sprache der Kartenbilder: in der linken Spalte unter den Gruppen, Überschrift über
+             dem Feld - als eigene Zeile unter allen Spalten ließ sie daneben nur Leere stehen.
+             Der Erklärtext steht hinter dem i-Knopf als Popup. -->
+        <div class="art-language-block">
+          <label class="art-language-label" for="art-language">{{ i18n.t('profile.artLanguage') }}</label>
+          <div class="art-language-row">
+            <select
+              id="art-language"
+              class="glass-input small art-language-select"
+              [ngModel]="artLanguage.lang()"
+              (ngModelChange)="setArtLanguage($event)"
+            >
+              @for (sprache of artLanguages; track sprache.code) {
+                <option [ngValue]="sprache.code">{{ sprache.label }}</option>
+              }
+            </select>
+            <button
+              type="button"
+              class="icon-button art-language-info"
+              (click)="showArtLanguageInfo()"
+              [attr.aria-label]="i18n.t('profile.artLanguageInfoAria')"
+              [title]="i18n.t('profile.artLanguageInfoAria')"
+            >
+              <app-icon name="info" />
+            </button>
+          </div>
+        </div>
       </div>
+
+      <!-- Eigene Rasterzelle statt in .profile-left: dort ist neben den Icon-Knöpfen auf dem Handy
+           kaum Platz, der Rang bräche Wort für Wort um. -->
+      @if (profileService.profile()) {
+        <app-profile-rank
+          class="profile-rank-cell"
+          [entry]="rankEntry()"
+          [mode]="rankChoice().mode"
+          [format]="rankChoice().format"
+          [modes]="rankModes()"
+          [formats]="rankFormats()"
+          [editable]="true"
+          (modeChange)="setRankMode($event)"
+          (formatChange)="setRankFormat($event)"
+        />
+      }
 
       <div class="favorite-commanders-col" data-tutorial="profile-favorites">
         <h3>{{ i18n.t(mtg.myPlayerName() === 'Adrian' ? 'profile.myFavoriteGliederAdrian' : 'profile.myFavoriteCommanders') }}</h3>
@@ -361,30 +407,6 @@
       </div>
     </div>
 
-    <!-- Sprache der Kartenbilder: bewusst eine eigene Zeile UNTER den Spalten. Der Erklärtext steht
-         nicht mehr offen darunter, sondern hinter dem i-Knopf als Popup. -->
-    <div class="art-language-row">
-      <label class="art-language-label" for="art-language">{{ i18n.t('profile.artLanguage') }}</label>
-      <select
-        id="art-language"
-        class="glass-input small art-language-select"
-        [ngModel]="artLanguage.lang()"
-        (ngModelChange)="setArtLanguage($event)"
-      >
-        @for (sprache of artLanguages; track sprache.code) {
-          <option [ngValue]="sprache.code">{{ sprache.label }}</option>
-        }
-      </select>
-      <button
-        type="button"
-        class="icon-button art-language-info"
-        (click)="showArtLanguageInfo()"
-        [attr.aria-label]="i18n.t('profile.artLanguageInfoAria')"
-        [title]="i18n.t('profile.artLanguageInfoAria')"
-      >
-        <app-icon name="info" />
-      </button>
-    </div>
   </section>
 
   <!-- Statistik- und Deck-Bereich. Steht als ng-template auf oberster Ebene, weil ihn die

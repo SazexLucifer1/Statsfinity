@@ -3,6 +3,7 @@ import { supabase } from './supabase.client';
 import { AuthService } from './auth.service';
 import { NavigationService } from './navigation.service';
 import { ArtLang, istArtLang } from './art-languages';
+import { DECK_FORMATS, DeckFormat, GAME_MODES, GameMode } from './models';
 
 export interface Profile {
   id: string;
@@ -23,6 +24,12 @@ export interface Profile {
    * per RLS einen Schreibzugriff auf FREMDE profiles-Zeilen frei (siehe sql/roles-permissions-*.sql)
    * - für Support/Debugging, nicht für normale Gruppen-Admins. */
   isDeveloper: boolean;
+}
+
+/** Welcher Elo-Rang im Profil gezeigt wird: Modus plus Format (null = Modus ohne Format). */
+export interface RankChoice {
+  mode: GameMode;
+  format: DeckFormat | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -244,6 +251,81 @@ export class ProfileService {
 
     this.profile.update((p) => (p ? { ...p, artLanguage } : p));
     return true;
+  }
+
+  // --- Elo-Rang: welcher Modus und welches Format im Profil gezeigt wird
+  //     (sql/elo-rang-modus-2026-09-29.sql) ---
+
+  /** Standard, solange nichts gewählt ist: Modus Normal, Format Commander. */
+  static readonly DEFAULT_RANK_CHOICE: RankChoice = { mode: 'Normal', format: 'Commander' };
+  private static readonly RANK_CHOICE_KEY = 'statsfinity.rankChoice';
+  /** Einmal je Sitzung umgelegt, wenn die Migration fehlt - danach nur noch der Gerätewert. */
+  private static rankChoiceVerfuegbar = true;
+
+  /**
+   * Gewählte Rang-Kombination eines Accounts - eigenes wie fremdes Profil, auch ohne Login (über
+   * die SECURITY-DEFINER-Funktion profile_rank_choice()). Fehlt die Migration, gilt fürs eigene
+   * Profil der Wert aus dem localStorage, für fremde der Standard.
+   */
+  async loadRankChoice(userId: string): Promise<RankChoice> {
+    const lokal = userId === this.profile()?.id ? ProfileService.lokaleRankChoice() : null;
+    const rueckfall = lokal ?? ProfileService.DEFAULT_RANK_CHOICE;
+    if (!ProfileService.rankChoiceVerfuegbar) return rueckfall;
+
+    const { data, error } = await supabase.rpc('profile_rank_choice', { p_user_id: userId });
+    if (error) {
+      if (error.code === 'PGRST202' || error.code === '42883') {
+        console.warn('Funktion profile_rank_choice fehlt noch - sql/elo-rang-modus-2026-09-29.sql im Supabase-SQL-Editor ausführen. Die Rang-Auswahl gilt solange nur auf diesem Gerät.');
+        ProfileService.rankChoiceVerfuegbar = false;
+      } else {
+        console.error('Konnte Rang-Auswahl nicht laden:', error);
+      }
+      return rueckfall;
+    }
+    const zeile = ((data as { rank_mode: unknown; rank_format: unknown }[] | null) ?? [])[0];
+    return zeile ? ProfileService.pruefeRankChoice(zeile.rank_mode, zeile.rank_format) : rueckfall;
+  }
+
+  /** Speichert die Rang-Auswahl am eigenen Account und immer auch auf dem Gerät. */
+  async saveRankChoice(choice: RankChoice): Promise<void> {
+    try {
+      localStorage.setItem(ProfileService.RANK_CHOICE_KEY, JSON.stringify(choice));
+    } catch {
+      // Privater Modus o. ä. - dann eben nur am Account.
+    }
+    const current = this.profile();
+    if (!current || !ProfileService.rankChoiceVerfuegbar) return;
+    const { error } = await supabase
+      .from('profiles')
+      .update({ rank_mode: choice.mode, rank_format: choice.format })
+      .eq('id', current.id);
+    if (error) {
+      if (error.code === '42703' || error.code === 'PGRST204') ProfileService.rankChoiceVerfuegbar = false;
+      else console.error('Konnte Rang-Auswahl nicht speichern:', error);
+    }
+  }
+
+  private static lokaleRankChoice(): RankChoice | null {
+    try {
+      const wert = JSON.parse(localStorage.getItem(ProfileService.RANK_CHOICE_KEY) ?? 'null');
+      return wert ? ProfileService.pruefeRankChoice(wert.mode, wert.format) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Unbekannte Werte (alte Formatliste, Tippfehler von Hand) fallen auf den Standard zurück. */
+  private static pruefeRankChoice(mode: unknown, format: unknown): RankChoice {
+    const d = ProfileService.DEFAULT_RANK_CHOICE;
+    return {
+      mode: typeof mode === 'string' && (GAME_MODES as string[]).includes(mode) ? (mode as GameMode) : d.mode,
+      format:
+        format === null
+          ? null
+          : typeof format === 'string' && (DECK_FORMATS as string[]).includes(format)
+            ? (format as DeckFormat)
+            : d.format,
+    };
   }
 
   /** Speichert die bevorzugte Sprache am Account, damit sie geräteübergreifend gilt. */

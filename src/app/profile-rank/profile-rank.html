@@ -1,0 +1,88 @@
+<div class="rank-row">
+  <div class="rank-box" [class.unranked]="!rank()">
+    @if (rank(); as r) {
+      <app-rank-badge [tier]="r.tier" [division]="r.division" [size]="76" [label]="rankName()" />
+    } @else {
+      <app-rank-badge class="badge-muted" tier="wood" [size]="76" [label]="rankName()" />
+    }
+
+    <div class="rank-text">
+      <div class="rank-title-row">
+        <span class="rank-name">{{ rankName() }}</span>
+        <button
+          type="button"
+          class="icon-button"
+          (click)="showInfo.set(!showInfo())"
+          [attr.aria-label]="i18n.t('profile.rank.infoAria')"
+          [title]="i18n.t('profile.rank.infoAria')"
+        >
+          <app-icon name="info" />
+        </button>
+      </div>
+
+      @if (entry(); as e) {
+        <div class="rank-lp">{{ i18n.t('profile.rank.lp', { lp: rank()!.lp }) }}</div>
+        @if (next(); as n) {
+          <app-meter
+            class="rank-meter"
+            [value]="rank()!.lp"
+            [max]="100"
+            color="var(--rank-light)"
+          />
+          <small class="hint">{{
+            i18n.t('profile.rank.toNext', { lp: n.lp, next: n.name })
+          }}</small>
+        }
+        <small class="hint">
+          {{ i18n.t('profile.rank.detail', { games: e.games, wins: e.wins, peak: peakName() }) }}
+          @if (e.provisional) {
+            · {{ i18n.t('profile.rank.placement', { games: e.games, total: placementTotal }) }}
+          }
+        </small>
+      } @else {
+        <small class="hint">{{
+          i18n.t('profile.rank.unrankedHint', { mode: choiceLabel() })
+        }}</small>
+      }
+    </div>
+  </div>
+
+  @if (editable()) {
+    <div class="rank-modes">
+      @if (modes().length > 1) {
+        <div class="chip-row" role="group" [attr.aria-label]="i18n.t('profile.rank.modeAria')">
+          @for (m of modes(); track m) {
+            <button
+              class="glass-chip small"
+              [class.active]="m === mode()"
+              (click)="modeChange.emit(m)"
+            >
+              {{ m }}
+            </button>
+          }
+        </div>
+      }
+      <!-- Formate als Auswahlfeld statt als Chips: es sind alle Formate der App wählbar, auch
+           die ohne Partien (die zeigen dann "Nicht eingerankt"). null = Modus ohne Format. -->
+      @if (format() !== null && formats().length > 0) {
+        <select
+          class="glass-input small rank-format-select"
+          [attr.aria-label]="i18n.t('profile.rank.formatAria')"
+          (change)="onFormatSelect($event)"
+        >
+          @for (f of formats(); track f) {
+            <option [value]="f" [selected]="f === format()">{{ f }}</option>
+          }
+        </select>
+      }
+    </div>
+  } @else {
+    <small class="hint rank-modes">{{
+      i18n.t('profile.rank.modeLabel', { mode: choiceLabel() })
+    }}</small>
+  }
+</div>
+
+@if (showInfo()) {
+  <p class="hint rank-info">{{ i18n.t('profile.rank.info') }}</p>
+}
