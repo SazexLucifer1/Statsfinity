@@ -198,7 +198,7 @@ export function ratedModes(matches: readonly Match[], modes: readonly GameMode[]
 // --- Ränge ---
 
 export type RankTier =
-  'wood' | 'iron' | 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond' | 'planeswalker';
+  'wood' | 'iron' | 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond' | 'infinity';
 
 /** Von unten nach oben. Holz beginnt bei RANK_FLOOR, jeder weitere Rang RANK_SPAN LP darüber. */
 export const RANK_TIERS: readonly RankTier[] = [
@@ -209,7 +209,7 @@ export const RANK_TIERS: readonly RankTier[] = [
   'gold',
   'platinum',
   'diamond',
-  'planeswalker',
+  'infinity',
 ];
 export const RANK_FLOOR = 500;
 export const DIVISION_LP = 100;
@@ -218,9 +218,9 @@ const RANK_SPAN = DIVISION_LP * DIVISIONS;
 
 export interface Rank {
   tier: RankTier;
-  /** 5 (unterste) bis 1 (oberste); null bei Planeswalker - der ist nach oben offen wie Master in LoL. */
+  /** 5 (unterste) bis 1 (oberste); null bei Infinity - der ist nach oben offen wie Master in LoL. */
   division: number | null;
-  /** LP innerhalb der Division (0-99), bei Planeswalker alles über der Schwelle. */
+  /** LP innerhalb der Division (0-99), bei Infinity alles über der Schwelle. */
   lp: number;
 }
 
@@ -234,7 +234,7 @@ export function rankFromLp(total: number): Rank {
   const tierIndex = Math.min(Math.floor(lp / RANK_SPAN), RANK_TIERS.length - 1);
   const tier = RANK_TIERS[tierIndex];
   const inTier = lp - tierIndex * RANK_SPAN;
-  if (tier === 'planeswalker') return { tier, division: null, lp: inTier };
+  if (tier === 'infinity') return { tier, division: null, lp: inTier };
   return {
     tier,
     division: DIVISIONS - Math.floor(inTier / DIVISION_LP),

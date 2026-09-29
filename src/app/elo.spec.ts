@@ -70,7 +70,7 @@ describe('elo', () => {
     expect(rankFromLp(1000)).toEqual({ tier: 'iron', division: 5, lp: 0 });
     expect(rankFromLp(1499)).toEqual({ tier: 'iron', division: 1, lp: 99 });
     expect(rankFromLp(3950)).toEqual({ tier: 'diamond', division: 1, lp: 50 });
-    expect(rankFromLp(4321)).toEqual({ tier: 'planeswalker', division: null, lp: 321 });
+    expect(rankFromLp(4321)).toEqual({ tier: 'infinity', division: null, lp: 321 });
     expect(divisionLabel(5)).toBe('V');
   });
 

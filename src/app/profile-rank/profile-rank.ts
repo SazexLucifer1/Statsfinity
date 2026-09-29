@@ -51,14 +51,14 @@ export class ProfileRank {
     return e ? this.nameOf(rankFromLp(e.peak)) : '';
   });
 
-  /** Nächste Stufe (Division oder Rang) und wie viele LP fehlen; null bei Planeswalker. */
+  /** Nächste Stufe (Division oder Rang) und wie viele LP fehlen; null bei Infinity. */
   readonly next = computed(() => {
     const r = this.rank();
     if (!r || r.division == null) return null;
     const lp = DIVISION_LP - r.lp;
     if (r.division > 1) return { lp, name: this.nameOf({ ...r, division: r.division - 1, lp: 0 }) };
     const tier = RANK_TIERS[RANK_TIERS.indexOf(r.tier) + 1];
-    return { lp, name: this.nameOf({ tier, division: tier === 'planeswalker' ? null : 5, lp: 0 }) };
+    return { lp, name: this.nameOf({ tier, division: tier === 'infinity' ? null : 5, lp: 0 }) };
   });
 
   readonly lastChange = computed(() => Math.round(this.entry()?.lastChange ?? 0));
