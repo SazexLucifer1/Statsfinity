@@ -5,11 +5,15 @@ import { DeckFormat, GameMode, LIVE_TRACKING_START_DATE, Match } from './models'
  * Elo-Wertung je Spielmodus, aus dem Match-Verlauf berechnet (nichts gespeichert, deshalb auch
  * rückwirkend immer konsistent).
  *
- * Eine Partie mit mehreren Spielern zählt als Bündel von Einzelduellen: gegen jeden Gegner, der
- * schlechter platziert ist, ein Sieg, gleich platziert ein Remis, besser platziert eine Niederlage.
- * Je Duell die klassische Elo-Erwartung, die Summe wird durch die Zahl der Gegner geteilt - ein
- * Pod-Sieg ist so ungefähr so viel wert wie ein 1v1-Sieg, und wer starke Gegner schlägt, bekommt
- * mehr. Die Änderung einer Partie heißt in der Oberfläche "LP".
+ * Eine Partie zählt als Bündel von Einzelduellen, aber NUR mit dem Sieger: Der Sieger gewinnt
+ * gegen jeden Gegner, jeder andere verliert gegen den Sieger - Platz 2, 3 und 4 sind gleich viel
+ * wert. Die Platzierung (match_players.placement) spielt für die Wertung bewusst keine Rolle
+ * (Entscheidung des Users, 30.09.2026): Belohnte sie Platz 2, lohnte es sich, statt auf den Sieg
+ * auf das Ausschalten eines anderen zu spielen - Kingmaking um LP. Zwischen zwei Verlierern gibt es
+ * deshalb kein Duell. Je Duell die klassische Elo-Erwartung, die Summe wird durch die Zahl der
+ * Gegner geteilt - ein Pod-Sieg ist so ungefähr so viel wert wie ein 1v1-Sieg. Wer einen starken
+ * Tisch schlägt, bekommt mehr; wer gegen einen starken Sieger verliert, verliert weniger. Die
+ * Änderung einer Partie heißt in der Oberfläche "LP".
  *
  * Teamkollegen (Two-Headed Giant) und die Verbündeten gegen den Archenemy duellieren sich nicht.
  *
@@ -98,15 +102,11 @@ export function seatsOf(match: Match): Seat[] {
     }));
   }
 
-  // Jeder für sich: eingetragene Platzierungen, der Sieger ist Platz 1, alle übrigen teilen sich den
-  // Platz hinter der schlechtesten eingetragenen Platzierung.
-  const known = players
-    .map((p) => (p.name === match.winner ? 1 : p.placement))
-    .filter((r): r is number => r != null);
-  const rest = Math.max(1, ...known) + 1;
+  // Jeder für sich: der Sieger ist Platz 1, alle anderen teilen sich Platz 2 - eingetragene
+  // Platzierungen zählen bewusst nicht (siehe Dateikopf).
   return players.map((p) => ({
     name: p.name,
-    rank: p.name === match.winner ? 1 : (p.placement ?? rest),
+    rank: p.name === match.winner ? 1 : 2,
     side: p.name,
   }));
 }
@@ -137,6 +137,8 @@ export function matchChanges(
     if (opponents.length === 0) continue;
     let sum = 0;
     for (const o of opponents) {
+      // Zwei Verlierer duellieren sich nicht - wer von ihnen länger durchhielt, ist egal.
+      if (me.rank > 1 && o.rank > 1) continue;
       const score = me.rank < o.rank ? 1 : me.rank === o.rank ? 0.5 : 0;
       sum += score - expectedScore(rating(me.name), rating(o.name));
     }

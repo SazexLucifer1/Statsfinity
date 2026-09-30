@@ -103,7 +103,7 @@ describe('elo', () => {
     expect(divisionLabel(5)).toBe('V');
   });
 
-  it('belohnt eine gute Platzierung auch ohne Sieg', () => {
+  it('wertet Platz 2 bis 4 gleich - kein Anreiz zum Kingmaking', () => {
     const ranking = eloRanking(
       [
         match('Normal', 'A', [
@@ -116,9 +116,24 @@ describe('elo', () => {
       'Normal',
     );
     const byName = Object.fromEntries(ranking.map((e) => [e.name, e.rating - ELO_START]));
-    expect(byName['B']).toBeGreaterThan(0);
-    expect(byName['C']).toBeLessThan(0);
-    expect(byName['D']).toBeLessThan(byName['C']);
+    expect(byName['B']).toBeLessThan(0);
+    expect(byName['C']).toBeCloseTo(byName['B']);
+    expect(byName['D']).toBeCloseTo(byName['B']);
+    // Nullsumme bleibt: der Sieger bekommt genau, was die anderen abgeben.
+    expect(byName['A']).toBeCloseTo(-(byName['B'] + byName['C'] + byName['D']));
+  });
+
+  it('lässt weniger verlieren, wer gegen einen starken Sieger verliert', () => {
+    const vorlauf = [
+      match('Normal', 'Stark', [p('Stark'), p('X')], '2026-08-01T00:00:00Z'),
+      match('Normal', 'Stark', [p('Stark'), p('Y')], '2026-08-02T00:00:00Z'),
+    ];
+    const pod = (sieger: string) =>
+      match('Normal', sieger, [p(sieger), p('A'), p('Z')], '2026-08-03T00:00:00Z');
+    const a = (r: ReturnType<typeof eloRanking>) => r.find((e) => e.name === 'A')!.lastChange;
+    const gegenStark = eloRanking([...vorlauf, pod('Stark')], 'Normal');
+    const gegenNeu = eloRanking([...vorlauf, pod('Neu')], 'Normal');
+    expect(a(gegenStark)).toBeGreaterThan(a(gegenNeu));
   });
 
   it('gibt für einen Sieg gegen einen Starken mehr als gegen einen Schwachen', () => {
