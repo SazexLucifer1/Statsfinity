@@ -117,8 +117,9 @@
 
   @if (selectedPlayer(); as selected) {
     <div class="chip-row">
-      <span class="glass-chip avatar-chip active">
-        <app-player-avatar [url]="mtg.playerAvatars()[selected] ?? null" [tier]="rankTierFor(selected)" />
+      @let selectedTier = rankTierFor(selected);
+      <span class="glass-chip avatar-chip active" [class.rank-tinted]="!!selectedTier" [style]="rankVars(selectedTier)">
+        <app-player-avatar [url]="mtg.playerAvatars()[selected] ?? null" />
         {{ selected }}
       </span>
       <button class="glass-chip small" (click)="selectPlayer(selected)">{{ i18n.t('stats.changePlayer') }}</button>
@@ -136,8 +137,9 @@
     } @else {
       <ul class="player-picker-list">
         @for (player of filteredPlayersForDetail(); track player) {
-          <li (click)="selectPlayer(player)">
-            <app-player-avatar [url]="mtg.playerAvatars()[player] ?? null" [tier]="rankTierFor(player)" />
+          @let tier = rankTierFor(player);
+          <li [class.rank-tinted]="!!tier" [style]="rankVars(tier)" (click)="selectPlayer(player)">
+            <app-player-avatar [url]="mtg.playerAvatars()[player] ?? null" />
             <span class="player-name">{{ player }}</span>
           </li>
         }
@@ -359,7 +361,7 @@
     <li>
       <span class="rank">{{ medal(playerRestOffset() + i) }}</span>
       <span class="name player-name-cell" [class.clickable]="isPlayerLinked(p.name)" (click)="openPlayerProfile(p.name)">
-        <app-player-avatar [url]="mtg.playerAvatars()[p.name] ?? null" [tier]="rankTierFor(p.name)" />
+        <app-player-avatar [url]="mtg.playerAvatars()[p.name] ?? null" />
         {{ p.name }}
       </span>
       <span class="detail">{{ p.wins }} / {{ p.games }} {{ i18n.t('stats.wins') }}</span>
@@ -405,7 +407,7 @@
     <li>
       <span class="rank">{{ medal(e.place) }}</span>
       <span class="name player-name-cell" [class.clickable]="isPlayerLinked(e.name)" (click)="openPlayerProfile(e.name)">
-        <app-player-avatar [url]="mtg.playerAvatars()[e.name] ?? null" [tier]="rankTierFor(e.name)" />
+        <app-player-avatar [url]="mtg.playerAvatars()[e.name] ?? null" />
         {{ e.name }}
       </span>
       <span class="detail">
@@ -444,7 +446,7 @@
     @for (p of pagedPlayersInQualification(); track p.name) {
     <li>
       <span class="name player-name-cell" [class.clickable]="isPlayerLinked(p.name)" (click)="openPlayerProfile(p.name)">
-        <app-player-avatar [url]="mtg.playerAvatars()[p.name] ?? null" [tier]="rankTierFor(p.name)" />
+        <app-player-avatar [url]="mtg.playerAvatars()[p.name] ?? null" />
         {{ p.name }}
       </span>
       <span class="detail">{{ p.games }} / {{ qualificationThreshold() }} {{ i18n.t('stats.games') }}</span>

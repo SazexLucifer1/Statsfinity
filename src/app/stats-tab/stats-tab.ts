@@ -26,7 +26,7 @@ import { I18nService } from '../i18n.service';
 import { TournamentHistory } from '../tournament-history/tournament-history';
 import { isImportLossDuplicate, isPlayerWinner as isMatchWinner } from '../match-utils';
 import { EloEntry, RankTier, divisionLabel, eloRanking, rankFromLp, rankTiersFor, ratedModes } from '../elo';
-import { RankBadge } from '../ui/rank-badge/rank-badge';
+import { RankBadge, rankStyle } from '../ui/rank-badge/rank-badge';
 import { Meter } from '../ui/meter/meter';
 import { Pager } from '../ui/pager/pager';
 import { SplitBar, SplitSegment } from '../ui/split-bar/split-bar';
@@ -319,6 +319,11 @@ export class StatsTab {
 
   rankTierFor(name: string): RankTier | null {
     return this.rankTiers().get(name) ?? null;
+  }
+
+  /** CSS-Variablen der Rangfarbe für eine Spielerkachel (Klasse .rank-tinted in styles.scss). */
+  rankVars(tier: RankTier | null): Record<string, string> | null {
+    return rankStyle(tier);
   }
 
   /** "Gold III" - Rangname für Abzeichen und Tooltip in der Elo-Liste. */

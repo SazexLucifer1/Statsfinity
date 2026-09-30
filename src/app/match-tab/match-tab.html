@@ -75,7 +75,7 @@
           [style]="rankVars(tier)"
           (click)="togglePlayer(player)"
         >
-          <app-player-avatar [url]="mtg.playerAvatars()[player] ?? null" [tier]="tier" />
+          <app-player-avatar [url]="mtg.playerAvatars()[player] ?? null" />
           {{ player }}
         </button>
       }
@@ -582,7 +582,7 @@
       />
     </span>
   } @else {
-    <app-player-avatar [url]="mtg.playerAvatars()[p.name] ?? null" [tier]="rankTierFor(p.name, match.mode, match.format)" />
+    <app-player-avatar [url]="mtg.playerAvatars()[p.name] ?? null" />
   }
   <span class="match-log-player-main">
     <span class="match-log-name">
