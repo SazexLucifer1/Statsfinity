@@ -244,7 +244,7 @@
 <!-- Postfach zuoberst, noch vor den eigenen Angaben: es ist der Grund, aus dem man nach einer
      Benachrichtigung hierher kommt. Nur im EIGENEN Profil - die Fremdansicht oben hat damit
      nichts zu tun. -->
-<app-comment-inbox />
+<app-comment-inbox data-tutorial="profile-inbox" />
 
 <section class="glass-card span-full" [class.rank-frame]="!!rankFrameStyle()" [style]="rankFrameStyle()">
     <div class="profile-main-row">
@@ -365,6 +365,7 @@
       @if (profileService.profile() && rankGroupId()) {
         <app-profile-rank
           class="profile-rank-cell"
+          data-tutorial="profile-rank"
           [entry]="rankEntry()"
           [mode]="rankChoice().mode"
           [format]="rankChoice().format"
@@ -411,7 +412,6 @@
       <div class="header-icon-col" data-tutorial="profile-icons">
         <button class="icon-button large" (click)="openBackgroundsDialog()" [attr.aria-label]="i18n.t('profile.myBackgroundsAria')" [title]="i18n.t('profile.myBackgroundsAria')"><app-icon name="image" /></button>
         <button class="icon-button large" (click)="openShareDialog()" [attr.aria-label]="i18n.t('profile.shareAppAria')" [title]="i18n.t('profile.shareAppAria')"><app-icon name="share" /></button>
-        <button class="icon-button large" (click)="tutorial.openPicker()" [attr.aria-label]="i18n.t('profile.replayTutorialAria')" [title]="i18n.t('profile.replayTutorialAria')"><app-icon name="help" /></button>
       </div>
     </div>
 
@@ -664,7 +664,7 @@
   }
   @if (profileService.profile()) {
     <!-- Reiter sind Navigation, deshalb .segmented und nicht zwei Aktions-Knöpfe mit .active. -->
-    <div class="segmented block profile-view-toggle">
+    <div class="segmented block profile-view-toggle" data-tutorial="profile-view-toggle">
       <button [class.active]="profileViewTab() === 'stats'" (click)="setProfileViewTab('stats')">
         {{ i18n.t('profile.viewTabStats') }}
       </button>

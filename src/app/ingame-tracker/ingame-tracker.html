@@ -233,6 +233,8 @@
       <button class="glass-button" (click)="chooseMinimize()">{{ i18n.t('ingame.minimize') }}</button>
       <button class="glass-button" (click)="openReorderMode()">{{ i18n.t('ingame.reorderPlayers') }}</button>
       <button class="glass-button" (click)="startPlayerRoulette()">{{ i18n.t('ingame.drawStartingPlayer') }}</button>
+      <!-- Die Kopfzeile mit dem Fragezeichen liegt unter dem Tracker, deshalb steht die Hilfe hier. -->
+      <button class="glass-button" (click)="chooseHelp()">{{ i18n.t('ingame.help') }}</button>
       <button class="glass-button primary" (click)="chooseEndGame()">{{ i18n.t('ingame.endGame') }}</button>
       <button class="glass-button" (click)="closeOptionsMenu()">{{ i18n.t('group.cancel') }}</button>
     </div>

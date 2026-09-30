@@ -4,7 +4,17 @@
 } @else {
   <header class="app-header">
     <h1>Statsfinity <span class="app-version-badge" [title]="appCommit">{{ appVersion }}</span></h1>
-    <div class="header-actions">
+    <div class="header-actions" data-tutorial="header-actions">
+      <!-- Erklärt den gerade sichtbaren Bildschirm (TutorialService.currentScreenTutorial) - statt
+           einer Tour, die beim ersten Besuch ungefragt über allem liegt. -->
+      <button
+        class="help-toggle"
+        (click)="tutorial.startForCurrentScreen()"
+        [attr.aria-label]="i18n.t('header.help')"
+        [title]="i18n.t('header.help')"
+      >
+        <app-icon name="help" />
+      </button>
       <button
         class="feedback-toggle"
         (click)="feedback.open()"
@@ -15,7 +25,6 @@
       </button>
       <button
         class="lang-toggle"
-        data-tutorial="lang-toggle"
         (click)="i18n.toggleLang()"
         [attr.aria-label]="i18n.t('header.switchLanguage')"
         [title]="i18n.t('header.switchLanguage')"

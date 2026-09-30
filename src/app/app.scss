@@ -164,6 +164,7 @@
   gap: var(--sp-3);
 }
 
+.help-toggle,
 .feedback-toggle,
 .lang-toggle,
 .logout-btn {
@@ -189,6 +190,7 @@
   font-weight: 700;
 }
 
+.help-toggle,
 .feedback-toggle {
   // Das Piktogramm richtet sich nach der Schriftgröße; mit den 0.85rem der Nachbarknöpfe säße es
   // als 15px-Fliegendreck in einem 44px-Knopf.

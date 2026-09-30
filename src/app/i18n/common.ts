@@ -20,6 +20,7 @@ export const common = {
     'nav.tournament': 'Turnier',
     'header.logout': 'Logout',
     'header.login': 'Anmelden',
+    'header.help': 'Diesen Bildschirm erklären',
     'header.switchLanguage': 'Auf Englisch umschalten',
 
     // --- Sortierung (mehrfach verwendet) ---
@@ -54,6 +55,7 @@ export const common = {
     'nav.tournament': 'Tournament',
     'header.logout': 'Logout',
     'header.login': 'Sign in',
+    'header.help': 'Explain this screen',
     'header.switchLanguage': 'Switch to German',
 
     // --- Sorting (used in multiple places) ---
