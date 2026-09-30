@@ -248,6 +248,19 @@ export function ratedFormatsFor(
   return formats.filter((f) => present.has(f));
 }
 
+/**
+ * Rang je Spieler für einen Modus (und optional ein Format) - für die farbigen Ringe um die
+ * Profilbilder in Match- und Statistik-Tab. Wer dort noch keine gewertete Partie hat, fehlt.
+ */
+export function rankTiersFor(
+  matches: readonly Match[],
+  mode: GameMode,
+  format?: DeckFormat | null,
+): Map<string, RankTier> {
+  const ranking = eloRanking(matches, mode, format === undefined ? {} : { format });
+  return new Map(ranking.map((e) => [e.name, rankFromLp(e.lp).tier]));
+}
+
 /** Modi, in denen es überhaupt gewertete Partien gibt, in der Reihenfolge von `modes`. */
 export function ratedModes(matches: readonly Match[], modes: readonly GameMode[]): GameMode[] {
   const present = new Set(matches.filter(isRatedMatch).map((m) => m.mode));

@@ -68,7 +68,7 @@
     <div class="chip-row">
       @for (player of mtg.allPlayers(); track player) {
         <button class="glass-chip avatar-chip" [class.active]="isSelected(player)" (click)="togglePlayer(player)">
-          <app-player-avatar [url]="mtg.playerAvatars()[player] ?? null" />
+          <app-player-avatar [url]="mtg.playerAvatars()[player] ?? null" [tier]="rankTierFor(player, session.mode(), session.format())" />
           {{ player }}
         </button>
       }
@@ -575,7 +575,7 @@
       />
     </span>
   } @else {
-    <app-player-avatar [url]="mtg.playerAvatars()[p.name] ?? null" />
+    <app-player-avatar [url]="mtg.playerAvatars()[p.name] ?? null" [tier]="rankTierFor(p.name, match.mode, match.format)" />
   }
   <span class="match-log-player-main">
     <span class="match-log-name">
