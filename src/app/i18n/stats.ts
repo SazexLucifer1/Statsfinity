@@ -77,7 +77,7 @@ export const stats = {
     'stats.elo.title': 'Elo-Wertung',
     'stats.elo.infoAria': 'Wie die Elo-Wertung funktioniert',
     'stats.elo.info':
-      'Jeder startet je Spielmodus und Format bei 800 LP (Holz V); gewertet wird im Format, das oben im Filter gewählt ist. Jede Partie zählt als Duell gegen jeden Gegner: besser platziert = Sieg, gleich = Remis. Ein Sieg gegen gleich Starke bringt rund 50 LP, gegen starke Gegner mehr, gegen schwache weniger; dazu 5 LP je Partie. Die ersten 10 Partien zählen stärker. Gewertet werden live erfasste Partien.',
+      'Jeder startet je Spielmodus und Format bei 800 LP (Holz V); gewertet wird im Format, das oben im Filter gewählt ist. Es zählt nur der Sieg: Der Sieger gewinnt gegen jeden Gegner, alle anderen verlieren gleich viel gegen den Sieger, egal auf welchem Platz. Ein Sieg gegen gleich Starke bringt rund 50 LP, gegen starke mehr; wer gegen einen starken Sieger verliert, verliert weniger. Dazu 5 LP je Partie. Die ersten 10 Partien zählen stärker. Gewertet werden live erfasste Partien.',
     'stats.elo.detail': '{{games}} Partien · {{wins}} Siege · Bestwert {{peak}}',
     'stats.elo.provisional': 'vorläufig',
     'stats.notEnoughGamesForRanking':
@@ -219,7 +219,7 @@ export const stats = {
     'stats.elo.title': 'Elo rating',
     'stats.elo.infoAria': 'How the Elo rating works',
     'stats.elo.info':
-      'Everyone starts at 800 LP (Wood V) per game mode and format; the rating follows the format chosen in the filter above. Every game counts as a duel against each opponent: placed higher = win, same = draw. A win against equals earns about 50 LP, more against strong opponents, less against weak ones; plus 5 LP per game. The first 10 games count more. Only live-tracked games are rated.',
+      'Everyone starts at 800 LP (Wood V) per game mode and format; the rating follows the format chosen in the filter above. Only the win counts: the winner beats every opponent, everyone else loses the same to the winner, whatever their place. A win against equals earns about 50 LP, more against strong ones; losing to a strong winner costs less. Plus 5 LP per game. The first 10 games count more. Only live-tracked games are rated.',
     'stats.elo.detail': '{{games}} games · {{wins}} wins · peak {{peak}}',
     'stats.elo.provisional': 'provisional',
     'stats.notEnoughGamesForRanking':

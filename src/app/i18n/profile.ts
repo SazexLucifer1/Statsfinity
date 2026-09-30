@@ -4,7 +4,7 @@ export const profile = {
     // --- Profil-Tab ---
     'profile.rank.infoAria': 'Wie das Rangsystem funktioniert',
     'profile.rank.info':
-      'Der Rang gilt je Gruppe, Spielmodus und Format – gewertet werden nur Ranked-Partien dieser Gruppe. Jeder startet in Holz V (800 LP) und arbeitet sich über Holz I nach Eisen V hoch. Jeder Rang hat fünf Divisionen (V bis I) zu je 100 LP: Holz, Eisen, Bronze, Silber, Gold, Platin, Diamant und ganz oben Infinity. Ein Sieg gegen gleich starke Gegner bringt rund 50 LP. Je schlechter die Platzierung, desto mehr LP gehen verloren – als Vierter mehr als als Zweiter. Gegen stärkere Gegner gibt es mehr, gegen schwächere weniger. Dazu kommen 5 LP für jede gewertete Partie: Wer im Commander-Pod im Schnitt jedes vierte Spiel gewinnt, steigt langsam auf. Die ersten 10 Partien sind die Einstufung und zählen stärker.',
+      'Der Rang gilt je Gruppe, Spielmodus und Format – gewertet werden nur Ranked-Partien dieser Gruppe. Jeder startet in Holz V (800 LP) und arbeitet sich über Holz I nach Eisen V hoch. Jeder Rang hat fünf Divisionen (V bis I) zu je 100 LP: Holz, Eisen, Bronze, Silber, Gold, Platin, Diamant und ganz oben Infinity. Ein Sieg gegen gleich starke Gegner bringt rund 50 LP, gegen einen stärkeren Tisch mehr, gegen einen schwächeren weniger. Wer nicht gewinnt, verliert – egal ob Zweiter oder Letzter, gleich viel: Es zählt nur der Sieg, und gegen einen starken Sieger verliert man weniger als gegen einen schwachen. Dazu kommen 5 LP für jede gewertete Partie: Wer im Commander-Pod im Schnitt jedes vierte Spiel gewinnt, steigt langsam auf. Die ersten 10 Partien sind die Einstufung und zählen stärker.',
     'profile.rank.tier.wood': 'Holz',
     'profile.rank.tier.iron': 'Eisen',
     'profile.rank.tier.bronze': 'Bronze',
@@ -202,7 +202,7 @@ export const profile = {
   en: {
     'profile.rank.infoAria': 'How the rank system works',
     'profile.rank.info':
-      'Ranks are per group, game mode and format – only ranked games of that group count. Everyone starts in Wood V (800 LP) and works up through Wood I to Iron V. Each rank has five divisions (V to I) of 100 LP each: Wood, Iron, Bronze, Silver, Gold, Platinum, Diamond and, at the top, Infinity. A win against equally strong opponents earns about 50 LP. The worse your placement, the more LP you lose – fourth place loses more than second. Stronger opponents give more, weaker ones less. On top of that, every rated game adds 5 LP: winning one game in four in a Commander pod slowly moves you up. The first 10 games are placements and count more.',
+      'Ranks are per group, game mode and format – only ranked games of that group count. Everyone starts in Wood V (800 LP) and works up through Wood I to Iron V. Each rank has five divisions (V to I) of 100 LP each: Wood, Iron, Bronze, Silver, Gold, Platinum, Diamond and, at the top, Infinity. A win against equally strong opponents earns about 50 LP, more against a stronger table, less against a weaker one. Everyone who does not win loses the same, whether second or last: only the win counts, and losing to a strong winner costs less than losing to a weak one. On top of that, every rated game adds 5 LP: winning one game in four in a Commander pod slowly moves you up. The first 10 games are placements and count more.',
     'profile.rank.tier.wood': 'Wood',
     'profile.rank.tier.iron': 'Iron',
     'profile.rank.tier.bronze': 'Bronze',
