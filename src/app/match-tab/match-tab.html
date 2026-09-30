@@ -30,7 +30,7 @@
 
   <!-- Ranked oder frei: nur, wenn die Gruppe das Rangsystem nutzt (Schalter des Gruppenleiters). -->
   @if (groupService.rankedEnabled() && mtg.isRankedAvailable()) {
-    <div class="segmented block ranked-toggle" role="group" [attr.aria-label]="i18n.t('match.rankedAria')">
+    <div class="segmented block ranked-toggle" data-tutorial="match-ranked" role="group" [attr.aria-label]="i18n.t('match.rankedAria')">
       <button [class.active]="session.isRanked()" (click)="session.isRanked.set(true)">
         {{ i18n.t('match.ranked') }}
       </button>
@@ -42,7 +42,7 @@
 
   <!-- Als .glass-chip stand das direkt unter der Spielmodus-Auswahl und sah aus wie eine
        weitere Modus-Option. Es ist aber eine Aktion, die den ganzen Tab wechselt. -->
-  <button class="glass-button" (click)="openTournamentPanel()">
+  <button class="glass-button" data-tutorial="match-tournament" (click)="openTournamentPanel()">
     {{ tournament.activeTournament() ? i18n.t('tournament.openPanelButton') : i18n.t('tournament.createButton') }}
   </button>
 

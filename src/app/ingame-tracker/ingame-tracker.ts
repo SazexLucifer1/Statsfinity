@@ -18,6 +18,7 @@ import { BackgroundService } from '../background.service';
 import { TournamentService } from '../tournament.service';
 import { DialogService } from '../dialog.service';
 import { I18nService } from '../i18n.service';
+import { TutorialService } from '../tutorial.service';
 import { AuthService } from '../auth.service';
 import { Icon } from '../ui/icon/icon';
 
@@ -37,6 +38,7 @@ export class IngameTracker implements AfterViewInit, OnDestroy {
   private readonly dialog = inject(DialogService);
   readonly i18n = inject(I18nService);
   readonly auth = inject(AuthService);
+  private readonly tutorial = inject(TutorialService);
 
   // --- Turnier-Rundenzeit (nur sichtbar, wenn dieses Spiel Teil eines Turnier-Tisches ist) ---
   private readonly now = signal(Date.now());
@@ -213,6 +215,11 @@ export class IngameTracker implements AfterViewInit, OnDestroy {
   chooseMinimize(): void {
     this.showOptionsMenu.set(false);
     this.session.minimizeGame();
+  }
+
+  chooseHelp(): void {
+    this.showOptionsMenu.set(false);
+    this.tutorial.start('ingame');
   }
 
   chooseEndGame(): void {

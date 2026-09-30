@@ -35,28 +35,3 @@
   </div>
 </div>
 }
-
-@if (tutorial.showPicker()) {
-<div class="options-menu-overlay" (click)="tutorial.closePicker()">
-  <div class="options-menu-sheet" (click)="$event.stopPropagation()">
-    <h3>{{ i18n.t('tutorial.picker.title') }}</h3>
-    <p class="hint">{{ i18n.t('tutorial.picker.hint') }}</p>
-    <ul class="player-list compact-list">
-      @for (def of tutorial.tutorials; track def.id) {
-        <li>
-          <span class="player-name">
-            {{ i18n.t(def.labelKey) }}
-            @if (tutorial.isSeen(def.id)) {
-              <span class="hint">✓</span>
-            }
-          </span>
-          <button class="glass-button small" (click)="tutorial.start(def.id)">
-            {{ tutorial.isSeen(def.id) ? i18n.t('tutorial.picker.viewAgain') : i18n.t('tutorial.picker.view') }}
-          </button>
-        </li>
-      }
-    </ul>
-    <button class="glass-button" (click)="tutorial.closePicker()">{{ i18n.t('group.close') }}</button>
-  </div>
-</div>
-}

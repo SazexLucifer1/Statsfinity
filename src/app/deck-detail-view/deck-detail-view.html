@@ -157,7 +157,7 @@
 
       <!-- Aufrufe und Likes: wie oft andere Leute das Deck geöffnet haben und wie vielen es
            gefällt. Der Besitzer sieht beide Zahlen, liken kann er das eigene Deck nicht. -->
-      <app-deck-social [deckId]="deck.id" [ownerUserId]="deck.userId" [isPrivate]="deck.isPrivate" [countView]="true" />
+      <app-deck-social data-tutorial="deck-social" [deckId]="deck.id" [ownerUserId]="deck.userId" [isPrivate]="deck.isPrivate" [countView]="true" />
 
       <!-- Bracket direkt unter der Format-Zeile: dort steht schon, WAS für ein Deck das ist, und
            die Stufe gehört zur selben Frage. Nur im Commander - für Brawl und PDH gibt es keine
@@ -382,7 +382,7 @@
            also nie leer. Für Fremde erscheint der Primer-Reiter dagegen nur, wenn es auch einen
            Primer gibt - ein Reiter, hinter dem nie etwas steht, ist nur im Weg. Der Besitzer
            sieht ihn immer, sonst gäbe es keinen Weg, den ersten Primer zu schreiben. -->
-      <div class="segmented deck-tab-switch">
+      <div class="segmented deck-tab-switch" data-tutorial="deck-tab-switch">
         <button [class.active]="viewer.deckTab() === 'cards'" (click)="viewer.deckTab.set('cards')">
           {{ viewer.i18n.t('deckPrimer.tabCards') }}
         </button>
@@ -1440,7 +1440,7 @@
 
     <!-- Bewusst AUSSERHALB des detailBusy-Zweigs: die Kommentare haben mit dem Laden der
          Kartenliste/Scryfall-Daten nichts zu tun und sollen nicht darauf warten. -->
-    <app-deck-comments [deckId]="deck.id" [ownerUserId]="deck.userId" />
+    <app-deck-comments data-tutorial="deck-comments" [deckId]="deck.id" [ownerUserId]="deck.userId" />
   </div>
 </div>
 }

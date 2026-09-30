@@ -1,7 +1,7 @@
 <!-- Untertabs sind Navigation, keine Filter - als runde Chips waren sie von den Farbfiltern und
      Aktionen darunter optisch nicht zu unterscheiden und schwebten containerlos über dem
      Hintergrundbild. -->
-<div class="search-mode-toggle segmented block">
+<div class="search-mode-toggle segmented block" data-tutorial="search-subtabs">
   <button [class.active]="subView() === 'cards'" (click)="subView.set('cards')">
     {{ i18n.t('search.cardsTab') }}
   </button>

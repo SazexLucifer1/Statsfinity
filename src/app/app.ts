@@ -33,6 +33,7 @@ import { FeedbackService } from './feedback.service';
 import { TournamentService } from './tournament.service';
 import { LoginOverlayService } from './login-overlay.service';
 import { AppRecoveryService } from './app-recovery.service';
+import { TutorialService } from './tutorial.service';
 import { Icon, IconName } from './ui/icon/icon';
 import { APP_VERSION, APP_COMMIT } from './version';
 
@@ -74,6 +75,7 @@ export class App {
   readonly navigation = inject(NavigationService);
   readonly i18n = inject(I18nService);
   readonly feedback = inject(FeedbackService);
+  readonly tutorial = inject(TutorialService);
   readonly tournament = inject(TournamentService);
   readonly loginOverlay = inject(LoginOverlayService);
   readonly deckViewer = inject(DeckViewerService);

@@ -369,27 +369,6 @@ export class ProfileService {
     return true;
   }
 
-  /** Merkt sich, dass der Nutzer eine bestimmte Einführungs-Tour gesehen (oder übersprungen) hat - danach startet genau diese Tour nicht mehr automatisch, ist aber jederzeit über den Hilfe-Knopf im Profil erneut wählbar. */
-  async markTutorialSeen(tutorialId: string): Promise<boolean> {
-    const current = this.profile();
-    if (!current) return false;
-    if (current.tutorialsSeen.includes(tutorialId)) return true;
-
-    const next = [...current.tutorialsSeen, tutorialId];
-    const { error } = await supabase
-      .from('profiles')
-      .update({ tutorials_seen: next })
-      .eq('id', current.id);
-
-    if (error) {
-      console.error('Konnte Tutorial-Status nicht speichern:', error);
-      return false;
-    }
-
-    this.profile.update((p) => (p ? { ...p, tutorialsSeen: next } : p));
-    return true;
-  }
-
   /** Maximal 3 Lieblings-Commander. */
   async updateFavoriteCommanders(commanders: string[]): Promise<boolean> {
     const current = this.profile();

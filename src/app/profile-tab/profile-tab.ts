@@ -28,7 +28,6 @@ import { ScryfallCard, ScryfallService } from '../scryfall.service';
 import { I18nService } from '../i18n.service';
 import { ArtLanguageService } from '../art-language.service';
 import { ART_LANGUAGES, ArtLang } from '../art-languages';
-import { TutorialService } from '../tutorial.service';
 import { FeedbackService } from '../feedback.service';
 import { DialogService } from '../dialog.service';
 import { CardImage } from '../card-image/card-image';
@@ -75,7 +74,6 @@ export class ProfileTab {
   readonly backgrounds = inject(BackgroundService);
   private readonly scryfall = inject(ScryfallService);
   readonly i18n = inject(I18nService);
-  readonly tutorial = inject(TutorialService);
   readonly feedback = inject(FeedbackService);
   private readonly dialog = inject(DialogService);
 

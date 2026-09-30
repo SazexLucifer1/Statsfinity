@@ -60,7 +60,9 @@ export class TutorialOverlay implements OnDestroy {
     const target = step.target;
     const el = target ? document.querySelector(`[data-tutorial="${target}"]`) : null;
 
-    if (!el) {
+    // Ein vorhandenes, aber leeres Element (z.B. ein Postfach ohne Inhalt) wie ein fehlendes behandeln.
+    const initial = el ? TutorialOverlay.visibleRect(el) : null;
+    if (!el || !initial || initial.width === 0 || initial.height === 0) {
       this.targetRect.set(null);
       this.tooltipPosition.set({ top: null, left: null });
       return;
@@ -70,9 +72,11 @@ export class TutorialOverlay implements OnDestroy {
     // ohne dieses Scrollen würde die Tour dort optisch "verschwinden" (Tooltip mit den Weiter/
     // Zurück-Buttons liegt dann unerreichbar außerhalb des Viewports, obwohl die abgedunkelte
     // Overlay-Fläche weiter sichtbar bleibt).
-    el.scrollIntoView({ block: 'center', behavior: 'instant' as ScrollBehavior });
+    const scrollTarget =
+      getComputedStyle(el).display === 'inline' ? (el.firstElementChild ?? el) : el;
+    scrollTarget.scrollIntoView({ block: 'center', behavior: 'instant' as ScrollBehavior });
 
-    const rect = el.getBoundingClientRect();
+    const rect = TutorialOverlay.visibleRect(el);
     this.targetRect.set({ top: rect.top, left: rect.left, width: rect.width, height: rect.height });
 
     const margin = TutorialOverlay.MARGIN;
@@ -91,6 +95,30 @@ export class TutorialOverlay implements OnDestroy {
     left = Math.min(Math.max(margin, left), window.innerWidth - tooltipWidth - margin);
 
     this.tooltipPosition.set({ top, left });
+  }
+
+  /**
+   * Komponenten-Hosts (etwa `<app-deck-social data-tutorial="…">`) sind ohne eigene Stilregel
+   * `display: inline` - ihr eigenes Rechteck ist dann flach oder leer, obwohl der Inhalt darin
+   * blockweise steht. In dem Fall zählt die Fläche, die die Kinder zusammen einnehmen.
+   */
+  private static visibleRect(el: Element): {
+    top: number;
+    left: number;
+    bottom: number;
+    width: number;
+    height: number;
+  } {
+    const own = el.getBoundingClientRect();
+    const children = Array.from(el.children)
+      .map((c) => c.getBoundingClientRect())
+      .filter((r) => r.width > 0 && r.height > 0);
+    if (getComputedStyle(el).display !== 'inline' || children.length === 0) return own;
+    const top = Math.min(...children.map((r) => r.top));
+    const left = Math.min(...children.map((r) => r.left));
+    const bottom = Math.max(...children.map((r) => r.bottom));
+    const right = Math.max(...children.map((r) => r.right));
+    return { top, left, bottom, width: right - left, height: bottom - top };
   }
 
   skip(): void {

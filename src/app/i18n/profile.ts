@@ -186,7 +186,6 @@ export const profile = {
     'profile.msg.confirmDeleteBackground': 'Diesen Hintergrund löschen?',
     'profile.msg.shared': 'Geteilt!',
     'profile.msg.shareFailed': 'Teilen fehlgeschlagen.',
-    'profile.replayTutorialAria': 'Tutorial erneut anzeigen',
     // --- Postfach fuer Deck-Kommentare ---
     'inbox.title': 'Postfach',
     'inbox.loading': 'Lade Nachrichten …',
@@ -383,7 +382,6 @@ export const profile = {
     'profile.msg.confirmDeleteBackground': 'Delete this background?',
     'profile.msg.shared': 'Shared!',
     'profile.msg.shareFailed': 'Sharing failed.',
-    'profile.replayTutorialAria': 'Show tutorial again',
     // --- Deck comment inbox ---
     'inbox.title': 'Inbox',
     'inbox.loading': 'Loading messages …',
