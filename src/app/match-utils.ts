@@ -82,6 +82,7 @@ export function mapMatchRow(row: any): Match {
     tournamentMatchId: row.tournament_match_id ?? undefined,
     tournamentGameNumber: row.tournament_game_number ?? undefined,
     countsInGeneralStats: row.counts_in_general_stats ?? true,
+    isRanked: row.is_ranked ?? true,
     players: (row.match_players ?? []).map((mp: any) => ({
       name: mp.player_name ?? mp.players?.display_name ?? '',
       commander: mp.commander_name ?? undefined,

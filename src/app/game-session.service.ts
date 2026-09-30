@@ -35,6 +35,8 @@ function stableStringify(value: unknown): string {
 export interface LiveSessionState {
   mode: GameMode;
   format: DeckFormat | null;
+  /** Ranked oder freies Match (Match.isRanked); fehlt bei Sessions von vor diesem Feature -> Ranked. */
+  isRanked?: boolean;
   selectedPlayers: MatchPlayer[];
   selectedCubeId: string | null;
   selectedDraftSet: SelectedDraftSet | null;
@@ -96,6 +98,11 @@ export class GameSessionService {
   readonly mode = signal<GameMode>('Normal');
   /** Gespieltes MTG-Format, kombiniert mit mode - null nur bei mode 'Spezialevent' (siehe setMode()). */
   readonly format = signal<DeckFormat | null>('Commander');
+  /**
+   * Ranked oder freies Match - nur wählbar, wenn die Gruppe Ranked spielt
+   * (GroupService.rankedEnabled); sonst ohnehin egal, weil nicht gerechnet wird. Standard Ranked.
+   */
+  readonly isRanked = signal(true);
   readonly selectedPlayers = signal<MatchPlayer[]>([]);
   readonly winner = signal<string | null>(null);
   readonly selectedCubeId = signal<string | null>(null);
@@ -159,6 +166,7 @@ export class GameSessionService {
   private readonly syncSnapshot = computed<LiveSessionState>(() => ({
     mode: this.mode(),
     format: this.format(),
+    isRanked: this.isRanked(),
     selectedPlayers: this.selectedPlayers(),
     selectedCubeId: this.selectedCubeId(),
     selectedDraftSet: this.selectedDraftSet(),
@@ -568,6 +576,7 @@ export class GameSessionService {
 
   private applySyncSnapshot(state: LiveSessionState): void {
     this.mode.set(state.mode);
+    this.isRanked.set(state.isRanked ?? true);
     // Fallback für Sessions von vor diesem Feature (state.format fehlt dann im JSONB-Stand).
     this.format.set(state.format ?? (state.mode === 'Spezialevent' ? null : 'Commander'));
     this.selectedPlayers.set(state.selectedPlayers);
@@ -909,6 +918,7 @@ export class GameSessionService {
             : undefined,
         tournamentMatchId,
         countsInGeneralStats: this.activeTournamentCountsInStats(),
+        isRanked: this.isRanked(),
       });
 
       if (matchId) {
@@ -954,6 +964,7 @@ export class GameSessionService {
     this.selectedDraftSet.set(null);
     this.mode.set('Normal');
     this.format.set('Commander');
+    this.isRanked.set(true);
     this.pinnedBottomKey.set(null);
     this.pinnedBottomKey.set(null);
     this.manualOrder.set(null);

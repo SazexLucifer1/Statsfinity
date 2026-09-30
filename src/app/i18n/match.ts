@@ -1,6 +1,10 @@
 /** Übersetzungen: match. Beide Sprachen bewusst nebeneinander - wer eine ändert, sieht die andere. */
 export const match = {
   de: {
+    'match.ranked': 'Ranked',
+    'match.casual': 'Frei',
+    'match.rankedAria': 'Ranked oder freies Match',
+    'match.rankedEditHint': 'Zählt dieses Match für die Ränge?',
     // --- Match-Tab: Neues Match ---
     'match.newMatch': 'Neues Match',
     'match.gameMode': 'Spielmodus',
@@ -118,6 +122,10 @@ export const match = {
     'game.deadFallback': 'TOT',
   },
   en: {
+    'match.ranked': 'Ranked',
+    'match.casual': 'Casual',
+    'match.rankedAria': 'Ranked or casual match',
+    'match.rankedEditHint': 'Does this match count towards the ranks?',
     // --- Match tab: New match ---
     'match.newMatch': 'New Match',
     'match.gameMode': 'Game Mode',

@@ -24,6 +24,23 @@ export class GroupService {
     () => this.myGroups().find((g) => g.id === this.groupId())?.role === 'owner'
   );
 
+  /**
+   * Spielt die Gruppe mit Elo-Rangsystem (groups.ranked_enabled, sql/ranked-gruppe-2026-09-30.sql)?
+   * Eigene Abfrage statt Teil von loadMyGroups(): fehlt die Spalte noch, soll nur der Schalter
+   * verschwinden, nicht die ganze Gruppenliste. Ohne Eintrag gilt "an" (der Standard).
+   */
+  private readonly rankedEnabledByGroup = signal<Map<string, boolean>>(new Map());
+  /** false, solange die Migration fehlt - dann gibt es keinen Schalter, Ranked bleibt an. */
+  readonly rankedSettingAvailable = signal(true);
+
+  isRankedGroup(groupId: string | null): boolean {
+    if (!groupId) return false;
+    return this.rankedEnabledByGroup().get(groupId) ?? true;
+  }
+
+  /** Ranked in der aktuell aktiven Gruppe? */
+  readonly rankedEnabled = computed(() => this.isRankedGroup(this.groupId()));
+
   /** Name der aktuell aktiven Gruppe, oder null solange keine Gruppe aktiv ist (z.B. beim ersten
    * Laden) - fürs Gruppen-Tab, damit z.B. der "Spieler"-Abschnitt erkennbar zeigt, für welche
    * Gruppe er gerade gilt (relevant sobald jemand Mitglied in mehreren Gruppen ist). */
@@ -108,6 +125,7 @@ export class GroupService {
       }));
 
     this.myGroups.set(groups);
+    void this.loadRankedEnabled(groups.map((g) => g.id));
 
     // Die eigenen Rechte ergeben sich jetzt aus der zugewiesenen Rolle (group_roles.permissions)
     // statt aus einzeln vergebenen Rechten (siehe loadGroupRoles/createRole/assignRole) - der
@@ -520,6 +538,38 @@ export class GroupService {
     }));
   }
 
+
+  private async loadRankedEnabled(groupIds: string[]): Promise<void> {
+    if (groupIds.length === 0 || !this.rankedSettingAvailable()) return;
+    const { data, error } = await supabase
+      .from('groups')
+      .select('id, ranked_enabled')
+      .in('id', groupIds);
+    if (error) {
+      if (error.code === '42703') {
+        console.warn('Spalte groups.ranked_enabled fehlt noch - sql/ranked-gruppe-2026-09-30.sql im Supabase-SQL-Editor ausführen.');
+        this.rankedSettingAvailable.set(false);
+      } else {
+        console.error('Konnte Ranked-Einstellung nicht laden:', error);
+      }
+      return;
+    }
+    this.rankedEnabledByGroup.set(
+      new Map((data ?? []).map((row: { id: string; ranked_enabled: boolean }) => [row.id, row.ranked_enabled !== false]))
+    );
+  }
+
+  /** Rangsystem der Gruppe an/aus - nur der Gruppenleiter (Host). */
+  async setRankedEnabled(groupId: string, enabled: boolean): Promise<boolean> {
+    if (!this.isOwnerOf(groupId)) return false;
+    const { error } = await supabase.from('groups').update({ ranked_enabled: enabled }).eq('id', groupId);
+    if (error) {
+      console.error('Konnte Ranked-Einstellung nicht speichern:', error);
+      return false;
+    }
+    this.rankedEnabledByGroup.update((map) => new Map(map).set(groupId, enabled));
+    return true;
+  }
 
   async renameGroup(groupId: string, name: string): Promise<boolean> {
     if (!this.hasPermissionFor(groupId, 'group.rename')) return false;

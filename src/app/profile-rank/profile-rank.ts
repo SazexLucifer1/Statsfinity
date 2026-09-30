@@ -37,9 +37,19 @@ export class ProfileRank {
   /** Zur Auswahl stehende Modi und Formate; nur im eigenen Profil angeboten. */
   readonly modes = input<GameMode[]>([]);
   readonly formats = input<DeckFormat[]>([]);
+  /** Gruppen mit Rangsystem zur Auswahl (nur eigenes Profil) und die gerade gezeigte. */
+  readonly groups = input<{ id: string; name: string }[]>([]);
+  readonly groupId = input<string | null>(null);
+  readonly groupChange = output<string>();
+  /** Name der Gruppe, aus der der Rang stammt - steht im Hinweis, damit klar ist, wo er gilt. */
+  readonly groupName = input<string | null>(null);
   readonly editable = input(false);
   readonly modeChange = output<GameMode>();
   readonly formatChange = output<DeckFormat>();
+
+  onGroupSelect(event: Event): void {
+    this.groupChange.emit((event.target as HTMLSelectElement).value);
+  }
 
   onFormatSelect(event: Event): void {
     this.formatChange.emit((event.target as HTMLSelectElement).value as DeckFormat);
@@ -48,7 +58,8 @@ export class ProfileRank {
   /** "Normal · Commander" - welcher Rang gerade zu sehen ist. */
   readonly choiceLabel = computed(() => {
     const format = this.format();
-    return format ? `${this.mode()} · ${format}` : this.mode();
+    const teile = [this.groupName(), this.mode(), format].filter((t): t is string => !!t);
+    return teile.join(' · ');
   });
 
   readonly showInfo = signal(false);

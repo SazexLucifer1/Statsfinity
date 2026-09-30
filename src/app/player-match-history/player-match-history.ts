@@ -12,6 +12,7 @@ import { DeckService } from '../deck.service';
 import { DeckViewerService } from '../deck-viewer.service';
 import { Icon } from '../ui/icon/icon';
 import { lpChangesByMatch } from '../elo';
+import { GroupService } from '../group.service';
 
 /** Ein Teilnehmer eines Spiels, so wie ihn die Historie als Kachel zeigt. */
 export interface PlayerMatchEntry {
@@ -57,6 +58,7 @@ export class PlayerMatchHistory {
   private readonly scryfall = inject(ScryfallService);
   private readonly deckService = inject(DeckService);
   private readonly deckViewer = inject(DeckViewerService);
+  private readonly groupService = inject(GroupService);
 
   /** Spielername, dessen Partien gezeigt werden - null, solange das Profil noch keinen kennt. */
   readonly playerName = input.required<string | null>();
@@ -81,8 +83,12 @@ export class PlayerMatchHistory {
     // Beide Quellen kommen bereits nach Datum absteigend sortiert.
     const quelle = extern ?? this.mtg.history().map((match) => ({ match, selfName: name! }));
     // Über die GANZE Quelle gerechnet, nicht über die gefilterten Zeilen - die LP einer Partie
-    // hängen an allem, was davor gespielt wurde, auch an Partien anderer Jahre.
-    const lp = lpChangesByMatch(quelle.map((q) => q.match));
+    // hängen an allem, was davor gespielt wurde, auch an Partien anderer Jahre. Nur für die eigene
+    // Gruppe mit Rangsystem: Ränge sind Gruppensache, öffentliche Matches (extern) zeigen keine LP.
+    const lp =
+      !extern && this.groupService.rankedEnabled()
+        ? lpChangesByMatch(quelle.map((q) => q.match))
+        : new Map<string, Map<string, number>>();
 
     const rows: PlayerMatchRow[] = [];
     for (const { match, selfName: name } of quelle) {

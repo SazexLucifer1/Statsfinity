@@ -63,8 +63,13 @@ interface Seat {
   side: string;
 }
 
-/** Zählt diese Partie für die Wertung? Nur echte, live erfasste Partien mit mindestens zwei Seiten. */
+/**
+ * Zählt diese Partie für die Wertung? Nur als Ranked gespielte (nicht frei, kein Turnier), live
+ * erfasste Partien mit mindestens zwei Seiten. Ob die Gruppe überhaupt Ranked spielt
+ * (groups.ranked_enabled), entscheidet der Aufrufer - dann wird gar nicht erst gerechnet.
+ */
 export function isRatedMatch(match: Match): boolean {
+  if (match.isRanked === false || match.tournamentMatchId) return false;
   if (match.countsInGeneralStats === false) return false;
   if (isImportLossDuplicate(match)) return false;
   if (new Date(match.date) < LIVE_TRACKING_START_DATE) return false;

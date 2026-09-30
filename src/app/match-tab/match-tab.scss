@@ -344,3 +344,8 @@
   max-width: var(--content-measure);
   margin: 0 auto;
 }
+
+// Ranked/Frei unter Modus und Format beim Match-Start.
+.ranked-toggle {
+  margin-top: var(--sp-4);
+}

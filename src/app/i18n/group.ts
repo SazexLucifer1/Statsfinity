@@ -1,6 +1,12 @@
 /** Übersetzungen: group. Beide Sprachen bewusst nebeneinander - wer eine ändert, sieht die andere. */
 export const group = {
   de: {
+    'group.rankedTurnOff': 'Ranked-System ausschalten',
+    'group.rankedTurnOn': 'Ranked-System einschalten',
+    'group.rankedConfirmOff':
+      'Ranked-System für diese Gruppe ausschalten? Ränge, LP und die Auswahl Ranked/Frei verschwinden. Es geht nichts verloren – beim Wiedereinschalten sind die Ränge wieder da.',
+    'group.rankedConfirmOn':
+      'Ranked-System für diese Gruppe einschalten? Alle Ranked-Partien der Gruppe zählen dann für die Ränge, auch die bisherigen.',
     // --- Gruppen-Tab ---
     'group.myGroups': 'Meine Gruppen',
     'group.createNewGroup': 'Neue Gruppe erstellen',
@@ -161,6 +167,12 @@ export const group = {
     'group.defaultPlayerName': 'Spieler',
   },
   en: {
+    'group.rankedTurnOff': 'Turn off ranked system',
+    'group.rankedTurnOn': 'Turn on ranked system',
+    'group.rankedConfirmOff':
+      'Turn off the ranked system for this group? Ranks, LP and the ranked/casual choice disappear. Nothing is lost – the ranks come back when you turn it on again.',
+    'group.rankedConfirmOn':
+      'Turn on the ranked system for this group? All ranked games of the group count towards the ranks, including past ones.',
     // --- Group tab ---
     'group.myGroups': 'My Groups',
     'group.createNewGroup': 'Create new group',
