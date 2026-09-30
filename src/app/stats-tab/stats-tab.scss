@@ -491,9 +491,8 @@
 
 // Abzeichen links, daneben LP und Änderung untereinander.
 .elo-values {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
+  display: grid;
+  justify-items: end;
 }
 
 .elo-lp {
