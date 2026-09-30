@@ -9,6 +9,8 @@ import { PlayerAvatar } from '../player-avatar/player-avatar';
 import { I18nService } from '../i18n.service';
 import { DialogService } from '../dialog.service';
 import { GAME_MODES, GameMode } from '../models';
+import { RankTier, rankTiersFor } from '../elo';
+import { rankStyle } from '../ui/rank-badge/rank-badge';
 import { GROUP_PERMISSION_CATEGORIES, GroupPermission, GroupRole } from '../group-permissions';
 import { OverflowMenu } from '../ui/overflow-menu/overflow-menu';
 import { Icon } from '../ui/icon/icon';
@@ -27,6 +29,24 @@ export class GroupTab {
   private readonly navigation = inject(NavigationService);
   readonly i18n = inject(I18nService);
   private readonly dialog = inject(DialogService);
+
+  /**
+   * Rangfarbe der Spielerkarten - der Standard-Rang (Normal + Commander) der aktiven Gruppe, weil
+   * der Gruppen-Tab keine Modus- oder Format-Auswahl hat. Nur mit eingeschaltetem Rangsystem.
+   */
+  private readonly rankTiers = computed<Map<string, RankTier>>(() =>
+    this.groupService.rankedEnabled()
+      ? rankTiersFor(this.mtg.history(), 'Normal', 'Commander')
+      : new Map(),
+  );
+
+  rankTierFor(player: string): RankTier | null {
+    return this.rankTiers().get(player) ?? null;
+  }
+
+  rankVars(tier: RankTier | null): Record<string, string> | null {
+    return rankStyle(tier);
+  }
 
   // --- Gruppen erstellen/wechseln ---
 

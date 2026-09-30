@@ -13,6 +13,7 @@ import { TournamentService } from '../tournament.service';
 import { DialogService } from '../dialog.service';
 import { GAME_MODES, TEAM_OPTIONS, Match, MatchPlayer, LIVE_TRACKING_START_DATE, DECK_FORMATS, DeckFormat, GameMode } from '../models';
 import { RankTier, rankTiersFor } from '../elo';
+import { rankStyle } from '../ui/rank-badge/rank-badge';
 import { ARCHENEMY_OTHERS, DRAW, isPlayerWinner, teamMemberLabel, gameModeLabel } from '../match-utils';
 import { CardImage } from '../card-image/card-image';
 import { BracketBadge } from '../ui/bracket-badge/bracket-badge';
@@ -62,6 +63,11 @@ export class MatchTab {
     this.mtg.history();
     return new Map<string, Map<string, RankTier>>();
   });
+
+  /** CSS-Variablen der Rangfarbe für einen Spieler-Chip (Klasse .rank-tinted in styles.scss). */
+  rankVars(tier: RankTier | null): Record<string, string> | null {
+    return rankStyle(tier);
+  }
 
   rankTierFor(name: string, mode: GameMode, format: DeckFormat | null): RankTier | null {
     if (!this.groupService.rankedEnabled()) return null;

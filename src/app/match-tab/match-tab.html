@@ -67,8 +67,15 @@
   } @else {
     <div class="chip-row">
       @for (player of mtg.allPlayers(); track player) {
-        <button class="glass-chip avatar-chip" [class.active]="isSelected(player)" (click)="togglePlayer(player)">
-          <app-player-avatar [url]="mtg.playerAvatars()[player] ?? null" [tier]="rankTierFor(player, session.mode(), session.format())" />
+        @let tier = rankTierFor(player, session.mode(), session.format());
+        <button
+          class="glass-chip avatar-chip"
+          [class.active]="isSelected(player)"
+          [class.rank-tinted]="!!tier"
+          [style]="rankVars(tier)"
+          (click)="togglePlayer(player)"
+        >
+          <app-player-avatar [url]="mtg.playerAvatars()[player] ?? null" [tier]="tier" />
           {{ player }}
         </button>
       }
