@@ -1,6 +1,7 @@
 <div
   class="player-avatar"
   [class.large]="large()"
+  [class.ranked]="!!tier()"
   [style.background-image]="url() ? 'url(' + url() + ')' : null"
 >
   @if (!url()) {

@@ -25,7 +25,7 @@ import {
 import { I18nService } from '../i18n.service';
 import { TournamentHistory } from '../tournament-history/tournament-history';
 import { isImportLossDuplicate, isPlayerWinner as isMatchWinner } from '../match-utils';
-import { EloEntry, divisionLabel, eloRanking, rankFromLp, ratedModes } from '../elo';
+import { EloEntry, RankTier, divisionLabel, eloRanking, rankFromLp, rankTiersFor, ratedModes } from '../elo';
 import { RankBadge } from '../ui/rank-badge/rank-badge';
 import { Meter } from '../ui/meter/meter';
 import { Pager } from '../ui/pager/pager';
@@ -302,6 +302,24 @@ export class StatsTab {
       }));
   });
   readonly showEloInfo = signal(false);
+
+  /**
+   * Rangfarbe für die Ringe um die Profilbilder im ganzen Tab - derselbe Modus wie die Elo-Liste
+   * (Standard Normal) und das Format aus dem Filter oben. Leer ohne Rangsystem in der Gruppe.
+   */
+  private readonly rankTiers = computed<Map<string, RankTier>>(() => {
+    if (!this.groupService.isRankedGroup(this.effectiveViewedGroupId())) return new Map();
+    const format = this.selectedFormat();
+    return rankTiersFor(
+      this.viewedMatches(),
+      this.eloMode() ?? 'Normal',
+      format === 'Alle' ? undefined : format,
+    );
+  });
+
+  rankTierFor(name: string): RankTier | null {
+    return this.rankTiers().get(name) ?? null;
+  }
 
   /** "Gold III" - Rangname für Abzeichen und Tooltip in der Elo-Liste. */
   rankLabel(rank: ReturnType<typeof rankFromLp>): string {

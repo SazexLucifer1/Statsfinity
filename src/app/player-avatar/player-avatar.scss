@@ -11,6 +11,14 @@
   justify-content: center;
   flex-shrink: 0;
 
+  // Rangfarbe wie der Ring ums Profilbild im Profil (.rank-frame in styles.scss).
+  &.ranked {
+    border: 2px solid var(--rank-light);
+    box-shadow:
+      0 0 0 1px var(--rank-dark),
+      0 0 8px color-mix(in srgb, var(--rank-light) 55%, transparent);
+  }
+
   &.large {
     width: 56px;
     height: 56px;
