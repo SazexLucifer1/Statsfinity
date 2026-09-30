@@ -146,6 +146,12 @@ export interface Match {
    * Match-Verlauf sichtbar, da es ja wirklich gespielt wurde.
    */
   countsInGeneralStats: boolean;
+  /**
+   * Ranked (zählt für die Elo-Wertung der Gruppe, siehe elo.ts) oder freies Match - beim Start
+   * gewählt (matches.is_ranked, sql/ranked-gruppe-2026-09-30.sql). Fehlt der Wert (Migration
+   * ausstehend, alte Zeilen), gilt das Match als Ranked. Turnierspiele zählen nie.
+   */
+  isRanked?: boolean;
 }
 
 export interface Cube {

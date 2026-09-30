@@ -609,6 +609,18 @@ export class GroupTab {
   readonly roleNameDraft = signal('');
   readonly rolePermissionsDraft = signal<Set<GroupPermission>>(new Set());
 
+  /**
+   * Rangsystem der Gruppe an/aus (nur Gruppenleiter). Beim Ausschalten geht nichts verloren -
+   * die Wertung wird ohnehin nicht gespeichert, sondern aus den Partien gerechnet, und kommt beim
+   * Wiedereinschalten unverändert zurück. Das sagt die Rückfrage auch.
+   */
+  async toggleRanked(groupId: string): Promise<void> {
+    const enabled = this.groupService.isRankedGroup(groupId);
+    const message = this.i18n.t(enabled ? 'group.rankedConfirmOff' : 'group.rankedConfirmOn');
+    if (!(await this.dialog.confirm(message))) return;
+    await this.groupService.setRankedEnabled(groupId, !enabled);
+  }
+
   async openPermissionsDialog(groupId: string): Promise<void> {
     this.permissionsGroupId.set(groupId);
     this.permissionsBusy.set(true);

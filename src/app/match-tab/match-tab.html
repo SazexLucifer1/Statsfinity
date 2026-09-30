@@ -28,6 +28,18 @@
     </select>
   }
 
+  <!-- Ranked oder frei: nur, wenn die Gruppe das Rangsystem nutzt (Schalter des Gruppenleiters). -->
+  @if (groupService.rankedEnabled() && mtg.isRankedAvailable()) {
+    <div class="segmented block ranked-toggle" role="group" [attr.aria-label]="i18n.t('match.rankedAria')">
+      <button [class.active]="session.isRanked()" (click)="session.isRanked.set(true)">
+        {{ i18n.t('match.ranked') }}
+      </button>
+      <button [class.active]="!session.isRanked()" (click)="session.isRanked.set(false)">
+        {{ i18n.t('match.casual') }}
+      </button>
+    </div>
+  }
+
   <!-- Als .glass-chip stand das direkt unter der Spielmodus-Auswahl und sah aus wie eine
        weitere Modus-Option. Es ist aber eine Aktion, die den ganzen Tab wechselt. -->
   <button class="glass-button" (click)="openTournamentPanel()">
@@ -361,6 +373,11 @@
         <span class="match-log-mode">{{ modeLabel(match.mode, match.format) }}</span>
       }
       <span class="match-log-date">{{ match.date | date: 'dd.MM.yyyy, HH:mm' }}</span>
+      <!-- Nur "Frei" wird markiert - Ranked ist der Normalfall und bräuchte an jeder Karte ein
+           Etikett, das nichts sagt. Turnierspiele sind ohnehin nie Ranked. -->
+      @if (groupService.rankedEnabled() && match.isRanked === false && !match.tournamentMatchId) {
+        <span class="glass-chip small">{{ i18n.t('match.casual') }}</span>
+      }
       @if (
         groupService.hasPermission('match.editResult') ||
         groupService.hasPermission('match.editCommander') ||
@@ -397,6 +414,22 @@
 
     @if (editingResultMatchId() === match.id) {
   <div class="winner-edit">
+    @if (
+      groupService.hasPermission('match.editResult') &&
+      groupService.rankedEnabled() &&
+      mtg.isRankedAvailable() &&
+      !match.tournamentMatchId
+    ) {
+      <p class="hint">{{ i18n.t('match.rankedEditHint') }}</p>
+      <div class="segmented" role="group" [attr.aria-label]="i18n.t('match.rankedAria')">
+        <button [class.active]="match.isRanked !== false" (click)="mtg.setMatchRanked(match.id, true)">
+          {{ i18n.t('match.ranked') }}
+        </button>
+        <button [class.active]="match.isRanked === false" (click)="mtg.setMatchRanked(match.id, false)">
+          {{ i18n.t('match.casual') }}
+        </button>
+      </div>
+    }
     @if (groupService.hasPermission('match.editResult')) {
       <p class="hint">{{ i18n.t('match.whoWon') }}</p>
       <div class="chip-row">

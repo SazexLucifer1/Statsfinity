@@ -264,11 +264,14 @@ export class StatsTab {
 
   // Wie der Rang im Profil je Modus UND Format: dem Format-Filter oben folgend ("Alle" = alle
   // Formate eines Modus gemeinsam). Ein Modern-Sieg soll keinen Commander-Rang verschieben.
+  // Nur in einer Gruppe mit eingeschaltetem Rangsystem (Schalter des Gruppenleiters).
   readonly eloModes = computed(() =>
-    ratedModes(
-      this.applyFormatFilter(this.viewedMatches()),
-      GAME_MODES.filter((m) => this.canViewMode(m)),
-    ),
+    !this.groupService.isRankedGroup(this.effectiveViewedGroupId())
+      ? []
+      : ratedModes(
+          this.applyFormatFilter(this.viewedMatches()),
+          GAME_MODES.filter((m) => this.canViewMode(m)),
+        ),
   );
   private readonly eloModeChoice = signal<GameMode | null>(null);
   readonly eloMode = computed(() => {

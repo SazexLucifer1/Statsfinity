@@ -124,16 +124,61 @@ export class ProfileTab {
   });
 
   /**
-   * Gerechnet wird über die Historie der eigenen Gruppe - dieselbe wie in der Statistik. Ein
-   * fremder Account außerhalb der Gruppe hat dort keine Partien, dann zählen seine öffentlichen
-   * Matches (publicViewedMatches); die Gegner kennt die Wertung dort nur aus diesen Partien.
+   * Der Rang ist Gruppensache und nicht öffentlich: gerechnet wird über die Partien genau EINER
+   * Gruppe mit eingeschaltetem Rangsystem, die der Betrachter selbst sehen darf. Eigenes Profil:
+   * die gewählte Gruppe (Auswahlfeld), sonst die aktive. Fremdes Profil: dessen gewählte Gruppe,
+   * sofern der Betrachter darin Mitglied ist (sonst liefert profile_rank_choice() null), ersatzweise
+   * die aktive Gruppe, wenn beide darin spielen. NPC: die aktive Gruppe. Sonst kein Rang.
    */
-  private readonly rankMatches = computed<Match[]>(() => {
-    const extern = this.publicViewedMatches();
-    return extern ? extern.map((m) => m.match) : this.mtg.history();
+  readonly rankableGroups = computed(() =>
+    this.groupService.myGroups().filter((g) => this.groupService.isRankedGroup(g.id)),
+  );
+
+  readonly rankGroupId = computed<string | null>(() => {
+    const active = this.groupService.groupId();
+    const activeRanked = this.groupService.isRankedGroup(active) ? active : null;
+    if (this.profileService.viewingPlayerId()) return activeRanked;
+    const chosen = this.rankChoice().groupId;
+    if (this.profileService.viewingUserId()) {
+      if (chosen && this.groupService.isRankedGroup(chosen)) return chosen;
+      return activeRanked && this.profileHistoryName() ? activeRanked : null;
+    }
+    if (chosen && this.rankableGroups().some((g) => g.id === chosen)) return chosen;
+    return activeRanked ?? this.rankableGroups()[0]?.id ?? null;
   });
-  private readonly rankPlayerName = computed<string | null>(
-    () => this.profileHistoryName() ?? this.publicViewedMatches()?.[0]?.selfName ?? null,
+
+  readonly rankGroupName = computed(
+    () => this.groupService.myGroups().find((g) => g.id === this.rankGroupId())?.name ?? null,
+  );
+
+  /** Partien und Spielername einer anderen als der aktiven Gruppe, nachgeladen (siehe Konstruktor). */
+  private readonly otherGroupRankData = signal<{
+    groupId: string;
+    userId: string;
+    matches: Match[];
+    playerName: string | null;
+  } | null>(null);
+
+  private readonly rankMatches = computed<Match[]>(() => {
+    const groupId = this.rankGroupId();
+    if (!groupId) return [];
+    if (groupId === this.groupService.groupId()) return this.mtg.history();
+    const other = this.otherGroupRankData();
+    return other?.groupId === groupId ? other.matches : [];
+  });
+  private readonly rankPlayerName = computed<string | null>(() => {
+    const groupId = this.rankGroupId();
+    if (!groupId) return null;
+    if (groupId === this.groupService.groupId()) return this.profileHistoryName();
+    const other = this.otherGroupRankData();
+    return other?.groupId === groupId ? other.playerName : null;
+  });
+
+  /** Account, dessen Rang gerade gezeigt wird (eigener oder angesehener); null bei NPCs. */
+  private readonly rankUserId = computed<string | null>(() =>
+    this.profileService.viewingPlayerId()
+      ? null
+      : (this.profileService.viewingUserId() ?? this.profileService.profile()?.id ?? null),
   );
 
   /** Modi, in denen der Spieler gewertet ist, plus der gewählte; in der Reihenfolge von GAME_MODES. */
@@ -186,11 +231,15 @@ export class ProfileTab {
       current && rated.includes(current)
         ? current
         : (rated[0] ?? (formatlos ? null : (current ?? ProfileService.DEFAULT_RANK_CHOICE.format)));
-    this.saveRankChoice({ mode, format });
+    this.saveRankChoice({ ...this.rankChoice(), mode, format });
   }
 
   setRankFormat(format: DeckFormat): void {
-    this.saveRankChoice({ mode: this.rankChoice().mode, format });
+    this.saveRankChoice({ ...this.rankChoice(), format });
+  }
+
+  setRankGroup(groupId: string): void {
+    this.saveRankChoice({ ...this.rankChoice(), groupId });
   }
 
   private saveRankChoice(choice: RankChoice): void {
@@ -541,6 +590,23 @@ export class ProfileTab {
   }
 
   constructor() {
+    // Rang aus einer anderen als der aktiven Gruppe: deren Partien und den Spielernamen des
+    // Accounts dort nachladen (mtg.history() kennt nur die aktive Gruppe).
+    effect(() => {
+      const groupId = this.rankGroupId();
+      const userId = this.rankUserId();
+      if (!groupId || !userId || groupId === this.groupService.groupId()) return;
+      const current = this.otherGroupRankData();
+      if (current?.groupId === groupId && current.userId === userId) return;
+      void Promise.all([
+        this.mtg.loadMatchesForGroups([groupId]),
+        this.mtg.playerNameInGroup(groupId, userId),
+      ]).then(([matches, playerName]) => {
+        if (this.rankGroupId() !== groupId || this.rankUserId() !== userId) return;
+        this.otherGroupRankData.set({ groupId, userId, matches, playerName });
+      });
+    });
+
     effect(() => {
       const userId = this.profileService.profile()?.id;
       if (!userId) return;

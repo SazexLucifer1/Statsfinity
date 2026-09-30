@@ -26,10 +26,15 @@ export interface Profile {
   isDeveloper: boolean;
 }
 
-/** Welcher Elo-Rang im Profil gezeigt wird: Modus plus Format (null = Modus ohne Format). */
+/**
+ * Welcher Elo-Rang im Profil gezeigt wird: Gruppe, Modus und Format (null = Modus ohne Format).
+ * groupId null = die gerade aktive Gruppe; bei fremden Profilen auch dann null, wenn der Betrachter
+ * nicht in der gewählten Gruppe ist (der Rang ist Gruppensache, siehe profile_rank_choice()).
+ */
 export interface RankChoice {
   mode: GameMode;
   format: DeckFormat | null;
+  groupId: string | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -257,10 +262,11 @@ export class ProfileService {
   //     (sql/elo-rang-modus-2026-09-29.sql) ---
 
   /** Standard, solange nichts gewählt ist: Modus Normal, Format Commander. */
-  static readonly DEFAULT_RANK_CHOICE: RankChoice = { mode: 'Normal', format: 'Commander' };
+  static readonly DEFAULT_RANK_CHOICE: RankChoice = { mode: 'Normal', format: 'Commander', groupId: null };
   private static readonly RANK_CHOICE_KEY = 'statsfinity.rankChoice';
   /** Einmal je Sitzung umgelegt, wenn die Migration fehlt - danach nur noch der Gerätewert. */
   private static rankChoiceVerfuegbar = true;
+  private static rankGruppeVerfuegbar = true;
 
   /**
    * Gewählte Rang-Kombination eines Accounts - eigenes wie fremdes Profil, auch ohne Login (über
@@ -282,8 +288,17 @@ export class ProfileService {
       }
       return rueckfall;
     }
-    const zeile = ((data as { rank_mode: unknown; rank_format: unknown }[] | null) ?? [])[0];
-    return zeile ? ProfileService.pruefeRankChoice(zeile.rank_mode, zeile.rank_format) : rueckfall;
+    const zeile = (
+      (data as { rank_mode: unknown; rank_format: unknown; rank_group_id?: unknown }[] | null) ?? []
+    )[0];
+    return zeile
+      ? ProfileService.pruefeRankChoice(
+          zeile.rank_mode,
+          zeile.rank_format,
+          // Ältere Fassung der Funktion kennt die Gruppe noch nicht - dann gilt der Gerätewert.
+          'rank_group_id' in zeile ? zeile.rank_group_id : (lokal?.groupId ?? null),
+        )
+      : rueckfall;
   }
 
   /** Speichert die Rang-Auswahl am eigenen Account und immer auch auf dem Gerät. */
@@ -297,8 +312,14 @@ export class ProfileService {
     if (!current || !ProfileService.rankChoiceVerfuegbar) return;
     const { error } = await supabase
       .from('profiles')
-      .update({ rank_mode: choice.mode, rank_format: choice.format })
+      .update({ rank_mode: choice.mode, rank_format: choice.format, ...(ProfileService.rankGruppeVerfuegbar ? { rank_group_id: choice.groupId } : {}) })
       .eq('id', current.id);
+    // Fehlt nur die neuere Spalte rank_group_id (sql/ranked-gruppe-2026-09-30.sql), gilt die
+    // Gruppenwahl eben nur auf dem Gerät - Modus und Format werden trotzdem gespeichert.
+    if (error && (error.message ?? '').includes('rank_group_id')) {
+      ProfileService.rankGruppeVerfuegbar = false;
+      return this.saveRankChoice(choice);
+    }
     if (error) {
       if (error.code === '42703' || error.code === 'PGRST204') ProfileService.rankChoiceVerfuegbar = false;
       else console.error('Konnte Rang-Auswahl nicht speichern:', error);
@@ -308,16 +329,17 @@ export class ProfileService {
   private static lokaleRankChoice(): RankChoice | null {
     try {
       const wert = JSON.parse(localStorage.getItem(ProfileService.RANK_CHOICE_KEY) ?? 'null');
-      return wert ? ProfileService.pruefeRankChoice(wert.mode, wert.format) : null;
+      return wert ? ProfileService.pruefeRankChoice(wert.mode, wert.format, wert.groupId) : null;
     } catch {
       return null;
     }
   }
 
   /** Unbekannte Werte (alte Formatliste, Tippfehler von Hand) fallen auf den Standard zurück. */
-  private static pruefeRankChoice(mode: unknown, format: unknown): RankChoice {
+  private static pruefeRankChoice(mode: unknown, format: unknown, groupId: unknown): RankChoice {
     const d = ProfileService.DEFAULT_RANK_CHOICE;
     return {
+      groupId: typeof groupId === 'string' ? groupId : null,
       mode: typeof mode === 'string' && (GAME_MODES as string[]).includes(mode) ? (mode as GameMode) : d.mode,
       format:
         format === null

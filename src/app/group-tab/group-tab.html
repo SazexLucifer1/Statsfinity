@@ -55,6 +55,12 @@
                 @if (group.role === 'owner') {
                   <button class="glass-button" (click)="openPermissionsDialog(group.id)">{{ i18n.t('group.permissions') }}</button>
                 }
+                <!-- Rangsystem an/aus: allein Sache des Gruppenleiters, deshalb kein eigenes Recht. -->
+                @if (group.role === 'owner' && groupService.rankedSettingAvailable()) {
+                  <button class="glass-button" (click)="toggleRanked(group.id)">
+                    {{ i18n.t(groupService.isRankedGroup(group.id) ? 'group.rankedTurnOff' : 'group.rankedTurnOn') }}
+                  </button>
+                }
                 @if (groupService.hasPermissionFor(group.id, 'stats.visibility')) {
                   <button class="glass-button" (click)="openVisibilityDialog(group.id)">{{ i18n.t('group.visibility') }}</button>
                 }

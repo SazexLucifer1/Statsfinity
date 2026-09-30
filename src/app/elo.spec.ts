@@ -70,6 +70,13 @@ describe('elo', () => {
     expect(byMatch.get(games[39].id)!.get('A')).toBeCloseTo(last.lastChange);
   });
 
+  it('wertet freie Matches und Turnierspiele nicht', () => {
+    const ranked = match('Normal', 'A', [p('A'), p('B')]);
+    expect(isRatedMatch(ranked)).toBe(true);
+    expect(isRatedMatch({ ...ranked, isRanked: false })).toBe(false);
+    expect(isRatedMatch({ ...ranked, tournamentMatchId: 't1' })).toBe(false);
+  });
+
   it('wertet Formate getrennt, wenn eines angegeben ist', () => {
     const commander = match('Normal', 'A', [p('A'), p('B')], '2026-08-01T10:00:00Z');
     const modern = {

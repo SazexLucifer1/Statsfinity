@@ -49,6 +49,17 @@
 
   @if (editable()) {
     <div class="rank-modes">
+      @if (groups().length > 1) {
+        <select
+          class="glass-input small rank-format-select"
+          [attr.aria-label]="i18n.t('profile.rank.groupAria')"
+          (change)="onGroupSelect($event)"
+        >
+          @for (g of groups(); track g.id) {
+            <option [value]="g.id" [selected]="g.id === groupId()">{{ g.name }}</option>
+          }
+        </select>
+      }
       @if (modes().length > 1) {
         <div class="chip-row" role="group" [attr.aria-label]="i18n.t('profile.rank.modeAria')">
           @for (m of modes(); track m) {
