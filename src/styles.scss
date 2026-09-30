@@ -1098,3 +1098,14 @@ h3 {
       0 0 18px color-mix(in srgb, var(--rank-light) 55%, transparent);
   }
 }
+
+// Rangfarbe für Chips und Karten eines Spielers (Match-Tab: Spielerauswahl, Gruppen-Tab:
+// Spielerliste). Farben wie oben über rankStyle() als --rank-light/--rank-dark. !important, weil
+// die Komponenten ihre eigenen Ränder mit höherer Spezifität setzen (.glass-chip.active,
+// .player-list.player-grid li) - der Rang soll dort immer sichtbar bleiben.
+.rank-tinted {
+  border-color: var(--rank-light) !important;
+  box-shadow:
+    inset 0 0 0 1px var(--rank-dark),
+    0 0 10px color-mix(in srgb, var(--rank-light) 35%, transparent) !important;
+}

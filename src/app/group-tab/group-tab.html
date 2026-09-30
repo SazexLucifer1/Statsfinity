@@ -305,7 +305,8 @@
   } @else {
     <ul class="player-list player-grid">
       @for (player of mtg.allPlayers(); track player) {
-        <li>
+        @let tier = rankTierFor(player);
+        <li [class.rank-tinted]="!!tier" [style]="rankVars(tier)">
           @if (editingPlayer() === player) {
             <input
               class="glass-input"
@@ -318,7 +319,7 @@
             <button class="icon-button confirm" (click)="confirmEditPlayer()" [attr.aria-label]="i18n.t('group.renameConfirmAria')">✓</button>
             <button class="icon-button" (click)="cancelEditPlayer()" [attr.aria-label]="i18n.t('group.cancelAria')">✕</button>
           } @else {
-            <app-player-avatar [url]="mtg.playerAvatars()[player] ?? null" />
+            <app-player-avatar [url]="mtg.playerAvatars()[player] ?? null" [tier]="tier" />
             <span
               class="player-name clickable"
               (click)="isPlayerLinked(player) ? openProfileView(mtg.playerUserIds()[player]!) : openNpcProfileView(player)"
