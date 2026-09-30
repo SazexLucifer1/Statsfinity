@@ -485,8 +485,14 @@
 
 .elo-rate {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+// Abzeichen links, daneben LP und Änderung untereinander.
+.elo-values {
+  display: grid;
+  justify-items: end;
 }
 
 .elo-lp {

@@ -415,13 +415,13 @@
         }
       </span>
       <span class="rate elo-rate">
-        <span>
-          <app-rank-badge [tier]="e.rank.tier" [division]="e.rank.division" [size]="26" [label]="rankLabel(e.rank)" [title]="rankLabel(e.rank)" />
+        <app-rank-badge [tier]="e.rank.tier" [division]="e.rank.division" [size]="44" [label]="rankLabel(e.rank)" [title]="rankLabel(e.rank)" />
+        <span class="elo-values">
           {{ e.lp }}
+          <small class="elo-lp" [class.up]="e.lastChange > 0" [class.down]="e.lastChange < 0">
+            {{ e.lastChange > 0 ? '+' : '' }}{{ e.lastChange }} LP
+          </small>
         </span>
-        <small class="elo-lp" [class.up]="e.lastChange > 0" [class.down]="e.lastChange < 0">
-          {{ e.lastChange > 0 ? '+' : '' }}{{ e.lastChange }} LP
-        </small>
       </span>
     </li>
     }
