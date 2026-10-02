@@ -20,25 +20,29 @@
         </button>
       </div>
 
-      @if (entry(); as e) {
-        <div class="rank-lp">{{ i18n.t('profile.rank.lp', { lp: rank()!.lp }) }}</div>
+      @if (rank(); as r) {
+        @let e = entry()!;
+        <div class="rank-lp">{{ i18n.t('profile.rank.lp', { lp: r.lp }) }}</div>
         @if (next(); as n) {
-          <app-meter
-            class="rank-meter"
-            [value]="rank()!.lp"
-            [max]="100"
-            color="var(--rank-light)"
-          />
+          <app-meter class="rank-meter" [value]="r.lp" [max]="100" color="var(--rank-light)" />
           <small class="hint">{{
             i18n.t('profile.rank.toNext', { lp: n.lp, next: n.name })
           }}</small>
         }
         <small class="hint">
           {{ i18n.t('profile.rank.detail', { games: e.games, wins: e.wins, peak: peakName() }) }}
-          @if (e.provisional) {
-            · {{ i18n.t('profile.rank.placement', { games: e.games, total: placementTotal }) }}
-          }
         </small>
+      } @else if (entry(); as e) {
+        <div class="rank-lp">
+          {{ i18n.t('profile.rank.placement', { games: e.games, total: placementTotal }) }}
+        </div>
+        <app-meter class="rank-meter" [value]="e.games" [max]="placementTotal" />
+        <small class="hint">{{
+          i18n.t('profile.rank.placementHint', {
+            left: placementTotal - e.games,
+            wins: e.wins,
+          })
+        }}</small>
       } @else {
         <small class="hint">{{
           i18n.t('profile.rank.unrankedHint', { mode: choiceLabel() })

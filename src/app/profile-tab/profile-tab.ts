@@ -205,10 +205,10 @@ export class ProfileTab {
     return eloRanking(this.rankMatches(), mode, { format }).find((e) => e.name === name) ?? null;
   });
 
-  /** CSS-Variablen für den Rahmen um den Profilkopf; null = ungewertet, normaler Rahmen. */
+  /** CSS-Variablen für den Rahmen um den Profilkopf; null = ungewertet/Einstufung, normaler Rahmen. */
   readonly rankFrameStyle = computed(() => {
     const e = this.rankEntry();
-    return e ? rankStyle(rankFromLp(e.lp).tier) : null;
+    return e && !e.provisional ? rankStyle(rankFromLp(e.lp).tier) : null;
   });
 
   /**
