@@ -281,14 +281,7 @@ export function ratedModes(matches: readonly Match[], modes: readonly GameMode[]
 // --- Ränge ---
 
 export type RankTier =
-  | 'wood'
-  | 'iron'
-  | 'bronze'
-  | 'silver'
-  | 'gold'
-  | 'platinum'
-  | 'diamond'
-  | 'infinity';
+  'wood' | 'iron' | 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond' | 'infinity';
 
 /** Von unten nach oben. Holz beginnt bei RANK_FLOOR, jeder weitere Rang RANK_SPAN LP darüber. */
 export const RANK_TIERS: readonly RankTier[] = [
