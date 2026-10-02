@@ -1183,6 +1183,10 @@
         <button class="glass-chip small" [class.active]="viewer.cardSortMode() === 'tags'" (click)="viewer.setCardSortMode('tags')">
           {{ viewer.i18n.t('deckView.byOwnTags') }}
         </button>
+        <!-- Einzelpreis an jeder Karte; geladen wird erst beim Einschalten (Scryfall-Abfrage). -->
+        <button class="glass-chip small" [class.active]="viewer.showCardPrices()" (click)="viewer.toggleCardPrices()">
+          {{ viewer.i18n.t('deckView.cardPrices') }}
+        </button>
       </div>
       <input
         class="glass-input"
@@ -1297,6 +1301,9 @@
                     @if (card.quantity > 1) {
                       <span class="deck-card-qty">{{ card.quantity }}×</span>
                     }
+                    @if (viewer.showCardPrices() && viewer.analysis.cardPrice(card.cardName); as price) {
+                      <span class="deck-card-price-badge">{{ price | currency: 'EUR' }}</span>
+                    }
                   }
                 </div>
 
@@ -1382,6 +1389,9 @@
                 }
                 @if (pruefung().markiert.has(card.cardName)) {
                   <span class="ban-badge" aria-hidden="true">!</span>
+                }
+                @if (viewer.showCardPrices() && !viewer.state.editMode() && viewer.analysis.cardPrice(card.cardName); as price) {
+                  <span class="deck-card-price-text">{{ price | currency: 'EUR' }}</span>
                 }
                 @if (viewer.state.editMode() && viewer.edit.showCommanderToggle() && (card.isCommander || viewer.edit.isCommanderEligible(card))) {
                   <button
