@@ -243,6 +243,7 @@ export const deckView = {
     'deckView.landsTile': 'Länder',
     'deckView.nonBasicLandTile': 'Nichtbasisland',
     'deckView.priceTile': 'Kartenpreis (ca.)',
+    'deckView.cardPrices': 'Preise',
     // Vorangestellt, wenn eine Preisabfrage gescheitert ist: Die Summe ist dann nur eine
     // Untergrenze. Bewusst kein Fehlertext - siehe deckPriceIncomplete in deck-analysis.service.ts.
     'deckView.priceFrom': 'ab',
@@ -586,6 +587,7 @@ export const deckView = {
     'deckView.landsTile': 'Lands',
     'deckView.nonBasicLandTile': 'Nonbasic land',
     'deckView.priceTile': 'Card price (approx.)',
+    'deckView.cardPrices': 'Prices',
     'deckView.priceFrom': 'from',
     'deckView.removalTile': 'Removal',
     'deckView.counterspellTile': 'Counterspells',

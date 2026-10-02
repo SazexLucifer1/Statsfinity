@@ -115,6 +115,13 @@ export class DeckAnalysisService {
    * ganz ohne Preis setzen das nicht.
    */
   readonly deckPriceIncomplete = signal(false);
+  /** Preis je Karte (EUR, billigster Druck), Schlüssel wie in ScryfallService.cheapestPrices(). */
+  readonly cardPrices = signal<Map<string, number>>(new Map());
+
+  /** Einzelpreis einer Karte aus der Deckliste - null, solange nicht geladen oder ohne Preis. */
+  cardPrice(cardName: string): number | null {
+    return this.cardPrices().get(normalizeCardName(cardName.split(' // ')[0].trim())) ?? null;
+  }
 
   // --- Diagramm-Reihen für <app-bar-chart> (Abbildung in ui/bar-chart/deck-chart-data.ts) ---
   readonly manaCurveChart = computed<BarChartDatum[]>(() => manaCurveChartData(this.manaCurve()));
@@ -399,6 +406,7 @@ export class DeckAnalysisService {
       const price = prices.get(normalizeCardName(card.cardName.split(' // ')[0].trim()));
       if (price != null) total += price * card.quantity;
     }
+    this.cardPrices.set(prices);
     this.totalDeckPrice.set(total);
     this.deckPriceIncomplete.set(incomplete);
     this.priceBusy.set(false);
@@ -435,6 +443,7 @@ export class DeckAnalysisService {
     this.bracketEstimateErrorDetail.set(null);
     this.totalDeckPrice.set(null);
     this.deckPriceIncomplete.set(false);
+    this.cardPrices.set(new Map());
     this.priceBusy.set(false);
     this.pricePromise = null;
   }

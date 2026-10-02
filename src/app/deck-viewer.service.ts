@@ -242,6 +242,14 @@ export class DeckViewerService {
   });
   readonly detailBusy = signal(false);
   readonly viewMode = signal<'text' | 'visual'>('visual');
+  /** Einzelpreis an jeder Karte der Liste zeigen; lädt die Preise beim ersten Einschalten. */
+  readonly showCardPrices = signal(false);
+
+  toggleCardPrices(): void {
+    this.showCardPrices.update((v) => !v);
+    if (this.showCardPrices())
+      void this.analysis.ensureCardPricesLoaded(this.state.viewingDeckCards());
+  }
   /**
    * Offener Reiter: Kartenliste mit Analyse, Steckbrief oder Primer. Kopf und Kommentare stehen
    * außerhalb und bleiben sichtbar.
@@ -980,6 +988,7 @@ export class DeckViewerService {
     this.flippedDeckCardKeys.set(new Set());
     this.analysis.reset();
     this.viewMode.set('visual');
+    this.showCardPrices.set(false);
     this.cardSortMode.set('type');
     this.effects.reset();
     this.deckStatsScope.set('mine');
