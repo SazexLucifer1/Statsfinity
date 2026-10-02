@@ -405,18 +405,25 @@
   <ul class="ranking">
     @for (e of pagedEloRanking(); track e.name) {
     <li>
-      <span class="rank">{{ medal(e.place) }}</span>
+      <span class="rank">{{ e.provisional ? '–' : medal(e.place) }}</span>
       <span class="name player-name-cell" [class.clickable]="isPlayerLinked(e.name)" (click)="openPlayerProfile(e.name)">
         <app-player-avatar [url]="mtg.playerAvatars()[e.name] ?? null" />
         {{ e.name }}
       </span>
       <span class="detail">
-        {{ i18n.t('stats.elo.detail', { games: e.games, wins: e.wins, peak: e.peak }) }}
         @if (e.provisional) {
-        · {{ i18n.t('stats.elo.provisional') }}
+        {{ i18n.t('stats.elo.placementDetail', { games: e.games, wins: e.wins }) }}
+        } @else {
+        {{ i18n.t('stats.elo.detail', { games: e.games, wins: e.wins, peak: e.peak }) }}
         }
       </span>
       <span class="rate elo-rate">
+        @if (e.provisional) {
+        <app-rank-badge style="filter: grayscale(1); opacity: 0.45" tier="wood" [size]="44" [label]="i18n.t('profile.rank.inPlacement')" [title]="i18n.t('profile.rank.inPlacement')" />
+        <span class="elo-values">
+          {{ i18n.t('profile.rank.placement', { games: e.games, total: placementTotal }) }}
+        </span>
+        } @else {
         <app-rank-badge [tier]="e.rank.tier" [division]="e.rank.division" [size]="44" [label]="rankLabel(e.rank)" [title]="rankLabel(e.rank)" />
         <span class="elo-values">
           {{ e.lp }}
@@ -424,6 +431,7 @@
             {{ e.lastChange > 0 ? '+' : '' }}{{ e.lastChange }} LP
           </small>
         </span>
+        }
       </span>
     </li>
     }

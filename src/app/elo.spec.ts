@@ -5,6 +5,7 @@ import {
   ELO_START,
   divisionLabel,
   rankFromLp,
+  rankTiersFor,
   eloRanking,
   lpChangesByMatch,
   ratedFormatsFor,
@@ -92,8 +93,29 @@ describe('elo', () => {
     ]);
   });
 
+  it('zeigt erst nach der Einstufung einen Rang und sortiert Eingestufte nach vorn', () => {
+    const games: Match[] = [];
+    for (let i = 0; i < 10; i++) {
+      const minute = String(i).padStart(2, '0');
+      const players = [p('A'), p('B')];
+      if (i === 9) players.push(p('Neu'));
+      games.push(match('Normal', 'A', players, `2026-08-01T10:${minute}:00Z`));
+    }
+    const ranking = eloRanking(games, 'Normal');
+    expect(ranking.map((e) => [e.name, e.provisional])).toEqual([
+      ['A', false],
+      ['B', false],
+      ['Neu', true],
+    ]);
+    const a = ranking[0];
+    expect(a.peak).toBe(a.lp);
+    expect(rankTiersFor(games, 'Normal').has('Neu')).toBe(false);
+    expect(rankTiersFor(games, 'Normal').get('A')).toBe(rankFromLp(a.lp).tier);
+  });
+
   it('ordnet LP Rängen und Divisionen zu', () => {
-    expect(rankFromLp(ELO_START)).toEqual({ tier: 'wood', division: 5, lp: 0 });
+    expect(rankFromLp(800)).toEqual({ tier: 'wood', division: 5, lp: 0 });
+    expect(rankFromLp(ELO_START)).toEqual({ tier: 'silver', division: 5, lp: 0 });
     expect(rankFromLp(0)).toEqual({ tier: 'wood', division: 5, lp: 0 });
     expect(rankFromLp(1250)).toEqual({ tier: 'wood', division: 1, lp: 50 });
     expect(rankFromLp(1300)).toEqual({ tier: 'iron', division: 5, lp: 0 });
