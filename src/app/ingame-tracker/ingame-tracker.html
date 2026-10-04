@@ -334,6 +334,21 @@
             </button>
           </div>
 
+      <!-- Optional: wer angefangen hat (aus der Auslosung vorbelegt). Daraus entsteht beim Speichern
+           die Zugreihenfolge für die Statistik "Winrate als Erster/Zweiter/...". -->
+      <h3 class="winner-subtitle">{{ i18n.t('ingame.whoStarted') }}</h3>
+      <div class="chip-row">
+        @for (unit of session.ingameUnits(); track unit.key) {
+        <button
+          class="glass-chip"
+          [class.active]="session.startingPlayerKey() === unit.key"
+          (click)="session.toggleStartingPlayer(unit.key)"
+        >
+          {{ unit.label }}
+        </button>
+        }
+      </div>
+
           <button class="glass-button primary" [disabled]="!session.canSave() || session.saving()" (click)="finishGame()">
             {{ session.saving() ? i18n.t('deckView.savingInfo') : i18n.t('ingame.saveAndFinish') }}
           </button>

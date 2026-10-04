@@ -59,6 +59,7 @@ export const ingame = {
     'ingame.reorderHintBanner':
       'Tippe zwei Spieler an, um sie zu tauschen – Haken in der Mitte zum Beenden',
     'ingame.whoWon': 'Wer hat gewonnen?',
+    'ingame.whoStarted': 'Wer hat angefangen? (optional)',
     'ingame.archenemy': 'Archenemy',
     'ingame.allOthers': 'Alle anderen',
     'ingame.draw': 'Unentschieden',
@@ -134,6 +135,7 @@ export const ingame = {
     'ingame.resetPin': '↩️ Automatic (reset)',
     'ingame.reorderHintBanner': 'Tap two players to swap them – checkmark in the middle to finish',
     'ingame.whoWon': 'Who won?',
+    'ingame.whoStarted': 'Who went first? (optional)',
     'ingame.archenemy': 'Archenemy',
     'ingame.allOthers': 'Everyone else',
     'ingame.draw': 'Draw',

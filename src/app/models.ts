@@ -110,7 +110,23 @@ export interface MatchPlayer {
    * bleibt davon unberührt, jeder Nicht-Sieger zählt weiterhin ganz normal als Niederlage.
    */
   placement?: number;
+  /** Platz in der Zugreihenfolge, 1 = hat angefangen (match_players.turn_order). Fehlt = unbekannt. */
+  turnOrder?: number;
 }
+
+/**
+ * Lebenspunkte-Verlauf einer Partie (matches.life_log, sql/partie-verlauf-2026-10-04.sql).
+ * `events` sind [Sekunde seit Spielstart, Index in `units`, Delta] - mit einer 1 an vierter Stelle
+ * ist es Gift statt Leben. Kompakt statt sprechender Objekte, weil jede Änderung ein Eintrag ist.
+ */
+export interface LifeLog {
+  v: 1;
+  start: number;
+  units: string[];
+  events: LifeLogEvent[];
+}
+
+export type LifeLogEvent = [number, number, number] | [number, number, number, 1];
 
 export interface Match {
   id: string;
@@ -152,6 +168,8 @@ export interface Match {
    * ausstehend, alte Zeilen), gilt das Match als Ranked. Turnierspiele zählen nie.
    */
   isRanked?: boolean;
+  /** Start der Partie im Tracker (matches.started_at); Dauer = date - startedAt. Fehlt = unbekannt. */
+  startedAt?: string;
 }
 
 export interface Cube {

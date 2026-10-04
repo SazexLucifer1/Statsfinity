@@ -523,6 +523,12 @@
       color: #ff8f8f;
     }
   }
+
+  .winner-subtitle {
+    margin: var(--sp-6) 0 var(--sp-3);
+    font-size: 0.95rem;
+    opacity: 0.85;
+  }
 }
 
 .background-picker-overlay {

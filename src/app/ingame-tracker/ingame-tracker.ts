@@ -328,6 +328,8 @@ export class IngameTracker implements AfterViewInit, OnDestroy {
 
       if (step >= totalSteps) {
         this.rouletteResultUnit.set(units[currentIndex]);
+        // Fürs Speichern merken (Zugreihenfolge) - im Sieger-Dialog lässt es sich noch ändern.
+        this.session.startingPlayerKey.set(units[currentIndex].key);
         return;
       }
 

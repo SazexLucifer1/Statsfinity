@@ -1,5 +1,5 @@
 import { Injectable, computed, effect, signal, inject } from '@angular/core';
-import { Match, MatchPlayer, Cube, GameMode, GAME_MODES } from './models';
+import { Match, MatchPlayer, Cube, GameMode, GAME_MODES, LifeLog } from './models';
 import { supabase } from './supabase.client';
 import { GroupService } from './group.service';
 import { AuthService } from './auth.service';
@@ -24,6 +24,7 @@ const MATCH_HISTORY_SELECT = `
   tournament_game_number,
   counts_in_general_stats,
   is_ranked,
+  started_at,
   cubes ( id, name, is_commander ),
   match_players (
     player_name,
@@ -33,6 +34,7 @@ const MATCH_HISTORY_SELECT = `
     is_archenemy,
     deck_id,
     placement,
+    turn_order,
     decks ( name, user_id, player_id, is_precon ),
     players ( display_name )
   )
@@ -66,7 +68,29 @@ function isMissingIsRankedError(error: { code?: string; message?: string } | nul
 }
 
 function ohneIsRanked(select: string): string {
-  return isRankedSpalteVerfuegbar ? select : select.replace('  is_ranked,\n', '');
+  const ohne = isRankedSpalteVerfuegbar ? select : select.replace('  is_ranked,\n', '');
+  return ohnePartieVerlauf(ohne);
+}
+
+/**
+ * Fehlen matches.started_at/life_log oder match_players.turn_order noch
+ * (sql/partie-verlauf-2026-10-04.sql)? Dann einmal je Sitzung ohne sie laden und speichern -
+ * Startspieler, Dauer und Lebenspunkte-Verlauf gehen dann verloren, die Partie selbst nicht.
+ */
+let partieVerlaufVerfuegbar = true;
+
+function isMissingPartieVerlaufError(error: { code?: string; message?: string } | null): boolean {
+  if (!error || !partieVerlaufVerfuegbar) return false;
+  if (error.code !== '42703' && error.code !== 'PGRST204') return false;
+  const message = error.message ?? '';
+  if (!['started_at', 'life_log', 'turn_order'].some((spalte) => message.includes(spalte))) return false;
+  console.warn('Spalten für den Partie-Verlauf fehlen noch - sql/partie-verlauf-2026-10-04.sql im Supabase-SQL-Editor ausführen. Bis dahin werden Startspieler, Dauer und Lebenspunkte-Verlauf nicht gespeichert.');
+  partieVerlaufVerfuegbar = false;
+  return true;
+}
+
+function ohnePartieVerlauf(select: string): string {
+  return partieVerlaufVerfuegbar ? select : select.replace('  started_at,\n', '').replace('    turn_order,\n', '');
 }
 
 @Injectable({ providedIn: 'root' })
@@ -762,6 +786,9 @@ export class MtgService {
   ): Promise<any[] | null> {
     let first = await run(ohneIsRanked(MATCH_HISTORY_SELECT));
     if (isMissingIsRankedError(first.error)) first = await run(ohneIsRanked(MATCH_HISTORY_SELECT));
+    if (isMissingPartieVerlaufError(first.error)) first = await run(ohneIsRanked(MATCH_HISTORY_SELECT));
+    // Erst die eine, dann die andere Spalte kann fehlen - jede schaltet sich einmal selbst ab.
+    if (isMissingIsRankedError(first.error)) first = await run(ohneIsRanked(MATCH_HISTORY_SELECT));
     if (!first.error) return first.data ?? [];
 
     if (isMissingGameFormatError(first.error)) {
@@ -885,6 +912,8 @@ export class MtgService {
       countsInGeneralStats?: boolean;
       /** Default true; Turnierspiele werden immer als frei gespeichert - siehe Match.isRanked. */
       isRanked?: boolean;
+      /** Lebenspunkte-Verlauf aus dem Tracker (matches.life_log) - nur gespeichert, nie lokal gehalten. */
+      lifeLog?: LifeLog;
     }
   ): Promise<string | null> {
     const groupId = this.groupService.groupId();
@@ -911,11 +940,16 @@ export class MtgService {
           draft_set_released_at: match.draftSet?.releasedAt ?? null,
           tournament_match_id: match.tournamentMatchId ?? null,
           counts_in_general_stats: match.countsInGeneralStats ?? true,
+          ...(partieVerlaufVerfuegbar
+            ? { started_at: match.startedAt ?? null, life_log: match.lifeLog ?? null }
+            : {}),
         })
         .select('id, played_at')
         .single();
-    // Fehlt is_ranked noch, schaltet der erste Versuch sie ab und der zweite läuft ohne.
+    // Fehlt eine der neueren Spalten, schaltet der Versuch sie ab und der nächste läuft ohne.
     let { data: matchRow, error: matchError } = await insertMatch();
+    if (isMissingIsRankedError(matchError)) ({ data: matchRow, error: matchError } = await insertMatch());
+    if (isMissingPartieVerlaufError(matchError)) ({ data: matchRow, error: matchError } = await insertMatch());
     if (isMissingIsRankedError(matchError)) ({ data: matchRow, error: matchError } = await insertMatch());
 
     if (matchError || !matchRow) {
@@ -933,9 +967,14 @@ export class MtgService {
       team: p.team ?? null,
       is_archenemy: p.isArchenemy ?? false,
       deck_id: p.deckId ?? null,
+      ...(partieVerlaufVerfuegbar ? { turn_order: p.turnOrder ?? null } : {}),
     }));
 
-    const { error: playersError } = await supabase.from('match_players').insert(playerRows);
+    let { error: playersError } = await supabase.from('match_players').insert(playerRows);
+    if (isMissingPartieVerlaufError(playersError)) {
+      const ohneZugreihenfolge = playerRows.map(({ turn_order: _, ...row }: Record<string, unknown>) => row);
+      ({ error: playersError } = await supabase.from('match_players').insert(ohneZugreihenfolge));
+    }
 
     if (playersError) {
       console.error('Konnte Match-Spieler nicht anlegen:', playersError);
@@ -959,8 +998,9 @@ export class MtgService {
       deckPrecons = Object.fromEntries((deckRows ?? []).map((d) => [d.id, d.is_precon]));
     }
 
+    const { lifeLog: _lifeLog, ...matchOhneVerlauf } = match;
     const full: Match = {
-      ...match,
+      ...matchOhneVerlauf,
       id: matchRow.id,
       date: matchRow.played_at,
       countsInGeneralStats: match.countsInGeneralStats ?? true,

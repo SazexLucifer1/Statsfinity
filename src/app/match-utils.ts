@@ -83,6 +83,7 @@ export function mapMatchRow(row: any): Match {
     tournamentGameNumber: row.tournament_game_number ?? undefined,
     countsInGeneralStats: row.counts_in_general_stats ?? true,
     isRanked: row.is_ranked ?? true,
+    startedAt: row.started_at ?? undefined,
     players: (row.match_players ?? []).map((mp: any) => ({
       name: mp.player_name ?? mp.players?.display_name ?? '',
       commander: mp.commander_name ?? undefined,
@@ -95,6 +96,7 @@ export function mapMatchRow(row: any): Match {
       deckOwnerPlayerId: mp.decks?.player_id ?? undefined,
       deckIsPrecon: mp.decks?.is_precon ?? undefined,
       placement: mp.placement ?? undefined,
+      turnOrder: mp.turn_order ?? undefined,
     })),
   };
 

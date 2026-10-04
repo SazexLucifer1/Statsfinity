@@ -3,6 +3,9 @@ export const match = {
   de: {
     'match.ranked': 'Ranked',
     'match.casual': 'Frei',
+    'match.durationMinutes': '{{min}} Min.',
+    'match.durationHours': '{{h}} Std. {{min}} Min.',
+    'match.wentFirst': 'Hat angefangen',
     'match.rankedAria': 'Ranked oder freies Match',
     'match.rankedEditHint': 'Zählt dieses Match für die Ränge?',
     // --- Match-Tab: Neues Match ---
@@ -124,6 +127,9 @@ export const match = {
   en: {
     'match.ranked': 'Ranked',
     'match.casual': 'Casual',
+    'match.durationMinutes': '{{min}} min',
+    'match.durationHours': '{{h}} h {{min}} min',
+    'match.wentFirst': 'Went first',
     'match.rankedAria': 'Ranked or casual match',
     'match.rankedEditHint': 'Does this match count towards the ranks?',
     // --- Match tab: New match ---

@@ -1,6 +1,6 @@
 import { Injectable, WritableSignal, computed, effect, inject, signal } from '@angular/core';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { DeckFormat, GameMode, MatchPlayer, TEAM_OPTIONS, TeamName } from './models';
+import { DeckFormat, GameMode, LifeLog, LifeLogEvent, MatchPlayer, TEAM_OPTIONS, TeamName } from './models';
 
 /** Formate mit Singleton-Regel/eigenem Commander - steuert, ob bei Kategorie 'Normal' die Commander-Auswahl im Match-Tab erscheint (siehe GameSessionService.requiresCommanderSelection). */
 const COMMANDER_STYLE_FORMATS: DeckFormat[] = ['Commander', 'Pauper Commander', 'Brawl', 'Historic Brawl'];
@@ -9,6 +9,13 @@ import { I18nService } from './i18n.service';
 import { GroupService } from './group.service';
 import { AuthService } from './auth.service';
 import { supabase } from './supabase.client';
+
+/**
+ * Obergrenze für den Lebenspunkte-Verlauf einer Partie. Eine lange Commander-Runde kommt auf
+ * einige hundert Änderungen; die Grenze fängt nur einen Ausreißer ab (Finger auf dem Knopf
+ * vergessen), damit weder der Live-Sync noch die Zeile in matches ausufern.
+ */
+const LIFE_LOG_MAX_EVENTS = 3000;
 
 /** Einmal pro Tab/Ladevorgang erzeugt - dient dazu, eigene Realtime-Updates (Echo) beim Empfang wiederzuerkennen und zu ignorieren. */
 const CLIENT_ID = crypto.randomUUID();
@@ -50,6 +57,12 @@ export interface LiveSessionState {
   manualOrder: string[] | null;
   pinnedBottomKey: string | null;
   winner: string | null;
+  /** Ab hier optional: fehlen bei Sessions von vor dem Partie-Verlauf (sql/partie-verlauf-2026-10-04.sql). */
+  startedAt?: string | null;
+  startingPlayerKey?: string | null;
+  lifeLogUnits?: string[];
+  lifeLogStart?: number;
+  lifeLog?: LifeLogEvent[];
 }
 
 export interface SelectedDraftSet {
@@ -180,7 +193,77 @@ export class GameSessionService {
     manualOrder: this.manualOrder(),
     pinnedBottomKey: this.pinnedBottomKey(),
     winner: this.winner(),
+    startedAt: this.startedAt(),
+    startingPlayerKey: this.startingPlayerKey(),
+    lifeLogUnits: this.lifeLogUnits(),
+    lifeLogStart: this.lifeLogStart(),
+    lifeLog: this.lifeLog(),
   }));
+
+  // --- Partie-Verlauf (sql/partie-verlauf-2026-10-04.sql): Startzeit, Startspieler und jede
+  // Lebenspunkte-/Giftänderung. Liegt im synchronisierten Zustand, damit das speichernde Gerät
+  // auch die Änderungen kennt, die auf einem anderen getippt wurden. ---
+
+  /** Zeitpunkt von startGame() als ISO-String. */
+  readonly startedAt = signal<string | null>(null);
+  /** Panel-Key der Einheit, die angefangen hat - aus der Auslosung oder im Sieger-Dialog gewählt. */
+  readonly startingPlayerKey = signal<string | null>(null);
+  /** Panel-Keys beim Spielstart; die Einträge in lifeLog verweisen per Index darauf. */
+  readonly lifeLogUnits = signal<string[]>([]);
+  readonly lifeLogStart = signal(0);
+  readonly lifeLog = signal<LifeLogEvent[]>([]);
+
+  private logLifeChange(key: string, delta: number, poison: boolean): void {
+    const startedAt = this.startedAt();
+    if (!startedAt || delta === 0) return;
+    const unit = this.lifeLogUnits().indexOf(key);
+    if (unit === -1) return;
+    const second = Math.max(0, Math.round((Date.now() - new Date(startedAt).getTime()) / 1000));
+    const event: LifeLogEvent = poison ? [second, unit, delta, 1] : [second, unit, delta];
+    this.lifeLog.update((log) => (log.length >= LIFE_LOG_MAX_EVENTS ? log : [...log, event]));
+  }
+
+  /** Startspieler setzen; derselbe Key ein zweites Mal hebt die Auswahl auf. */
+  toggleStartingPlayer(key: string): void {
+    this.startingPlayerKey.update((current) => (current === key ? null : key));
+  }
+
+  /**
+   * Sitzordnung im Uhrzeigersinn, so wie die Panels um das Handy herum liegen. In der
+   * zweispaltigen Ansicht sitzt die linke Spalte am linken Tischrand (Panel um 90° gedreht), die
+   * rechte am rechten, ein Sonderslot unten an der unteren Kante. Von oben gesehen im
+   * Uhrzeigersinn: rechte Spalte von oben nach unten, dann unten, dann linke Spalte von unten
+   * nach oben. Magic gibt den Zug nach links weiter - für jemanden, der zur Tischmitte schaut, ist
+   * das genau diese Richtung. Stimmt nur, wenn die Panels so liegen wie die Leute sitzen (dafür
+   * gibt es "Spieler neu anordnen").
+   */
+  private seatingRing(): string[] {
+    const units = this.ingameUnits().map((u) => u.key);
+    if (this.ingameColumns() === 1) return units;
+    const bottom = this.hasOddBottomSlot() ? units.pop() : undefined;
+    const left = units.filter((_, i) => i % 2 === 0);
+    const right = units.filter((_, i) => i % 2 === 1);
+    return [...right, ...(bottom ? [bottom] : []), ...left.reverse()];
+  }
+
+  /** Panel-Key -> Platz in der Zugreihenfolge (1 = Startspieler); leer, solange keiner gewählt ist. */
+  turnOrderByUnit(): Record<string, number> {
+    const starter = this.startingPlayerKey();
+    const ring = this.seatingRing();
+    const startIndex = starter ? ring.indexOf(starter) : -1;
+    if (startIndex === -1) return {};
+    const order: Record<string, number> = {};
+    ring.forEach((key, i) => {
+      order[key] = ((i - startIndex + ring.length) % ring.length) + 1;
+    });
+    return order;
+  }
+
+  /** Verlauf für matches.life_log, oder undefined, wenn die Partie nicht im Tracker lief. */
+  private buildLifeLog(): LifeLog | undefined {
+    if (!this.startedAt() || this.lifeLogUnits().length === 0) return undefined;
+    return { v: 1, start: this.lifeLogStart(), units: this.lifeLogUnits(), events: this.lifeLog() };
+  }
 
   /** Nach Panel-Key indiziert (Spielername bzw. 2HG-Team). */
   readonly lifeTotals = signal<Record<string, number>>({});
@@ -592,6 +675,11 @@ export class GameSessionService {
     this.manualOrder.set(state.manualOrder);
     this.pinnedBottomKey.set(state.pinnedBottomKey);
     this.winner.set(state.winner);
+    this.startedAt.set(state.startedAt ?? null);
+    this.startingPlayerKey.set(state.startingPlayerKey ?? null);
+    this.lifeLogUnits.set(state.lifeLogUnits ?? []);
+    this.lifeLogStart.set(state.lifeLogStart ?? 0);
+    this.lifeLog.set(state.lifeLog ?? []);
     this.lastSyncedSignature = stableStringify(state);
   }
 
@@ -718,6 +806,7 @@ export class GameSessionService {
 
   adjustLife(key: string, delta: number): void {
     this.lifeTotals.update((totals) => ({ ...totals, [key]: (totals[key] ?? 0) + delta }));
+    this.logLifeChange(key, delta, false);
   }
 
   adjustCommanderDamage(target: string, sourceKey: string, delta: number): void {
@@ -739,10 +828,10 @@ export class GameSessionService {
   }
 
   adjustPoison(key: string, delta: number): void {
-    this.poisonCounters.update((totals) => ({
-      ...totals,
-      [key]: Math.max(0, (totals[key] ?? 0) + delta),
-    }));
+    const current = this.poisonValue(key);
+    const next = Math.max(0, current + delta);
+    this.poisonCounters.update((totals) => ({ ...totals, [key]: next }));
+    this.logLifeChange(key, next - current, true);
   }
 
   // --- Gepuffertes Tippen: Leben/Gift/Commander-Schaden sammeln ein sichtbares Delta ("-6") und
@@ -868,6 +957,11 @@ export class GameSessionService {
     this.commanderDamage.set(damage);
     this.poisonCounters.set(poison);
     this.poisonView.set(poisonViews);
+    this.startedAt.set(new Date().toISOString());
+    this.startingPlayerKey.set(null);
+    this.lifeLogUnits.set(Object.keys(totals));
+    this.lifeLogStart.set(startLife);
+    this.lifeLog.set([]);
     this.commanderDamageFocus.set(null);
     this.deadPlayers.set({});
     this.showWinnerPanel.set(false);
@@ -898,7 +992,12 @@ export class GameSessionService {
     try {
       const cube = this.mtg.cubes().find((c) => c.id === this.selectedCubeId());
       const draftSet = this.selectedDraftSet();
-      const players = this.selectedPlayers();
+      // Platz in der Zugreihenfolge je Spieler - bei 2HG teilen sich die Teammitglieder ihn.
+      const turnOrder = this.turnOrderByUnit();
+      const players = this.selectedPlayers().map((p) => {
+        const order = turnOrder[this.isTwoHeadedGiantMode() ? (p.team ?? '') : p.name];
+        return order ? { ...p, turnOrder: order } : p;
+      });
       const tournamentMatchId = this.activeTournamentMatchId() ?? undefined;
 
       const matchId = await this.mtg.addMatch({
@@ -919,6 +1018,8 @@ export class GameSessionService {
         tournamentMatchId,
         countsInGeneralStats: this.activeTournamentCountsInStats(),
         isRanked: this.isRanked(),
+        startedAt: this.startedAt() ?? undefined,
+        lifeLog: this.buildLifeLog(),
       });
 
       if (matchId) {
@@ -970,6 +1071,11 @@ export class GameSessionService {
     this.manualOrder.set(null);
     this.activeTournamentMatchId.set(null);
     this.activeTournamentCountsInStats.set(true);
+    this.startedAt.set(null);
+    this.startingPlayerKey.set(null);
+    this.lifeLogUnits.set([]);
+    this.lifeLogStart.set(0);
+    this.lifeLog.set([]);
   }
 
   // --- Setup-Mutationen (Spieler, Commander, Team, Archenemy) ---

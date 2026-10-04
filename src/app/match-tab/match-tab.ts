@@ -722,6 +722,19 @@ export class MatchTab {
   }
 
   /**
+   * Spieldauer aus Tracker-Start und Speicherzeitpunkt (sql/partie-verlauf-2026-10-04.sql), oder
+   * null bei Partien ohne Startzeit. Unter einer Minute wird nichts gezeigt - das ist ein
+   * Fehlstart oder ein Test, keine Partie.
+   */
+  matchDuration(match: Match): string | null {
+    if (!match.startedAt) return null;
+    const minutes = Math.round((new Date(match.date).getTime() - new Date(match.startedAt).getTime()) / 60_000);
+    if (!Number.isFinite(minutes) || minutes < 1) return null;
+    if (minutes < 60) return this.i18n.t('match.durationMinutes', { min: minutes });
+    return this.i18n.t('match.durationHours', { h: Math.floor(minutes / 60), min: minutes % 60 });
+  }
+
+  /**
    * Zweite Zeile einer Verlaufszeile: Rolle, Team und Commander. Stand vorher als "– Archenemy
    * – Kommandeur" hinter dem Namen in derselben Zeile und schob sie auf dem Handy über den Rand.
    */

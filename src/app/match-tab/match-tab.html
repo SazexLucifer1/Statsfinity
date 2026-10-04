@@ -379,7 +379,9 @@
       } @else {
         <span class="match-log-mode">{{ modeLabel(match.mode, match.format) }}</span>
       }
-      <span class="match-log-date">{{ match.date | date: 'dd.MM.yyyy, HH:mm' }}</span>
+      <span class="match-log-date"
+        >{{ match.date | date: 'dd.MM.yyyy, HH:mm' }}@if (matchDuration(match); as duration) { · {{ duration }}}</span
+      >
       <!-- Nur "Frei" wird markiert - Ranked ist der Normalfall und bräuchte an jeder Karte ein
            Etikett, das nichts sagt. Turnierspiele sind ohnehin nie Ranked. -->
       @if (groupService.rankedEnabled() && match.isRanked === false && !match.tournamentMatchId) {
@@ -590,6 +592,9 @@
         <app-icon name="trophy" />
       }
       <span class="match-log-name-text">{{ p.name }}</span>
+      @if (p.turnOrder === 1) {
+        <span class="match-log-starter"><app-icon name="play" [label]="i18n.t('match.wentFirst')" /></span>
+      }
       @if (p.placement) {
         <span
           class="match-log-place"
