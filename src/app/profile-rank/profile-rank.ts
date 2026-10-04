@@ -64,16 +64,19 @@ export class ProfileRank {
 
   readonly showInfo = signal(false);
 
+  /** null = ungewertet oder noch in der Einstufung - beides zeigt noch keinen Rang. */
   readonly rank = computed<Rank | null>(() => {
     const e = this.entry();
-    return e ? rankFromLp(e.lp) : null;
+    return e && !e.provisional ? rankFromLp(e.lp) : null;
   });
   readonly hostStyle = computed(() => rankStyle(this.rank()?.tier ?? null));
 
-  readonly rankName = computed(() => this.nameOf(this.rank()));
+  readonly rankName = computed(() =>
+    this.entry()?.provisional ? this.i18n.t('profile.rank.inPlacement') : this.nameOf(this.rank()),
+  );
   readonly peakName = computed(() => {
     const e = this.entry();
-    return e ? this.nameOf(rankFromLp(e.peak)) : '';
+    return e && !e.provisional ? this.nameOf(rankFromLp(e.peak)) : '';
   });
 
   /** Nächste Stufe (Division oder Rang) und wie viele LP fehlen; null bei Infinity. */

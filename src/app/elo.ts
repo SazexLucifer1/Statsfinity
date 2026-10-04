@@ -17,9 +17,14 @@ import { DeckFormat, GameMode, LIVE_TRACKING_START_DATE, Match } from './models'
  *
  * Teamkollegen (Two-Headed Giant) und die Verbündeten gegen den Archenemy duellieren sich nicht.
  *
- * Skala wie in League of Legends: LP (League Points), Start 800 = Holz V (ganz unten), je Division 100 LP,
+ * Skala wie in League of Legends: LP (League Points), Holz V (800) ganz unten, je Division 100 LP,
  * fünf Divisionen je Rang (siehe rankFromLp()). Ein Sieg gegen gleich starke Gegner bringt rund
  * 50 LP (K / 2, im Pod wie im 1v1).
+ *
+ * Einstufung wie in LoL: Jeder beginnt in der Mitte der Skala, bei Silber V (ELO_START), nicht ganz
+ * unten - sonst stünde jeder Neue erst einmal in Holz, auch wer besser spielt als die halbe Gruppe.
+ * Die ersten ELO_PROVISIONAL_GAMES Partien zählen mit höherem K und zeigen noch keinen Rang
+ * ("Einstufung 3/10"); erst danach steht fest, wo man einsteigt.
  *
  * Zwei Zahlen je Spieler: `rating` ist die reine Elo (Nullsumme) und bestimmt, wie stark ein
  * Spieler für die Erwartung seiner Gegner gilt. `lp` ist das, was angezeigt wird: dieselbe Zahl
@@ -30,7 +35,6 @@ import { DeckFormat, GameMode, LIVE_TRACKING_START_DATE, Match } from './models'
  * einen Gegner nicht stärker.
  */
 
-export const ELO_START = 800;
 /** K-Faktor; in den ersten Partien höher, damit neue Spieler schneller an ihren Platz kommen. */
 export const ELO_K = 100;
 export const ELO_K_PROVISIONAL = 150;
@@ -52,7 +56,7 @@ export interface EloEntry {
   lp: number;
   games: number;
   wins: number;
-  /** Höchster erreichter LP-Wert. */
+  /** Höchster erreichter LP-Wert seit Ende der Einstufung (vorher ohne Bedeutung). */
   peak: number;
   /** LP der letzten Partie in diesem Modus (inklusive Bonus). */
   lastChange: number;
@@ -205,13 +209,19 @@ export function eloRanking(
       e.lastChange = change + ELO_LP_BONUS;
       e.games++;
       if (seat.rank === 1 && seats.some((s) => s.rank > 1)) e.wins++;
-      e.peak = Math.max(e.peak, e.lp);
       e.provisional = e.games < ELO_PROVISIONAL_GAMES;
+      // Der Bestwert beginnt erst mit dem eingestuften Rang - ein Zwischenstand der Einstufung
+      // ist kein erreichter Rang.
+      if (e.games === ELO_PROVISIONAL_GAMES) e.peak = e.lp;
+      else if (!e.provisional) e.peak = Math.max(e.peak, e.lp);
     }
     onMatch?.(match, lpChanges);
   }
 
-  return [...table.values()].sort((a, b) => b.lp - a.lp || b.games - a.games);
+  // Wer noch in der Einstufung ist, hat keinen Platz in der Rangliste verdient - er steht hinten.
+  return [...table.values()].sort(
+    (a, b) => Number(a.provisional) - Number(b.provisional) || b.lp - a.lp || b.games - a.games,
+  );
 }
 
 /**
@@ -250,7 +260,8 @@ export function ratedFormatsFor(
 
 /**
  * Rang je Spieler für einen Modus (und optional ein Format) - für die farbigen Ringe um die
- * Profilbilder in Match- und Statistik-Tab. Wer dort noch keine gewertete Partie hat, fehlt.
+ * Profilbilder in Match- und Statistik-Tab. Wer dort noch keine gewertete Partie hat oder noch in
+ * der Einstufung steckt, fehlt.
  */
 export function rankTiersFor(
   matches: readonly Match[],
@@ -258,7 +269,7 @@ export function rankTiersFor(
   format?: DeckFormat | null,
 ): Map<string, RankTier> {
   const ranking = eloRanking(matches, mode, format === undefined ? {} : { format });
-  return new Map(ranking.map((e) => [e.name, rankFromLp(e.lp).tier]));
+  return new Map(ranking.filter((e) => !e.provisional).map((e) => [e.name, rankFromLp(e.lp).tier]));
 }
 
 /** Modi, in denen es überhaupt gewertete Partien gibt, in der Reihenfolge von `modes`. */
@@ -283,11 +294,13 @@ export const RANK_TIERS: readonly RankTier[] = [
   'diamond',
   'infinity',
 ];
-/** = ELO_START: Man beginnt in Holz V mit 0 LP und arbeitet sich über Holz I nach Eisen V. */
-export const RANK_FLOOR = ELO_START;
+/** Untergrenze von Holz V. */
+export const RANK_FLOOR = 800;
 export const DIVISION_LP = 100;
 export const DIVISIONS = 5;
 const RANK_SPAN = DIVISION_LP * DIVISIONS;
+/** Startwert = Silber V, 0 LP (drei Ränge über Holz V), siehe Dateikopf. */
+export const ELO_START = RANK_FLOOR + RANK_TIERS.indexOf('silver') * RANK_SPAN;
 
 export interface Rank {
   tier: RankTier;

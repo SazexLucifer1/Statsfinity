@@ -25,7 +25,11 @@ import {
 import { I18nService } from '../i18n.service';
 import { TournamentHistory } from '../tournament-history/tournament-history';
 import { isImportLossDuplicate, isPlayerWinner as isMatchWinner } from '../match-utils';
-import { EloEntry, RankTier, divisionLabel, eloRanking, rankFromLp, rankTiersFor, ratedModes } from '../elo';
+import {
+  ELO_PROVISIONAL_GAMES,
+  EloEntry,
+  RankTier,
+  divisionLabel, eloRanking, rankFromLp, rankTiersFor, ratedModes } from '../elo';
 import { RankBadge, rankStyle } from '../ui/rank-badge/rank-badge';
 import { Meter } from '../ui/meter/meter';
 import { Pager } from '../ui/pager/pager';
@@ -302,6 +306,7 @@ export class StatsTab {
       }));
   });
   readonly showEloInfo = signal(false);
+  readonly placementTotal = ELO_PROVISIONAL_GAMES;
 
   /**
    * Rangfarbe für die Ringe um die Profilbilder im ganzen Tab - derselbe Modus wie die Elo-Liste
