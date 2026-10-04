@@ -37,6 +37,9 @@ export interface LiveSessionState {
   format: DeckFormat | null;
   /** Ranked oder freies Match (Match.isRanked); fehlt bei Sessions von vor diesem Feature -> Ranked. */
   isRanked?: boolean;
+  /** Panel-Key mit Monarch- bzw. Initiative-Marke; fehlen bei älteren Sessions -> niemand. */
+  monarchKey?: string | null;
+  initiativeKey?: string | null;
   selectedPlayers: MatchPlayer[];
   selectedCubeId: string | null;
   selectedDraftSet: SelectedDraftSet | null;
@@ -58,6 +61,16 @@ export interface SelectedDraftSet {
   name: string;
   releasedAt?: string;
   set_type?: string;
+}
+
+/** Eine verrechnete Änderung, die "Rückgängig" per Gegenbuchung zurücknimmt. */
+export interface UndoEntry {
+  kind: 'life' | 'poison' | 'commanderDamage';
+  /** Panel-Key; bei Commander-Schaden das Ziel. */
+  key: string;
+  /** Nur bei Commander-Schaden: die Quelle ("Name::main"). */
+  sourceKey?: string;
+  delta: number;
 }
 
 export interface DamageSource {
@@ -167,6 +180,8 @@ export class GameSessionService {
     mode: this.mode(),
     format: this.format(),
     isRanked: this.isRanked(),
+    monarchKey: this.monarchKey(),
+    initiativeKey: this.initiativeKey(),
     selectedPlayers: this.selectedPlayers(),
     selectedCubeId: this.selectedCubeId(),
     selectedDraftSet: this.selectedDraftSet(),
@@ -577,6 +592,8 @@ export class GameSessionService {
   private applySyncSnapshot(state: LiveSessionState): void {
     this.mode.set(state.mode);
     this.isRanked.set(state.isRanked ?? true);
+    this.monarchKey.set(state.monarchKey ?? null);
+    this.initiativeKey.set(state.initiativeKey ?? null);
     // Fallback für Sessions von vor diesem Feature (state.format fehlt dann im JSONB-Stand).
     this.format.set(state.format ?? (state.mode === 'Spezialevent' ? null : 'Commander'));
     this.selectedPlayers.set(state.selectedPlayers);
@@ -720,11 +737,12 @@ export class GameSessionService {
     this.lifeTotals.update((totals) => ({ ...totals, [key]: (totals[key] ?? 0) + delta }));
   }
 
-  adjustCommanderDamage(target: string, sourceKey: string, delta: number): void {
+  /** Gibt die tatsächlich verrechnete Änderung zurück (Schaden fällt nie unter 0). */
+  adjustCommanderDamage(target: string, sourceKey: string, delta: number): number {
     const current = this.commanderDamageValue(target, sourceKey);
     const next = Math.max(0, current + delta);
     const actualDelta = next - current;
-    if (actualDelta === 0) return;
+    if (actualDelta === 0) return 0;
 
     this.commanderDamage.update((all) => ({
       ...all,
@@ -732,6 +750,61 @@ export class GameSessionService {
     }));
     // Commander-Schaden ist zugleich normaler Lebenspunktverlust -> Leben sinkt, wenn Schaden steigt.
     this.adjustLife(target, -actualDelta);
+    return actualDelta;
+  }
+
+  // --- Monarch und Initiative: je eine Marke am Tisch, höchstens ein Spieler hält sie. ---
+
+  readonly monarchKey = signal<string | null>(null);
+  readonly initiativeKey = signal<string | null>(null);
+
+  /** Gibt die Marke an diesen Spieler; hält er sie schon, wird sie abgelegt. */
+  toggleMonarch(key: string): void {
+    this.monarchKey.update((current) => (current === key ? null : key));
+  }
+
+  toggleInitiative(key: string): void {
+    this.initiativeKey.update((current) => (current === key ? null : key));
+  }
+
+  // --- Rückgängig: merkt sich jede verrechnete Änderung und macht die letzte durch die
+  // Gegenbuchung rückgängig - nicht durch Zurücksetzen auf einen alten Stand. So bleibt alles,
+  // was an den Änderungen hängt (Live-Sync, Lebenspunkte-Verlauf), ohne Sonderfall richtig, und
+  // eine inzwischen auf einem anderen Gerät getippte Änderung geht nicht verloren. Nur lokal:
+  // jedes Gerät nimmt seine eigenen Tipper zurück. ---
+
+  private static readonly UNDO_LIMIT = 50;
+  readonly undoStack = signal<UndoEntry[]>([]);
+  readonly canUndo = computed(() => this.undoStack().length > 0);
+
+  private rememberForUndo(entry: UndoEntry): void {
+    if (entry.delta === 0) return;
+    this.undoStack.update((stack) => [...stack, entry].slice(-GameSessionService.UNDO_LIMIT));
+  }
+
+  /** Nimmt die letzte eigene Änderung zurück; gibt sie zurück (für die Rückmeldung), sonst null. */
+  undoLast(): UndoEntry | null {
+    const stack = this.undoStack();
+    const last = stack[stack.length - 1];
+    if (!last) return null;
+    this.undoStack.set(stack.slice(0, -1));
+    if (last.kind === 'life') this.adjustLife(last.key, -last.delta);
+    else if (last.kind === 'poison') this.adjustPoison(last.key, -last.delta);
+    else if (last.sourceKey) this.adjustCommanderDamage(last.key, last.sourceKey, -last.delta);
+    return last;
+  }
+
+  /** Leben direkt auf einen Wert setzen (eingetippt) - als eine Änderung, also auch rückgängig zu machen. */
+  setLife(key: string, value: number): void {
+    if (!Number.isFinite(value)) return;
+    this.changeLifeNow(key, Math.round(value) - (this.lifeTotals()[key] ?? 0));
+  }
+
+  /** Leben sofort ändern, ohne die 700-ms-Pufferung (±5/±10 im Eingabe-Sheet). */
+  changeLifeNow(key: string, delta: number): void {
+    if (delta === 0) return;
+    this.adjustLife(key, delta);
+    this.rememberForUndo({ kind: 'life', key, delta });
   }
 
   poisonValue(key: string): number {
@@ -788,21 +861,24 @@ export class GameSessionService {
 
   bufferLifeChange(key: string, delta: number): void {
     this.bufferChange(this.pendingLifeDelta, 'life', key, delta, (total) =>
-      this.adjustLife(key, total)
+      this.changeLifeNow(key, total)
     );
   }
 
   bufferPoisonChange(key: string, delta: number): void {
-    this.bufferChange(this.pendingPoisonDelta, 'poison', key, delta, (total) =>
-      this.adjustPoison(key, total)
-    );
+    this.bufferChange(this.pendingPoisonDelta, 'poison', key, delta, (total) => {
+      const before = this.poisonValue(key);
+      this.adjustPoison(key, total);
+      this.rememberForUndo({ kind: 'poison', key, delta: this.poisonValue(key) - before });
+    });
   }
 
   bufferCommanderDamageChange(target: string, sourceKey: string, delta: number): void {
     const key = `${target}::${sourceKey}`;
-    this.bufferChange(this.pendingCommanderDamageDelta, 'cd', key, delta, (total) =>
-      this.adjustCommanderDamage(target, sourceKey, total)
-    );
+    this.bufferChange(this.pendingCommanderDamageDelta, 'cd', key, delta, (total) => {
+      const actual = this.adjustCommanderDamage(target, sourceKey, total);
+      this.rememberForUndo({ kind: 'commanderDamage', key: target, sourceKey, delta: actual });
+    });
   }
 
   isPoisonView(key: string): boolean {
@@ -873,6 +949,10 @@ export class GameSessionService {
     this.showWinnerPanel.set(false);
     this.winner.set(null);
     this.minimized.set(false);
+    // Marken und Rückgängig-Liste gehören zur Partie, nicht zur Sitzung.
+    this.monarchKey.set(null);
+    this.initiativeKey.set(null);
+    this.undoStack.set([]);
     this.phase.set('ingame');
 
     this.beginLiveSession();
@@ -965,6 +1045,9 @@ export class GameSessionService {
     this.mode.set('Normal');
     this.format.set('Commander');
     this.isRanked.set(true);
+    this.monarchKey.set(null);
+    this.initiativeKey.set(null);
+    this.undoStack.set([]);
     this.pinnedBottomKey.set(null);
     this.pinnedBottomKey.set(null);
     this.manualOrder.set(null);
