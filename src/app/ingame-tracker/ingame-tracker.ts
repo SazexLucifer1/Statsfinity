@@ -12,7 +12,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
-import { GameSessionService, IngameUnit } from '../game-session.service';
+import { GameSessionService, IngameUnit, UndoEntry } from '../game-session.service';
 import { MtgService } from '../mtg.service';
 import { BackgroundService } from '../background.service';
 import { TournamentService } from '../tournament.service';
@@ -205,6 +205,7 @@ export class IngameTracker implements AfterViewInit, OnDestroy {
   readonly showOptionsMenu = signal(false);
 
   openOptionsMenu(): void {
+    this.lastUndone.set(null);
     this.showOptionsMenu.set(true);
   }
 
@@ -225,6 +226,57 @@ export class IngameTracker implements AfterViewInit, OnDestroy {
   chooseEndGame(): void {
     this.showOptionsMenu.set(false);
     this.session.showWinnerPanel.set(true);
+  }
+
+  // --- Rückgängig: bleibt im Menü, damit sich mehrere Schritte nacheinander zurücknehmen
+  // lassen; die Zeile darunter sagt, was zuletzt zurückgenommen wurde. ---
+
+  readonly lastUndone = signal<string | null>(null);
+
+  undoLast(): void {
+    const entry = this.session.undoLast();
+    this.lastUndone.set(entry ? this.describeUndo(entry) : null);
+  }
+
+  private describeUndo(entry: UndoEntry): string {
+    const name = this.session.ingameUnits().find((u) => u.key === entry.key)?.label ?? entry.key;
+    const what =
+      entry.kind === 'life'
+        ? 'ingame.undoWhatLife'
+        : entry.kind === 'poison'
+          ? 'ingame.undoWhatPoison'
+          : 'ingame.undoWhatCommanderDamage';
+    const delta = `${entry.delta > 0 ? '+' : ''}${entry.delta}`;
+    return this.i18n.t('ingame.undone', { name, delta, what: this.i18n.t(what) });
+  }
+
+  // --- Eingabe-Sheet je Spieler: Leben eintippen oder in größeren Schritten ändern, Monarch und
+  // Initiative vergeben. Ein eigenes Sheet statt weiterer Tippzonen - das Feld selbst ist schon
+  // voll mit +/- und gehört dem schnellen Tippen. ---
+
+  readonly playerSheetFor = signal<IngameUnit | null>(null);
+  readonly lifeDraft = signal('');
+
+  openPlayerSheet(unit: IngameUnit): void {
+    this.playerSheetFor.set(unit);
+    this.lifeDraft.set(String(this.session.lifeTotals()[unit.key] ?? ''));
+  }
+
+  closePlayerSheet(): void {
+    this.playerSheetFor.set(null);
+  }
+
+  changeLifeBy(key: string, delta: number): void {
+    this.vibrateTick();
+    this.session.changeLifeNow(key, delta);
+    this.lifeDraft.set(String(this.session.lifeTotals()[key] ?? ''));
+  }
+
+  applyLifeDraft(key: string): void {
+    const value = Number.parseInt(this.lifeDraft(), 10);
+    if (Number.isNaN(value)) return;
+    this.session.setLife(key, value);
+    this.closePlayerSheet();
   }
 
   // --- Spieler neu anordnen: Tippen-zum-Tauschen-Modus ---

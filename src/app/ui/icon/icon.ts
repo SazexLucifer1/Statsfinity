@@ -47,6 +47,7 @@ export type IconName =
   | 'brush'
   | 'bug'
   | 'card'
+  | 'castle'
   | 'chart'
   | 'check'
   | 'comment'

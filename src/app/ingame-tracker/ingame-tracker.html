@@ -56,6 +56,14 @@
             [ngClass]="iconPairCorner(i)"
             [style.flex-direction]="iconPairDirection(i)"
           >
+            <button
+              class="panel-icon-button"
+              (click)="openPlayerSheet(p)"
+              [attr.aria-label]="i18n.t('ingame.editPlayer')"
+              [title]="i18n.t('ingame.editPlayer')"
+            >
+              <app-icon name="pencil" />
+            </button>
             @if (auth.currentUser()) {
             <button
               class="panel-icon-button"
@@ -90,7 +98,13 @@
             (pointerleave)="cancelPinLongPress()"
             (pointercancel)="cancelPinLongPress()"
           >
-            <span class="panel-name">{{ p.label }}</span>
+            <span class="panel-name"
+              >{{ p.label }}@if (session.monarchKey() === p.key) {
+                <span class="panel-marker"><app-icon name="crown" [label]="i18n.t('ingame.monarch')" /></span>
+              }@if (session.initiativeKey() === p.key) {
+                <span class="panel-marker"><app-icon name="castle" [label]="i18n.t('ingame.initiative')" /></span>
+              }</span
+            >
             @if (session.commanderDamageFocus() === null && p.commander) {
             <span class="panel-commander">
               {{ p.commander }}@if (p.partnerCommander) { + {{ p.partnerCommander }} }
@@ -230,6 +244,10 @@
   @if (showOptionsMenu()) {
   <div class="options-menu-overlay" (click)="closeOptionsMenu()">
     <div class="options-menu-sheet" (click)="$event.stopPropagation()">
+      <button class="glass-button" [disabled]="!session.canUndo()" (click)="undoLast()">{{ i18n.t('ingame.undo') }}</button>
+      @if (lastUndone(); as undone) {
+      <p class="hint undo-hint">{{ undone }}</p>
+      }
       <button class="glass-button" (click)="chooseMinimize()">{{ i18n.t('ingame.minimize') }}</button>
       <button class="glass-button" (click)="openReorderMode()">{{ i18n.t('ingame.reorderPlayers') }}</button>
       <button class="glass-button" (click)="startPlayerRoulette()">{{ i18n.t('ingame.drawStartingPlayer') }}</button>
@@ -256,6 +274,40 @@
       <div class="roulette-result">{{ i18n.t('ingame.starts', { name: result.label }) }}</div>
       <button class="glass-button primary" (click)="closeRouletteOverlay()">{{ i18n.t('deckView.done') }}</button>
       }
+    </div>
+  </div>
+  } @if (playerSheetFor(); as unit) {
+  <div class="options-menu-overlay" (click)="closePlayerSheet()">
+    <div class="options-menu-sheet player-sheet" (click)="$event.stopPropagation()">
+      <h3>{{ unit.label }}</h3>
+      <label class="player-sheet-label" for="life-draft">{{ i18n.t('ingame.lifeInputLabel') }}</label>
+      <div class="life-input-row">
+        <input
+          id="life-draft"
+          class="glass-input life-input"
+          type="number"
+          inputmode="numeric"
+          [value]="lifeDraft()"
+          (input)="lifeDraft.set($any($event.target).value)"
+          (keyup.enter)="applyLifeDraft(unit.key)"
+        />
+        <button class="glass-button primary" (click)="applyLifeDraft(unit.key)">{{ i18n.t('ingame.setLife') }}</button>
+      </div>
+      <div class="life-step-row">
+        @for (step of [-10, -5, 5, 10]; track step) {
+        <button class="glass-button" (click)="changeLifeBy(unit.key, step)">{{ step > 0 ? '+' : '−' }}{{ step > 0 ? step : -step }}</button>
+        }
+      </div>
+      <p class="player-sheet-label">{{ i18n.t('ingame.markers') }}</p>
+      <div class="chip-row">
+        <button class="glass-chip" [class.active]="session.monarchKey() === unit.key" (click)="session.toggleMonarch(unit.key)">
+          <app-icon name="crown" /> {{ i18n.t('ingame.monarch') }}
+        </button>
+        <button class="glass-chip" [class.active]="session.initiativeKey() === unit.key" (click)="session.toggleInitiative(unit.key)">
+          <app-icon name="castle" /> {{ i18n.t('ingame.initiative') }}
+        </button>
+      </div>
+      <button class="glass-button" (click)="closePlayerSheet()">{{ i18n.t('deckView.done') }}</button>
     </div>
   </div>
   } @if (pinMenuFor(); as pinKey) {
