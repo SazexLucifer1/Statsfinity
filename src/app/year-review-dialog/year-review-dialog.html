@@ -4,14 +4,18 @@
     @if (years().length > 1) {
       <div class="chip-row">
         @for (y of years(); track y) {
-          <button class="glass-chip" [class.active]="y === year()" (click)="selectedYear.set(y)">{{ y }}</button>
+          <button class="glass-chip" [class.active]="y === year()" (click)="selectedYear.set(y)">
+            {{ y }}
+          </button>
         }
       </div>
     }
     @if (review()) {
       <canvas #canvas class="review-canvas"></canvas>
       <p class="hint">{{ t('stats.review.englishHint') }}</p>
-      <button class="glass-button primary" (click)="download()">{{ t('stats.review.download') }}</button>
+      <button class="glass-button primary" (click)="download()">
+        {{ t('stats.review.download') }}
+      </button>
     } @else {
       <p class="hint">{{ t('stats.review.empty') }}</p>
     }

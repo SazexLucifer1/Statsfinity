@@ -18,9 +18,14 @@ export class DeckManualRecordService {
 
   async load(deckId: string): Promise<ManualRecord | null> {
     if (!this.verfuegbar()) return null;
-    const { data, error } = await supabase.from('decks').select('manual_record').eq('id', deckId).maybeSingle();
+    const { data, error } = await supabase
+      .from('decks')
+      .select('manual_record')
+      .eq('id', deckId)
+      .maybeSingle();
     if (error) {
-      if (!this.spalteFehlt(error)) console.error('Konnte nachgetragene Bilanz nicht laden:', error);
+      if (!this.spalteFehlt(error))
+        console.error('Konnte nachgetragene Bilanz nicht laden:', error);
       return null;
     }
     return normalize((data as { manual_record?: unknown } | null)?.manual_record);
@@ -29,12 +34,17 @@ export class DeckManualRecordService {
   /** null oder alles 0 löscht die Bilanz. */
   async save(deckId: string, record: ManualRecord | null): Promise<boolean> {
     if (!this.verfuegbar()) return false;
-    const value = record && record.wins + record.losses + record.draws > 0 ? normalize(record) : null;
+    const value =
+      record && record.wins + record.losses + record.draws > 0 ? normalize(record) : null;
     // Wie beim Primer: updated_at bleibt stehen - eine Bilanz von früher hebt das Deck nicht an
     // die Spitze der nach Datum sortierten Listen.
-    const { error } = await supabase.from('decks').update({ manual_record: value }).eq('id', deckId);
+    const { error } = await supabase
+      .from('decks')
+      .update({ manual_record: value })
+      .eq('id', deckId);
     if (error) {
-      if (!this.spalteFehlt(error)) console.error('Konnte nachgetragene Bilanz nicht speichern:', error);
+      if (!this.spalteFehlt(error))
+        console.error('Konnte nachgetragene Bilanz nicht speichern:', error);
       return false;
     }
     return true;
@@ -43,7 +53,9 @@ export class DeckManualRecordService {
   private spalteFehlt(error: { code?: string; message?: string }): boolean {
     if (error.code !== '42703' && error.code !== 'PGRST204') return false;
     if (!(error.message ?? '').includes('manual_record')) return false;
-    console.warn('Spalte decks.manual_record fehlt noch - sql/deck-nachgetragene-bilanz-2026-10-04.sql ausführen.');
+    console.warn(
+      'Spalte decks.manual_record fehlt noch - sql/deck-nachgetragene-bilanz-2026-10-04.sql ausführen.',
+    );
     this.verfuegbar.set(false);
     return true;
   }

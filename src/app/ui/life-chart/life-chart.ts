@@ -12,7 +12,16 @@ import { LifeLog } from '../../models';
  * am Linienende. Beim Antippen/Überfahren zeigt eine senkrechte Linie die Werte aller Spieler zu
  * diesem Zeitpunkt.
  */
-export const LIFE_CHART_COLORS = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300', '#9085e9', '#e66767'];
+export const LIFE_CHART_COLORS = [
+  '#3987e5',
+  '#d95926',
+  '#199e70',
+  '#c98500',
+  '#d55181',
+  '#008300',
+  '#9085e9',
+  '#e66767',
+];
 
 const W = 320;
 const H = 170;
@@ -52,7 +61,12 @@ export class LifeChart {
         life += e[2];
         steps.push([e[0], life]);
       }
-      return { label: names[unit] ?? unit, color: LIFE_CHART_COLORS[i % LIFE_CHART_COLORS.length], steps, final: life };
+      return {
+        label: names[unit] ?? unit,
+        color: LIFE_CHART_COLORS[i % LIFE_CHART_COLORS.length],
+        steps,
+        final: life,
+      };
     });
   });
 
@@ -104,6 +118,20 @@ export class LifeChart {
 
   /** Direkte Beschriftung am Linienende nur bis vier Spieler, sonst wird es ein Knäuel. */
   readonly directLabels = computed(() => this.series().length <= 4);
+
+  /**
+   * y-Position der Endbeschriftungen: am Linienende, aber mindestens 11 px auseinander - bei
+   * gleichem oder ähnlichem Stand lägen sie sonst übereinander.
+   */
+  readonly labelPositions = computed(() => {
+    const placed = this.series()
+      .map((s) => ({ label: s.label, y: this.y(s.final) + 3 }))
+      .sort((a, b) => a.y - b.y);
+    for (let i = 1; i < placed.length; i++) {
+      if (placed[i].y - placed[i - 1].y < 11) placed[i].y = placed[i - 1].y + 11;
+    }
+    return new Map(placed.map((p) => [p.label, p.y]));
+  });
 
   // --- Hover/Tippen: senkrechte Linie mit den Werten zu diesem Zeitpunkt ---
   readonly hoverSec = signal<number | null>(null);

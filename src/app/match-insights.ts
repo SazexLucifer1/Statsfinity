@@ -15,7 +15,9 @@ function countable(matches: readonly Match[]): Match[] {
 
 export function winnersOf(match: Match): MatchPlayer[] {
   if (match.winner === DRAW) return [];
-  return match.players.filter((p) => isPlayerWinner(match.mode, match.winner, p.name, p.team, p.isArchenemy));
+  return match.players.filter((p) =>
+    isPlayerWinner(match.mode, match.winner, p.name, p.team, p.isArchenemy),
+  );
 }
 
 export function didWin(match: Match, playerName: string): boolean {
@@ -52,7 +54,12 @@ export function turnOrderStats(matches: readonly Match[], player?: string | null
   }
   return [...bySeat.entries()]
     .sort(([a], [b]) => a - b)
-    .map(([seat, { games, wins }]) => ({ seat, games, wins, winRate: games ? (wins / games) * 100 : 0 }));
+    .map(([seat, { games, wins }]) => ({
+      seat,
+      games,
+      wins,
+      winRate: games ? (wins / games) * 100 : 0,
+    }));
 }
 
 // --- Spieldauer ---
@@ -64,7 +71,8 @@ const MAX_DURATION_MIN = 8 * 60;
 export function durationMinutes(match: Pick<Match, 'date' | 'startedAt'>): number | null {
   if (!match.startedAt) return null;
   const minutes = (new Date(match.date).getTime() - new Date(match.startedAt).getTime()) / 60_000;
-  if (!Number.isFinite(minutes) || minutes < MIN_DURATION_MIN || minutes > MAX_DURATION_MIN) return null;
+  if (!Number.isFinite(minutes) || minutes < MIN_DURATION_MIN || minutes > MAX_DURATION_MIN)
+    return null;
   return Math.round(minutes);
 }
 
@@ -92,7 +100,10 @@ function deckKey(p: MatchPlayer): string | null {
   return p.deckId ?? (p.commander ? `cmd:${p.commander}` : null);
 }
 
-export function durationStats(matches: readonly Match[], player?: string | null): DurationStats | null {
+export function durationStats(
+  matches: readonly Match[],
+  player?: string | null,
+): DurationStats | null {
   const timed = countable(matches)
     .filter((m) => !player || m.players.some((p) => p.name === player))
     .map((match) => ({ match, minutes: durationMinutes(match) }))
@@ -131,7 +142,11 @@ export function durationStats(matches: readonly Match[], player?: string | null)
       .sort((a, b) => b.avgMinutes - a.avgMinutes),
     byPlayerCount: [...counts.entries()]
       .sort(([a], [b]) => a - b)
-      .map(([n, c]) => ({ label: String(n), games: c.games, avgMinutes: Math.round(c.total / c.games) })),
+      .map(([n, c]) => ({
+        label: String(n),
+        games: c.games,
+        avgMinutes: Math.round(c.total / c.games),
+      })),
   };
 }
 
@@ -181,12 +196,20 @@ export const OPPONENT_MIN_GAMES = 3;
 
 /** Wer den Spieler am häufigsten besiegt (anteilig), oder null. */
 export function nemesis(stats: readonly OpponentStat[]): OpponentStat | null {
-  return pickBy(stats, (s) => s.lostTo / s.games, (s) => s.lostTo);
+  return pickBy(
+    stats,
+    (s) => s.lostTo / s.games,
+    (s) => s.lostTo,
+  );
 }
 
 /** Wen der Spieler am häufigsten besiegt (anteilig), oder null. */
 export function favoriteVictim(stats: readonly OpponentStat[]): OpponentStat | null {
-  return pickBy(stats, (s) => s.beat / s.games, (s) => s.beat);
+  return pickBy(
+    stats,
+    (s) => s.beat / s.games,
+    (s) => s.beat,
+  );
 }
 
 function pickBy(
@@ -214,7 +237,11 @@ export interface Matchup {
  * Tisch saßen. Ein Sieg zählt nur gegen die Decks am selben Tisch, nicht als Duell zwischen zwei
  * Verlierern. Mit player nur die Paarungen seiner Decks, sein Deck steht dann immer links.
  */
-export function deckMatchups(matches: readonly Match[], player?: string | null, minGames = 2): Matchup[] {
+export function deckMatchups(
+  matches: readonly Match[],
+  player?: string | null,
+  minGames = 2,
+): Matchup[] {
   const pairs = new Map<string, Matchup>();
   for (const match of countable(matches)) {
     const winners = new Set(winnersOf(match).map((p) => p.name));
@@ -248,7 +275,11 @@ export function deckMatchups(matches: readonly Match[], player?: string | null, 
 export type FormResult = 'W' | 'L' | 'D';
 
 /** Die letzten Ergebnisse eines Spielers, neueste zuerst. */
-export function recentForm(matches: readonly Match[], player: string, count = 10): { match: Match; result: FormResult }[] {
+export function recentForm(
+  matches: readonly Match[],
+  player: string,
+  count = 10,
+): { match: Match; result: FormResult }[] {
   return countable(matches)
     .filter((m) => m.players.some((p) => p.name === player))
     .sort((a, b) => b.date.localeCompare(a.date))
@@ -268,7 +299,11 @@ export interface MonthStat {
 }
 
 /** Winrate je Monat, die letzten `months` Monate mit Partien, älteste zuerst. */
-export function monthlyWinRate(matches: readonly Match[], player: string, months = 12): MonthStat[] {
+export function monthlyWinRate(
+  matches: readonly Match[],
+  player: string,
+  months = 12,
+): MonthStat[] {
   const byMonth = new Map<string, { games: number; wins: number }>();
   for (const match of countable(matches)) {
     if (!match.players.some((p) => p.name === player)) continue;
@@ -303,9 +338,15 @@ export interface YearReview {
 }
 
 /** Kennzahlen eines Spielers für ein Jahr, oder null ohne Partien in diesem Jahr. */
-export function yearReview(matches: readonly Match[], player: string, year: number): YearReview | null {
+export function yearReview(
+  matches: readonly Match[],
+  player: string,
+  year: number,
+): YearReview | null {
   const own = countable(matches)
-    .filter((m) => new Date(m.date).getFullYear() === year && m.players.some((p) => p.name === player))
+    .filter(
+      (m) => new Date(m.date).getFullYear() === year && m.players.some((p) => p.name === player),
+    )
     .sort((a, b) => a.date.localeCompare(b.date));
   if (own.length === 0) return null;
 

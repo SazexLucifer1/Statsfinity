@@ -14,8 +14,12 @@ import {
 describe('deck-check', () => {
   it('rechnet die Länderzahl nach Karsten', () => {
     expect(recommendedLands({ isCommanderFormat: true, averageCmc: 3, ramp: 0, draw: 0 })).toBe(41);
-    expect(recommendedLands({ isCommanderFormat: true, averageCmc: 3, ramp: 10, draw: 10 })).toBe(38);
-    expect(recommendedLands({ isCommanderFormat: false, averageCmc: 2.5, ramp: 0, draw: 0 })).toBe(24);
+    expect(recommendedLands({ isCommanderFormat: true, averageCmc: 3, ramp: 10, draw: 10 })).toBe(
+      38,
+    );
+    expect(recommendedLands({ isCommanderFormat: false, averageCmc: 2.5, ramp: 0, draw: 0 })).toBe(
+      24,
+    );
   });
 
   it('bewertet Kategorien als gut, knapp oder schlecht', () => {
@@ -30,7 +34,13 @@ describe('deck-check', () => {
       boardwipe: 1,
     });
     const byKey = Object.fromEntries(items.map((i) => [i.key, i.level]));
-    expect(byKey).toEqual({ lands: 'good', ramp: 'good', draw: 'good', removal: 'bad', boardwipe: 'warn' });
+    expect(byKey).toEqual({
+      lands: 'good',
+      ramp: 'good',
+      draw: 'good',
+      removal: 'bad',
+      boardwipe: 'warn',
+    });
     expect(deckHealthScore(items)).toBe(70);
   });
 

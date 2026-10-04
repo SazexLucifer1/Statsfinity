@@ -25,7 +25,11 @@ export interface YearReviewLabels {
   footer: string;
 }
 
-export function drawYearReview(canvas: HTMLCanvasElement, review: YearReview, labels: YearReviewLabels): void {
+export function drawYearReview(
+  canvas: HTMLCanvasElement,
+  review: YearReview,
+  labels: YearReviewLabels,
+): void {
   canvas.width = YEAR_REVIEW_SIZE;
   canvas.height = YEAR_REVIEW_SIZE;
   const ctx = canvas.getContext('2d');
@@ -73,7 +77,9 @@ export function drawYearReview(canvas: HTMLCanvasElement, review: YearReview, la
 
   // Zeilen: Beschriftung links, Wert rechts
   let y = tileTop + tileH + 80;
-  const rows = labels.rows.filter((r): r is { label: string; value: string } => !!r.value).slice(0, 7);
+  const rows = labels.rows
+    .filter((r): r is { label: string; value: string } => !!r.value)
+    .slice(0, 7);
   for (const row of rows) {
     ctx.fillStyle = 'rgba(255,255,255,0.6)';
     ctx.font = `500 28px ${SCHRIFT}`;
@@ -98,7 +104,13 @@ export function drawYearReview(canvas: HTMLCanvasElement, review: YearReview, la
 }
 
 /** Größte Schriftgröße ≤ max, bei der text in maxWidth passt (mindestens 16 px). */
-function fitFont(ctx: CanvasRenderingContext2D, text: string, max: number, maxWidth: number, weight: number): number {
+function fitFont(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  max: number,
+  maxWidth: number,
+  weight: number,
+): number {
   let size = max;
   while (size > 16) {
     ctx.font = `${weight} ${size}px ${SCHRIFT}`;
@@ -112,7 +124,14 @@ function centerText(ctx: CanvasRenderingContext2D, text: string, cx: number, y: 
   ctx.fillText(text, cx - ctx.measureText(text).width / 2, y);
 }
 
-function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
+function roundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+): void {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
   ctx.arcTo(x + w, y, x + w, y + h, r);

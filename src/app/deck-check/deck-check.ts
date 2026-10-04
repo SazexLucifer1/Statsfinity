@@ -74,7 +74,11 @@ export class DeckCheck {
     const details = this.viewer.state.viewingCardDetails();
     const cards = this.library()
       .filter((c) => !isLand(c.typeLine))
-      .map((c) => ({ name: c.cardName, cmc: c.cmc, manaCost: details.get(c.cardName.toLowerCase())?.manaCost }));
+      .map((c) => ({
+        name: c.cardName,
+        cmc: c.cmc,
+        manaCost: details.get(c.cardName.toLowerCase())?.manaCost,
+      }));
     const sources: Record<string, number> = {};
     for (const s of this.viewer.analysis.manaSourceDistribution()) sources[s.color] = s.count;
     return colorRequirements(cards, sources, this.isCommanderFormat());
@@ -117,7 +121,10 @@ export class DeckCheck {
   advice(item: CheckItem): string {
     if (item.level === 'good') return this.i18n.t('deckView.check.adviceOk');
     const diff = item.value < item.min ? item.min - item.value : item.value - item.max;
-    return this.i18n.t(item.value < item.min ? 'deckView.check.adviceMore' : 'deckView.check.adviceLess', { count: diff });
+    return this.i18n.t(
+      item.value < item.min ? 'deckView.check.adviceMore' : 'deckView.check.adviceLess',
+      { count: diff },
+    );
   }
 
   openTestHand(): void {

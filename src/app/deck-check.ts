@@ -40,12 +40,16 @@ export interface DeckCheckInput {
 }
 
 /** Empfohlene Länderzahl nach Karsten, gerundet. */
-export function recommendedLands(input: Pick<DeckCheckInput, 'isCommanderFormat' | 'averageCmc' | 'ramp' | 'draw'>): number {
+export function recommendedLands(
+  input: Pick<DeckCheckInput, 'isCommanderFormat' | 'averageCmc' | 'ramp' | 'draw'>,
+): number {
   const avg = input.averageCmc ?? (input.isCommanderFormat ? 3.2 : 2.6);
   // Karsten zählt nur BILLIGE Rampe/Draw (Manawert ≤ 2). Die Kategorien hier unterscheiden das
   // nicht - grob die Hälfte davon ist billig, deshalb halbes Gewicht.
   const cheap = ((input.ramp ?? 0) + (input.draw ?? 0)) / 2;
-  const raw = input.isCommanderFormat ? 31.42 + 3.13 * avg - 0.28 * cheap : 19.59 + 1.9 * avg - 0.28 * cheap;
+  const raw = input.isCommanderFormat
+    ? 31.42 + 3.13 * avg - 0.28 * cheap
+    : 19.59 + 1.9 * avg - 0.28 * cheap;
   return Math.round(raw);
 }
 
@@ -58,10 +62,22 @@ function level(value: number, min: number, max: number, tolerance: number): Chec
 export function deckCheckItems(input: DeckCheckInput): CheckItem[] {
   const target = recommendedLands(input);
   const items: CheckItem[] = [
-    { key: 'lands', value: input.lands, min: target - 1, max: target + 1, level: level(input.lands, target - 1, target + 1, 2) },
+    {
+      key: 'lands',
+      value: input.lands,
+      min: target - 1,
+      max: target + 1,
+      level: level(input.lands, target - 1, target + 1, 2),
+    },
   ];
   if (!input.isCommanderFormat) return items;
-  const add = (key: CheckItem['key'], value: number | null, min: number, max: number, tolerance: number) => {
+  const add = (
+    key: CheckItem['key'],
+    value: number | null,
+    min: number,
+    max: number,
+    tolerance: number,
+  ) => {
     if (value === null) return;
     items.push({ key, value, min, max, level: level(value, min, max, tolerance) });
   };
@@ -75,7 +91,10 @@ export function deckCheckItems(input: DeckCheckInput): CheckItem[] {
 /** 0–100: grün zählt voll, gelb halb, rot nicht. */
 export function deckHealthScore(items: readonly CheckItem[]): number {
   if (items.length === 0) return 0;
-  const points = items.reduce((sum, i) => sum + (i.level === 'good' ? 1 : i.level === 'warn' ? 0.5 : 0), 0);
+  const points = items.reduce(
+    (sum, i) => sum + (i.level === 'good' ? 1 : i.level === 'warn' ? 0.5 : 0),
+    0,
+  );
   return Math.round((points / items.length) * 100);
 }
 
@@ -175,19 +194,31 @@ function choose(n: number, k: number): number {
 }
 
 /** P(genau k Treffer) beim Ziehen von draws Karten aus deckSize mit successes Treffern. */
-export function hypergeometric(deckSize: number, successes: number, draws: number, k: number): number {
+export function hypergeometric(
+  deckSize: number,
+  successes: number,
+  draws: number,
+  k: number,
+): number {
   return (choose(successes, k) * choose(deckSize - successes, draws - k)) / choose(deckSize, draws);
 }
 
 /** P(mindestens k Treffer). */
 export function atLeast(deckSize: number, successes: number, draws: number, k: number): number {
   let p = 0;
-  for (let i = k; i <= Math.min(draws, successes); i++) p += hypergeometric(deckSize, successes, draws, i);
+  for (let i = k; i <= Math.min(draws, successes); i++)
+    p += hypergeometric(deckSize, successes, draws, i);
   return Math.min(1, p);
 }
 
 /** P(zwischen lo und hi Treffer, beide eingeschlossen). */
-export function between(deckSize: number, successes: number, draws: number, lo: number, hi: number): number {
+export function between(
+  deckSize: number,
+  successes: number,
+  draws: number,
+  lo: number,
+  hi: number,
+): number {
   let p = 0;
   for (let i = lo; i <= hi; i++) p += hypergeometric(deckSize, successes, draws, i);
   return Math.min(1, p);
@@ -206,7 +237,12 @@ export interface DeckOdds {
   drawByTurn4: number | null;
 }
 
-export function deckOdds(librarySize: number, lands: number, ramp: number | null, draw: number | null): DeckOdds {
+export function deckOdds(
+  librarySize: number,
+  lands: number,
+  ramp: number | null,
+  draw: number | null,
+): DeckOdds {
   return {
     keepableHand: between(librarySize, lands, 7, 2, 4),
     threeLandsByTurn3: atLeast(librarySize, lands, 9, 3),

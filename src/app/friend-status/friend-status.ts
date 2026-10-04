@@ -34,7 +34,11 @@ export class FriendStatus {
     if (!h) return [];
     return [
       { label: this.i18n.t('profile.friends.you'), value: h.myWins, color: 'var(--series-1)' },
-      { label: this.i18n.t('profile.friends.others'), value: h.games - h.myWins - h.theirWins, color: 'var(--series-neutral)' },
+      {
+        label: this.i18n.t('profile.friends.others'),
+        value: h.games - h.myWins - h.theirWins,
+        color: 'var(--series-neutral)',
+      },
       { label: this.name() || '?', value: h.theirWins, color: 'var(--series-2)' },
     ];
   });
@@ -64,7 +68,11 @@ export class FriendStatus {
         await this.friends.remove(id);
         break;
       case 'friends':
-        if (await this.dialog.confirm(this.i18n.t('profile.friends.confirmRemove', { name: this.name() }))) {
+        if (
+          await this.dialog.confirm(
+            this.i18n.t('profile.friends.confirmRemove', { name: this.name() }),
+          )
+        ) {
           await this.friends.remove(id);
         }
         break;

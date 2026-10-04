@@ -59,8 +59,12 @@ export class FriendsService {
   readonly loaded = signal(false);
 
   readonly friends = computed(() => this.friendships().filter((f) => f.status === 'accepted'));
-  readonly incoming = computed(() => this.friendships().filter((f) => f.status === 'pending' && f.incoming));
-  readonly outgoing = computed(() => this.friendships().filter((f) => f.status === 'pending' && !f.incoming));
+  readonly incoming = computed(() =>
+    this.friendships().filter((f) => f.status === 'pending' && f.incoming),
+  );
+  readonly outgoing = computed(() =>
+    this.friendships().filter((f) => f.status === 'pending' && !f.incoming),
+  );
 
   constructor() {
     // Beim Login laden, beim Logout leeren - wie das Postfach.
@@ -112,7 +116,9 @@ export class FriendsService {
     if (!me || me === userId) return false;
     // Hat der andere mich schon gefragt, ist "anfragen" in Wahrheit "annehmen".
     if (this.statusWith(userId) === 'incoming') return this.accept(userId);
-    const { error } = await supabase.from('friendships').insert({ requester: me, addressee: userId });
+    const { error } = await supabase
+      .from('friendships')
+      .insert({ requester: me, addressee: userId });
     if (error && error.code !== '23505') {
       if (!this.fehlt(error)) console.error('Konnte Freundschaftsanfrage nicht senden:', error);
       return false;
@@ -144,7 +150,9 @@ export class FriendsService {
     const { error } = await supabase
       .from('friendships')
       .delete()
-      .or(`and(requester.eq.${me},addressee.eq.${userId}),and(requester.eq.${userId},addressee.eq.${me})`);
+      .or(
+        `and(requester.eq.${me},addressee.eq.${userId}),and(requester.eq.${userId},addressee.eq.${me})`,
+      );
     if (error) {
       if (!this.fehlt(error)) console.error('Konnte Freundschaft nicht entfernen:', error);
       return false;
@@ -160,7 +168,11 @@ export class FriendsService {
       if (!this.fehlt(error)) console.error('Profilsuche fehlgeschlagen:', error);
       return [];
     }
-    return ((data ?? []) as any[]).map((r) => ({ id: r.id, displayName: r.display_name ?? '?', avatarUrl: r.avatar_url ?? null }));
+    return ((data ?? []) as any[]).map((r) => ({
+      id: r.id,
+      displayName: r.display_name ?? '?',
+      avatarUrl: r.avatar_url ?? null,
+    }));
   }
 
   async activity(limit = 30): Promise<FriendActivity[]> {
@@ -186,7 +198,9 @@ export class FriendsService {
     }));
   }
 
-  async headToHead(userId: string): Promise<{ games: number; myWins: number; theirWins: number } | null> {
+  async headToHead(
+    userId: string,
+  ): Promise<{ games: number; myWins: number; theirWins: number } | null> {
     if (!this.verfuegbar() || !this.auth.currentUser()) return null;
     const { data, error } = await supabase.rpc('head_to_head', { p_other: userId });
     if (error) {

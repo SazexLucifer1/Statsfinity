@@ -20,20 +20,27 @@ export class DeckSuggestionsService {
 
   async load(deckId: string, limit = 20): Promise<CardSuggestion[]> {
     if (!this.verfuegbar()) return [];
-    const { data, error } = await supabase.rpc('deck_card_suggestions_checked', { p_deck_id: deckId, p_limit: limit });
+    const { data, error } = await supabase.rpc('deck_card_suggestions_checked', {
+      p_deck_id: deckId,
+      p_limit: limit,
+    });
     if (error) {
       if (error.code === 'PGRST202' || error.code === '42883') {
-        console.warn('deck_card_suggestions_checked() fehlt noch - sql/deck-empfehlungen-2026-10-04.sql ausführen.');
+        console.warn(
+          'deck_card_suggestions_checked() fehlt noch - sql/deck-empfehlungen-2026-10-04.sql ausführen.',
+        );
         this.verfuegbar.set(false);
       } else {
         console.error('Konnte Kartenempfehlungen nicht laden:', error);
       }
       return [];
     }
-    return ((data ?? []) as { card_name: string; deck_count: number; total_decks: number }[]).map((r) => ({
-      cardName: r.card_name,
-      deckCount: r.deck_count,
-      totalDecks: r.total_decks,
-    }));
+    return ((data ?? []) as { card_name: string; deck_count: number; total_decks: number }[]).map(
+      (r) => ({
+        cardName: r.card_name,
+        deckCount: r.deck_count,
+        totalDecks: r.total_decks,
+      }),
+    );
   }
 }

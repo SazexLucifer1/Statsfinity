@@ -1,6 +1,9 @@
 <section class="deck-check" data-tutorial="deck-check">
   <div class="check-head">
-    <div class="score" [class]="'score-' + (score() >= 80 ? 'good' : score() >= 50 ? 'warn' : 'bad')">
+    <div
+      class="score"
+      [class]="'score-' + (score() >= 80 ? 'good' : score() >= 50 ? 'warn' : 'bad')"
+    >
       <span class="score-value">{{ score() }}</span>
       <span class="score-label">/ 100</span>
     </div>
@@ -14,8 +17,12 @@
     @for (item of items(); track item.key) {
       <li [class]="'lvl-' + item.level">
         <span class="dot" [attr.aria-label]="levelLabel(item.level)"></span>
-        <span class="check-name">{{ itemLabel(item) }}: <strong>{{ item.value }}</strong></span>
-        <span class="check-target">{{ i18n.t('deckView.check.target', { min: item.min, max: item.max }) }}</span>
+        <span class="check-name"
+          >{{ itemLabel(item) }}: <strong>{{ item.value }}</strong></span
+        >
+        <span class="check-target">{{
+          i18n.t('deckView.check.target', { min: item.min, max: item.max })
+        }}</span>
         <span class="check-advice">{{ advice(item) }}</span>
       </li>
     }
@@ -23,7 +30,9 @@
   @if (effectsLoading() && isCommanderFormat()) {
     <p class="hint">{{ i18n.t('deckView.check.effectsLoading') }}</p>
   }
-  <p class="hint small">{{ i18n.t('deckView.check.landsSource', { lands: recommendedLands() }) }}</p>
+  <p class="hint small">
+    {{ i18n.t('deckView.check.landsSource', { lands: recommendedLands() }) }}
+  </p>
 
   @if (colors().length > 0) {
     <h4>{{ i18n.t('deckView.check.colorsTitle') }}</h4>
@@ -31,8 +40,15 @@
       @for (c of colors(); track c.color) {
         <li [class]="'lvl-' + c.level">
           <span class="dot" [attr.aria-label]="levelLabel(c.level)"></span>
-          <span class="check-name"><app-mana-symbol [symbol]="c.color" /> {{ i18n.t('deckView.check.sources', { sources: c.sources, required: c.required }) }}</span>
-          <span class="check-advice">{{ i18n.t('deckView.check.colorCard', { card: c.card, cost: c.manaCost }) }}</span>
+          <span class="check-name"
+            ><app-mana-symbol [symbol]="c.color" />
+            {{
+              i18n.t('deckView.check.sources', { sources: c.sources, required: c.required })
+            }}</span
+          >
+          <span class="check-advice">{{
+            i18n.t('deckView.check.colorCard', { card: c.card, cost: c.manaCost })
+          }}</span>
         </li>
       }
     </ul>
@@ -42,14 +58,29 @@
   @if (odds(); as o) {
     <h4>{{ i18n.t('deckView.check.oddsTitle') }}</h4>
     <ul class="odds">
-      <li><span>{{ i18n.t('deckView.check.oddsKeepable') }}</span><strong>{{ o.keepableHand | percent: '1.0-0' }}</strong></li>
-      <li><span>{{ i18n.t('deckView.check.oddsThreeLands') }}</span><strong>{{ o.threeLandsByTurn3 | percent: '1.0-0' }}</strong></li>
-      <li><span>{{ i18n.t('deckView.check.oddsFourLands') }}</span><strong>{{ o.fourLandsByTurn4 | percent: '1.0-0' }}</strong></li>
+      <li>
+        <span>{{ i18n.t('deckView.check.oddsKeepable') }}</span
+        ><strong>{{ o.keepableHand | percent: '1.0-0' }}</strong>
+      </li>
+      <li>
+        <span>{{ i18n.t('deckView.check.oddsThreeLands') }}</span
+        ><strong>{{ o.threeLandsByTurn3 | percent: '1.0-0' }}</strong>
+      </li>
+      <li>
+        <span>{{ i18n.t('deckView.check.oddsFourLands') }}</span
+        ><strong>{{ o.fourLandsByTurn4 | percent: '1.0-0' }}</strong>
+      </li>
       @if (o.rampEarly !== null) {
-        <li><span>{{ i18n.t('deckView.check.oddsRamp') }}</span><strong>{{ o.rampEarly | percent: '1.0-0' }}</strong></li>
+        <li>
+          <span>{{ i18n.t('deckView.check.oddsRamp') }}</span
+          ><strong>{{ o.rampEarly | percent: '1.0-0' }}</strong>
+        </li>
       }
       @if (o.drawByTurn4 !== null) {
-        <li><span>{{ i18n.t('deckView.check.oddsDraw') }}</span><strong>{{ o.drawByTurn4 | percent: '1.0-0' }}</strong></li>
+        <li>
+          <span>{{ i18n.t('deckView.check.oddsDraw') }}</span
+          ><strong>{{ o.drawByTurn4 | percent: '1.0-0' }}</strong>
+        </li>
       }
     </ul>
     <p class="hint small">{{ i18n.t('deckView.check.oddsHint') }}</p>
@@ -64,11 +95,15 @@
     @if (suggestions().length === 0) {
       <p class="hint">{{ i18n.t('deckView.check.suggestionsEmpty') }}</p>
     } @else {
-      <p class="hint small">{{ i18n.t('deckView.check.suggestionsHint', { total: suggestions()[0].totalDecks }) }}</p>
+      <p class="hint small">
+        {{ i18n.t('deckView.check.suggestionsHint', { total: suggestions()[0].totalDecks }) }}
+      </p>
       <ul class="suggestions">
         @for (s of suggestions(); track s.cardName) {
           <li>
-            <button class="suggestion-name" (click)="previewCard(s.cardName)">{{ s.cardName }}</button>
+            <button class="suggestion-name" (click)="previewCard(s.cardName)">
+              {{ s.cardName }}
+            </button>
             <span class="suggestion-count">{{ s.deckCount }} / {{ s.totalDecks }}</span>
             <app-meter [value]="s.deckCount" [max]="s.totalDecks" />
           </li>

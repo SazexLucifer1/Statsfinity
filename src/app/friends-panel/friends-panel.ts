@@ -123,7 +123,9 @@ export class FriendsPanel {
   }
 
   activityModeLabel(a: FriendActivity): string {
-    return a.gameMode ? gameModeLabel(a.gameMode as GameMode, (a.gameFormat as DeckFormat) ?? null) : '';
+    return a.gameMode
+      ? gameModeLabel(a.gameMode as GameMode, (a.gameFormat as DeckFormat) ?? null)
+      : '';
   }
 
   /** Derselbe Weg wie ein QR-Code: Suche-Tab, Decks, dieses Deck öffnen. */

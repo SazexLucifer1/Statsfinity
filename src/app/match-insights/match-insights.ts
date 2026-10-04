@@ -60,7 +60,11 @@ export class MatchInsights {
   });
   readonly nemesis = computed(() => nemesis(this.opponents()));
   readonly victim = computed(() => favoriteVictim(this.opponents()));
-  readonly topOpponents = computed(() => this.opponents().filter((o) => o.games >= OPPONENT_MIN_GAMES).slice(0, 8));
+  readonly topOpponents = computed(() =>
+    this.opponents()
+      .filter((o) => o.games >= OPPONENT_MIN_GAMES)
+      .slice(0, 8),
+  );
 
   readonly matchups = computed(() => deckMatchups(this.matches(), this.player()).slice(0, 10));
 
@@ -80,16 +84,29 @@ export class MatchInsights {
 
   private monthLabel(month: string): string {
     const [year, m] = month.split('-').map(Number);
-    return new Date(year, m - 1, 1).toLocaleDateString(this.i18n.lang() === 'de' ? 'de-DE' : 'en-US', {
-      month: 'short',
-      year: '2-digit',
-    });
+    return new Date(year, m - 1, 1).toLocaleDateString(
+      this.i18n.lang() === 'de' ? 'de-DE' : 'en-US',
+      {
+        month: 'short',
+        year: '2-digit',
+      },
+    );
   }
 
-  matchupSegments(m: { a: string; b: string; aWins: number; bWins: number; games: number }): SplitSegment[] {
+  matchupSegments(m: {
+    a: string;
+    b: string;
+    aWins: number;
+    bWins: number;
+    games: number;
+  }): SplitSegment[] {
     return [
       { label: m.a, value: m.aWins, color: 'var(--series-1)' },
-      { label: this.i18n.t('stats.insights.otherResult'), value: m.games - m.aWins - m.bWins, color: 'var(--series-neutral)' },
+      {
+        label: this.i18n.t('stats.insights.otherResult'),
+        value: m.games - m.aWins - m.bWins,
+        color: 'var(--series-neutral)',
+      },
       { label: m.b, value: m.bWins, color: 'var(--series-2)' },
     ];
   }
@@ -100,6 +117,12 @@ export class MatchInsights {
   }
 
   formLabel(result: 'W' | 'L' | 'D'): string {
-    return this.i18n.t(result === 'W' ? 'stats.insights.formWin' : result === 'L' ? 'stats.insights.formLoss' : 'stats.insights.formDraw');
+    return this.i18n.t(
+      result === 'W'
+        ? 'stats.insights.formWin'
+        : result === 'L'
+          ? 'stats.insights.formLoss'
+          : 'stats.insights.formDraw',
+    );
   }
 }

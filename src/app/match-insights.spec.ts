@@ -53,8 +53,12 @@ describe('match-insights', () => {
   });
 
   it('verwirft unplausible Spieldauern und rechnet den Schnitt je Deck ab zwei Partien', () => {
-    expect(durationMinutes({ date: '2026-08-01T20:01:00Z', startedAt: '2026-08-01T20:00:00Z' })).toBeNull();
-    expect(durationMinutes({ date: '2026-08-02T20:00:00Z', startedAt: '2026-08-01T20:00:00Z' })).toBeNull();
+    expect(
+      durationMinutes({ date: '2026-08-01T20:01:00Z', startedAt: '2026-08-01T20:00:00Z' }),
+    ).toBeNull();
+    expect(
+      durationMinutes({ date: '2026-08-02T20:00:00Z', startedAt: '2026-08-01T20:00:00Z' }),
+    ).toBeNull();
     const deck = { deckId: 'd1', deckName: 'Atraxa' };
     const stats = durationStats([
       match('A', [p('A', deck), p('B')], { startedAt: '2026-08-01T19:00:00Z' }),
@@ -85,12 +89,22 @@ describe('match-insights', () => {
   it('zählt Teamkollegen und Verbündete gegen den Archenemy nicht als Gegner', () => {
     const twoHg = match(
       'Team 1',
-      [p('A', { team: 'Team 1' }), p('B', { team: 'Team 1' }), p('C', { team: 'Team 2' }), p('D', { team: 'Team 2' })],
+      [
+        p('A', { team: 'Team 1' }),
+        p('B', { team: 'Team 1' }),
+        p('C', { team: 'Team 2' }),
+        p('D', { team: 'Team 2' }),
+      ],
       {},
       'Two-Headed Giant',
     );
     expect(opponentStats([twoHg], 'A').map((s) => s.name)).toEqual(['C', 'D']);
-    const arch = match(ARCHENEMY_OTHERS, [p('X', { isArchenemy: true }), p('A'), p('B')], {}, 'Archenemy');
+    const arch = match(
+      ARCHENEMY_OTHERS,
+      [p('X', { isArchenemy: true }), p('A'), p('B')],
+      {},
+      'Archenemy',
+    );
     expect(opponentStats([arch], 'A')).toEqual([{ name: 'X', games: 1, lostTo: 0, beat: 1 }]);
   });
 
@@ -102,8 +116,12 @@ describe('match-insights', () => {
       match('A', [p('A', a), p('B', b)]),
       match('A', [p('A', a), p('B', b)]),
     ];
-    expect(deckMatchups(matches)).toEqual([{ a: 'Alpha', b: 'Beta', games: 3, aWins: 2, bWins: 1 }]);
-    expect(deckMatchups(matches, 'B')).toEqual([{ a: 'Beta', b: 'Alpha', games: 3, aWins: 1, bWins: 2 }]);
+    expect(deckMatchups(matches)).toEqual([
+      { a: 'Alpha', b: 'Beta', games: 3, aWins: 2, bWins: 1 },
+    ]);
+    expect(deckMatchups(matches, 'B')).toEqual([
+      { a: 'Beta', b: 'Alpha', games: 3, aWins: 1, bWins: 2 },
+    ]);
   });
 
   it('liefert Form neueste zuerst und Monatswerte älteste zuerst', () => {

@@ -19,7 +19,16 @@
     </div>
     @if (h2h(); as h) {
       @if (h.games > 0) {
-        <p class="h2h-line">{{ i18n.t('profile.friends.h2h', { name: name(), mine: h.myWins, theirs: h.theirWins, games: h.games }) }}</p>
+        <p class="h2h-line">
+          {{
+            i18n.t('profile.friends.h2h', {
+              name: name(),
+              mine: h.myWins,
+              theirs: h.theirWins,
+              games: h.games,
+            })
+          }}
+        </p>
         <app-split-bar [segments]="segments()" />
       } @else {
         <p class="hint">{{ i18n.t('profile.friends.h2hNone', { name: name() }) }}</p>

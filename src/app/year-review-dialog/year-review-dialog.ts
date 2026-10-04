@@ -1,4 +1,14 @@
-import { Component, ElementRef, computed, effect, inject, input, output, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { Match } from '../models';
 import { I18nService } from '../i18n.service';
 import { YearReview, yearReview } from '../match-insights';
@@ -35,7 +45,9 @@ export class YearReviewDialog {
   });
 
   readonly selectedYear = signal<number | null>(null);
-  readonly year = computed(() => this.selectedYear() ?? this.years()[0] ?? new Date().getFullYear());
+  readonly year = computed(
+    () => this.selectedYear() ?? this.years()[0] ?? new Date().getFullYear(),
+  );
   readonly review = computed(() => yearReview(this.matches(), this.player(), this.year()));
 
   constructor() {
@@ -47,9 +59,12 @@ export class YearReviewDialog {
   }
 
   private labels(r: YearReview): YearReviewLabels {
-    const en = (key: string, vars?: Record<string, string | number>) => this.i18n.tIn('en', key, vars);
+    const en = (key: string, vars?: Record<string, string | number>) =>
+      this.i18n.tIn('en', key, vars);
     const minutes = (m: number) =>
-      m < 60 ? en('match.durationMinutes', { min: m }) : en('match.durationHours', { h: Math.floor(m / 60), min: m % 60 });
+      m < 60
+        ? en('match.durationMinutes', { min: m })
+        : en('match.durationHours', { h: Math.floor(m / 60), min: m % 60 });
     return {
       title: en('stats.review.imageTitle', { year: r.year }),
       games: en('stats.review.games'),
@@ -57,13 +72,34 @@ export class YearReviewDialog {
       winRate: en('stats.review.winRate'),
       bestStreak: en('stats.review.bestStreak'),
       rows: [
-        { label: en('stats.review.topDeck'), value: r.topDeck ? `${r.topDeck.label} (${r.topDeck.games})` : null },
-        { label: en('stats.review.bestDeck'), value: r.bestDeck ? `${r.bestDeck.label} · ${Math.round(r.bestDeck.winRate)}%` : null },
-        { label: en('stats.review.nemesis'), value: r.nemesis ? `${r.nemesis.name} (${r.nemesis.lostTo}/${r.nemesis.games})` : null },
-        { label: en('stats.review.victim'), value: r.victim ? `${r.victim.name} (${r.victim.beat}/${r.victim.games})` : null },
-        { label: en('stats.review.firstSeat'), value: r.firstSeatWinRate !== null ? `${Math.round(r.firstSeatWinRate)}%` : null },
-        { label: en('stats.review.longest'), value: r.longestMinutes ? minutes(r.longestMinutes) : null },
-        { label: en('stats.review.totalTime'), value: r.totalMinutes ? minutes(r.totalMinutes) : null },
+        {
+          label: en('stats.review.topDeck'),
+          value: r.topDeck ? `${r.topDeck.label} (${r.topDeck.games})` : null,
+        },
+        {
+          label: en('stats.review.bestDeck'),
+          value: r.bestDeck ? `${r.bestDeck.label} · ${Math.round(r.bestDeck.winRate)}%` : null,
+        },
+        {
+          label: en('stats.review.nemesis'),
+          value: r.nemesis ? `${r.nemesis.name} (${r.nemesis.lostTo}/${r.nemesis.games})` : null,
+        },
+        {
+          label: en('stats.review.victim'),
+          value: r.victim ? `${r.victim.name} (${r.victim.beat}/${r.victim.games})` : null,
+        },
+        {
+          label: en('stats.review.firstSeat'),
+          value: r.firstSeatWinRate !== null ? `${Math.round(r.firstSeatWinRate)}%` : null,
+        },
+        {
+          label: en('stats.review.longest'),
+          value: r.longestMinutes ? minutes(r.longestMinutes) : null,
+        },
+        {
+          label: en('stats.review.totalTime'),
+          value: r.totalMinutes ? minutes(r.totalMinutes) : null,
+        },
       ],
       footer: `Statsfinity · ${location.host}`,
     };

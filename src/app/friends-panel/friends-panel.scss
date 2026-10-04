@@ -20,6 +20,17 @@
   }
 }
 
+// Drei gleich breite Reiter in einer Zeile - der globale Umschalter bricht sonst um.
+.segmented {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: var(--sp-4);
+
+  button {
+    min-width: 0;
+  }
+}
+
 .search {
   width: 100%;
   margin-top: var(--sp-5);
@@ -60,7 +71,13 @@ h3 {
   font-weight: 600;
   text-align: left;
   cursor: pointer;
-  overflow-wrap: anywhere;
+}
+
+.person {
+  flex: 1 1 auto;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .link {
@@ -70,7 +87,21 @@ h3 {
 
 .actions {
   display: flex;
+  flex-shrink: 0;
   gap: var(--sp-2);
+}
+
+.people li.stacked {
+  flex-wrap: wrap;
+
+  .person {
+    flex-basis: 100%;
+  }
+}
+
+.people .glass-button {
+  flex-shrink: 0;
+  color: var(--text);
 }
 
 .icon-button {

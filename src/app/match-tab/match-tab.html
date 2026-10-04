@@ -65,7 +65,7 @@
     {{ tournament.activeTournament() ? i18n.t('tournament.openPanelButton') : i18n.t('tournament.createButton') }}
   </button>
 
-  @if (session.otherGroupLiveSessions().length > 0) {
+  @if (!session.friendMode() && session.otherGroupLiveSessions().length > 0) {
     <h3>{{ i18n.t('match.liveSessionsHeading') }}</h3>
     <ul class="live-sessions-list">
       @for (s of session.otherGroupLiveSessions(); track s.id) {
