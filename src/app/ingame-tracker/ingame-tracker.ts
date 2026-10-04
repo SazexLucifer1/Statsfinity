@@ -12,7 +12,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
-import { GameSessionService, IngameUnit, UndoEntry } from '../game-session.service';
+import { COUNTER_KINDS, GameSessionService, IngameUnit, UndoEntry } from '../game-session.service';
 import { MtgService } from '../mtg.service';
 import { BackgroundService } from '../background.service';
 import { TournamentService } from '../tournament.service';
@@ -21,14 +21,15 @@ import { I18nService } from '../i18n.service';
 import { TutorialService } from '../tutorial.service';
 import { AuthService } from '../auth.service';
 import { Icon } from '../ui/icon/icon';
+import { LifeChart } from '../ui/life-chart/life-chart';
 
 const FIVE_MINUTES_MS = 5 * 60_000;
 
 @Component({
   selector: 'app-ingame-tracker',
-  imports: [CommonModule, Icon],
+  imports: [CommonModule, Icon, LifeChart],
   templateUrl: './ingame-tracker.html',
-  styleUrl: './ingame-tracker.scss',
+  styleUrls: ['./ingame-tracker.scss', './ingame-tracker.overlays.scss'],
 })
 export class IngameTracker implements AfterViewInit, OnDestroy {
   readonly session = inject(GameSessionService);
@@ -232,6 +233,12 @@ export class IngameTracker implements AfterViewInit, OnDestroy {
   // lassen; die Zeile darunter sagt, was zuletzt zurückgenommen wurde. ---
 
   readonly lastUndone = signal<string | null>(null);
+  readonly counterKinds = COUNTER_KINDS;
+
+  /** Panel-Key -> Anzeigename (bei 2HG "Anna & Ben" statt des Team-Schlüssels). */
+  readonly unitLabels = computed(() =>
+    Object.fromEntries(this.session.ingameUnits().map((u) => [u.key, u.label])),
+  );
 
   undoLast(): void {
     const entry = this.session.undoLast();

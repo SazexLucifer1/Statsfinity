@@ -17,6 +17,14 @@ import { supabase } from './supabase.client';
  */
 const LIFE_LOG_MAX_EVENTS = 3000;
 
+function readUprightPreference(): boolean {
+  try {
+    return localStorage.getItem('statsfinity.trackerUpright') === '1';
+  } catch {
+    return false;
+  }
+}
+
 /** Einmal pro Tab/Ladevorgang erzeugt - dient dazu, eigene Realtime-Updates (Echo) beim Empfang wiederzuerkennen und zu ignorieren. */
 const CLIENT_ID = crypto.randomUUID();
 
@@ -47,6 +55,10 @@ export interface LiveSessionState {
   /** Panel-Key mit Monarch- bzw. Initiative-Marke; fehlen bei älteren Sessions -> niemand. */
   monarchKey?: string | null;
   initiativeKey?: string | null;
+  /** Weitere Zähler je Panel (Energie, Erfahrung, …); fehlen bei älteren Sessions. */
+  counters?: Record<string, Partial<Record<CounterKind, number>>>;
+  /** Laufende Best-of-3-Serie außerhalb eines Turniers. */
+  series?: SeriesState | null;
   selectedPlayers: MatchPlayer[];
   selectedCubeId: string | null;
   selectedDraftSet: SelectedDraftSet | null;
@@ -74,6 +86,18 @@ export interface SelectedDraftSet {
   name: string;
   releasedAt?: string;
   set_type?: string;
+}
+
+/** Weitere Zähler je Spieler neben Leben, Gift und Commander-Schaden. */
+export const COUNTER_KINDS = ['energy', 'experience', 'treasure', 'rad'] as const;
+export type CounterKind = (typeof COUNTER_KINDS)[number];
+
+/** Best-of-3 außerhalb eines Turniers: Siege je Spieler (bzw. 2HG-Team) bis zum Seriensieg. */
+export interface SeriesState {
+  bestOf: 3;
+  wins: Record<string, number>;
+  /** Laufende Spielnummer innerhalb der Serie, 1-basiert. */
+  game: number;
 }
 
 /** Eine verrechnete Änderung, die "Rückgängig" per Gegenbuchung zurücknimmt. */
@@ -195,6 +219,8 @@ export class GameSessionService {
     isRanked: this.isRanked(),
     monarchKey: this.monarchKey(),
     initiativeKey: this.initiativeKey(),
+    counters: this.counters(),
+    series: this.series(),
     selectedPlayers: this.selectedPlayers(),
     selectedCubeId: this.selectedCubeId(),
     selectedDraftSet: this.selectedDraftSet(),
@@ -254,7 +280,9 @@ export class GameSessionService {
    */
   private seatingRing(): string[] {
     const units = this.ingameUnits().map((u) => u.key);
-    if (this.ingameColumns() === 1) return units;
+    // Aufrecht verrät die Lage der Felder nichts über die Sitzordnung - dann zählt die
+    // Reihenfolge der Felder (lässt sich über "Spieler neu anordnen" an den Tisch anpassen).
+    if (this.ingameColumns() === 1 || this.uprightLayout()) return units;
     const bottom = this.hasOddBottomSlot() ? units.pop() : undefined;
     const left = units.filter((_, i) => i % 2 === 0);
     const right = units.filter((_, i) => i % 2 === 1);
@@ -273,6 +301,9 @@ export class GameSessionService {
     });
     return order;
   }
+
+  /** Verlauf der laufenden Partie für die Kurve im Sieger-Dialog. */
+  readonly currentLifeLog = computed(() => this.buildLifeLog() ?? null);
 
   /** Verlauf für matches.life_log, oder undefined, wenn die Partie nicht im Tracker lief. */
   private buildLifeLog(): LifeLog | undefined {
@@ -677,6 +708,8 @@ export class GameSessionService {
     this.isRanked.set(state.isRanked ?? true);
     this.monarchKey.set(state.monarchKey ?? null);
     this.initiativeKey.set(state.initiativeKey ?? null);
+    this.counters.set(state.counters ?? {});
+    this.series.set(state.series ?? null);
     // Fallback für Sessions von vor diesem Feature (state.format fehlt dann im JSONB-Stand).
     this.format.set(state.format ?? (state.mode === 'Spezialevent' ? null : 'Commander'));
     this.selectedPlayers.set(state.selectedPlayers);
@@ -793,6 +826,7 @@ export class GameSessionService {
 
   /** Alle Commander/Partner-Commander der Mitglieder einer Panel-Einheit als eigene Schadensquellen. */
   panelRotation(index: number): number {
+    if (this.uprightLayout()) return 0;
     const cols = this.ingameColumns();
 
     if (this.hasOddBottomSlot() && index === this.ingameUnits().length - 1) {
@@ -869,6 +903,58 @@ export class GameSessionService {
       this.selectedPlayers.set([...current, { name, userId }]);
     }
   }
+
+  // --- Weitere Zähler (Energie, Erfahrung, Schätze, Radioaktivität) ---
+
+  readonly counters = signal<Record<string, Partial<Record<CounterKind, number>>>>({});
+
+  counterValue(key: string, kind: CounterKind): number {
+    return this.counters()[key]?.[kind] ?? 0;
+  }
+
+  adjustCounter(key: string, kind: CounterKind, delta: number): void {
+    this.counters.update((all) => {
+      const next = Math.max(0, (all[key]?.[kind] ?? 0) + delta);
+      return { ...all, [key]: { ...(all[key] ?? {}), [kind]: next } };
+    });
+  }
+
+  /** Zähler eines Panels, die gerade nicht 0 sind - für die kleinen Marken neben dem Namen. */
+  activeCounters(key: string): { kind: CounterKind; value: number }[] {
+    const own = this.counters()[key] ?? {};
+    return COUNTER_KINDS.filter((k) => (own[k] ?? 0) > 0).map((kind) => ({ kind, value: own[kind]! }));
+  }
+
+  // --- Ausrichtung: "Tisch" dreht jedes Feld zu seinem Platz, "aufrecht" lässt alle Felder in
+  // Leserichtung - für ein Handy, das herumgereicht oder von einer Person bedient wird. Nur lokal,
+  // jedes Gerät liegt anders. ---
+
+  readonly uprightLayout = signal(readUprightPreference());
+
+  setUprightLayout(on: boolean): void {
+    this.uprightLayout.set(on);
+    try {
+      localStorage.setItem('statsfinity.trackerUpright', on ? '1' : '0');
+    } catch {
+      // Ohne Speicher gilt die Wahl eben nur bis zum Neuladen.
+    }
+  }
+
+  // --- Best-of-3 außerhalb von Turnieren: jedes Spiel wird einzeln gespeichert, danach startet
+  // das nächste mit denselben Spielern und Decks, bis jemand zwei Siege hat. ---
+
+  readonly series = signal<SeriesState | null>(null);
+  /** Im Setup gewählt: nächste Partie als Best-of-3 starten. */
+  readonly bestOfThree = signal(false);
+  /** Gesetzt, sobald eine Serie entschieden ist - für die Meldung nach dem letzten Spiel. */
+  readonly lastSeriesResult = signal<{ winner: string; wins: Record<string, number> } | null>(null);
+
+  readonly seriesLabel = computed(() => {
+    const s = this.series();
+    if (!s) return null;
+    const units = this.ingameUnits();
+    return units.map((u) => `${u.label} ${s.wins[u.key] ?? 0}`).join(' : ');
+  });
 
   // --- Monarch und Initiative: je eine Marke am Tisch, höchstens ein Spieler hält sie. ---
 
@@ -1071,7 +1157,11 @@ export class GameSessionService {
     this.showWinnerPanel.set(false);
     this.winner.set(null);
     this.minimized.set(false);
-    // Marken und Rückgängig-Liste gehören zur Partie, nicht zur Sitzung.
+    // Marken, Zähler und Rückgängig-Liste gehören zur Partie, nicht zur Sitzung.
+    this.counters.set({});
+    if (this.bestOfThree() && !this.activeTournamentMatchId() && !this.series()) {
+      this.series.set({ bestOf: 3, wins: {}, game: 1 });
+    }
     this.monarchKey.set(null);
     this.initiativeKey.set(null);
     this.undoStack.set([]);
@@ -1135,6 +1225,8 @@ export class GameSessionService {
         this.lastFinishedMatch.set({ matchId, players, winner, tournamentMatchId });
       }
 
+      if (matchId && this.continueSeries(winner)) return;
+
       this.resetAll();
       this.deadMessageMap.set({});
     } finally {
@@ -1178,6 +1270,47 @@ export class GameSessionService {
     }
   }
 
+  /**
+   * Nach einem gespeicherten Spiel einer Best-of-3-Serie: Sieg zählen und - solange niemand zwei
+   * Siege hat - das nächste Spiel mit denselben Spielern, Decks und Einstellungen starten.
+   * Gibt true zurück, wenn ein neues Spiel läuft (dann hat diese Methode schon zurückgesetzt).
+   */
+  private continueSeries(winner: string): boolean {
+    const series = this.series();
+    if (!series) return false;
+    const wins = { ...series.wins };
+    if (winner !== this.DRAW && winner !== this.OTHERS) wins[winner] = (wins[winner] ?? 0) + 1;
+    const decided = Object.entries(wins).find(([, w]) => w >= 2);
+    if (decided) {
+      this.lastSeriesResult.set({ winner: decided[0], wins });
+      return false;
+    }
+
+    const setup = {
+      mode: this.mode(),
+      format: this.format(),
+      isRanked: this.isRanked(),
+      players: this.selectedPlayers().map(({ turnOrder: _, ...p }) => p),
+      cubeId: this.selectedCubeId(),
+      draftSet: this.selectedDraftSet(),
+      manualOrder: this.manualOrder(),
+      pinned: this.pinnedBottomKey(),
+    };
+    this.resetAll();
+    this.deadMessageMap.set({});
+    this.mode.set(setup.mode);
+    this.format.set(setup.format);
+    this.isRanked.set(setup.isRanked);
+    this.selectedPlayers.set(setup.players);
+    this.selectedCubeId.set(setup.cubeId);
+    this.selectedDraftSet.set(setup.draftSet);
+    this.manualOrder.set(setup.manualOrder);
+    this.pinnedBottomKey.set(setup.pinned);
+    this.series.set({ bestOf: 3, wins, game: series.game + 1 });
+    this.startGame();
+    return true;
+  }
+
   /** Verwirft die Session ohne zu speichern. */
   discardAndReset(): void {
     this.resetAll();
@@ -1211,6 +1344,9 @@ export class GameSessionService {
     this.mode.set('Normal');
     this.format.set('Commander');
     this.isRanked.set(true);
+    this.counters.set({});
+    this.series.set(null);
+    this.bestOfThree.set(false);
     this.monarchKey.set(null);
     this.initiativeKey.set(null);
     this.undoStack.set([]);

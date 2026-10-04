@@ -16,6 +16,11 @@
       }
     </div>
   }
+  @if (session.series(); as series) {
+    <div class="tournament-score-banner">
+      {{ i18n.t('ingame.seriesBanner', { game: series.game, score: session.seriesLabel() ?? '' }) }}
+    </div>
+  }
   @if (tournamentBo3Score(); as score) {
     <div class="tournament-score-banner">
       {{ i18n.t('tournament.bo3ScoreLabel', { p1: score.p1, s1: score.s1, s2: score.s2, p2: score.p2 }) }}
@@ -105,6 +110,13 @@
                 <span class="panel-marker"><app-icon name="castle" [label]="i18n.t('ingame.initiative')" /></span>
               }</span
             >
+            @if (session.activeCounters(p.key).length > 0) {
+              <span class="panel-counters">
+                @for (c of session.activeCounters(p.key); track c.kind) {
+                  <span [title]="i18n.t('ingame.counter.' + c.kind)">{{ i18n.t('ingame.counterShort.' + c.kind) }} {{ c.value }}</span>
+                }
+              </span>
+            }
             @if (session.commanderDamageFocus() === null && p.commander) {
             <span class="panel-commander">
               {{ p.commander }}@if (p.partnerCommander) { + {{ p.partnerCommander }} }
@@ -250,6 +262,9 @@
       }
       <button class="glass-button" (click)="chooseMinimize()">{{ i18n.t('ingame.minimize') }}</button>
       <button class="glass-button" (click)="openReorderMode()">{{ i18n.t('ingame.reorderPlayers') }}</button>
+      <button class="glass-button" (click)="session.setUprightLayout(!session.uprightLayout()); closeOptionsMenu()">
+        {{ session.uprightLayout() ? i18n.t('ingame.layoutTable') : i18n.t('ingame.layoutUpright') }}
+      </button>
       <button class="glass-button" (click)="startPlayerRoulette()">{{ i18n.t('ingame.drawStartingPlayer') }}</button>
       <!-- Die Kopfzeile mit dem Fragezeichen liegt unter dem Tracker, deshalb steht die Hilfe hier. -->
       <button class="glass-button" (click)="chooseHelp()">{{ i18n.t('ingame.help') }}</button>
@@ -298,6 +313,17 @@
         <button class="glass-button" (click)="changeLifeBy(unit.key, step)">{{ step > 0 ? '+' : '−' }}{{ step > 0 ? step : -step }}</button>
         }
       </div>
+      <p class="player-sheet-label">{{ i18n.t('ingame.counters') }}</p>
+      <ul class="counter-rows">
+        @for (kind of counterKinds; track kind) {
+          <li>
+            <span>{{ i18n.t('ingame.counter.' + kind) }}</span>
+            <button class="glass-button small" [attr.aria-label]="i18n.t('ingame.counterMinus', { name: i18n.t('ingame.counter.' + kind) })" (click)="session.adjustCounter(unit.key, kind, -1)">−</button>
+            <strong>{{ session.counterValue(unit.key, kind) }}</strong>
+            <button class="glass-button small" [attr.aria-label]="i18n.t('ingame.counterPlus', { name: i18n.t('ingame.counter.' + kind) })" (click)="session.adjustCounter(unit.key, kind, 1)">+</button>
+          </li>
+        }
+      </ul>
       <p class="player-sheet-label">{{ i18n.t('ingame.markers') }}</p>
       <div class="chip-row">
         <button class="glass-chip" [class.active]="session.monarchKey() === unit.key" (click)="session.toggleMonarch(unit.key)">
@@ -385,6 +411,15 @@
               {{ i18n.t('ingame.draw') }}
             </button>
           </div>
+
+      @if (session.currentLifeLog(); as log) {
+        @if (log.events.length > 0) {
+          <details class="life-curve">
+            <summary>{{ i18n.t('ingame.lifeCurve') }}</summary>
+            <app-life-chart [log]="log" [labels]="unitLabels()" [ariaLabel]="i18n.t('ingame.lifeCurve')" />
+          </details>
+        }
+      }
 
       <!-- Optional: wer angefangen hat (aus der Auslosung vorbelegt). Daraus entsteht beim Speichern
            die Zugreihenfolge für die Statistik "Winrate als Erster/Zweiter/...". -->

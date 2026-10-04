@@ -1,0 +1,310 @@
+// Overlays und Sheets des Trackers (Sieger-Dialog, Hintergrundwahl, Startspieler-Auslosung,
+// Eingabe-Sheet je Spieler). Eigene Datei, weil ingame-tracker.scss sonst über das harte
+// Style-Budget von 12 kB liefe - wie deck-detail-view.bracket.scss.
+
+.winner-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.winner-card {
+  width: 100%;
+  max-width: 420px;
+  max-height: 80dvh;
+  overflow-y: auto;
+
+  .glass-button {
+    width: 100%;
+    margin-top: 10px;
+
+    &.danger {
+      background: rgba(255, 100, 100, 0.15);
+      border-color: rgba(255, 100, 100, 0.4);
+      color: #ff8f8f;
+    }
+  }
+
+  .winner-subtitle {
+    margin: var(--sp-6) 0 var(--sp-3);
+    font-size: 0.95rem;
+    opacity: 0.85;
+  }
+}
+
+.background-picker-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 700;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.background-picker-sheet {
+  width: 100%;
+  max-height: 70dvh;
+  background: rgba(20, 16, 38, 0.96);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 16px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+
+  h3 {
+    margin: 0 0 12px;
+    text-align: center;
+  }
+}
+
+.background-swipe-row {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.bg-thumb {
+  flex: 0 0 auto;
+  scroll-snap-align: center;
+  width: 110px;
+  height: 150px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0;
+  cursor: pointer;
+  position: relative;
+  color: var(--text);
+  font-size: 0.8rem;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  &.none {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    text-align: center;
+    line-height: 1.3;
+  }
+
+  &.active {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent);
+  }
+
+  &.broken {
+    border-color: rgba(255, 100, 100, 0.4);
+  }
+}
+
+.bg-thumb-delete,
+.bg-thumb-shared {
+  position: absolute;
+  // 36px statt vorher 26px - saß direkt am Rand einer horizontal wischbaren Karussell-Reihe
+  // (.background-swipe-row), 26px lag klar unter dem 44px-Mindest-Tap-Target und war dort auch
+  // noch in Konflikt mit der Wisch-Geste leicht daneben zu treffen.
+  top: 4px;
+  right: 4px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.65);
+  font-size: 1rem;
+}
+
+.bg-upload-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  margin-bottom: 12px;
+
+  input[type='file'] {
+    display: none;
+  }
+}
+
+.bg-thumb-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 6px;
+  font-size: 0.7rem;
+  line-height: 1.4;
+  color: #ff8f8f;
+  text-align: center;
+
+  small {
+    opacity: 0.6;
+    font-size: 0.6rem;
+    word-break: break-all;
+  }
+}
+
+.roulette-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 750;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.roulette-sheet {
+  width: 100%;
+  max-width: 340px;
+  padding: 24px 20px;
+  border-radius: 20px;
+  background: rgba(20, 16, 38, 0.96);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  text-align: center;
+
+  h3 {
+    margin: 0 0 16px;
+    font-size: 1rem;
+  }
+
+  .glass-button {
+    width: 100%;
+    margin-top: 14px;
+  }
+}
+
+.roulette-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.roulette-item {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+  font-weight: 600;
+  transition: background 0.1s ease, border-color 0.1s ease, transform 0.1s ease;
+
+  &.active {
+    background: rgba(255, 200, 80, 0.28);
+    border-color: rgba(255, 200, 80, 0.7);
+    transform: scale(1.04);
+  }
+}
+
+.roulette-result {
+  margin-top: 16px;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #ffd873;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+// Eingabe-Sheet je Spieler (Stift im Feld)
+.player-sheet {
+  .player-sheet-label {
+    margin: var(--sp-3) 0 var(--sp-2);
+    font-size: 0.85rem;
+    opacity: 0.8;
+  }
+
+  .life-input-row {
+    display: flex;
+    gap: var(--sp-3);
+
+    .life-input {
+      flex: 1;
+      min-width: 0;
+      font-size: 1.4rem;
+      text-align: center;
+    }
+
+    // Knöpfe im Sheet sind sonst volle Breite und drücken das Eingabefeld auf null.
+    .glass-button {
+      flex: 0 0 auto;
+      width: auto;
+      margin: 0;
+    }
+  }
+
+  .life-step-row {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--sp-3);
+    margin-top: var(--sp-3);
+
+    .glass-button {
+      min-width: 0;
+      margin: 0;
+      padding-inline: 0;
+    }
+  }
+}
+
+.undo-hint {
+  margin: 0;
+  text-align: center;
+}
+
+.life-curve {
+  margin-top: var(--sp-5);
+
+  summary {
+    cursor: pointer;
+    font-size: 0.9rem;
+    opacity: 0.85;
+  }
+}
+
+.counter-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  li {
+    display: grid;
+    grid-template-columns: 1fr 44px 36px 44px;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: 2px 0;
+  }
+
+  strong {
+    text-align: center;
+  }
+
+  .glass-button {
+    width: auto;
+    margin: 0;
+    color: var(--text);
+  }
+}

@@ -52,6 +52,13 @@
     </div>
   }
 
+  <!-- Einzelspiel oder Best of 3: bei Best of 3 startet nach jedem gespeicherten Spiel das
+       nächste mit denselben Spielern, bis jemand zwei Siege hat. -->
+  <div class="segmented block series-toggle" role="group" [attr.aria-label]="i18n.t('match.seriesAria')">
+    <button [class.active]="!session.bestOfThree()" (click)="session.bestOfThree.set(false)">{{ i18n.t('match.singleGame') }}</button>
+    <button [class.active]="session.bestOfThree()" (click)="session.bestOfThree.set(true)">{{ i18n.t('match.bestOfThree') }}</button>
+  </div>
+
   <!-- Als .glass-chip stand das direkt unter der Spielmodus-Auswahl und sah aus wie eine
        weitere Modus-Option. Es ist aber eine Aktion, die den ganzen Tab wechselt. -->
   <button class="glass-button" data-tutorial="match-tournament" (click)="openTournamentPanel()">
@@ -355,6 +362,12 @@
   @if (successMessage()) {
     <p class="success">{{ successMessage() }}</p>
   }
+  @if (session.lastSeriesResult(); as result) {
+    <p class="success">
+      {{ i18n.t('match.seriesWon', { name: seriesWinnerLabel(result.winner) }) }}
+      <button class="link-chip" (click)="session.lastSeriesResult.set(null)">✕</button>
+    </p>
+  }
 </section>
 
 <section class="glass-card" data-tutorial="match-history">
@@ -432,6 +445,21 @@
         <button class="icon-button" (click)="deleteMatch(match.id)" [attr.aria-label]="i18n.t('match.deleteMatch')"><app-icon name="trash" /></button>
       }
     </div>
+
+    @if (match.startedAt) {
+      <button class="link-chip" (click)="toggleLifeCurve(match.id)">
+        <app-icon name="chart" /> {{ lifeCurveFor() === match.id ? i18n.t('match.hideLifeCurve') : i18n.t('match.showLifeCurve') }}
+      </button>
+      @if (lifeCurveFor() === match.id) {
+        @if (lifeCurve(); as log) {
+          <app-life-chart [log]="log" [labels]="teamLabels(match)" [ariaLabel]="i18n.t('match.showLifeCurve')" />
+        } @else if (lifeCurveLoading()) {
+          <p class="hint">{{ i18n.t('match.lifeCurveLoading') }}</p>
+        } @else {
+          <p class="hint">{{ i18n.t('match.lifeCurveMissing') }}</p>
+        }
+      }
+    }
 
     <div class="match-log-players">
       @for (p of match.players; track p.name) {

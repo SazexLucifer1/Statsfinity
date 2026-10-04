@@ -1,0 +1,71 @@
+.life-chart {
+  margin: 0;
+}
+
+svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  touch-action: pan-y;
+}
+
+.grid {
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 1;
+}
+
+.tick,
+.end-label {
+  fill: var(--text-muted, rgba(255, 255, 255, 0.6));
+  font-size: 9px;
+}
+
+.end-label {
+  fill: var(--text, #fff);
+  font-weight: 600;
+}
+
+.line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.crosshair {
+  stroke: rgba(255, 255, 255, 0.4);
+  stroke-width: 1;
+}
+
+// Ring in Flächenfarbe, damit sich überlagernde Punkte trennen.
+.dot {
+  stroke: #14102a;
+  stroke-width: 2;
+}
+
+.tooltip,
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px var(--sp-4);
+  font-size: 0.78rem;
+}
+
+.tooltip {
+  margin-top: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-sm);
+  background: var(--surface-tile);
+}
+
+.legend {
+  margin-top: var(--sp-3);
+}
+
+i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 4px;
+  border-radius: 2px;
+  vertical-align: -1px;
+}

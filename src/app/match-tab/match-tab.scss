@@ -367,3 +367,22 @@
 .friend-mode-toggle {
   margin-top: var(--sp-4);
 }
+
+.link-chip {
+  display: inline-flex;
+  gap: var(--sp-2);
+  align-items: center;
+  margin: var(--sp-2) 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.82rem;
+  opacity: 0.8;
+  cursor: pointer;
+}
+
+.series-toggle {
+  margin-top: var(--sp-4);
+}

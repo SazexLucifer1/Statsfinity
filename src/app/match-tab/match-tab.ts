@@ -21,6 +21,8 @@ import { Pager } from '../ui/pager/pager';
 import { DeckViewerService } from '../deck-viewer.service';
 import { storedDeckBracket } from '../bracket';
 import { Icon } from '../ui/icon/icon';
+import { LifeChart } from '../ui/life-chart/life-chart';
+import { LifeLog } from '../models';
 import { FriendsService } from '../friends.service';
 import { ProfileService } from '../profile.service';
 
@@ -40,7 +42,7 @@ export type HistoryRow =
 
 @Component({
   selector: 'app-match-tab',
-  imports: [FormsModule, DatePipe, NgTemplateOutlet, PlayerAvatar, CardImage, BracketBadge, Pager, Icon],
+  imports: [FormsModule, DatePipe, NgTemplateOutlet, PlayerAvatar, CardImage, BracketBadge, Pager, Icon, LifeChart],
   templateUrl: './match-tab.html',
   styleUrl: './match-tab.scss',
 })
@@ -957,6 +959,38 @@ export class MatchTab {
     this.editingResultMatchId.set(null);
   }
   /** Mögliche Gewinner-Optionen für ein Match, abhängig vom Spielmodus. */
+  /** Seriensieger lesbar: bei 2HG steht dort der Team-Schlüssel. */
+  seriesWinnerLabel(key: string): string {
+    const last = this.mtg.history()[0] ?? this.mtg.friendHistory()[0];
+    return key.startsWith('Team ') && last ? teamMemberLabel(last.players, key) || key : key;
+  }
+
+  // --- Lebenspunkte-Kurve einer gespeicherten Partie (einzeln nachgeladen) ---
+
+  readonly lifeCurveFor = signal<string | null>(null);
+  readonly lifeCurve = signal<LifeLog | null>(null);
+  readonly lifeCurveLoading = signal(false);
+
+  async toggleLifeCurve(matchId: string): Promise<void> {
+    if (this.lifeCurveFor() === matchId) {
+      this.lifeCurveFor.set(null);
+      return;
+    }
+    this.lifeCurveFor.set(matchId);
+    this.lifeCurve.set(null);
+    this.lifeCurveLoading.set(true);
+    const log = await this.mtg.loadLifeLog(matchId);
+    if (this.lifeCurveFor() !== matchId) return;
+    this.lifeCurve.set(log);
+    this.lifeCurveLoading.set(false);
+  }
+
+  /** Bei 2HG stehen im Verlauf Team-Schlüssel - als "Anna & Ben" anzeigen. */
+  teamLabels(match: Match): Record<string, string> {
+    const teams = [...new Set(match.players.map((p) => p.team).filter((t): t is NonNullable<typeof t> => !!t))];
+    return Object.fromEntries(teams.map((t) => [t, teamMemberLabel(match.players, t)]));
+  }
+
   // --- Partie nachtragen (ohne Tracker gespielt) ---
 
   readonly backfillOpen = signal(false);

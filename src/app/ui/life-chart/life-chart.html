@@ -1,0 +1,46 @@
+<figure class="life-chart">
+  <svg
+    #svg
+    [attr.viewBox]="'0 0 ' + W + ' ' + H"
+    role="img"
+    [attr.aria-label]="ariaLabel()"
+    (pointermove)="onPointer($event, svg)"
+    (pointerdown)="onPointer($event, svg)"
+    (pointerleave)="hoverSec.set(null)"
+  >
+    @for (t of yTicks(); track t) {
+      <line class="grid" [attr.x1]="PAD.left" [attr.x2]="W - PAD.right" [attr.y1]="y(t)" [attr.y2]="y(t)" />
+      <text class="tick" [attr.x]="PAD.left - 6" [attr.y]="y(t) + 3" text-anchor="end">{{ t }}</text>
+    }
+    @for (t of xTicks(); track t) {
+      <text class="tick" [attr.x]="x(t)" [attr.y]="H - 6" text-anchor="middle">{{ minuteLabel(t) }}</text>
+    }
+    @for (s of series(); track s.label) {
+      <path class="line" [attr.d]="path(s)" [attr.stroke]="s.color" />
+      @if (directLabels()) {
+        <text class="end-label" [attr.x]="W - PAD.right + 6" [attr.y]="y(s.final) + 3">{{ s.label }} {{ s.final }}</text>
+      }
+    }
+    @if (hoverSec() !== null) {
+      @let sec = hoverSec()!;
+      <line class="crosshair" [attr.x1]="x(sec)" [attr.x2]="x(sec)" [attr.y1]="PAD.top" [attr.y2]="H - PAD.bottom" />
+      @for (s of series(); track s.label) {
+        <circle [attr.cx]="x(sec)" [attr.cy]="y(valueAt(s, sec))" r="4" [attr.fill]="s.color" class="dot" />
+      }
+    }
+  </svg>
+  @if (hoverSec() !== null) {
+    @let sec = hoverSec()!;
+    <div class="tooltip">
+      <strong>{{ minuteLabel(sec) }}</strong>
+      @for (s of series(); track s.label) {
+        <span><i [style.background]="s.color"></i>{{ s.label }}: {{ valueAt(s, sec) }}</span>
+      }
+    </div>
+  }
+  <figcaption class="legend">
+    @for (s of series(); track s.label) {
+      <span><i [style.background]="s.color"></i>{{ s.label }} ({{ s.final }})</span>
+    }
+  </figcaption>
+</figure>

@@ -825,6 +825,21 @@ export class MtgService {
    */
   readonly friendHistory = signal<Match[]>([]);
 
+  /**
+   * Lebenspunkte-Verlauf einer gespeicherten Partie - einzeln geladen, weil er bewusst nicht in
+   * MATCH_HISTORY_SELECT steht (je Partie einige kB, gebraucht nur für die eine geöffnete Kurve).
+   */
+  async loadLifeLog(matchId: string): Promise<LifeLog | null> {
+    if (!partieVerlaufVerfuegbar) return null;
+    const { data, error } = await supabase.from('matches').select('life_log').eq('id', matchId).maybeSingle();
+    if (error) {
+      if (!isMissingPartieVerlaufError(error)) console.error('Konnte Lebenspunkte-Verlauf nicht laden:', error);
+      return null;
+    }
+    const log = (data as { life_log?: LifeLog | null } | null)?.life_log;
+    return log && Array.isArray(log.units) && Array.isArray(log.events) ? log : null;
+  }
+
   async loadFriendMatches(): Promise<Match[]> {
     if (!this.auth.currentUser()) {
       this.friendHistory.set([]);
