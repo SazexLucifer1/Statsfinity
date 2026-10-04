@@ -914,6 +914,8 @@ export class MtgService {
       isRanked?: boolean;
       /** Lebenspunkte-Verlauf aus dem Tracker (matches.life_log) - nur gespeichert, nie lokal gehalten. */
       lifeLog?: LifeLog;
+      /** Nachgetragene Partie: wann sie gespielt wurde (sonst setzt die Datenbank "jetzt"). */
+      playedAt?: string;
     }
   ): Promise<string | null> {
     const groupId = this.groupService.groupId();
@@ -940,6 +942,7 @@ export class MtgService {
           draft_set_released_at: match.draftSet?.releasedAt ?? null,
           tournament_match_id: match.tournamentMatchId ?? null,
           counts_in_general_stats: match.countsInGeneralStats ?? true,
+          ...(match.playedAt ? { played_at: match.playedAt } : {}),
           ...(partieVerlaufVerfuegbar
             ? { started_at: match.startedAt ?? null, life_log: match.lifeLog ?? null }
             : {}),
@@ -998,7 +1001,7 @@ export class MtgService {
       deckPrecons = Object.fromEntries((deckRows ?? []).map((d) => [d.id, d.is_precon]));
     }
 
-    const { lifeLog: _lifeLog, ...matchOhneVerlauf } = match;
+    const { lifeLog: _lifeLog, playedAt: _playedAt, ...matchOhneVerlauf } = match;
     const full: Match = {
       ...matchOhneVerlauf,
       id: matchRow.id,

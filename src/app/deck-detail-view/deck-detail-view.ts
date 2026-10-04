@@ -16,6 +16,7 @@ import { DeckPdfService } from '../deck-pdf.service';
 import { EdhrecCardlist } from '../edhrec.service';
 import { CardImage } from '../card-image/card-image';
 import { DeckComments } from '../deck-comments/deck-comments';
+import { DeckManualRecord } from '../deck-manual-record/deck-manual-record';
 import { DeckPrimer } from '../deck-primer/deck-primer';
 import { DeckSteckbrief } from '../deck-steckbrief/deck-steckbrief';
 import { BarChart } from '../ui/bar-chart/bar-chart';
@@ -30,7 +31,7 @@ import { BanlistService } from '../banlist.service';
 
 @Component({
   selector: 'app-deck-detail-view',
-  imports: [CurrencyPipe, DatePipe, DecimalPipe, NgTemplateOutlet, PercentPipe, FormsModule, CardImage, DeckComments, DeckPrimer, DeckSocial, DeckSteckbrief, BarChart, OverflowMenu, ColorFilter, CmcFilter, BracketBadge, ManaSymbol, Icon],
+  imports: [CurrencyPipe, DatePipe, DecimalPipe, NgTemplateOutlet, PercentPipe, FormsModule, CardImage, DeckComments, DeckManualRecord, DeckPrimer, DeckSocial, DeckSteckbrief, BarChart, OverflowMenu, ColorFilter, CmcFilter, BracketBadge, ManaSymbol, Icon],
   templateUrl: './deck-detail-view.html',
   styleUrls: ['./deck-detail-view.scss', './deck-detail-view.bracket.scss'],
 })

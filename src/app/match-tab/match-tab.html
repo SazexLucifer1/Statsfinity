@@ -317,6 +317,10 @@
   <button class="glass-button primary save-button" data-tutorial="match-start" [disabled]="!session.canStartGame()" (click)="session.startGame()">
     {{ i18n.t('match.startGame') }}
   </button>
+  <!-- Für Partien, die ohne Handy am Tisch gespielt wurden: gleiches Setup, nur ohne Tracker. -->
+  <button class="glass-button backfill-button" [disabled]="!session.canStartGame()" (click)="openBackfill()">
+    {{ i18n.t('match.backfill') }}
+  </button>
   @if (session.selectedPlayers().length === 1) {
     <p class="hint">{{ i18n.t('match.needTwoPlayers') }}</p>
   }
@@ -719,6 +723,47 @@
         }
       }
       <button class="glass-button" (click)="closeDeckPicker()">{{ i18n.t('match.cancel') }}</button>
+    </div>
+  </div>
+}
+
+@if (backfillOpen()) {
+  <div class="options-menu-overlay" (click)="closeBackfill()">
+    <div class="options-menu-sheet" (click)="$event.stopPropagation()">
+      <h3>{{ i18n.t('match.backfillTitle') }}</h3>
+      <p class="hint">{{ i18n.t('match.backfillHint') }}</p>
+      <label class="hint" for="backfill-date">{{ i18n.t('match.backfillDate') }}</label>
+      <input
+        id="backfill-date"
+        class="glass-input"
+        type="datetime-local"
+        [value]="backfillDate()"
+        (input)="backfillDate.set($any($event.target).value)"
+      />
+      <p class="hint">{{ i18n.t('ingame.whoWon') }}</p>
+      <div class="chip-row">
+        @for (opt of backfillWinnerOptions(); track opt.value) {
+          <button class="glass-chip" [class.active]="session.winner() === opt.value" (click)="session.winner.set(opt.value)">
+            {{ opt.label }}
+          </button>
+        }
+      </div>
+      <p class="hint">{{ i18n.t('ingame.whoStarted') }}</p>
+      <div class="chip-row">
+        @for (p of session.selectedPlayers(); track p.name) {
+          <button
+            class="glass-chip"
+            [class.active]="backfillStarter() === p.name"
+            (click)="backfillStarter.set(backfillStarter() === p.name ? null : p.name)"
+          >
+            {{ p.name }}
+          </button>
+        }
+      </div>
+      <button class="glass-button primary" [disabled]="!session.canSave() || session.saving()" (click)="saveBackfill()">
+        {{ session.saving() ? i18n.t('deckView.savingInfo') : i18n.t('match.backfillSave') }}
+      </button>
+      <button class="glass-button" (click)="closeBackfill()">{{ i18n.t('match.cancel') }}</button>
     </div>
   </div>
 }

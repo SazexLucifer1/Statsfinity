@@ -2,6 +2,14 @@
 export const deck = {
   de: {
     // --- Deck-Liste ---
+    'deck.manualRecord.wins': 'Siege',
+    'deck.manualRecord.losses': 'Niederlagen',
+    'deck.manualRecord.draws': 'Unentschieden',
+    'deck.manualRecord.add': 'Alte Bilanz nachtragen',
+    'deck.manualRecord.edit': 'ändern',
+    'deck.manualRecord.editHint': 'Bilanz aus der Zeit vor Statsfinity. Sie zählt nur hier am Deck, nicht in Ranglisten oder Elo - dafür fehlen Gegner und Datum.',
+    'deck.manualRecord.line': 'Nachgetragen: {{wins}} S · {{losses}} N · {{draws}} U',
+    'deck.manualRecord.total': 'Gesamt mit Nachtrag: {{wins}} Siege in {{games}} Partien ({{rate}} %)',
     'deck.importDeck': 'Deck importieren',
     'deck.importPrecon': 'Precon importieren',
     'deck.newDeck': 'Neues Deck',
@@ -274,6 +282,14 @@ export const deck = {
   },
   en: {
     // --- Deck list ---
+    'deck.manualRecord.wins': 'Wins',
+    'deck.manualRecord.losses': 'Losses',
+    'deck.manualRecord.draws': 'Draws',
+    'deck.manualRecord.add': 'Add past record',
+    'deck.manualRecord.edit': 'edit',
+    'deck.manualRecord.editHint': 'Record from before Statsfinity. It only counts here on the deck, not in rankings or Elo - opponents and dates are missing.',
+    'deck.manualRecord.line': 'Logged manually: {{wins}} W · {{losses}} L · {{draws}} D',
+    'deck.manualRecord.total': 'Total incl. manual record: {{wins}} wins in {{games}} games ({{rate}}%)',
     'deck.importDeck': 'Import deck',
     'deck.importPrecon': 'Import precon',
     'deck.newDeck': 'New deck',

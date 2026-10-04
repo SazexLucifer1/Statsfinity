@@ -1,0 +1,40 @@
+.manual-record {
+  margin-top: var(--sp-4);
+}
+
+.record-line {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.record-inputs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-3);
+
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.8rem;
+    opacity: 0.85;
+  }
+
+  input {
+    min-width: 0;
+    text-align: center;
+  }
+}
+
+.link-button {
+  padding: 0;
+  margin-left: var(--sp-2);
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  cursor: pointer;
+}

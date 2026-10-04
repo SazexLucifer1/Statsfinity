@@ -922,6 +922,48 @@ export class MatchTab {
     this.editingResultMatchId.set(null);
   }
   /** Mögliche Gewinner-Optionen für ein Match, abhängig vom Spielmodus. */
+  // --- Partie nachtragen (ohne Tracker gespielt) ---
+
+  readonly backfillOpen = signal(false);
+  /** Wert des datetime-local-Felds ("2026-10-04T20:15"), Ortszeit. */
+  readonly backfillDate = signal('');
+  readonly backfillStarter = signal<string | null>(null);
+
+  readonly backfillWinnerOptions = computed(() =>
+    this.winnerOptions({
+      mode: this.session.mode(),
+      players: this.session.selectedPlayers(),
+    } as Match),
+  );
+
+  openBackfill(): void {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    this.backfillDate.set(now.toISOString().slice(0, 16));
+    this.backfillStarter.set(null);
+    this.session.winner.set(null);
+    this.backfillOpen.set(true);
+  }
+
+  closeBackfill(): void {
+    this.session.winner.set(null);
+    this.backfillOpen.set(false);
+  }
+
+  async saveBackfill(): Promise<void> {
+    const date = new Date(this.backfillDate());
+    if (Number.isNaN(date.getTime())) return;
+    if (date.getTime() > Date.now() + 60_000) {
+      await this.dialog.alert(this.i18n.t('match.backfillFuture'));
+      return;
+    }
+    const ok = await this.session.saveBackfill(date, this.backfillStarter());
+    if (!ok) return;
+    this.backfillOpen.set(false);
+    this.successMessage.set(this.i18n.t('match.backfillSaved'));
+    setTimeout(() => this.successMessage.set(''), 2500);
+  }
+
   winnerOptions(match: Match): { value: string; label: string }[] {
     const options: { value: string; label: string }[] = [];
 

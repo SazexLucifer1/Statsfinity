@@ -445,6 +445,14 @@
           }
         </div>
       }
+      @if (!viewer.hideViewingDeckStats()) {
+        <app-deck-manual-record
+          [deckId]="deck.id"
+          [canEdit]="viewer.state.canEditViewingDeck()"
+          [trackedGames]="viewer.viewingDeckGameStats()?.games ?? 0"
+          [trackedWins]="viewer.viewingDeckGameStats()?.wins ?? 0"
+        />
+      }
 
       <!-- Vorher standen hier bis zu sieben gleich aussehende Chips in einer Reihe. Bilder/Text ist
            ein Ansichtswechsel und gehört in einen segmentierten Umschalter; Bearbeiten ist die

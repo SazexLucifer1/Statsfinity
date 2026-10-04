@@ -1113,6 +1113,41 @@ export class GameSessionService {
     }
   }
 
+  /**
+   * Partie nachtragen, die ohne Tracker gespielt wurde: Spieler, Sieger und Modus kommen aus dem
+   * normalen Setup, dazu Datum und optional der Startspieler. Ohne Tracker kennt die App die
+   * Sitzordnung nicht - nur der Startspieler bekommt deshalb einen Platz (1), die anderen bleiben
+   * unbekannt. Keine Startzeit, kein Verlauf: eine Dauer wäre hier geraten.
+   */
+  async saveBackfill(playedAt: Date, startingPlayer: string | null): Promise<boolean> {
+    const winner = this.winner();
+    if (!winner || !this.canSave() || this.saving()) return false;
+    this.saving.set(true);
+    try {
+      const cube = this.mtg.cubes().find((c) => c.id === this.selectedCubeId());
+      const draftSet = this.selectedDraftSet();
+      const players = this.selectedPlayers().map((p) => (p.name === startingPlayer ? { ...p, turnOrder: 1 } : p));
+      const matchId = await this.mtg.addMatch({
+        mode: this.mode(),
+        format: this.format(),
+        players,
+        winner,
+        cube: cube ? { id: cube.id, name: cube.name, isCommander: cube.isCommander } : undefined,
+        draftSet:
+          this.mode() === 'Draft' && draftSet
+            ? { id: draftSet.id, code: draftSet.code, name: draftSet.name, releasedAt: draftSet.releasedAt }
+            : undefined,
+        isRanked: this.isRanked(),
+        playedAt: playedAt.toISOString(),
+      });
+      if (!matchId) return false;
+      this.resetAll();
+      return true;
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
   /** Verwirft die Session ohne zu speichern. */
   discardAndReset(): void {
     this.resetAll();
