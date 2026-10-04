@@ -112,6 +112,11 @@ export interface MatchPlayer {
   placement?: number;
   /** Platz in der Zugreihenfolge, 1 = hat angefangen (match_players.turn_order). Fehlt = unbekannt. */
   turnOrder?: number;
+  /**
+   * Nur bei Freundesspielen (Partie ohne Gruppe, sql/freunde-2026-10-04.sql): Account des
+   * Spielers. Gruppenpartien kennen ihre Spieler über players, die es dort nicht gibt.
+   */
+  userId?: string;
 }
 
 /**

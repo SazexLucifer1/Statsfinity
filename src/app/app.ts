@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { MatchTab } from './match-tab/match-tab';
 import { StatsTab } from './stats-tab/stats-tab';
 import { GlobalStats } from './global-stats/global-stats';
@@ -28,6 +28,7 @@ import { AuthService } from './auth.service';
 import { NavigationService, AppTab } from './navigation.service';
 import { DeckViewerService } from './deck-viewer.service';
 import { DeckCommentInboxService } from './deck-comment-inbox.service';
+import { FriendsService } from './friends.service';
 import { I18nService } from './i18n.service';
 import { FeedbackService } from './feedback.service';
 import { TournamentService } from './tournament.service';
@@ -81,6 +82,8 @@ export class App {
   readonly deckViewer = inject(DeckViewerService);
   /** Nur fuer das Abzeichen an der Profil-Schaltflaeche der Tab-Leiste (ungelesene Deck-Kommentare). */
   readonly inbox = inject(DeckCommentInboxService);
+  private readonly friends = inject(FriendsService);
+  readonly profileBadgeCount = computed(() => this.inbox.unreadCount() + this.friends.incoming().length);
 
   /** Nur injiziert, damit der Dienst überhaupt existiert: er hängt sich an den Tab-Wechsel und holt
    * die Ansicht zurück, falls nach dem Zurückkommen nichts mehr gerendert wird (weißer Bildschirm). */

@@ -705,6 +705,7 @@ export class GameSessionService {
    * erfolgreichem Insert setzen, sonst UPDATE auf eine noch fehlende Zeile.
    */
   private beginLiveSession(): void {
+    if (this.friendMode()) return;
     const groupId = this.groupService.groupId();
     const userId = this.auth.currentUser()?.id;
     if (!groupId || !userId) return;
@@ -840,6 +841,33 @@ export class GameSessionService {
     // Commander-Schaden ist zugleich normaler Lebenspunktverlust -> Leben sinkt, wenn Schaden steigt.
     this.adjustLife(target, -actualDelta);
     return actualDelta;
+  }
+
+  // --- Freundesspiel (sql/freunde-2026-10-04.sql): Partie ohne Gruppe, Spieler sind Accounts.
+  // Bleibt über Partien hinweg eingeschaltet - wer mit Freunden spielt, spielt meist mehrere
+  // Runden. Ohne Gruppe gibt es keine Live-Session (live_game_sessions hängt an einer Gruppe):
+  // der Tracker läuft dann nur auf diesem Gerät. ---
+
+  readonly friendMode = signal(false);
+
+  setFriendMode(on: boolean): void {
+    if (this.friendMode() === on) return;
+    this.friendMode.set(on);
+    // Spieler der Gruppe und Freunde sind verschiedene Listen - eine halbe Auswahl aus der
+    // anderen Liste ergäbe eine Partie mit Spielern, die es dort nicht gibt.
+    this.selectedPlayers.set([]);
+    this.winner.set(null);
+  }
+
+  /** Spieler im Freundesmodus an-/abwählen; userId kommt mit, damit die Partie den Account kennt. */
+  toggleFriendPlayer(name: string, userId: string): void {
+    const current = this.selectedPlayers();
+    if (current.some((p) => p.name === name)) {
+      this.selectedPlayers.set(current.filter((p) => p.name !== name));
+      if (this.winner() === name) this.winner.set(null);
+    } else {
+      this.selectedPlayers.set([...current, { name, userId }]);
+    }
   }
 
   // --- Monarch und Initiative: je eine Marke am Tisch, höchstens ein Spieler hält sie. ---
@@ -1098,6 +1126,7 @@ export class GameSessionService {
         tournamentMatchId,
         countsInGeneralStats: this.activeTournamentCountsInStats(),
         isRanked: this.isRanked(),
+        friendGame: this.friendMode(),
         startedAt: this.startedAt() ?? undefined,
         lifeLog: this.buildLifeLog(),
       });
@@ -1138,6 +1167,7 @@ export class GameSessionService {
             ? { id: draftSet.id, code: draftSet.code, name: draftSet.name, releasedAt: draftSet.releasedAt }
             : undefined,
         isRanked: this.isRanked(),
+        friendGame: this.friendMode(),
         playedAt: playedAt.toISOString(),
       });
       if (!matchId) return false;

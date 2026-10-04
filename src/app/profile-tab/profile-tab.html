@@ -30,6 +30,10 @@
         <app-profile-rank [entry]="rankEntry()" [mode]="rankChoice().mode" [format]="rankChoice().format" [groupName]="rankGroupName()" />
       }
 
+      @if (profileService.viewingUserId(); as viewedUserId) {
+        <app-friend-status [userId]="viewedUserId" [name]="viewed.displayName" />
+      }
+
       @if (viewed.favoriteCommanders.length > 0) {
         <div class="favorite-commanders-col" data-tutorial="profile-favorites">
           <h3>{{ i18n.t(viewed.displayName === 'Adrian' ? 'profile.favoriteGliederAdrian' : 'profile.favoriteCommanders') }}</h3>
@@ -519,6 +523,7 @@
   }
 
 <div class="profile-grid">
+  <app-friends-panel />
   @if (profileService.profile()?.isDeveloper) {
   <section class="glass-card span-full">
     <div class="section-header-row">
@@ -820,7 +825,7 @@
     <section class="glass-card span-full">
       <h2>{{ i18n.t('profile.matchHistory') }}</h2>
       <p class="hint">{{ i18n.t(devFullView() ? 'profile.matchHistoryHint' : 'profile.matchHistoryOwnHint') }}</p>
-      <app-player-match-history [playerName]="profileHistoryName()" [year]="statsYear()" />
+      <app-player-match-history [playerName]="profileHistoryName()" [year]="statsYear()" [includeFriendGames]="!isViewingOther()" />
     </section>
 </div>
   }

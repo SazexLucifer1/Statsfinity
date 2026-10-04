@@ -818,6 +818,32 @@ export class MtgService {
     this.history.set(rows.map((row: any) => mapMatchRow(row)));
   }
 
+  /**
+   * Freundesspiele (Partien ohne Gruppe), an denen ich teilgenommen oder die ich angelegt habe -
+   * RLS liefert ohnehin nur diese (sql/freunde-2026-10-04.sql). Fehlt die Migration, gibt es
+   * schlicht keine Zeilen mit group_id = null, die ich sehen darf.
+   */
+  readonly friendHistory = signal<Match[]>([]);
+
+  async loadFriendMatches(): Promise<Match[]> {
+    if (!this.auth.currentUser()) {
+      this.friendHistory.set([]);
+      return [];
+    }
+    const rows = await this.fetchMatchRows(
+      (select) =>
+        supabase
+          .from('matches')
+          .select(select)
+          .is('group_id', null)
+          .order('played_at', { ascending: false }),
+      'Konnte Freundesspiele nicht laden:',
+    );
+    const matches = (rows ?? []).map((row: any) => mapMatchRow(row));
+    this.friendHistory.set(matches);
+    return matches;
+  }
+
   /** Spielername eines Accounts in einer (nicht unbedingt aktiven) eigenen Gruppe, oder null. */
   async playerNameInGroup(groupId: string, userId: string): Promise<string | null> {
     const { data, error } = await supabase
@@ -916,14 +942,21 @@ export class MtgService {
       lifeLog?: LifeLog;
       /** Nachgetragene Partie: wann sie gespielt wurde (sonst setzt die Datenbank "jetzt"). */
       playedAt?: string;
+      /** Freundesspiel: Partie ohne Gruppe (sql/freunde-2026-10-04.sql), Spieler über userId. */
+      friendGame?: boolean;
     }
   ): Promise<string | null> {
-    const groupId = this.groupService.groupId();
-    if (!groupId) return null;
+    const friendGame = match.friendGame === true;
+    const groupId = friendGame ? null : this.groupService.groupId();
+    const userId = this.auth.currentUser()?.id ?? null;
+    if (!friendGame && !groupId) return null;
+    if (friendGame && !userId) return null;
 
-    const players = await this.resolveAutoDeckLinks(match.players, match.mode);
+    // Die automatische Deck-Zuordnung sucht in der Gruppe - ein Freundesspiel hat keine.
+    const players = friendGame ? match.players : await this.resolveAutoDeckLinks(match.players, match.mode);
 
-    const isRanked = !match.tournamentMatchId && (match.isRanked ?? true);
+    // Ranked ist Gruppensache; Freundesspiele zählen nie für die Elo einer Gruppe.
+    const isRanked = !friendGame && !match.tournamentMatchId && (match.isRanked ?? true);
 
     // Schritt 1: Zeile in "matches" anlegen
     const insertMatch = () =>
@@ -943,6 +976,7 @@ export class MtgService {
           tournament_match_id: match.tournamentMatchId ?? null,
           counts_in_general_stats: match.countsInGeneralStats ?? true,
           ...(match.playedAt ? { played_at: match.playedAt } : {}),
+          ...(friendGame ? { created_by: userId } : {}),
           ...(partieVerlaufVerfuegbar
             ? { started_at: match.startedAt ?? null, life_log: match.lifeLog ?? null }
             : {}),
@@ -963,7 +997,8 @@ export class MtgService {
     // Schritt 2: Für jeden Spieler eine Zeile in "match_players" anlegen
     const playerRows = players.map((p) => ({
       match_id: matchRow.id,
-      player_id: this.playerIdsByName()[p.name] ?? null,
+      player_id: friendGame ? null : (this.playerIdsByName()[p.name] ?? null),
+      ...(friendGame ? { user_id: p.userId ?? null } : {}),
       player_name: p.name,
       commander_name: p.commander ?? null,
       partner_commander_name: p.partnerCommander ?? null,
@@ -1001,7 +1036,7 @@ export class MtgService {
       deckPrecons = Object.fromEntries((deckRows ?? []).map((d) => [d.id, d.is_precon]));
     }
 
-    const { lifeLog: _lifeLog, playedAt: _playedAt, ...matchOhneVerlauf } = match;
+    const { lifeLog: _lifeLog, playedAt: _playedAt, friendGame: _friendGame, ...matchOhneVerlauf } = match;
     const full: Match = {
       ...matchOhneVerlauf,
       id: matchRow.id,
@@ -1016,7 +1051,8 @@ export class MtgService {
         deckIsPrecon: p.deckId ? deckPrecons[p.deckId] : undefined,
       })),
     };
-    this.history.update((matches) => [full, ...matches]);
+    if (friendGame) this.friendHistory.update((matches) => [full, ...matches]);
+    else this.history.update((matches) => [full, ...matches]);
     return matchRow.id;
   }
 

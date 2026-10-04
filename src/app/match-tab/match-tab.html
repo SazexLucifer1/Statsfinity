@@ -28,8 +28,20 @@
     </select>
   }
 
+  <!-- Mit der Gruppe oder mit Freunden (Partie ohne Gruppe, sql/freunde-2026-10-04.sql). -->
+  @if (auth.currentUser() && friends.verfuegbar()) {
+    <div class="segmented block friend-mode-toggle" role="group" [attr.aria-label]="i18n.t('match.playWithAria')">
+      <button [class.active]="!session.friendMode()" (click)="setFriendMode(false)">
+        <app-icon name="users" /> {{ i18n.t('match.playWithGroup') }}
+      </button>
+      <button [class.active]="session.friendMode()" (click)="setFriendMode(true)">
+        <app-icon name="heart" /> {{ i18n.t('match.playWithFriends') }}
+      </button>
+    </div>
+  }
+
   <!-- Ranked oder frei: nur, wenn die Gruppe das Rangsystem nutzt (Schalter des Gruppenleiters). -->
-  @if (groupService.rankedEnabled() && mtg.isRankedAvailable()) {
+  @if (!session.friendMode() && groupService.rankedEnabled() && mtg.isRankedAvailable()) {
     <div class="segmented block ranked-toggle" data-tutorial="match-ranked" role="group" [attr.aria-label]="i18n.t('match.rankedAria')">
       <button [class.active]="session.isRanked()" (click)="session.isRanked.set(true)">
         {{ i18n.t('match.ranked') }}
@@ -60,7 +72,21 @@
     </ul>
   }
 
-  @if (auth.currentUser()) {
+  @if (auth.currentUser() && session.friendMode()) {
+  <h3 data-tutorial="match-players-heading">{{ i18n.t('match.whoPlays') }}</h3>
+  @if (friends.friends().length === 0) {
+    <p class="hint">{{ i18n.t('match.noFriendsYet') }}</p>
+  }
+  <div class="chip-row">
+    @for (fp of friendModePlayers(); track fp.userId) {
+      <button class="glass-chip avatar-chip" [class.active]="isSelected(fp.name)" (click)="toggleFriendPlayer(fp)">
+        <app-player-avatar [url]="fp.avatarUrl" />
+        {{ fp.name }}
+      </button>
+    }
+  </div>
+  <p class="hint">{{ i18n.t('match.friendGameHint') }}</p>
+  } @else if (auth.currentUser()) {
   <h3 data-tutorial="match-players-heading">{{ i18n.t('match.whoPlays') }}</h3>
   @if (mtg.allPlayers().length === 0) {
     <p class="hint">{{ i18n.t('match.noPlayersYet') }}</p>
@@ -123,10 +149,12 @@
             <div class="chip-row">
               <button class="glass-chip small" (click)="openSearch(p.name)">{{ i18n.t('match.searchCommander') }}</button>
               @if (session.mode() !== 'Cube') {
-                @if (mtg.playerUserIds()[p.name] || mtg.playerIdFor(p.name)) {
+                @if (p.userId || mtg.playerUserIds()[p.name] || mtg.playerIdFor(p.name)) {
                   <button class="glass-chip small" (click)="openOwnDeckPicker(p.name)">{{ i18n.t('match.chooseDeck') }}</button>
                 }
-                <button class="glass-chip small" (click)="openBorrowDeckPicker(p.name)">{{ i18n.t('match.borrowDeck') }}</button>
+                @if (!session.friendMode()) {
+                  <button class="glass-chip small" (click)="openBorrowDeckPicker(p.name)">{{ i18n.t('match.borrowDeck') }}</button>
+                }
               }
             </div>
           }
@@ -391,14 +419,16 @@
       @if (groupService.rankedEnabled() && match.isRanked === false && !match.tournamentMatchId) {
         <span class="glass-chip small">{{ i18n.t('match.casual') }}</span>
       }
+      <!-- Freundesspiele haben keine Gruppenrechte; Korrekturen dort gibt es (noch) nicht. -->
       @if (
-        groupService.hasPermission('match.editResult') ||
-        groupService.hasPermission('match.editCommander') ||
-        groupService.hasPermission('match.editCube')
+        !session.friendMode() &&
+        (groupService.hasPermission('match.editResult') ||
+          groupService.hasPermission('match.editCommander') ||
+          groupService.hasPermission('match.editCube'))
       ) {
         <button class="icon-button" (click)="startEditResult(match)" [attr.aria-label]="i18n.t('match.changeWinner')"><app-icon name="pencil" /></button>
       }
-      @if (groupService.hasPermission('match.delete')) {
+      @if (!session.friendMode() && groupService.hasPermission('match.delete')) {
         <button class="icon-button" (click)="deleteMatch(match.id)" [attr.aria-label]="i18n.t('match.deleteMatch')"><app-icon name="trash" /></button>
       }
     </div>

@@ -21,6 +21,8 @@ import { Pager } from '../ui/pager/pager';
 import { DeckViewerService } from '../deck-viewer.service';
 import { storedDeckBracket } from '../bracket';
 import { Icon } from '../ui/icon/icon';
+import { FriendsService } from '../friends.service';
+import { ProfileService } from '../profile.service';
 
 /** Ein einzelnes Spiel oder eine zu einer Karte zusammengefasste BO3-Turnierpartie (2-3 Einzelspiele) im Verlauf. */
 export type HistoryRow =
@@ -111,6 +113,36 @@ export class MatchTab {
   readonly draftSuggestions = signal<ScryfallSet[]>([] as any);
   readonly draftYear = signal<number | null>(null);
   private draftTimer: ReturnType<typeof setTimeout> | null = null;
+
+  // --- Freundesspiel (Partie ohne Gruppe) ---
+
+  readonly friends = inject(FriendsService);
+  private readonly profileService = inject(ProfileService);
+
+  /** Ich selbst und meine Freunde als Spieler-Chips im Freundesmodus. */
+  readonly friendModePlayers = computed(() => {
+    const me = this.auth.currentUser();
+    const profile = this.profileService.profile();
+    const own = me ? [{ userId: me.id, name: profile?.displayName ?? this.i18n.t('match.me'), avatarUrl: profile?.avatarUrl ?? null }] : [];
+    return [
+      ...own,
+      ...this.friends.friends().map((f) => ({ userId: f.otherId, name: f.displayName, avatarUrl: f.avatarUrl })),
+    ];
+  });
+
+  setFriendMode(on: boolean): void {
+    this.session.setFriendMode(on);
+    this.closeSearch();
+    if (on) {
+      this.friends.refresh();
+      this.mtg.loadFriendMatches();
+    }
+  }
+
+  toggleFriendPlayer(fp: { userId: string; name: string }): void {
+    this.session.toggleFriendPlayer(fp.name, fp.userId);
+    if (this.searchTarget()?.player === fp.name) this.closeSearch();
+  }
 
   // --- Spielerauswahl ---
 
@@ -327,7 +359,8 @@ export class MatchTab {
   readonly deckPickerHistoryMode = signal(false);
 
   async openOwnDeckPicker(playerName: string, historyMode = false): Promise<void> {
-    const userId = this.mtg.playerUserIds()[playerName];
+    const userId =
+      this.session.selectedPlayers().find((p) => p.name === playerName)?.userId ?? this.mtg.playerUserIds()[playerName];
     const playerId = this.mtg.playerIdFor(playerName);
     if (!userId && !playerId) return;
     const owner: DeckOwner = userId ? { kind: 'user', userId } : { kind: 'player', playerId: playerId! };
@@ -569,7 +602,9 @@ export class MatchTab {
    * nur die Anzeige im Verlauf lässt sie weg.
    */
   readonly visibleHistory = computed(() =>
-    this.mtg.history().filter((m) => new Date(m.date) >= LIVE_TRACKING_START_DATE)
+    (this.session.friendMode() ? this.mtg.friendHistory() : this.mtg.history()).filter(
+      (m) => new Date(m.date) >= LIVE_TRACKING_START_DATE,
+    ),
   );
 
   /**
