@@ -1,0 +1,169 @@
+.deck-check {
+  margin-bottom: var(--sp-6);
+  padding: var(--sp-5);
+  border-radius: var(--r-lg);
+  background: rgba(255, 255, 255, 0.05);
+
+  h3 {
+    margin: 0;
+  }
+
+  h4 {
+    margin: var(--sp-6) 0 var(--sp-3);
+  }
+
+  .small {
+    font-size: 0.78rem;
+  }
+}
+
+.check-head {
+  display: flex;
+  gap: var(--sp-5);
+  align-items: center;
+
+  p {
+    margin: 4px 0 0;
+  }
+}
+
+.score {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  width: 72px;
+  height: 72px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 3px solid currentColor;
+
+  .score-value {
+    font-size: 1.5rem;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  .score-label {
+    font-size: 0.7rem;
+    opacity: 0.7;
+  }
+
+  &.score-good {
+    color: var(--success);
+  }
+  &.score-warn {
+    color: var(--gold);
+  }
+  &.score-bad {
+    color: var(--danger);
+  }
+}
+
+.check-list {
+  list-style: none;
+  margin: var(--sp-4) 0 0;
+  padding: 0;
+
+  li {
+    display: grid;
+    grid-template-columns: 14px 1fr auto;
+    grid-template-areas:
+      'dot name target'
+      '. advice advice';
+    column-gap: var(--sp-3);
+    row-gap: 2px;
+    align-items: center;
+    padding: var(--sp-3) 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .dot {
+    grid-area: dot;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+  }
+
+  .check-name {
+    grid-area: name;
+    display: inline-flex;
+    gap: var(--sp-2);
+    align-items: center;
+  }
+
+  .check-target {
+    grid-area: target;
+    font-size: 0.8rem;
+    opacity: 0.7;
+  }
+
+  .check-advice {
+    grid-area: advice;
+    font-size: 0.82rem;
+    opacity: 0.8;
+  }
+
+  // Ampel: Farbe UND Form der Aussage (Satz darunter), nicht nur Farbe.
+  .lvl-good .dot {
+    background: var(--success);
+  }
+  .lvl-warn .dot {
+    background: var(--gold);
+  }
+  .lvl-bad .dot {
+    background: var(--danger);
+  }
+}
+
+.odds {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  li {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--sp-4);
+    padding: var(--sp-2) 0;
+    font-size: 0.9rem;
+  }
+}
+
+.test-hand {
+  margin-top: var(--sp-5);
+  color: var(--text);
+}
+
+.suggestions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  li {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 2px var(--sp-3);
+    padding: var(--sp-2) 0;
+
+    app-meter {
+      grid-column: 1 / -1;
+    }
+  }
+
+  .suggestion-name {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--text);
+    font: inherit;
+    text-align: left;
+    text-decoration: underline dotted;
+    cursor: pointer;
+  }
+
+  .suggestion-count {
+    font-size: 0.8rem;
+    opacity: 0.7;
+  }
+}

@@ -986,6 +986,7 @@
             @if (viewer.analysis.analysisBusy()) {
               <p class="hint">{{ viewer.i18n.t('deckView.loadingAnalysis') }}</p>
             } @else {
+              <app-deck-check />
               <section class="analysis-section analysis-section-wide">
                 <div class="stat-tiles">
                   <div class="stat-tile">

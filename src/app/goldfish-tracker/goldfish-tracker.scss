@@ -44,6 +44,12 @@
 
 .goldfish-mulligan-badge {
   flex-shrink: 0;
+
+  // 2–4 Länder auf der Hand: in der Regel behalten.
+  &.lands-ok {
+    color: var(--success);
+  }
+
   padding: 2px 8px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.1);

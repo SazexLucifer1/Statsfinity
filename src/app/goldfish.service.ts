@@ -94,6 +94,8 @@ export class GoldfishService {
   readonly exile = computed(() => this.cards().filter((c) => c.zone === 'exile'));
   readonly command = computed(() => this.cards().filter((c) => c.zone === 'command'));
   readonly libraryEmpty = computed(() => this.library().length === 0);
+  /** Länder auf der Hand - die erste Frage bei jeder Starthand ("behalten oder Mulligan?"). */
+  readonly handLands = computed(() => this.hand().filter((c) => classifyRow(activeTypeLine(c)) === 'land').length);
 
   /** Die 3 automatisch sortierten Spielfeld-Zeilen - Zugehörigkeit ergibt sich immer aus der (aktuell gezeigten) Type-Line, nie aus der Ablageposition. */
   readonly battlefieldCreatures = computed(() => this.battlefield().filter((c) => classifyRow(activeTypeLine(c)) === 'creature'));
