@@ -51,6 +51,7 @@ import {
 import { Podium, PodiumEntry } from '../ui/podium/podium';
 import { GlobalStats } from '../global-stats/global-stats';
 import { Icon } from '../ui/icon/icon';
+import { MatchInsights } from '../match-insights/match-insights';
 
 export type StatsViewMode = 'stats' | 'tournaments';
 export type ColorStatsWeightMode = 'games' | 'decks';
@@ -92,6 +93,7 @@ interface CombinedRankEntry {
   selector: 'app-stats-tab',
   imports: [
     RankBadge,
+    MatchInsights,
     DecimalPipe,
     PlayerAvatar,
     FormsModule,
@@ -469,6 +471,11 @@ export class StatsTab {
 
   readonly filteredMatches = computed<Match[]>(() =>
     this.applyFormatFilter(this.applyModeFilter(this.yearFilteredMatches())),
+  );
+
+  /** Für den Jahresrückblick: alle zählenden Partien der Gruppe, ohne Jahres-/Modusfilter. */
+  readonly reviewMatches = computed<Match[]>(() =>
+    this.mtg.history().filter((m) => m.countsInGeneralStats !== false),
   );
 
   // --- Lokaler Gruppen-Wechsler (nur Stats-Tab) ---

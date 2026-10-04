@@ -1,0 +1,20 @@
+<div class="options-menu-overlay" (click)="closed.emit()">
+  <div class="options-menu-sheet wide" (click)="$event.stopPropagation()">
+    <h3>{{ t('stats.review.title', { name: player() }) }}</h3>
+    @if (years().length > 1) {
+      <div class="chip-row">
+        @for (y of years(); track y) {
+          <button class="glass-chip" [class.active]="y === year()" (click)="selectedYear.set(y)">{{ y }}</button>
+        }
+      </div>
+    }
+    @if (review()) {
+      <canvas #canvas class="review-canvas"></canvas>
+      <p class="hint">{{ t('stats.review.englishHint') }}</p>
+      <button class="glass-button primary" (click)="download()">{{ t('stats.review.download') }}</button>
+    } @else {
+      <p class="hint">{{ t('stats.review.empty') }}</p>
+    }
+    <button class="glass-button" (click)="closed.emit()">{{ t('group.close') }}</button>
+  </div>
+</div>

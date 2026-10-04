@@ -1,0 +1,139 @@
+<section class="glass-card insights" data-tutorial="stats-insights">
+  <button class="insights-toggle" (click)="expanded.set(!expanded())">
+    <h2>{{ player() ? i18n.t('stats.insights.titlePlayer', { name: player() ?? '' }) : i18n.t('stats.insights.title') }}</h2>
+    <span class="chevron">{{ expanded() ? '▾' : '▸' }}</span>
+  </button>
+
+  @if (expanded()) {
+    @if (player()) {
+      <!-- Form: die letzten zehn Ergebnisse, neueste links -->
+      <h3>{{ i18n.t('stats.insights.formTitle') }}</h3>
+      @if (form().length === 0) {
+        <p class="hint">{{ i18n.t('stats.insights.noGames') }}</p>
+      } @else {
+        <div class="form-row" role="list">
+          @for (f of form(); track f.match.id) {
+            <span class="form-dot" [class]="'form-' + f.result" role="listitem" [title]="formLabel(f.result)">{{
+              i18n.t('stats.insights.formShort' + f.result)
+            }}</span>
+          }
+        </div>
+        @if (monthly().length > 1) {
+          <p class="hint">{{ i18n.t('stats.insights.monthlyHint') }}</p>
+          <app-bar-chart [data]="monthly()" orientation="vertical" scale="percent" valueSuffix="%" />
+        }
+      }
+
+      <!-- Gegner -->
+      <h3>{{ i18n.t('stats.insights.opponentsTitle') }}</h3>
+      @if (topOpponents().length === 0) {
+        <p class="hint">{{ i18n.t('stats.insights.opponentsEmpty', { min: OPPONENT_MIN_GAMES }) }}</p>
+      } @else {
+        <div class="duo">
+          <div class="duo-card">
+            <span class="duo-label"><app-icon name="skull" /> {{ i18n.t('stats.insights.nemesis') }}</span>
+            @if (nemesis(); as n) {
+              <strong>{{ n.name }}</strong>
+              <span class="hint">{{ i18n.t('stats.insights.lostToOf', { count: n.lostTo, games: n.games }) }}</span>
+            } @else {
+              <span class="hint">–</span>
+            }
+          </div>
+          <div class="duo-card">
+            <span class="duo-label"><app-icon name="trophy" /> {{ i18n.t('stats.insights.victim') }}</span>
+            @if (victim(); as v) {
+              <strong>{{ v.name }}</strong>
+              <span class="hint">{{ i18n.t('stats.insights.beatOf', { count: v.beat, games: v.games }) }}</span>
+            } @else {
+              <span class="hint">–</span>
+            }
+          </div>
+        </div>
+        <ul class="rows">
+          @for (o of topOpponents(); track o.name) {
+            <li>
+              <span class="row-name">{{ o.name }}</span>
+              <span class="row-detail">{{ i18n.t('stats.insights.opponentLine', { games: o.games, beat: o.beat, lost: o.lostTo }) }}</span>
+              <app-meter [value]="o.games ? (o.beat / o.games) * 100 : 0" />
+            </li>
+          }
+        </ul>
+      }
+    }
+
+    <!-- Zugreihenfolge -->
+    <h3>{{ i18n.t('stats.insights.turnOrderTitle') }}</h3>
+    @if (seats().length === 0) {
+      <p class="hint">{{ i18n.t('stats.insights.turnOrderEmpty') }}</p>
+    } @else {
+      <p class="hint">{{ i18n.t('stats.insights.turnOrderHint', { games: seatGames() }) }}</p>
+      <app-bar-chart [data]="seatChart()" scale="percent" valueSuffix="%" />
+    }
+
+    <!-- Spieldauer -->
+    <h3>{{ i18n.t('stats.insights.durationTitle') }}</h3>
+    @if (duration(); as d) {
+      <div class="duo">
+        <div class="duo-card">
+          <span class="duo-label">{{ i18n.t('stats.insights.avgDuration') }}</span>
+          <strong>{{ formatMinutes(d.avgMinutes) }}</strong>
+          <span class="hint">{{ i18n.t('stats.insights.timedGames', { games: d.games }) }}</span>
+        </div>
+        <div class="duo-card">
+          <span class="duo-label">{{ i18n.t('stats.insights.longest') }}</span>
+          <strong>{{ formatMinutes(d.longest.minutes) }}</strong>
+          <span class="hint">{{ i18n.t('stats.insights.shortest', { duration: formatMinutes(d.shortest.minutes) }) }}</span>
+        </div>
+      </div>
+      @if (!player() && d.byPlayerCount.length > 1) {
+        <ul class="rows">
+          @for (c of d.byPlayerCount; track c.label) {
+            <li>
+              <span class="row-name">{{ i18n.t('stats.insights.playerCount', { count: c.label }) }}</span>
+              <span class="row-detail">{{ formatMinutes(c.avgMinutes) }} · {{ i18n.t('stats.insights.timedGames', { games: c.games }) }}</span>
+            </li>
+          }
+        </ul>
+      }
+      @if (d.byDeck.length > 0) {
+        <p class="hint">{{ i18n.t('stats.insights.durationByDeck') }}</p>
+        <ul class="rows">
+          @for (deck of d.byDeck.slice(0, 6); track deck.label) {
+            <li>
+              <span class="row-name">{{ deck.label }}</span>
+              <span class="row-detail">{{ formatMinutes(deck.avgMinutes) }} · {{ i18n.t('stats.insights.timedGames', { games: deck.games }) }}</span>
+            </li>
+          }
+        </ul>
+      }
+    } @else {
+      <p class="hint">{{ i18n.t('stats.insights.durationEmpty') }}</p>
+    }
+
+    <!-- Deck gegen Deck -->
+    <h3>{{ i18n.t('stats.insights.matchupsTitle') }}</h3>
+    @if (matchups().length === 0) {
+      <p class="hint">{{ i18n.t('stats.insights.matchupsEmpty') }}</p>
+    } @else {
+      <ul class="rows matchups">
+        @for (m of matchups(); track m.a + '|' + m.b) {
+          <li>
+            <span class="row-name">{{ m.a }} <span class="vs">vs</span> {{ m.b }}</span>
+            <span class="row-detail">{{ i18n.t('stats.insights.matchupLine', { a: m.aWins, b: m.bWins, games: m.games }) }}</span>
+            <app-split-bar [segments]="matchupSegments(m)" />
+          </li>
+        }
+      </ul>
+    }
+
+    @if (player()) {
+      <button class="glass-button year-review-button" (click)="showYearReview.set(true)">
+        <app-icon name="share" /> {{ i18n.t('stats.insights.yearReview') }}
+      </button>
+    }
+  }
+</section>
+
+@if (showYearReview() && player()) {
+  <app-year-review-dialog [matches]="allMatches()" [player]="player() ?? ''" (closed)="showYearReview.set(false)" />
+}
