@@ -38,6 +38,16 @@ export class DeckCheck {
   readonly suggestionsService = inject(DeckSuggestionsService);
   readonly i18n = this.viewer.i18n;
 
+  /**
+   * Quellen der Richtwerte - wer "Frank Karsten" liest, soll nachsehen können, wer das ist und
+   * woher die Zahl kommt. Niederländischer Magic-Profi (Hall of Fame) und Mathematiker; seine
+   * Artikel zu Länderzahl und Farbquellen sind in der Community der Standard.
+   */
+  readonly karstenWiki =
+    'https://en.wikipedia.org/wiki/Frank_Karsten_(Magic:_The_Gathering_player)';
+  readonly karstenLands =
+    'https://www.tcgplayer.com/content/article/How-Many-Lands-Do-You-Need-in-Your-Deck-An-Updated-Analysis/cd1c1a24-d439-4a8e-b369-b936edb0b38a/';
+
   private readonly regel = computed(() => regelFuer(this.viewer.state.viewingDeck()?.format));
   /** 99-Karten-Formate (Commander, PDH, Historic Brawl) - die Karsten-Zahlen gelten je Deckgröße. */
   readonly isCommanderFormat = computed(() => this.regel()?.min === 100);

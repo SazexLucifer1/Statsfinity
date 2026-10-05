@@ -34,7 +34,12 @@
       <p class="hint">{{ i18n.t('deckView.check.effectsLoading') }}</p>
     }
     <p class="hint small">
-      {{ i18n.t('deckView.check.landsSource', { lands: recommendedLands() }) }}
+      {{ i18n.t('deckView.check.landsSourceBefore') }}
+      <a [href]="karstenWiki" target="_blank" rel="noopener">Frank Karsten</a
+      >{{ i18n.t('deckView.check.landsSourceAfter', { lands: recommendedLands() }) }}
+      <a [href]="karstenLands" target="_blank" rel="noopener">{{
+        i18n.t('deckView.check.sourceArticle')
+      }}</a>
     </p>
   </div>
 
@@ -57,7 +62,11 @@
           </li>
         }
       </ul>
-      <p class="hint small">{{ i18n.t('deckView.check.colorsSource') }}</p>
+      <p class="hint small">
+        {{ i18n.t('deckView.check.colorsSourceBefore') }}
+        <a [href]="karstenWiki" target="_blank" rel="noopener">Frank Karsten</a
+        >{{ i18n.t('deckView.check.colorsSourceAfter') }}
+      </p>
     }
 
     @if (odds(); as o) {
