@@ -239,7 +239,7 @@
                 @for (reason of analysis.reasons; track reason.key) {
                   <div class="bracket-reason">
                     <p class="bracket-reason-head">
-                      {{ viewer.i18n.t('deckView.bracketReason.' + reason.key, { tutors: analysis.verdicts.comboTutorMin }) }}
+                      {{ viewer.i18n.t('deckView.bracketReason.' + reason.key, { tutors: analysis.verdicts.comboTutorMin, bump: viewer.bracket.tuningBumpPercent }) }}
                       @if (reason.key !== 'nothing') {
                         <span class="hint"> · {{ viewer.i18n.t('deckView.bracketReasonMinimum', { level: reason.minimum }) }}</span>
                       }
@@ -1764,7 +1764,7 @@
               <ul class="game-changer-list">
                 @for (reason of math.rulesReasons; track reason.key) {
                   <li>
-                    {{ viewer.i18n.t('deckView.bracketReason.' + reason.key) }}
+                    {{ viewer.i18n.t('deckView.bracketReason.' + reason.key, { tutors: analysis.verdicts.comboTutorMin, bump: viewer.bracket.tuningBumpPercent }) }}
                     <span class="hint"> · {{ viewer.i18n.t('deckView.bracketReasonMinimum', { level: reason.minimum }) }}</span>
                     @if (reason.cards.length > 0) {
                       <span class="bracket-reason-cards">{{ reason.cards.join(', ') }}</span>

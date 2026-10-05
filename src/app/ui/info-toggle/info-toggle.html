@@ -1,0 +1,18 @@
+<div class="info-row">
+  <ng-content select="[info-title]" />
+  <button
+    type="button"
+    class="info-button"
+    [class.active]="open()"
+    [attr.aria-expanded]="open()"
+    [attr.aria-label]="label()"
+    (click)="open.set(!open())"
+  >
+    ⓘ
+  </button>
+</div>
+@if (open()) {
+  <div class="info-panel">
+    <ng-content />
+  </div>
+}

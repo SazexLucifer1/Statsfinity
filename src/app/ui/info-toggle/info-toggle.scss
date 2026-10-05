@@ -1,0 +1,49 @@
+:host {
+  display: block;
+}
+
+.info-row {
+  display: flex;
+  // Grundlinie statt Mitte: Überschriften bringen eigene Außenabstände mit, an der Mitte stünde
+  // das ⓘ dann neben dem Abstand statt neben dem Text.
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+// Kleiner als der globale .icon-button, aber mit 44 px Trefferfläche über das Padding.
+.info-button {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  margin: -7px;
+  padding: 0;
+  border: 7px solid transparent;
+  box-sizing: content-box;
+  background-clip: padding-box;
+  border-radius: 50%;
+  background-color: var(--surface-tile);
+  color: var(--text);
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.75;
+
+  &.active {
+    opacity: 1;
+    background-color: rgba(255, 255, 255, 0.18);
+  }
+}
+
+.info-panel {
+  margin: var(--sp-3) 0;
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md);
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 0.85rem;
+  line-height: 1.45;
+  opacity: 0.9;
+}

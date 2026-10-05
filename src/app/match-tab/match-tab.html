@@ -30,7 +30,7 @@
 
   <!-- Mit der Gruppe oder mit Freunden (Partie ohne Gruppe, sql/freunde-2026-10-04.sql). -->
   @if (auth.currentUser() && friends.verfuegbar()) {
-    <div class="segmented block friend-mode-toggle" role="group" [attr.aria-label]="i18n.t('match.playWithAria')">
+    <div class="segmented block friend-mode-toggle" data-tutorial="match-friend-toggle" role="group" [attr.aria-label]="i18n.t('match.playWithAria')">
       <button [class.active]="!session.friendMode()" (click)="setFriendMode(false)">
         <app-icon name="users" /> {{ i18n.t('match.playWithGroup') }}
       </button>
@@ -54,7 +54,7 @@
 
   <!-- Einzelspiel oder Best of 3: bei Best of 3 startet nach jedem gespeicherten Spiel das
        nächste mit denselben Spielern, bis jemand zwei Siege hat. -->
-  <div class="segmented block series-toggle" role="group" [attr.aria-label]="i18n.t('match.seriesAria')">
+  <div class="segmented block series-toggle" data-tutorial="match-series" role="group" [attr.aria-label]="i18n.t('match.seriesAria')">
     <button [class.active]="!session.bestOfThree()" (click)="session.bestOfThree.set(false)">{{ i18n.t('match.singleGame') }}</button>
     <button [class.active]="session.bestOfThree()" (click)="session.bestOfThree.set(true)">{{ i18n.t('match.bestOfThree') }}</button>
   </div>
@@ -353,7 +353,7 @@
     {{ i18n.t('match.startGame') }}
   </button>
   <!-- Für Partien, die ohne Handy am Tisch gespielt wurden: gleiches Setup, nur ohne Tracker. -->
-  <button class="glass-button backfill-button" [disabled]="!session.canStartGame()" (click)="openBackfill()">
+  <button class="glass-button backfill-button" data-tutorial="match-backfill" [disabled]="!session.canStartGame()" (click)="openBackfill()">
     {{ i18n.t('match.backfill') }}
   </button>
   @if (session.selectedPlayers().length === 1) {

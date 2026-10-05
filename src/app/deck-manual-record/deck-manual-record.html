@@ -29,8 +29,8 @@
       <p class="record-line">
         {{ i18n.t('deck.manualRecord.line', { wins: r.wins, losses: r.losses, draws: r.draws }) }}
         @if (canEdit()) {
-          <button class="link-button" (click)="startEdit()">
-            {{ i18n.t('deck.manualRecord.edit') }}
+          <button class="glass-button small" (click)="startEdit()">
+            <app-icon name="pencil" /> {{ i18n.t('deck.manualRecord.edit') }}
           </button>
         }
       </p>
@@ -40,8 +40,8 @@
         </p>
       }
     } @else {
-      <button class="link-button" (click)="startEdit()">
-        {{ i18n.t('deck.manualRecord.add') }}
+      <button class="glass-button small" (click)="startEdit()">
+        <app-icon name="plus" /> {{ i18n.t('deck.manualRecord.add') }}
       </button>
     }
   </div>
