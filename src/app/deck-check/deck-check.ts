@@ -5,8 +5,7 @@ import { GoldfishService } from '../goldfish.service';
 import { ScryfallService } from '../scryfall.service';
 import { CardPreviewService } from '../card-preview.service';
 import { CardSuggestion, DeckSuggestionsService } from '../deck-suggestions.service';
-import { regelFuer } from '../deck-regeln';
-import { isLand } from '../deck-analyse';
+import { DeckCheckService } from '../deck-check.service';
 import {
   CheckItem,
   Influence,
@@ -14,15 +13,8 @@ import {
   PLAY_STYLES,
   PlayStyle,
   WINCON_TARGET,
-  curveStyle,
-  effectiveLands,
-  colorRequirements,
-  deckCheckItems,
-  deckHealthScore,
-  deckOdds,
   groupWinCons,
   isWinningResult,
-  recommendedLands60,
 } from '../deck-check';
 import { DeckPlayStyleService } from '../deck-play-style.service';
 import { ManaSymbol } from '../ui/mana-symbol/mana-symbol';
@@ -61,87 +53,34 @@ export class DeckCheck {
   readonly karstenLands =
     'https://www.tcgplayer.com/content/article/How-Many-Lands-Do-You-Need-in-Your-Deck-An-Updated-Analysis/cd1c1a24-d439-4a8e-b369-b936edb0b38a/';
 
-  private readonly regel = computed(() => regelFuer(this.viewer.state.viewingDeck()?.format));
-  /** 99-Karten-Formate (Commander, PDH, Historic Brawl) - die Karsten-Zahlen gelten je Deckgröße. */
-  readonly isCommanderFormat = computed(() => this.regel()?.min === 100);
-
-  private readonly library = computed(() =>
-    this.viewer.analysis.analysisDeckCards().filter((c) => !c.isCommander),
-  );
-  readonly librarySize = computed(() => this.library().reduce((s, c) => s + c.quantity, 0));
-
-  private effectCount(key: string): number | null {
-    const stats = this.viewer.effects.effectCategoryStats();
-    if (!stats) return null;
-    return stats.find((s) => s.key === key)?.count ?? 0;
-  }
+  /** Rechnung und Zustand liegen im Service - die Beständigkeit braucht auch der Power-Wert. */
+  readonly check = inject(DeckCheckService);
+  readonly isCommanderFormat = this.check.isCommanderFormat;
+  readonly librarySize = this.check.librarySize;
+  readonly landInfo = this.check.landInfo;
+  readonly cheapRampDraw = this.check.cheapRampDraw;
+  readonly playStyles = this.check.playStyles;
+  readonly playStylesSuggested = this.check.playStylesSuggested;
+  readonly curve = this.check.curve;
+  readonly items = this.check.items;
+  readonly score = this.check.score;
+  readonly recommendedLands60 = this.check.recommendedLands60;
+  readonly colors = this.check.colors;
+  readonly odds = this.check.odds;
+  private readonly library = this.check.library;
 
   readonly effectsLoading = computed(() => this.viewer.effects.effectCategoryStats() === null);
-
-  /**
-   * Länder voll, doppelseitige Karten mit Land-Rückseite voll, wenn das Land ungetappt kommen
-   * kann, sonst 0,38 (Rückseiten-Text aus den Kartendaten).
-   */
-  readonly landInfo = computed(() => {
-    const details = this.viewer.state.viewingCardDetails();
-    return effectiveLands(
-      this.library().map((c) => ({
-        typeLine: c.typeLine,
-        quantity: c.quantity,
-        backOracleText: details.get(c.cardName.toLowerCase())?.backOracleText,
-      })),
-    );
-  });
-
-  /**
-   * Rampe- und Draw-Karten mit Manawert ≤ 2, jede Karte einmal (eine Karte kann in beiden
-   * Kategorien stehen). null, solange die Kategorien noch laden.
-   */
-  readonly cheapRampDraw = computed<number | null>(() => {
-    const stats = this.viewer.effects.effectCategoryStats();
-    if (!stats) return null;
-    const names = new Set(
-      stats
-        .filter((s) => s.key === 'ramp' || s.key === 'draw')
-        .flatMap((s) => s.cards.map((c) => c.cardName)),
-    );
-    return this.library()
-      .filter((c) => names.has(c.cardName) && c.cmc <= 2)
-      .reduce((sum, c) => sum + c.quantity, 0);
-  });
 
   // --- Spielweise (decks.play_styles) ---
 
   private readonly playStyleService = inject(DeckPlayStyleService);
-  readonly playStyles = signal<PlayStyle[]>([]);
-  /** true = aus dem Archetyp des Decks vorgeschlagen, noch nicht vom Besitzer bestätigt. */
-  readonly playStylesSuggested = signal(false);
   readonly editingStyles = signal(false);
   readonly playStyleSaveAvailable = this.playStyleService.verfuegbar;
-  readonly curve = computed(() => curveStyle(this.viewer.analysis.averageCmc()));
 
   constructor() {
     effect(() => {
-      const deck = this.viewer.state.viewingDeck();
-      this.playStyles.set([]);
-      this.playStylesSuggested.set(false);
+      this.viewer.state.viewingDeck();
       this.editingStyles.set(false);
-      if (!deck) return;
-      this.playStyleService.load(deck.id).then((styles) => {
-        if (this.viewer.state.viewingDeck()?.id !== deck.id) return;
-        if (styles) {
-          this.playStyles.set(styles);
-          return;
-        }
-        // Noch nie festgelegt: aus dem Archetyp des Decks vorschlagen, soweit er passt.
-        const fromTag = (['control', 'combo', 'landfall'] as const).find(
-          (s) => s === deck.edhrecTag,
-        );
-        if (fromTag) {
-          this.playStyles.set([fromTag]);
-          this.playStylesSuggested.set(true);
-        }
-      });
     });
     effect(() => {
       const deck = this.viewer.state.viewingDeck();
@@ -156,15 +95,8 @@ export class DeckCheck {
     });
   }
 
-  async toggleStyle(style: PlayStyle): Promise<void> {
-    const next = this.playStyles().includes(style)
-      ? this.playStyles().filter((s) => s !== style)
-      : [...this.playStyles(), style];
-    this.playStyles.set(next);
-    this.playStylesSuggested.set(false);
-    const deck = this.viewer.state.viewingDeck();
-    if (deck && this.viewer.state.canEditViewingDeck())
-      await this.playStyleService.save(deck.id, next);
+  toggleStyle(style: PlayStyle): Promise<void> {
+    return this.check.toggleStyle(style);
   }
 
   influenceLabel(i: Influence): string {
@@ -215,39 +147,6 @@ export class DeckCheck {
       : 'richtwerte/statsfinity-deckbuilding-benchmarks-en.xlsx',
   );
 
-  private readonly checkInput = computed(() => ({
-    isCommanderFormat: this.isCommanderFormat(),
-    lands: this.landInfo().value,
-    cheapRampDraw: this.cheapRampDraw(),
-    playStyles: this.playStyles(),
-    averageCmc: this.viewer.analysis.averageCmc(),
-    ramp: this.effectCount('ramp'),
-    draw: this.effectCount('draw'),
-    removal: this.effectCount('removal'),
-    boardwipe: this.effectCount('boardwipe'),
-  }));
-
-  readonly items = computed<CheckItem[]>(() => deckCheckItems(this.checkInput()));
-  readonly score = computed(() => deckHealthScore(this.items()));
-  /** Nur 60-Karten-Formate: Länder nach Karsten. */
-  readonly recommendedLands60 = computed(() =>
-    recommendedLands60(this.viewer.analysis.averageCmc(), this.cheapRampDraw()),
-  );
-
-  readonly colors = computed(() => {
-    const details = this.viewer.state.viewingCardDetails();
-    const cards = this.library()
-      .filter((c) => !isLand(c.typeLine))
-      .map((c) => ({
-        name: c.cardName,
-        cmc: c.cmc,
-        manaCost: details.get(c.cardName.toLowerCase())?.manaCost,
-      }));
-    const sources: Record<string, number> = {};
-    for (const s of this.viewer.analysis.manaSourceDistribution()) sources[s.color] = s.count;
-    return colorRequirements(cards, sources, this.isCommanderFormat());
-  });
-
   /** Kartenbild je Name (klein geschrieben) aus der geladenen Deckliste. */
   private readonly imagesByName = computed(() => {
     const details = this.viewer.state.viewingCardDetails();
@@ -273,14 +172,6 @@ export class DeckCheck {
   costSymbols(cost: string): string[] {
     return [...cost.split(' // ')[0].matchAll(/\{([^}]+)\}/g)].map((m) => m[1]);
   }
-
-  readonly odds = computed(() => {
-    const size = this.librarySize();
-    if (size < 40) return null;
-    const input = this.checkInput();
-    // Wahrscheinlichkeiten brauchen ganze Karten - anteilige Länder abrunden.
-    return deckOdds(size, Math.floor(input.lands), input.ramp, input.draw);
-  });
 
   // --- Empfehlungen aus eigenen Decks ---
   readonly suggestions = signal<CardSuggestion[]>([]);

@@ -454,3 +454,87 @@ export function deckOdds(
     drawByTurn4: draw === null ? null : atLeast(librarySize, draw, 10, 1),
   };
 }
+
+// --- Beständigkeit (fließt in den Power-Wert, siehe combinedTuning() in bracket.ts) ---
+
+export type ConsistencyKey =
+  'keepableHand' | 'sourcesByTurn3' | 'colorSources' | 'rampEarly' | 'drawByTurn4' | 'gameplan';
+
+/**
+ * Spannen und Gewichte der Beständigkeit (Entscheidung des Users, 05.10.2026). [zählt 0, zählt 1],
+ * dazwischen linear. Die Grenzen sind für 99 Karten nachgerechnet: 31 Länder ergeben 68 %
+ * spielbare Starthände, 40 Länder 76 %; 8 Rampen liegen zu 55 % in den ersten 9 Karten, 18 zu 85 %.
+ * Wahrscheinlichkeiten als Anteil 0-1, Farbquellen als Quellen ÷ Soll, Gameplan als Deck-Check-Wert.
+ */
+export const CONSISTENCY_RULES: Record<
+  ConsistencyKey,
+  { from: number; to: number; weight: number }
+> = {
+  keepableHand: { from: 0.66, to: 0.76, weight: 0.15 },
+  // Länder UND Rampe: ein rampenlastiges Deck mit weniger Ländern soll nicht bestraft werden.
+  sourcesByTurn3: { from: 0.7, to: 0.92, weight: 0.15 },
+  colorSources: { from: 0.6, to: 1, weight: 0.15 },
+  rampEarly: { from: 0.55, to: 0.85, weight: 0.15 },
+  drawByTurn4: { from: 0.55, to: 0.85, weight: 0.15 },
+  gameplan: { from: 0, to: 100, weight: 0.25 },
+};
+
+export interface ConsistencyPart {
+  key: ConsistencyKey;
+  value: number;
+  from: number;
+  to: number;
+  /** Beitrag 0-1. */
+  score: number;
+  weight: number;
+}
+
+export interface ConsistencyInput {
+  /** Karten ohne Commander. */
+  librarySize: number;
+  /** Effektive Länder (doppelseitige Karten anteilig). */
+  lands: number;
+  /** null = Wirkungs-Kategorien noch nicht geladen. */
+  ramp: number | null;
+  draw: number | null;
+  colors: readonly ColorRequirement[];
+  /** Deck-Check-Wert 0-100 (Ampel nach Spielweise). */
+  healthScore: number;
+}
+
+function anteil(value: number, from: number, to: number): number {
+  return Math.min(1, Math.max(0, (value - from) / (to - from)));
+}
+
+/** Die Messgrößen einzeln - die Oberfläche schlüsselt den Wert damit auf. Fehlende entfallen. */
+export function consistencyParts(input: ConsistencyInput): ConsistencyPart[] {
+  if (input.librarySize < 40) return [];
+  const parts: ConsistencyPart[] = [];
+  const add = (key: ConsistencyKey, value: number) => {
+    const { from, to, weight } = CONSISTENCY_RULES[key];
+    parts.push({ key, value, from, to, score: anteil(value, from, to), weight });
+  };
+  const size = input.librarySize;
+  const lands = Math.floor(input.lands);
+  add('keepableHand', between(size, lands, 7, 2, 4));
+  if (input.ramp !== null) {
+    add('sourcesByTurn3', atLeast(size, Math.min(size, lands + input.ramp), 9, 3));
+    add('rampEarly', atLeast(size, input.ramp, 9, 1));
+  }
+  if (input.colors.length > 0) {
+    const weakest = Math.min(
+      ...input.colors.map((c) => (c.required > 0 ? Math.min(1, c.sources / c.required) : 1)),
+    );
+    add('colorSources', weakest);
+  }
+  if (input.draw !== null) add('drawByTurn4', atLeast(size, input.draw, 10, 1));
+  if (input.ramp !== null && input.draw !== null) add('gameplan', input.healthScore);
+  return parts;
+}
+
+/** Gewichtetes Mittel der Teile, null wenn keiner ermittelbar war. */
+export function consistencyScore(parts: readonly ConsistencyPart[]): number | null {
+  const weights = parts.reduce((sum, p) => sum + p.weight, 0);
+  if (weights === 0) return null;
+  return parts.reduce((sum, p) => sum + p.score * p.weight, 0) / weights;
+}

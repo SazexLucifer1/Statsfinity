@@ -121,7 +121,13 @@ export interface DeckChangeGroup {
 }
 
 /** Welches Einzelurteil im Bracket-Kasten seinen Rechenweg zeigt (je Urteil ein eigenes ⓘ). */
-export type BracketMathTopic = 'rules' | 'spellbook' | 'tuning' | 'price' | 'power';
+export type BracketMathTopic =
+  | 'rules'
+  | 'spellbook'
+  | 'tuning'
+  | 'consistency'
+  | 'price'
+  | 'power';
 
 /**
  * Deck-Detailansicht: Öffnen/Schließen, Kopf, Verlauf, Kartenliste und Bearbeiten. Global statt in
@@ -1026,12 +1032,15 @@ export class DeckViewerService {
     const names = [...new Set(cards.map((c) => c.cardName))];
     // Markierungen und Combos parallel, damit sie die Kartendetails nicht verzögern.
     const commanderNames = cards.filter((c) => c.isCommander).map((c) => c.cardName);
+    // Die Wirkungs-Kategorien (Rampe, Draw, Removal …) gleich mit: Die Beständigkeit des
+    // Deck-Checks fließt in den Power-Wert, und der steht oben im Deck - nicht erst in der Analyse.
     const [found, flags, combos, gewinnCombos, benchmark] = await Promise.all([
       this.cardData.findCardsBulk(names),
       this.cardData.spellbookCardFlags(),
       this.cardData.twoCardCombosFor(names),
       this.cardData.winningCombosIn(names, commanderNames),
       this.cardData.bracketBenchmark(),
+      this.effects.loadEffectCategoryCounts(cards),
     ]);
     this.bracket.bracketBenchmark.set(benchmark);
     this.state.viewingCardDetails.set(found);
@@ -1154,12 +1163,9 @@ export class DeckViewerService {
     if (this.showDeckAnalysis() && !this.analysisExtrasLoaded) {
       this.analysisExtrasLoaded = true;
       const cards = this.state.viewingDeckCards();
-      // Nacheinander statt parallel - sonst konkurrieren beide direkt beim Aufklappen um Scryfalls
-      // Rate-Limit. Preis zuerst, da meist deutlich schneller fertig als die 12 Effekt-Kategorien.
-      (async () => {
-        await this.analysis.ensureCardPricesLoaded(cards);
-        await this.effects.loadEffectCategoryCounts(cards);
-      })();
+      // Die Wirkungs-Kategorien lädt schon loadCardDetails() beim Öffnen (Power-Wert), hier bleibt
+      // nur der Preis.
+      void this.analysis.ensureCardPricesLoaded(cards);
     }
   }
 
@@ -1179,9 +1185,8 @@ export class DeckViewerService {
     const cards = this.state.viewingDeckCards();
     this.state.cardDetailsPromise = this.loadCardDetails(cards);
     this.analysis.loadBracketEstimate(cards);
-    // Nacheinander statt parallel - siehe toggleDeckAnalysis().
-    await this.analysis.reloadCardPrices(cards);
-    await this.effects.loadEffectCategoryCounts(cards);
+    // Die Wirkungs-Kategorien kommen mit loadCardDetails() (siehe dort).
+    await Promise.all([this.analysis.reloadCardPrices(cards), this.state.cardDetailsPromise]);
     this.reanalyzeBusy.set(false);
   }
 }

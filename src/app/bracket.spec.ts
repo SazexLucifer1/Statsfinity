@@ -230,15 +230,10 @@ describe('bracket - Urteil C: Tuning-Grad', () => {
   });
 
   it('lässt fehlende Werte aus, statt sie als Null zu zählen', () => {
-    // Nur die Game-Changer-Dichte ist bekannt und steht auf Anschlag: ohne Auslassen käme durch
-    // die beiden fehlenden Werte ein Drittel heraus.
+    // Nur die Tutorendichte ist bekannt und steht auf Anschlag: ohne Auslassen käme durch die
+    // beiden fehlenden Werte etwa die Hälfte heraus.
     const wert = tuningVerdict(
-      basis({
-        cards: Array.from({ length: 6 }, (_, i) => karte(`GC${i}`, { gameChanger: true })),
-        averageCmc: null,
-        untappedLandPercent: null,
-        totalCards: 0,
-      }),
+      basis({ tutorCount: 8, totalCards: 100, averageCmc: null, untappedLandPercent: null }),
     );
     expect(wert).toBe(1);
   });
@@ -249,12 +244,7 @@ describe('bracket - Tuning-Grad aufgeschluesselt', () => {
 
   it('meldet je Messgroesse den gemessenen Wert und die Spannenenden', () => {
     const parts = tuningParts(basis({ tutorCount: 4, totalCards: 100, averageCmc: 2.8 }));
-    expect(parts.map((p) => p.key)).toEqual([
-      'tutors',
-      'averageCmc',
-      'untappedLands',
-      'gameChangers',
-    ]);
+    expect(parts.map((p) => p.key)).toEqual(['tutors', 'averageCmc', 'untappedLands']);
     expect(teil(basis({ tutorCount: 4, totalCards: 100 }), 'tutors')).toMatchObject({
       value: 4,
       from: 0,
@@ -287,7 +277,7 @@ describe('bracket - Tuning-Grad aufgeschluesselt', () => {
     const parts = tuningParts(
       basis({ averageCmc: null, untappedLandPercent: null, totalCards: 0 }),
     );
-    expect(parts.map((p) => p.key)).toEqual(['gameChangers']);
+    expect(parts).toEqual([]);
   });
 
   /**
@@ -308,13 +298,15 @@ describe('bracket - Tuning-Grad aufgeschluesselt', () => {
     }
   });
 
-  it('gewichtet Game Changer staerker als die Manakurve', () => {
-    const nurGc = basis({
-      averageCmc: 3.4,
+  it('zaehlt Game Changer nicht ein zweites Mal - sie legen schon die Untergrenze fest', () => {
+    const ohne = basis({ tutorCount: 4, averageCmc: 2.8 });
+    const mit = basis({
+      tutorCount: 4,
+      averageCmc: 2.8,
       cards: Array.from({ length: 6 }, (_, i) => karte(`GC${i}`, { gameChanger: true })),
     });
-    const nurKurve = basis({ averageCmc: 2.2 });
-    expect(tuningVerdict(nurGc)).toBeGreaterThan(tuningVerdict(nurKurve));
+    expect(tuningVerdict(mit)).toBe(tuningVerdict(ohne));
+    expect(analyzeBracket(mit).verdicts.rules).toBe(4);
   });
 
   it('liefert dieselben Teile ueber analyzeBracket()', () => {
@@ -362,37 +354,43 @@ describe('bracket - Power-Level', () => {
 
 describe('bracket - Anhebe-Schwelle', () => {
   /**
-   * Der Erklaertext nennt die Schwelle als Prozentwert. Er stand eine Zeit lang auf 85 %, waehrend
-   * der Code bei 80 % anhob - die 85 % sind CEDH_TUNING_HINT, eine andere Schwelle. Damit Text und
-   * Verhalten nicht wieder auseinanderlaufen, klemmen diese beiden Faelle die Schwelle von unten
-   * und von oben ein.
-   *
-   * Drei der vier Messgroessen stehen auf Anschlag (und damit dank der Kappung auf exakt 1), die
-   * vierte ist die Zahl der Game Changer - ueber sie laesst sich der gewichtete Mittelwert genau
-   * setzen.
+   * Der Erklaertext nennt die Schwelle als Prozentwert. Damit Text und Verhalten nicht wieder
+   * auseinanderlaufen, klemmen diese Faelle die Schwelle von unten und von oben ein. Alle drei
+   * Karten-Messgroessen stehen auf Anschlag (Karten-Tuning 1), ueber die Beständigkeit laesst sich
+   * der gemeinsame Wert genau setzen: 0,6 × 1 + 0,4 × Beständigkeit.
    */
-  const dreiAufAnschlag = (gameChanger: number) =>
-    basis({
-      tutorCount: 20,
-      averageCmc: 1.5,
-      untappedLandPercent: 100,
-      cards: Array.from({ length: gameChanger }, (_, i) => karte(`GC${i}`, { gameChanger: true })),
-    });
+  const aufAnschlag = (consistency: number | null) =>
+    basis({ tutorCount: 20, averageCmc: 1.5, untappedLandPercent: 100, consistency });
 
   it('hebt unterhalb der Schwelle nicht an', () => {
-    // Ohne Game Changer: (0,27 + 0,13 + 0,16 + 0) / 0,96 = 0,58.
-    const ergebnis = analyzeBracket(dreiAufAnschlag(0));
-    expect(ergebnis.verdicts.tuning).toBeLessThan(TUNING_BUMP_SCHWELLE);
+    // 0,6 × 1 + 0,4 × 0 = 0,6.
+    const ergebnis = analyzeBracket(aufAnschlag(0));
+    expect(ergebnis.verdicts.tuning).toBe(1);
+    expect(ergebnis.verdicts.combined).toBeCloseTo(0.6, 10);
     expect(ergebnis.bracket).toBe(ergebnis.verdicts.rules);
     expect(ergebnis.reasons.some((r) => r.key === 'tuning')).toBe(false);
   });
 
   it('hebt oberhalb der Schwelle um genau eine Stufe an', () => {
-    // Zwei Game Changer: (0,27 + 0,13 + 0,16 + 0,4 * 2/6) / 0,96 = 0,72.
-    const ergebnis = analyzeBracket(dreiAufAnschlag(2));
-    expect(ergebnis.verdicts.tuning).toBeGreaterThanOrEqual(TUNING_BUMP_SCHWELLE);
+    // 0,6 × 1 + 0,4 × 0,5 = 0,8.
+    const ergebnis = analyzeBracket(aufAnschlag(0.5));
+    expect(ergebnis.verdicts.combined).toBeGreaterThanOrEqual(TUNING_BUMP_SCHWELLE);
     expect(ergebnis.bracket).toBe(ergebnis.verdicts.rules + 1);
     expect(ergebnis.reasons.some((r) => r.key === 'tuning')).toBe(true);
+  });
+
+  it('nimmt ohne Beständigkeit allein das Karten-Tuning', () => {
+    const ergebnis = analyzeBracket(aufAnschlag(null));
+    expect(ergebnis.verdicts.consistency).toBeNull();
+    expect(ergebnis.verdicts.combined).toBe(1);
+  });
+
+  it('hebt ein beständigeres Deck bei gleichen Karten höher in der Spanne', () => {
+    const karten = { tutorCount: 2, averageCmc: 3, untappedLandPercent: 80 };
+    const wackelig = analyzeBracket(basis({ ...karten, consistency: 0.2 }));
+    const rund = analyzeBracket(basis({ ...karten, consistency: 0.9 }));
+    expect(rund.bracket).toBe(wackelig.bracket);
+    expect(rund.power).toBeGreaterThan(wackelig.power);
   });
 });
 

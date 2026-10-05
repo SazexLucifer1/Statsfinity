@@ -6,6 +6,8 @@ import {
   DEFAULT_BRACKET_BENCHMARK,
   PREIS_SCHWELLE_EUR,
   TUNING_BUMP_SCHWELLE,
+  POWER_ANTEIL_KARTEN,
+  POWER_ANTEIL_BESTAENDIGKEIT,
   AUTO_BRACKET_MAX,
   analyzeBracket,
   powerRange,
@@ -15,6 +17,7 @@ import { averageCmc } from './deck-analyse';
 import type { BracketMathTopic } from './deck-viewer.service';
 import { DeckViewerState } from './deck-viewer-state.service';
 import { DeckAnalysisService } from './deck-analysis.service';
+import { DeckCheckService } from './deck-check.service';
 
 /**
  * Commander-Bracket der Detailansicht: Einstufung (bracket.ts), manuelle Wahl, Rückschreiben der Automatik und der Rechenweg im Popup.
@@ -25,6 +28,8 @@ export class DeckBracketService {
   readonly i18n = inject(I18nService);
   private readonly state = inject(DeckViewerState);
   private readonly analysis = inject(DeckAnalysisService);
+  /** Beständigkeit aus dem Deck-Check - Teil des Power-Werts. */
+  readonly deckCheck = inject(DeckCheckService);
 
   /** Brackets gibt es nur im Commander - für Brawl, PDH und den Rest bleibt die Anzeige aus. */
   readonly showsBracket = computed(() => this.state.viewingDeck()?.format === 'Commander');
@@ -38,6 +43,9 @@ export class DeckBracketService {
    */
   readonly bracketAnalysis = computed<BracketAnalysis | null>(() => {
     if (!this.showsBracket() || this.analysis.analysisBusy()) return null;
+    // Die Beständigkeit braucht Wirkungs-Kategorien und Spielweise; ohne sie spränge der Wert
+    // (und das gespeicherte Bracket) beim Nachladen.
+    if (!this.deckCheck.consistencyReady()) return null;
 
     const deck = this.state.viewingDeck();
     if (!deck) return null;
@@ -58,6 +66,7 @@ export class DeckBracketService {
       totalCards: this.state.viewingTotalCards(),
       totalPrice: this.analysis.totalDeckPrice(),
       benchmark: this.bracketBenchmark(),
+      consistency: this.deckCheck.consistency(),
     });
   });
 
@@ -134,6 +143,11 @@ export class DeckBracketService {
 
   /** Schwelle, ab der die Feinbewertung anhebt - in Prozent, für die Erklärtexte. */
   readonly tuningBumpPercent = Math.round(TUNING_BUMP_SCHWELLE * 100);
+  /** Anteile am gemeinsamen Wert, für die Erklärtexte ("0,6 × … + 0,4 × …"). */
+  private readonly anteilText = (wert: number) =>
+    wert.toLocaleString(this.i18n.lang() === 'de' ? 'de-DE' : 'en-US');
+  readonly cardShare = computed(() => this.anteilText(POWER_ANTEIL_KARTEN));
+  readonly consistencyShare = computed(() => this.anteilText(POWER_ANTEIL_BESTAENDIGKEIT));
 
   /** Kartenwert, ab dem mindestens Bracket 3 gilt - für die Erklärtexte. */
   readonly priceThresholdEur = PREIS_SCHWELLE_EUR;

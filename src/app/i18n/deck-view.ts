@@ -242,7 +242,8 @@ export const deckView = {
     'deckView.bracketRowRules': 'Offiziell',
     'deckView.bracketRowSpellbook': 'Zweitmeinung',
     'deckView.bracketRowPrice': 'Kartenwert',
-    'deckView.bracketRowTuning': 'Tuning-Grad',
+    'deckView.bracketRowTuning': 'Karten-Tuning',
+    'deckView.bracketRowConsistency': 'Beständigkeit',
     'deckView.bracketRowPower': 'Power',
     'deckView.bracketLevelValue': 'Bracket {{level}}',
     'deckView.bracketPowerValue': '{{power}} / 10',
@@ -252,7 +253,7 @@ export const deckView = {
     'deckView.bracketPreconNote':
       'Precons sind seit dem Bracket-Update vom Februar 2026 nicht mehr automatisch Bracket 2. Eine einzige Game-Changer-Karte hebt jedes Deck auf mindestens Bracket 3 – auch einen unveränderten Precon.',
     'deckView.bracketTuningExplain':
-      'Der Tuning-Grad misst, wie durchgängig auf Tempo gebaut das Deck ist. Er legt das Bracket nicht fest, sondern nur die Position darin – und hebt es erst ab {{bump}} % um eine Stufe an.',
+      'Das Karten-Tuning misst, wie durchgängig auf Tempo gebaut das Deck ist. Zusammen mit der Beständigkeit (60 : 40) ergibt es den gemeinsamen Wert. Der legt das Bracket nicht fest, sondern nur die Position darin – und hebt es erst ab {{bump}} % um eine Stufe an.',
     'deckView.bracketMathRulesTitle': 'So kommt die offizielle Einstufung zustande',
     'deckView.bracketMathRulesIntro':
       'Die offiziellen Kriterien prüfen feste Merkmale: Game Changer, Mass Land Denial, Extra-Turn-Schleifen und Zwei-Karten-Combos. Jeder Befund erzwingt für sich eine Mindeststufe – es gilt die höchste davon. Ohne jeden Befund bleibt es bei Bracket 2.',
@@ -265,7 +266,7 @@ export const deckView = {
       'Zweitmeinung Commander Spellbook → nicht erreichbar, es zählt allein die offizielle Einstufung',
     'deckView.bracketMathHigherWins': 'Es gilt die höhere der beiden Stufen: Bracket {{level}}.',
     'deckView.bracketMathStepBump':
-      'Der Tuning-Grad liegt bei {{percent}} und damit über {{bump}} % → eine Stufe höher: Bracket {{level}}.',
+      'Der gemeinsame Wert liegt bei {{percent}} und damit über {{bump}} % → eine Stufe höher: Bracket {{level}}.',
     'deckView.bracketPriceFinding':
       'Gemessen: {{price}} – ab {{threshold}} € gilt mindestens Bracket 3.',
     'deckView.bracketPriceBelow':
@@ -282,9 +283,9 @@ export const deckView = {
       'Ab {{threshold}} € gilt mindestens Bracket 3 – auch für unveränderte Precons. Nach oben rechnet der Preis nichts: Bracket 4 wird ein Deck dadurch nie.',
     'deckView.bracketMathPriceSource':
       'Grundlage ist derselbe Betrag wie in der Kachel „Kartenpreis (ca.)“: die günstigste Druckvariante jeder Karte, in Euro über Cardmarket.',
-    'deckView.bracketMathTuningTitle': 'So kommt der Tuning-Grad zustande',
+    'deckView.bracketMathTuningTitle': 'So kommt das Karten-Tuning zustande',
     'deckView.bracketMathTuningIntro':
-      'Vier Messgrößen. Jede wird auf 0 bis 1 Punkte umgerechnet und nach ihrer Trennschärfe gewichtet (Game Changer am stärksten), der Tuning-Grad ist der gewichtete Durchschnitt.',
+      'Drei Messgrößen. Jede wird auf 0 bis 1 Punkte umgerechnet und nach ihrer Trennschärfe gewichtet, das Karten-Tuning ist der gewichtete Durchschnitt. Game Changer zählen hier nicht: Sie legen schon die Untergrenze des Brackets fest und würden sonst doppelt zählen.',
     'deckView.bracketMathPartMeasured': 'Gemessen: {{value}}',
     'deckView.bracketMathPartScale': '0 Punkte ab {{from}}, 1 Punkt ab {{to}}',
     'deckView.bracketMathPartScore': 'ergibt {{score}} Punkte, Gewicht {{weight}}',
@@ -296,16 +297,31 @@ export const deckView = {
       'Bracket {{level}} belegt auf der 1–10-Skala die Spanne {{from}} bis {{to}}.',
     'deckView.bracketMathPowerFormula': '{{from}} + {{tuning}} × {{span}} = {{power}}',
     'deckView.bracketMathPowerPositionBelow':
-      'Position in der Spanne: Tuning {{tuning}} ÷ {{threshold}} = {{position}} – ab {{threshold}} stiege das Deck ein Bracket höher, deshalb reicht der Bereich bis dahin über die ganze Spanne.',
+      'Position in der Spanne: gemeinsamer Wert {{tuning}} ÷ {{threshold}} = {{position}} – ab {{threshold}} stiege das Deck ein Bracket höher, deshalb reicht der Bereich bis dahin über die ganze Spanne.',
     'deckView.bracketMathPowerPositionBumped':
-      'Position in der Spanne: (Tuning {{tuning}} − {{threshold}}) ÷ (1 − {{threshold}}) = {{position}} – das Tuning hat das Deck angehoben, gezählt wird nur der Teil über der Schwelle.',
-    'deckView.bracketMathPowerPositionPlain': 'Position in der Spanne = Tuning-Grad {{position}}.',
+      'Position in der Spanne: (gemeinsamer Wert {{tuning}} − {{threshold}}) ÷ (1 − {{threshold}}) = {{position}} – der gemeinsame Wert hat das Deck angehoben, gezählt wird nur der Teil über der Schwelle.',
+    'deckView.bracketMathPowerPositionPlain': 'Position in der Spanne = gemeinsamer Wert {{position}}.',
+    'deckView.bracketMathCombined':
+      'Gemeinsamer Wert: {{cardShare}} × Karten-Tuning {{tuning}} + {{consistencyShare}} × Beständigkeit {{consistency}} = {{combined}}',
+    'deckView.bracketMathCombinedCardsOnly':
+      'Die Beständigkeit ist hier nicht messbar – der gemeinsame Wert ist allein das Karten-Tuning: {{combined}}',
+    'deckView.bracketMathConsistencyTitle': 'So kommt die Beständigkeit zustande',
+    'deckView.bracketMathConsistencyIntro':
+      'Wie zuverlässig das Deck seinen Plan ausführt – aus dem Deck-Check: Wahrscheinlichkeiten für Starthand, Mana, Rampe und Kartenziehen, die Farbquellen und die Ampel nach der Spielweise. Jede Messgröße wird auf 0 bis 1 Punkte umgerechnet, die Beständigkeit ist der gewichtete Durchschnitt.',
+    'deckView.bracketMathConsistencyEmpty': 'Für dieses Deck lässt sich noch nichts messen.',
+    'deckView.bracketMathConsistencySum': 'Gewichteter Durchschnitt: {{value}} – das sind {{percent}}',
+    'deckView.consistency.keepableHand': 'Spielbare Starthand (2–4 Länder)',
+    'deckView.consistency.sourcesByTurn3': '3 Manaquellen bis Zug 3 (Länder + Rampe)',
+    'deckView.consistency.colorSources': 'Farbquellen (schwächste Farbe, Quellen ÷ Soll)',
+    'deckView.consistency.rampEarly': 'Rampe in den ersten 9 Karten',
+    'deckView.consistency.drawByTurn4': 'Kartenzieher bis Zug 4',
+    'deckView.consistency.gameplan': 'Gameplan (Deck-Check-Wert nach Spielweise)',
     'deckView.bracketTuning.tutors': 'Tutoren je 100 Karten',
     'deckView.bracketTuning.averageCmc': 'Ø Manawert',
     'deckView.bracketTuning.untappedLands': 'Ungetappte Länder',
     'deckView.bracketTuning.gameChangers': 'Game Changer',
     'deckView.bracketPowerExplain':
-      'Die vertraute 1–10-Skala, je zwei Punkte pro Bracket: 1–2,9 Exhibition, 3–4,9 Core, 5–6,9 Upgraded, 7–8,9 Optimized, 9–10 cEDH. Das Bracket bestimmt die Spanne, der Tuning-Grad die Position darin – jede Zahl der Skala kommt vor. Exhibition und cEDH vergibt die Automatik nie (das ist eine Frage der Absicht), automatisch liegt ein Deck deshalb zwischen 3,0 und 8,9.',
+      'Die vertraute 1–10-Skala, je zwei Punkte pro Bracket: 1–2,9 Exhibition, 3–4,9 Core, 5–6,9 Upgraded, 7–8,9 Optimized, 9–10 cEDH. Das Bracket bestimmt die Spanne, der gemeinsame Wert aus Karten-Tuning und Beständigkeit die Position darin – jede Zahl der Skala kommt vor. Exhibition und cEDH vergibt die Automatik nie (das ist eine Frage der Absicht), automatisch liegt ein Deck deshalb zwischen 3,0 und 8,9.',
     'deckView.bracketSources':
       'Bracket-Regeln nach dem offiziellen Commander-Format, Kartendaten von Scryfall, Combo- und Kartenmarkierungen von Commander Spellbook.',
     'deckView.loadingAnalysis': 'Lade Analyse …',
@@ -656,7 +672,8 @@ export const deckView = {
     'deckView.bracketRowRules': 'Official',
     'deckView.bracketRowSpellbook': 'Second opinion',
     'deckView.bracketRowPrice': 'Deck value',
-    'deckView.bracketRowTuning': 'Tuning level',
+    'deckView.bracketRowTuning': 'Card tuning',
+    'deckView.bracketRowConsistency': 'Consistency',
     'deckView.bracketRowPower': 'Power',
     'deckView.bracketLevelValue': 'Bracket {{level}}',
     'deckView.bracketPowerValue': '{{power}} / 10',
@@ -666,7 +683,7 @@ export const deckView = {
     'deckView.bracketPreconNote':
       'Since the February 2026 bracket update, precons are no longer automatically Bracket 2. A single Game Changer raises any deck to at least Bracket 3 – an unchanged precon included.',
     'deckView.bracketTuningExplain':
-      'The tuning level measures how consistently the deck is built for speed. It does not set the bracket, only the position within it – and only raises it by one step from {{bump}} % upwards.',
+      'Card tuning measures how consistently the deck is built for speed. Together with consistency (60 : 40) it makes up the combined value. That does not set the bracket, only the position within it – and only raises it by one step from {{bump}} % upwards.',
     'deckView.bracketMathRulesTitle': 'How the official rating comes about',
     'deckView.bracketMathRulesIntro':
       'The official criteria check fixed traits: Game Changers, mass land denial, extra-turn loops and two-card combos. Each finding forces a minimum bracket on its own – the highest of them applies. With no finding at all it stays at Bracket 2.',
@@ -679,7 +696,7 @@ export const deckView = {
       'Second opinion, Commander Spellbook → unavailable, the official rating alone counts',
     'deckView.bracketMathHigherWins': 'The higher of the two applies: Bracket {{level}}.',
     'deckView.bracketMathStepBump':
-      'The tuning level is {{percent}}, above {{bump}} % → one step up: Bracket {{level}}.',
+      'The combined value is {{percent}}, above {{bump}} % → one step up: Bracket {{level}}.',
     'deckView.bracketPriceFinding':
       'Measured: {{price}} – from {{threshold}} € upwards it is at least bracket 3.',
     'deckView.bracketPriceBelow':
@@ -696,9 +713,9 @@ export const deckView = {
       'From {{threshold}} € upwards it is at least bracket 3 – for unchanged precons too. The price never raises anything beyond that: it can never make a deck bracket 4.',
     'deckView.bracketMathPriceSource':
       'It uses the same amount as the "Card price (approx.)" tile: the cheapest printing of every card, in euros via Cardmarket.',
-    'deckView.bracketMathTuningTitle': 'How the tuning level comes about',
+    'deckView.bracketMathTuningTitle': 'How card tuning comes about',
     'deckView.bracketMathTuningIntro':
-      'Four measures. Each is converted to 0 to 1 points and weighted by how well it separates the brackets (game changers most); the tuning level is the weighted average.',
+      'Three measures. Each is converted to 0 to 1 points and weighted by how well it separates the brackets; card tuning is the weighted average. Game Changers do not count here: they already set the bracket floor and would otherwise count twice.',
     'deckView.bracketMathPartMeasured': 'Measured: {{value}}',
     'deckView.bracketMathPartScale': '0 points at {{from}}, 1 point at {{to}}',
     'deckView.bracketMathPartScore': 'gives {{score}} points, weight {{weight}}',
@@ -710,16 +727,31 @@ export const deckView = {
       'Bracket {{level}} covers {{from}} to {{to}} on the 1–10 scale.',
     'deckView.bracketMathPowerFormula': '{{from}} + {{tuning}} × {{span}} = {{power}}',
     'deckView.bracketMathPowerPositionBelow':
-      'Position in the range: tuning {{tuning}} ÷ {{threshold}} = {{position}} – from {{threshold}} on the deck would move up a bracket, so the part up to there spans the whole range.',
+      'Position in the range: combined value {{tuning}} ÷ {{threshold}} = {{position}} – from {{threshold}} on the deck would move up a bracket, so the part up to there spans the whole range.',
     'deckView.bracketMathPowerPositionBumped':
-      'Position in the range: (tuning {{tuning}} − {{threshold}}) ÷ (1 − {{threshold}}) = {{position}} – the tuning moved the deck up, so only the part above the threshold counts.',
-    'deckView.bracketMathPowerPositionPlain': 'Position in the range = tuning level {{position}}.',
+      'Position in the range: (combined value {{tuning}} − {{threshold}}) ÷ (1 − {{threshold}}) = {{position}} – the combined value moved the deck up, so only the part above the threshold counts.',
+    'deckView.bracketMathPowerPositionPlain': 'Position in the range = combined value {{position}}.',
+    'deckView.bracketMathCombined':
+      'Combined value: {{cardShare}} × card tuning {{tuning}} + {{consistencyShare}} × consistency {{consistency}} = {{combined}}',
+    'deckView.bracketMathCombinedCardsOnly':
+      'Consistency cannot be measured here – the combined value is card tuning alone: {{combined}}',
+    'deckView.bracketMathConsistencyTitle': 'How consistency comes about',
+    'deckView.bracketMathConsistencyIntro':
+      'How reliably the deck executes its plan – from the deck check: odds for the opening hand, mana, ramp and card draw, the color sources and the traffic light for the play style. Each measure is converted to 0 to 1 points; consistency is the weighted average.',
+    'deckView.bracketMathConsistencyEmpty': 'Nothing can be measured for this deck yet.',
+    'deckView.bracketMathConsistencySum': 'Weighted average: {{value}} – that is {{percent}}',
+    'deckView.consistency.keepableHand': 'Keepable opening hand (2–4 lands)',
+    'deckView.consistency.sourcesByTurn3': '3 mana sources by turn 3 (lands + ramp)',
+    'deckView.consistency.colorSources': 'Color sources (weakest color, sources ÷ required)',
+    'deckView.consistency.rampEarly': 'Ramp in the first 9 cards',
+    'deckView.consistency.drawByTurn4': 'Card draw by turn 4',
+    'deckView.consistency.gameplan': 'Game plan (deck check score for the play style)',
     'deckView.bracketTuning.tutors': 'Tutors per 100 cards',
     'deckView.bracketTuning.averageCmc': 'Avg. mana value',
     'deckView.bracketTuning.untappedLands': 'Untapped lands',
     'deckView.bracketTuning.gameChangers': 'Game Changers',
     'deckView.bracketPowerExplain':
-      'The familiar 1–10 scale, two points per bracket: 1–2.9 Exhibition, 3–4.9 Core, 5–6.9 Upgraded, 7–8.9 Optimized, 9–10 cEDH. The bracket sets the range, the tuning level the position within it – every number on the scale can occur. The automatic rating never assigns Exhibition or cEDH (that is a matter of intent), so automatically a deck lands between 3.0 and 8.9.',
+      'The familiar 1–10 scale, two points per bracket: 1–2.9 Exhibition, 3–4.9 Core, 5–6.9 Upgraded, 7–8.9 Optimized, 9–10 cEDH. The bracket sets the range, the combined value of card tuning and consistency the position within it – every number on the scale can occur. The automatic rating never assigns Exhibition or cEDH (that is a matter of intent), so automatically a deck lands between 3.0 and 8.9.',
     'deckView.bracketSources':
       'Bracket rules from the official Commander format, card data from Scryfall, combo and card markings from Commander Spellbook.',
     'deckView.loadingAnalysis': 'Loading analysis …',

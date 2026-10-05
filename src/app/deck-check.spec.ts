@@ -15,6 +15,8 @@ import {
   recommendedLands60,
   requiredSources,
   groupWinCons,
+  consistencyParts,
+  consistencyScore,
   isWinningResult,
 } from './deck-check';
 
@@ -161,5 +163,55 @@ describe('deck-check', () => {
       variants: 3,
     });
     expect(groups[1].variants).toBe(1);
+  });
+
+  it('rechnet die Beständigkeit aus Wahrscheinlichkeiten, Farbquellen und Deck-Check-Wert', () => {
+    const parts = consistencyParts({
+      librarySize: 99,
+      lands: 36,
+      ramp: 12,
+      draw: 12,
+      colors: [
+        { color: 'G', sources: 30, required: 30, card: 'X', manaCost: '{G}', level: 'good' },
+      ],
+      healthScore: 100,
+    });
+    expect(parts.map((p) => p.key)).toEqual([
+      'keepableHand',
+      'sourcesByTurn3',
+      'rampEarly',
+      'colorSources',
+      'drawByTurn4',
+      'gameplan',
+    ]);
+    expect(parts.find((p) => p.key === 'colorSources')?.score).toBe(1);
+    expect(parts.find((p) => p.key === 'gameplan')?.score).toBe(1);
+    const score = consistencyScore(parts)!;
+    expect(score).toBeGreaterThan(0.5);
+    expect(score).toBeLessThanOrEqual(1);
+  });
+
+  it('lässt Teile ohne Daten weg und meldet ohne Deck nichts', () => {
+    const parts = consistencyParts({
+      librarySize: 99,
+      lands: 36,
+      ramp: null,
+      draw: null,
+      colors: [],
+      healthScore: 0,
+    });
+    expect(parts.map((p) => p.key)).toEqual(['keepableHand']);
+    expect(
+      consistencyScore(
+        consistencyParts({
+          librarySize: 10,
+          lands: 4,
+          ramp: 1,
+          draw: 1,
+          colors: [],
+          healthScore: 50,
+        }),
+      ),
+    ).toBeNull();
   });
 });

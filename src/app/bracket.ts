@@ -47,6 +47,21 @@ export const CEDH_TUNING_HINT = 0.85;
 export const TUNING_BUMP_SCHWELLE = 0.7;
 
 /**
+ * Anteile am gemeinsamen Wert (Entscheidung des Users, 05.10.2026): Ein rund gebautes, beständiges
+ * Deck ist stärker als eines mit denselben Karten und wackeliger Manabasis. Der gemeinsame Wert
+ * entscheidet über die Anhebung und die Position in der Power-Spanne. Die Untergrenze (Urteile
+ * A, B, E, F) bleibt reine Kartensache.
+ */
+export const POWER_ANTEIL_KARTEN = 0.6;
+export const POWER_ANTEIL_BESTAENDIGKEIT = 0.4;
+
+/** Karten-Tuning und Beständigkeit zum gemeinsamen Wert; ohne Beständigkeit nur die Karten. */
+export function combinedTuning(cardTuning: number, consistency: number | null | undefined): number {
+  if (consistency == null) return cardTuning;
+  return POWER_ANTEIL_KARTEN * cardTuning + POWER_ANTEIL_BESTAENDIGKEIT * consistency;
+}
+
+/**
  * Ab diesem Kartenwert (€) gilt mindestens Bracket 3. Einzige Regel ohne offizielle Grundlage: Die
  * 92 Precons 2023-2026 liegen im Schnitt bei 74 €, keiner über 150 € (teuerster 147 €). Deutlich
  * darüber heißt gezielt eingekauft - gemessen wird Absicht, nicht Stärke.
@@ -131,10 +146,18 @@ export interface BracketVerdicts {
   rules: BracketLevel;
   /** Urteil B: Zweitmeinung aus Commander Spellbooks Live-Auswertung, null wenn nicht verfügbar. */
   spellbook: BracketLevel | null;
-  /** Urteil C: Tuning-Grad 0-1 aus Tutorendichte, Manakurve, Manabasis und Game-Changer-Dichte. */
+  /** Urteil C: Karten-Tuning 0-1 aus Tutorendichte, Manakurve und Manabasis (ohne Game Changer). */
   tuning: number;
-  /** Dieselben vier Messgrößen einzeln - damit die Oberfläche den Prozentwert aufschlüsseln kann. */
+  /** Dieselben Messgrößen einzeln - damit die Oberfläche den Prozentwert aufschlüsseln kann. */
   tuningParts: TuningPart[];
+  /** Beständigkeit 0-1 aus dem Deck-Check (deck-check.ts), null = nicht ermittelbar. */
+  consistency: number | null;
+  /**
+   * Gemeinsamer Wert aus Karten-Tuning und Beständigkeit (POWER_ANTEIL_KARTEN /
+   * POWER_ANTEIL_BESTAENDIGKEIT). Er allein entscheidet über die Anhebung und die Position in der
+   * Power-Spanne. Ohne Beständigkeit gleich dem Karten-Tuning.
+   */
+  combined: number;
   /** Urteil D: true, wenn es ein unveränderter Precon ist (dann hebt Urteil C nicht an). */
   precon: boolean;
   /** Urteil E: gemessener Kartenwert in Euro, null solange der Preis noch nicht vorliegt. */
@@ -197,6 +220,11 @@ export interface BracketInput {
   totalPrice: number | null;
   /** Gemessene Schwellen aus der Datenbank. Fehlt die Angabe, gelten die Startwerte. */
   benchmark?: BracketBenchmark;
+  /**
+   * Beständigkeit 0-1 aus dem Deck-Check (consistencyScore() in deck-check.ts). null/fehlend =
+   * unbekannt, dann zählt nur das Karten-Tuning.
+   */
+  consistency?: number | null;
 }
 
 /** Eine im Deck vollständig vorhandene Zwei-Karten-Combo, samt der beiden Karten. */
@@ -346,8 +374,9 @@ export function priceVerdict(totalPrice: number | null): BracketLevel | null {
 }
 
 /**
- * Urteil C - Tuning-Grad 0-1 aus vier Anzeichen: Tutoren, Manakurve, schnelle Manabasis, Game
- * Changer, gewichtet nach Trennschärfe (BracketBenchmark.weights). Fehlende Werte fließen nicht ein,
+ * Urteil C - Karten-Tuning 0-1 aus drei Anzeichen: Tutoren, Manakurve, schnelle Manabasis (Game
+ * Changer nicht, siehe tuningParts()), gewichtet nach Trennschärfe (BracketBenchmark.weights) und
+ * damit untereinander im alten Verhältnis 27 : 16 : 13. Fehlende Werte fließen nicht ein,
  * statt als 0 zu zählen (halb geladene Decks wären sonst zu niedrig).
  */
 export function tuningVerdict(input: BracketInput): number {
@@ -394,10 +423,9 @@ export function tuningParts(input: BracketInput): TuningPart[] {
   if (input.untappedLandPercent !== null) {
     teil('untappedLands', input.untappedLandPercent);
   }
-  teil(
-    'gameChangers',
-    input.cards.filter((c) => c.gameChanger).reduce((sum, c) => sum + c.quantity, 0),
-  );
+  // Game Changer bewusst NICHT (Entscheidung des Users, 05.10.2026): Sie legen schon die
+  // Untergrenze fest (1-3 = B3, ab 4 = B4) und zählten im Tuning mit 40 % ein zweites Mal. Der
+  // Nachtlauf misst sie weiter (bracket_benchmark), die App liest Spanne und Gewicht nur nicht mehr.
 
   return teile;
 }
@@ -544,14 +572,16 @@ export function analyzeBracket(input: BracketInput): BracketAnalysis {
     bracket = AUTO_BRACKET_MAX;
   }
 
+  const consistency = input.consistency ?? null;
+  const combined = combinedTuning(tuning, consistency);
   const canBump = bracket < AUTO_BRACKET_MAX && !input.isPrecon;
-  const bumped = canBump && tuning >= TUNING_BUMP_SCHWELLE;
+  const bumped = canBump && combined >= TUNING_BUMP_SCHWELLE;
   if (bumped) {
     bracket = (bracket + 1) as BracketLevel;
     reasons.push({ key: 'tuning', minimum: bracket, cards: [] });
   }
 
-  const position = Math.min(1, Math.max(0, powerPosition(tuning, bumped, canBump)));
+  const position = Math.min(1, Math.max(0, powerPosition(combined, bumped, canBump)));
   const power = powerLevel(bracket, position);
 
   // Übereinstimmung von A und B = belastbar; fehlt B oder weicht es um eine Stufe ab = Schätzung;
@@ -568,12 +598,14 @@ export function analyzeBracket(input: BracketInput): BracketAnalysis {
     powerPosition: position,
     confidence,
     reasons,
-    suggestsCedh: bracket === AUTO_BRACKET_MAX && tuning >= CEDH_TUNING_HINT,
+    suggestsCedh: bracket === AUTO_BRACKET_MAX && combined >= CEDH_TUNING_HINT,
     verdicts: {
       rules,
       spellbook,
       tuning,
       tuningParts: tuningParts(input),
+      consistency,
+      combined,
       precon: input.isPrecon,
       price: input.totalPrice,
       comboTutorMin: benchmark.comboTutorMin,
