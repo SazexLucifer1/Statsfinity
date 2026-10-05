@@ -227,6 +227,9 @@ function pickBy(
 export interface Matchup {
   a: string;
   b: string;
+  /** Commander der beiden Decks (für das Kartenbild), falls bekannt. */
+  aCommander?: string;
+  bCommander?: string;
   games: number;
   aWins: number;
   bWins: number;
@@ -259,7 +262,15 @@ export function deckMatchups(
           [x, y] = [y, x];
         }
         const id = `${x.key}|${y.key}`;
-        const entry = pairs.get(id) ?? { a: x.label, b: y.label, games: 0, aWins: 0, bWins: 0 };
+        const entry = pairs.get(id) ?? {
+          a: x.label,
+          b: y.label,
+          aCommander: x.p.commander,
+          bCommander: y.p.commander,
+          games: 0,
+          aWins: 0,
+          bWins: 0,
+        };
         entry.games++;
         if (winners.has(x.p.name)) entry.aWins++;
         if (winners.has(y.p.name)) entry.bWins++;
