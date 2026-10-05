@@ -91,31 +91,51 @@
       @if (isCommanderFormat()) {
         <!-- Win Cons: Ziel aus der Tabelle; automatisch erkannt werden nur Combos aus Commander
              Spellbook - ein Sieg über Kampfschaden oder eine Einzelkarte fehlt dort. -->
-        <li class="lvl-info">
+        <!-- Grün, sobald mindestens eine Win Con erkannt ist und es nicht übermäßig viele sind;
+             sonst grau statt rot - was Spellbook nicht kennt, fehlt deshalb nicht im Deck. -->
+        <li
+          [class]="
+            winCons().length >= 1 && winCons().length <= WINCON_TARGET * 2 ? 'lvl-good' : 'lvl-info'
+          "
+        >
           <span class="dot"></span>
           <span class="check-name"
-            >{{ i18n.t('deckView.check.wincons') }}: <strong>~{{ WINCON_TARGET }}</strong></span
+            >{{ i18n.t('deckView.check.wincons') }}:
+            <strong>{{ winCons().length > 0 ? winCons().length : '?' }}</strong></span
           >
-          <span class="check-target">{{ i18n.t('deckView.check.winconsTarget') }}</span>
+          <span class="check-target">{{
+            i18n.t('deckView.check.winconsTarget', { target: WINCON_TARGET })
+          }}</span>
           <span class="check-advice">
-            {{
-              i18n.t('deckView.check.winconsFound', {
-                count: winningComboCount(),
-                combos: foundCombos().length,
-              })
-            }}
-            @if (foundCombos().length > 0) {
+            @if (winCons().length > 0) {
+              {{
+                i18n.t('deckView.check.winconsGrouped', {
+                  wincons: winCons().length,
+                  count: winningComboCount(),
+                  combos: foundCombos().length,
+                })
+              }}
               <span class="combo-names">
-                @for (c of foundCombos().slice(0, 4); track c.id; let last = $last) {
-                  {{ c.cardNames.join(' + ') }}
+                @for (w of winCons().slice(0, 4); track $index; let last = $last) {
+                  {{ w.cardNames.join(' + ') }}
+                  @if (w.variants > 1) {
+                    ({{ i18n.t('deckView.check.winconsVariants', { n: w.variants - 1 }) }})
+                  }
                   @if (!last) {
                     ;
                   }
                 }
-                @if (foundCombos().length > 4) {
+                @if (winCons().length > 4) {
                   …
                 }
               </span>
+            } @else {
+              {{
+                i18n.t('deckView.check.winconsFound', {
+                  count: winningComboCount(),
+                  combos: foundCombos().length,
+                })
+              }}
             }
             <span class="why">{{ i18n.t('deckView.check.winconsMaybeMissing') }}</span>
           </span>

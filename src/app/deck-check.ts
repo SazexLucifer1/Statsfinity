@@ -102,6 +102,61 @@ export const CATEGORY_RULES: Record<CategoryKey, CategoryRule> = {
 /** Empfohlene Win Cons laut Tabelle: etwa 3, je nach Deck ± 3. */
 export const WINCON_TARGET = 3;
 
+/**
+ * Wann ein Combo-Ergebnis von Commander Spellbook ein Sieg ist - die WEITE Sieg-Definition aus
+ * `spellbook_winning_combo_muster()` (sql/sieg-definition-breit-2026-09-17.sql) plus
+ * "lifeloss": So schreibt Spellbook den unendlichen Lebensverlust ("Infinite lifeloss"), und genau
+ * das fehlt dem SQL-Muster, das nur "loss of life" kennt. Die SQL-Fassung (Urteil F, Bracket)
+ * bleibt bewusst unverändert, weil deren Schwellen an ihr geeicht sind.
+ */
+const WIN_RESULT =
+  /win the game|(opponent|player)[^,]{0,40}loses? the game|(near-)?infinite[^,]{0,30}(damage|mill|turns|combat phases|storm count|loss of life|lifeloss|poison)|cast all spells in your library/i;
+/** Ausnahmen wie `spellbook_sieg_ausnahme()`: trifft das Muster, ist aber kein Sieg. */
+const WIN_EXCEPTION =
+  /damage to [^,]{0,25}creatures|damage to you|mill for you|self-mill|self lifeloss/i;
+
+export function isWinningResult(result: string): boolean {
+  return WIN_RESULT.test(result) && !WIN_EXCEPTION.test(result);
+}
+
+export interface WinCon {
+  /** Die kürzeste Combo der Gruppe - steht stellvertretend für ihre Varianten. */
+  cardNames: string[];
+  variants: number;
+}
+
+/**
+ * Spielbeendende Combos, zu Win Cons zusammengefasst. Spellbook führt jede Variante einzeln
+ * (Aristocrats mit Zulaport oder Blood Artist, mit Gravecrawler oder Reassembling Skeleton) -
+ * gezählt nach Combos stünde ein Deck mit einer einzigen Engine bei 30 Win Cons. Zwei Combos
+ * gehören zusammen, wenn sie mindestens zwei Karten teilen.
+ */
+export function groupWinCons(combos: readonly { cardNames: string[] }[]): WinCon[] {
+  const parent = combos.map((_, i) => i);
+  const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i])));
+  const sets = combos.map((c) => new Set(c.cardNames));
+  for (let i = 0; i < combos.length; i++) {
+    for (let j = i + 1; j < combos.length; j++) {
+      let shared = 0;
+      for (const name of sets[j]) if (sets[i].has(name)) shared++;
+      if (shared >= 2) parent[find(i)] = find(j);
+    }
+  }
+  const groups = new Map<number, number[]>();
+  combos.forEach((_, i) => {
+    const root = find(i);
+    groups.set(root, [...(groups.get(root) ?? []), i]);
+  });
+  return [...groups.values()]
+    .map((members) => {
+      const shortest = members.reduce((a, b) =>
+        combos[b].cardNames.length < combos[a].cardNames.length ? b : a,
+      );
+      return { cardNames: combos[shortest].cardNames, variants: members.length };
+    })
+    .sort((a, b) => b.variants - a.variants);
+}
+
 export interface CategoryTarget {
   target: number;
   min: number;

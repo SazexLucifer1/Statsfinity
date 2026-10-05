@@ -20,6 +20,8 @@ import {
   deckCheckItems,
   deckHealthScore,
   deckOdds,
+  groupWinCons,
+  isWinningResult,
   recommendedLands60,
 } from '../deck-check';
 import { DeckPlayStyleService } from '../deck-play-style.service';
@@ -190,7 +192,21 @@ export class DeckCheck {
   // --- Win Cons: Ziel aus der Tabelle, gefunden werden nur Combos aus Commander Spellbook ---
 
   readonly foundCombos = computed(() => this.viewer.analysis.analysisCombos());
-  readonly winningComboCount = computed(() => this.viewer.analysis.winningCombos());
+  /** Spielbeendende Combos nach ihrem Ergebnis - nur, wenn Spellbook die Ergebnisse geliefert hat. */
+  private readonly winningComboList = computed(() =>
+    this.foundCombos().filter((c) => c.produces.some(isWinningResult)),
+  );
+  /** Varianten derselben Combo zählen als eine Win Con. */
+  readonly winCons = computed(() => groupWinCons(this.winningComboList()));
+  /**
+   * Ohne Ergebnisse (Rückfall auf den Nachtlauf, Zwei-Karten-Combos ohne "produces") bleibt nur
+   * die Zahl aus der Datenbank.
+   */
+  readonly winningComboCount = computed(() =>
+    this.foundCombos().some((c) => c.produces.length > 0)
+      ? this.winningComboList().length
+      : this.viewer.analysis.winningCombos(),
+  );
 
   // --- Downloads der Richtwerte-Tabelle (public/richtwerte/) ---
   readonly benchmarkFile = computed(() =>

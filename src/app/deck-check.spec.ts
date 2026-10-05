@@ -14,6 +14,8 @@ import {
   mdfcCanEnterUntapped,
   recommendedLands60,
   requiredSources,
+  groupWinCons,
+  isWinningResult,
 } from './deck-check';
 
 describe('deck-check', () => {
@@ -129,5 +131,35 @@ describe('deck-check', () => {
     const odds = deckOdds(99, 37, 10, null);
     expect(odds.keepableHand).toBeGreaterThan(0.7);
     expect(odds.drawByTurn4).toBeNull();
+  });
+
+  it('erkennt Spellbooks "Infinite lifeloss" als Sieg, Schaden auf Kreaturen nicht', () => {
+    expect(isWinningResult('Infinite lifeloss')).toBe(true);
+    expect(isWinningResult('Infinite damage to opponents')).toBe(true);
+    expect(isWinningResult('Infinite damage to creatures')).toBe(false);
+    expect(isWinningResult('Infinite death triggers')).toBe(false);
+    expect(isWinningResult('Infinite colorless mana')).toBe(false);
+  });
+
+  it('fasst Varianten derselben Combo zu einer Win Con zusammen', () => {
+    const groups = groupWinCons([
+      { cardNames: ['Warren Soultrader', 'Gravecrawler', 'Zulaport Cutthroat'] },
+      { cardNames: ['Warren Soultrader', 'Gravecrawler', 'Blood Artist'] },
+      {
+        cardNames: [
+          'Warren Soultrader',
+          'Pitiless Plunderer',
+          'Reassembling Skeleton',
+          'Blood Artist',
+        ],
+      },
+      { cardNames: ["Thassa's Oracle", 'Demonic Consultation'] },
+    ]);
+    expect(groups.length).toBe(2);
+    expect(groups[0]).toEqual({
+      cardNames: ['Warren Soultrader', 'Gravecrawler', 'Zulaport Cutthroat'],
+      variants: 3,
+    });
+    expect(groups[1].variants).toBe(1);
   });
 });
