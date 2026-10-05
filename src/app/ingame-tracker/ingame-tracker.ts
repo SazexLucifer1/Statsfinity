@@ -257,6 +257,20 @@ export class IngameTracker implements AfterViewInit, OnDestroy {
     return this.i18n.t('ingame.undone', { name, delta, what: this.i18n.t(what) });
   }
 
+  // --- Startspieler von Hand festlegen (ausgewürfelt statt ausgelost) ---
+
+  readonly starterPickerOpen = signal(false);
+
+  openStarterPicker(): void {
+    this.showOptionsMenu.set(false);
+    this.starterPickerOpen.set(true);
+  }
+
+  pickStarter(key: string | null): void {
+    this.session.startingPlayerKey.set(key);
+    this.starterPickerOpen.set(false);
+  }
+
   // --- Eingabe-Sheet je Spieler: Leben eintippen oder in größeren Schritten ändern, Monarch und
   // Initiative vergeben. Ein eigenes Sheet statt weiterer Tippzonen - das Feld selbst ist schon
   // voll mit +/- und gehört dem schnellen Tippen. ---

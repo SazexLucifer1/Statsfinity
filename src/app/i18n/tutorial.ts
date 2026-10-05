@@ -260,7 +260,7 @@ export const tutorial = {
       'Bei ungerader Spielerzahl liegt ein Feld unten quer. Halte einen Spielernamen gedrückt, um festzulegen, wer dort sitzt.',
     'tutorial.ingame.menuButton.title': '⋮ Menü',
     'tutorial.ingame.menuButton.text':
-      'Der Knopf in der Mitte öffnet das Menü: letzte Änderung rückgängig machen, Tracker minimieren (die Partie läuft weiter, zurück geht es über „Spiel“ in der Leiste unten), Spieler neu anordnen, alle Felder aufrecht stellen (für ein Handy, das herumgereicht wird), Startspieler auslosen, diese Erklärung und Spiel beenden.',
+      'Der Knopf in der Mitte öffnet das Menü: letzte Änderung rückgängig machen, Tracker minimieren (die Partie läuft weiter, zurück geht es über „Spiel“ in der Leiste unten), Spieler neu anordnen, alle Felder aufrecht stellen (für ein Handy, das herumgereicht wird), Startspieler auslosen oder (ausgewürfelt) festlegen, diese Erklärung und Spiel beenden.',
     'tutorial.ingame.winner.title': 'Spiel beenden',
     'tutorial.ingame.winner.text':
       'Wähle den Sieger (oder Unentschieden) und speichere - die Partie fließt sofort in Statistik und Ränge ein. „Ohne Speichern schließen“ verwirft einen Testlauf.',
@@ -539,7 +539,7 @@ export const tutorial = {
       'With an odd number of players, one panel lies across the bottom. Press and hold a player name to choose who sits there.',
     'tutorial.ingame.menuButton.title': '⋮ Menu',
     'tutorial.ingame.menuButton.text':
-      'The button in the middle opens the menu: undo the last change, minimize the tracker (the game keeps running, “Game” in the bottom bar brings you back), reorder players, set all panels upright (for a phone that gets passed around), draw the starting player, this explanation and end game.',
+      'The button in the middle opens the menu: undo the last change, minimize the tracker (the game keeps running, “Game” in the bottom bar brings you back), reorder players, set all panels upright (for a phone that gets passed around), draw or (after a die roll) set the starting player, this explanation and end game.',
     'tutorial.ingame.winner.title': 'End game',
     'tutorial.ingame.winner.text':
       'Pick the winner (or a draw) and save - the game goes straight into stats and ranks. “Close without saving” discards a test run.',

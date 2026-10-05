@@ -104,7 +104,9 @@
             (pointercancel)="cancelPinLongPress()"
           >
             <span class="panel-name"
-              >{{ p.label }}@if (session.monarchKey() === p.key) {
+              >{{ p.label }}@if (session.startingPlayerKey() === p.key) {
+                <span class="panel-marker"><app-icon name="play" [label]="i18n.t('ingame.startedGame')" /></span>
+              }@if (session.monarchKey() === p.key) {
                 <span class="panel-marker"><app-icon name="crown" [label]="i18n.t('ingame.monarch')" /></span>
               }@if (session.initiativeKey() === p.key) {
                 <span class="panel-marker"><app-icon name="castle" [label]="i18n.t('ingame.initiative')" /></span>
@@ -266,6 +268,8 @@
         {{ session.uprightLayout() ? i18n.t('ingame.layoutTable') : i18n.t('ingame.layoutUpright') }}
       </button>
       <button class="glass-button" (click)="startPlayerRoulette()">{{ i18n.t('ingame.drawStartingPlayer') }}</button>
+      <!-- Viele Runden würfeln den Startspieler lieber aus - dann wird er hier nur eingetragen. -->
+      <button class="glass-button" (click)="openStarterPicker()">{{ i18n.t('ingame.setStartingPlayer') }}</button>
       <!-- Die Kopfzeile mit dem Fragezeichen liegt unter dem Tracker, deshalb steht die Hilfe hier. -->
       <button class="glass-button" (click)="chooseHelp()">{{ i18n.t('ingame.help') }}</button>
       <button class="glass-button primary" (click)="chooseEndGame()">{{ i18n.t('ingame.endGame') }}</button>
@@ -289,6 +293,22 @@
       <div class="roulette-result">{{ i18n.t('ingame.starts', { name: result.label }) }}</div>
       <button class="glass-button primary" (click)="closeRouletteOverlay()">{{ i18n.t('deckView.done') }}</button>
       }
+    </div>
+  </div>
+  } @if (starterPickerOpen()) {
+  <div class="options-menu-overlay" (click)="starterPickerOpen.set(false)">
+    <div class="options-menu-sheet" (click)="$event.stopPropagation()">
+      <h3>{{ i18n.t('ingame.setStartingPlayer') }}</h3>
+      <p class="hint">{{ i18n.t('ingame.setStartingPlayerHint') }}</p>
+      @for (unit of session.ingameUnits(); track unit.key) {
+        <button class="glass-button" [class.primary]="session.startingPlayerKey() === unit.key" (click)="pickStarter(unit.key)">
+          {{ unit.label }}
+        </button>
+      }
+      @if (session.startingPlayerKey()) {
+        <button class="glass-button" (click)="pickStarter(null)">{{ i18n.t('ingame.clearStartingPlayer') }}</button>
+      }
+      <button class="glass-button" (click)="starterPickerOpen.set(false)">{{ i18n.t('group.cancel') }}</button>
     </div>
   </div>
   } @if (playerSheetFor(); as unit) {
@@ -326,6 +346,9 @@
       </ul>
       <p class="player-sheet-label">{{ i18n.t('ingame.markers') }}</p>
       <div class="chip-row">
+        <button class="glass-chip" [class.active]="session.startingPlayerKey() === unit.key" (click)="session.toggleStartingPlayer(unit.key)">
+          <app-icon name="play" /> {{ i18n.t('ingame.startedGame') }}
+        </button>
         <button class="glass-chip" [class.active]="session.monarchKey() === unit.key" (click)="session.toggleMonarch(unit.key)">
           <app-icon name="crown" /> {{ i18n.t('ingame.monarch') }}
         </button>
