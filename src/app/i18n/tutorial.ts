@@ -20,9 +20,15 @@ export const tutorial = {
     'tutorial.match.mode.title': 'Spielmodus & Format',
     'tutorial.match.mode.text':
       'Wähle zuerst die Kategorie (Normal, Two-Headed Giant, Archenemy, Cube, Draft oder Spezialevent), darunter das gespielte Format (z.B. Commander oder Modern). Je nach Kategorie erscheinen weiter unten passende Zusatz-Optionen.',
+    'tutorial.match.friends.title': 'Gruppe oder Freunde',
+    'tutorial.match.friends.text':
+      'Mit „Freunde“ spielst du eine Partie ohne Gruppe - mit deinen Freunden aus dem Profil (und Gästen ohne Account). Solche Partien zählen in deinem Profil und in der Freunde-Rangliste, nie in der Gruppenstatistik.',
     'tutorial.match.ranked.title': 'Ranked oder Frei',
     'tutorial.match.ranked.text':
       'Nutzt deine Gruppe das Rangsystem, legst du hier fest, ob die Partie für die Ränge (LP) zählt. Freie Partien landen trotzdem in der Statistik. Nachträglich umstellen lässt sich das im Match-Verlauf.',
+    'tutorial.match.series.title': 'Einzelspiel oder Best of 3',
+    'tutorial.match.series.text':
+      'Bei Best of 3 startet nach jedem gespeicherten Spiel automatisch das nächste mit denselben Spielern, bis jemand zwei Siege hat.',
     'tutorial.match.tournament.title': 'Turniere',
     'tutorial.match.tournament.text':
       'Hier erstellst du ein Turnier für deine Gruppe oder öffnest das laufende - mit Paarungen, Zeitlimit und Tabelle.',
@@ -38,9 +44,12 @@ export const tutorial = {
     'tutorial.match.start.title': 'Spiel starten',
     'tutorial.match.start.text':
       'Sobald alles ausgefüllt ist, öffnet dieser Knopf den Live-Tracker für die Partie. Auch dort gibt es eine Erklärung - im Menü hinter ⋮ in der Mitte.',
+    'tutorial.match.backfill.title': 'Partie nachtragen',
+    'tutorial.match.backfill.text':
+      'Für Partien, die ohne Handy am Tisch gespielt wurden: gleiche Auswahl wie oben, dann nur noch Sieger und Datum eintragen - ganz ohne Tracker.',
     'tutorial.match.history.title': 'Match-Verlauf',
     'tutorial.match.history.text':
-      'Die vergangenen Partien der Gruppe mit Siegern, Decks und - bei Ranked-Partien - den gewonnenen oder verlorenen LP. Mit den entsprechenden Rechten korrigierst du hier den Sieger, stellst Ranked/Frei um oder löschst ein Match.',
+      'Die vergangenen Partien der Gruppe mit Siegern, Decks und - bei Ranked-Partien - den gewonnenen oder verlorenen LP. Live getrackte Partien zeigen dazu Dauer, Startspieler (▶) und die Lebenspunkte-Kurve. Mit den entsprechenden Rechten korrigierst du hier den Sieger, stellst Ranked/Frei um oder löschst ein Match.',
 
     // --- Suche-Tab ---
     'tutorial.search.intro.title': 'Suche',
@@ -80,6 +89,9 @@ export const tutorial = {
     'tutorial.stats.elo.title': 'Elo-Wertung',
     'tutorial.stats.elo.text':
       'Die Ränge der Gruppe von Holz bis Infinity, je Format getrennt. Es zählen nur Ranked-Partien: Der Sieger gewinnt LP gegen jeden Gegner, alle anderen verlieren gegen den Sieger. Das i neben der Überschrift erklärt die Rechnung.',
+    'tutorial.stats.insights.title': 'Spiel-Analysen',
+    'tutorial.stats.insights.text':
+      'Winrate je Startplatz, Spieldauer und Deck gegen Deck. Mit gewähltem Spieler zusätzlich Form, Winrate je Monat, Angst- und Lieblingsgegner sowie der Jahresrückblick als Bild zum Teilen.',
     'tutorial.stats.h2h.title': 'Head-to-Head',
     'tutorial.stats.h2h.text':
       'Aufklappen, zwei Spieler wählen und sehen, wer in gemeinsamen Partien wie oft gewonnen hat - und mit welchen Commandern.',
@@ -160,6 +172,9 @@ export const tutorial = {
     'tutorial.profile.unassigned.title': 'Commander ohne Deck',
     'tutorial.profile.unassigned.text':
       'Partien mit einem Commander, der keinem deiner Decks zugeordnet ist - etwa geliehene Decks, Cubes oder alte Importe. Der Schraubenschlüssel sucht automatisch passende Decks, das Ketten-Symbol verknüpft von Hand.',
+    'tutorial.profile.friends.title': 'Freunde',
+    'tutorial.profile.friends.text':
+      'Spieler suchen und als Freund hinzufügen, Anfragen annehmen, Neuigkeiten deiner Freunde und eure Rangliste. Mit Freunden spielst du auch ohne gemeinsame Gruppe - im Match-Tab unter „Freunde“.',
     'tutorial.profile.danger.title': 'Daten & Danger Zone',
     'tutorial.profile.danger.text':
       'Ganz unten exportierst du deine Daten oder löschst deinen Account unwiderruflich - inklusive Profil, Decks und Gruppenmitgliedschaften.',
@@ -168,6 +183,9 @@ export const tutorial = {
     'tutorial.profileView.intro.title': 'Profil eines Spielers',
     'tutorial.profileView.intro.text':
       'Du siehst das Profil eines anderen Spielers - mit Profilbild, Rang (falls ihr in derselben Gruppe mit Rangsystem seid) und Lieblings-Commandern.',
+    'tutorial.profileView.friend.title': 'Freundschaft & Bilanz',
+    'tutorial.profileView.friend.text':
+      'Hier fragst du die Freundschaft an (oder beendest sie) und siehst, wie eure gemeinsamen Partien ausgegangen sind - über alle Gruppen und Freundesspiele.',
     'tutorial.profileView.favorites.title': 'Lieblings-Commander',
     'tutorial.profileView.favorites.text':
       'Die Commander, die dieser Spieler auf seinem Profil zeigt.',
@@ -190,7 +208,7 @@ export const tutorial = {
       'Wie oft das Deck angesehen wurde und wie vielen es gefällt. Fremde Decks kannst du mit dem Herz liken; „von …“ öffnet das Profil des Besitzers.',
     'tutorial.deckDetail.bracket.title': 'Bracket',
     'tutorial.deckDetail.bracket.text':
-      'Die Einstufung des Decks (Bracket 1-5) nach den offiziellen Commander-Regeln - berechnet aus Game Changern, Tutoren, Combos und mehr. Du kannst auch selbst eine Stufe angeben.',
+      'Die Einstufung des Decks (Bracket 1-5) nach den offiziellen Commander-Regeln - aus Game Changern, Combos und mehr -, dazu ein Power-Wert von 1 bis 10 aus Karten-Tuning und Beständigkeit. Das i neben jedem Einzelurteil zeigt die Rechnung. Du kannst auch selbst eine Stufe angeben.',
     'tutorial.deckDetail.tabs.title': 'Deckliste, Steckbrief & Primer',
     'tutorial.deckDetail.tabs.text':
       'Die Deckliste zeigt alle Karten. Der Steckbrief ist ein Bild des Decks zum Teilen, mit QR-Code zum Deck. Im Primer beschreibt der Besitzer, wie das Deck funktioniert.',
@@ -203,6 +221,9 @@ export const tutorial = {
     'tutorial.deckDetail.analysis.title': 'Deck-Analyse',
     'tutorial.deckDetail.analysis.text':
       'Manakurve, Farbverteilung, Manaquellen, Kartentypen, Preis und Combos aus Commander Spellbook - aufklappen und auf einen Blick sehen.',
+    'tutorial.deckDetail.check.title': 'Deck-Check',
+    'tutorial.deckDetail.check.text':
+      'Oben in der Analyse: Passen Länder, Rampe, Kartenziehen, Removal und Bretträumung zur Spielweise des Decks? Dazu Farbquellen, Wahrscheinlichkeiten, Win Cons und eine Testhand. Die Spielweise legst du über „Spielweise wählen“ fest.',
     'tutorial.deckDetail.sort.title': 'Sortierung',
     'tutorial.deckDetail.sort.text':
       'Nach Kartentyp gruppiert oder nach deinen eigenen Tags - eine Karte mit mehreren Tags erscheint dann in mehreren Abschnitten.',
@@ -302,9 +323,15 @@ export const tutorial = {
     'tutorial.match.mode.title': 'Game mode & format',
     'tutorial.match.mode.text':
       'First pick the category (Normal, Two-Headed Giant, Archenemy, Cube, Draft or Special event), then the format below (e.g. Commander or Modern). Depending on the category, matching extra options appear further down.',
+    'tutorial.match.friends.title': 'Group or friends',
+    'tutorial.match.friends.text':
+      'With “Friends” you play a game without a group - with your friends from your profile (and guests without an account). Such games count on your profile and in the friends leaderboard, never in group stats.',
     'tutorial.match.ranked.title': 'Ranked or casual',
     'tutorial.match.ranked.text':
       'If your group uses the ranked system, decide here whether the game counts towards ranks (LP). Casual games still count in the stats. You can switch this later in the match history.',
+    'tutorial.match.series.title': 'Single game or best of 3',
+    'tutorial.match.series.text':
+      'With best of 3, the next game with the same players starts automatically after each saved game, until someone has two wins.',
     'tutorial.match.tournament.title': 'Tournaments',
     'tutorial.match.tournament.text':
       'Create a tournament for your group here or open the running one - with pairings, time limit and standings.',
@@ -320,9 +347,12 @@ export const tutorial = {
     'tutorial.match.start.title': 'Start game',
     'tutorial.match.start.text':
       'Once everything is filled in, this button opens the live tracker for the game. It has its own explanation too - in the ⋮ menu in the middle.',
+    'tutorial.match.backfill.title': 'Add a past game',
+    'tutorial.match.backfill.text':
+      'For games played without a phone at the table: same selection as above, then just enter the winner and date - no tracker needed.',
     'tutorial.match.history.title': 'Match history',
     'tutorial.match.history.text':
-      "Your group's past games with winners, decks and - for ranked games - the LP won or lost. With the right permissions you can correct the winner, switch ranked/casual or delete a match here.",
+      "Your group's past games with winners, decks and - for ranked games - the LP won or lost. Live-tracked games also show duration, starting player (▶) and the life chart. With the right permissions you can correct the winner, switch ranked/casual or delete a match here.",
 
     // --- Search tab ---
     'tutorial.search.intro.title': 'Search',
@@ -362,6 +392,9 @@ export const tutorial = {
     'tutorial.stats.elo.title': 'Elo rating',
     'tutorial.stats.elo.text':
       "The group's ranks from Wood to Infinity, separate per format. Only ranked games count: the winner gains LP against every opponent, everyone else loses against the winner. The i next to the heading explains the maths.",
+    'tutorial.stats.insights.title': 'Game insights',
+    'tutorial.stats.insights.text':
+      'Win rate by seat, game length and deck vs deck. With a player selected, also form, win rate per month, nemesis and favourite opponent, and the year in review as an image to share.',
     'tutorial.stats.h2h.title': 'Head-to-head',
     'tutorial.stats.h2h.text':
       'Expand it, pick two players and see who won their shared games how often - and with which commanders.',
@@ -440,6 +473,9 @@ export const tutorial = {
     'tutorial.profile.unassigned.title': 'Commanders without a deck',
     'tutorial.profile.unassigned.text':
       "Games with a commander that isn't assigned to any of your decks - e.g. borrowed decks, cubes or old imports. The wrench looks for matching decks automatically, the chain icon links them by hand.",
+    'tutorial.profile.friends.title': 'Friends',
+    'tutorial.profile.friends.text':
+      'Search for players and add them as friends, accept requests, see your friends\' news and your leaderboard. You can play with friends even without a shared group - under “Friends” in the Match tab.',
     'tutorial.profile.danger.title': 'Data & danger zone',
     'tutorial.profile.danger.text':
       'At the very bottom you export your data or delete your account permanently - including profile, decks and group memberships.',
@@ -448,6 +484,9 @@ export const tutorial = {
     'tutorial.profileView.intro.title': "A player's profile",
     'tutorial.profileView.intro.text':
       "You're looking at another player's profile - with picture, rank (if you share a group with the ranked system) and favourite commanders.",
+    'tutorial.profileView.friend.title': 'Friendship & record',
+    'tutorial.profileView.friend.text':
+      'Send a friend request here (or end the friendship) and see how your shared games went - across all groups and friend games.',
     'tutorial.profileView.favorites.title': 'Favourite commanders',
     'tutorial.profileView.favorites.text': 'The commanders this player shows on their profile.',
     'tutorial.profileView.content.title': 'Decks & games',
@@ -469,7 +508,7 @@ export const tutorial = {
       "How often the deck was viewed and how many people like it. Like other people's decks with the heart; “by …” opens the owner's profile.",
     'tutorial.deckDetail.bracket.title': 'Bracket',
     'tutorial.deckDetail.bracket.text':
-      "The deck's rating (bracket 1-5) under the official Commander rules - calculated from game changers, tutors, combos and more. You can also set a bracket yourself.",
+      "The deck's rating (bracket 1-5) under the official Commander rules - from game changers, combos and more -, plus a power value from 1 to 10 from card tuning and consistency. The i next to each verdict shows the calculation. You can also set a bracket yourself.",
     'tutorial.deckDetail.tabs.title': 'Decklist, passport & primer',
     'tutorial.deckDetail.tabs.text':
       'The decklist shows every card. The passport is a shareable image of the deck, with a QR code leading to it. In the primer, the owner explains how the deck works.',
@@ -482,6 +521,9 @@ export const tutorial = {
     'tutorial.deckDetail.analysis.title': 'Deck analysis',
     'tutorial.deckDetail.analysis.text':
       'Mana curve, colour distribution, mana sources, card types, price and combos from Commander Spellbook - expand it for everything at a glance.',
+    'tutorial.deckDetail.check.title': 'Deck check',
+    'tutorial.deckDetail.check.text':
+      'At the top of the analysis: do lands, ramp, card draw, removal and board wipes fit the deck\'s play style? Plus color sources, odds, win cons and a test hand. You set the play style via “Choose play style”.',
     'tutorial.deckDetail.sort.title': 'Sorting',
     'tutorial.deckDetail.sort.text':
       'Grouped by card type or by your own tags - a card with several tags then appears in several sections.',

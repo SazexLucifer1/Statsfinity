@@ -18,6 +18,7 @@ import {
 import { BarChart, BarChartDatum } from '../ui/bar-chart/bar-chart';
 import { Meter } from '../ui/meter/meter';
 import { SplitBar, SplitSegment } from '../ui/split-bar/split-bar';
+import { InfoToggle } from '../ui/info-toggle/info-toggle';
 import { Icon } from '../ui/icon/icon';
 import { YearReviewDialog } from '../year-review-dialog/year-review-dialog';
 
@@ -28,7 +29,7 @@ import { YearReviewDialog } from '../year-review-dialog/year-review-dialog';
  */
 @Component({
   selector: 'app-match-insights',
-  imports: [CardImage, BarChart, Meter, SplitBar, Icon, YearReviewDialog],
+  imports: [CardImage, BarChart, Meter, SplitBar, Icon, YearReviewDialog, InfoToggle],
   templateUrl: './match-insights.html',
   styleUrl: './match-insights.scss',
 })

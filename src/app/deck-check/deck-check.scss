@@ -39,6 +39,15 @@
   }
 }
 
+.check-title {
+  flex: 1;
+  min-width: 0;
+
+  h3 {
+    margin: 0;
+  }
+}
+
 .score {
   display: flex;
   flex-direction: column;

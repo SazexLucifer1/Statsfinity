@@ -20,6 +20,7 @@ import { DeckPlayStyleService } from '../deck-play-style.service';
 import { ManaSymbol } from '../ui/mana-symbol/mana-symbol';
 import { Meter } from '../ui/meter/meter';
 import { Icon } from '../ui/icon/icon';
+import { InfoToggle } from '../ui/info-toggle/info-toggle';
 
 /**
  * Deck-Check oben in der Deck-Analyse: Gesamtwert, Ampel je Kategorie mit Sollwert,
@@ -28,7 +29,7 @@ import { Icon } from '../ui/icon/icon';
  */
 @Component({
   selector: 'app-deck-check',
-  imports: [PercentPipe, ManaSymbol, Meter, Icon],
+  imports: [PercentPipe, ManaSymbol, Meter, Icon, InfoToggle],
   templateUrl: './deck-check.html',
   styleUrl: './deck-check.scss',
 })

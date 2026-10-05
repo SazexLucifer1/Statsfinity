@@ -53,7 +53,9 @@ wegen des harten Style-Budgets von 12 kB: `deck-detail-view` hat ein zweites Sty
 
 ### Wiederverwendbare UI-Bausteine — hier zuerst nachsehen
 
-`src/app/ui/` enthält: `bar-chart`, `life-chart`, `radar-chart`, `meter`, `split-bar`, `pager`, `podium`, `overflow-menu`, `multi-select`, `color-filter`, `cmc-filter`, `mana-symbol`, `bracket-badge`, `rank-badge`, `icon` sowie `chart-scale.ts`.
+`src/app/ui/` enthält: `bar-chart`, `life-chart`, `radar-chart`, `meter`, `split-bar`, `pager`, `podium`, `overflow-menu`, `multi-select`, `color-filter`, `cmc-filter`, `mana-symbol`, `bracket-badge`, `rank-badge`, `icon`, `info-toggle` sowie `chart-scale.ts`.
+
+`info-toggle` ist die Überschrift mit ⓘ-Knopf, der eine Erklärung aufklappt (`<app-info-toggle [label]="…"><h3 info-title>…</h3> Erklärtext </app-info-toggle>`). **Erklärtexte gehören dahinter, nicht als Dauertext auf die Karte** (Wunsch des Users, 05.10.2026) - sichtbar bleibt nur, was man zum Ablesen braucht.
 
 `icon` ist der Piktogramm-Satz der App (`<app-icon name="trash" />`): ein gemeinsames 24er-Raster, eine Strichstärke, Farbe immer `currentColor`, Größe aus der `font-size` der Umgebung. **Er hat die Emojis abgelöst, die vorher überall in der Oberfläche standen** — die zeichnet jedes Betriebssystem anders, sie sind bunt und lassen sich weder einfärben noch in der Strichstärke angleichen. Ein neues Piktogramm gehört in `icon.html` (`@case`) **und** in die Union `IconName` in `icon.ts`; das eine ohne das andere kompiliert nicht bzw. zeichnet nichts. **Ein `<button>` um ein Icon herum muss eine eigene `color` setzen** — Knöpfe erben die Textfarbe nicht, sie nehmen die dunkle Browser-Standardfarbe, und das Piktogramm zeichnet in `currentColor`. Bei einem Emoji war das egal, hier wird der Knopf dadurch unsichtbar.
 

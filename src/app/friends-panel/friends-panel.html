@@ -178,10 +178,12 @@
           <!-- Auf breiten Bildschirmen nebeneinander, auf dem Handy untereinander. -->
           <div class="ranking-columns">
             <div>
-              <h3>{{ i18n.t('profile.friends.rankingWinRate') }}</h3>
-              <p class="hint">
-                {{ i18n.t('profile.friends.rankingWinRateHint', { min: MIN_GAMES }) }}
-              </p>
+              <app-info-toggle [label]="i18n.t('profile.friends.rankingInfoAria')">
+                <h3 info-title>{{ i18n.t('profile.friends.rankingWinRate') }}</h3>
+                <p class="hint">
+                  {{ i18n.t('profile.friends.rankingWinRateHint', { min: MIN_GAMES }) }}
+                </p>
+              </app-info-toggle>
               @if (winRateRanking().length === 0) {
                 <p class="hint">{{ i18n.t('profile.friends.rankingEmpty') }}</p>
               }
@@ -213,8 +215,10 @@
               }
             </div>
             <div>
-              <h3>{{ i18n.t('profile.friends.rankingElo') }}</h3>
-              <p class="hint">{{ i18n.t('profile.friends.rankingEloHint') }}</p>
+              <app-info-toggle [label]="i18n.t('profile.friends.rankingInfoAria')">
+                <h3 info-title>{{ i18n.t('profile.friends.rankingElo') }}</h3>
+                <p class="hint">{{ i18n.t('profile.friends.rankingEloHint') }}</p>
+              </app-info-toggle>
               @if (friendElo().length === 0) {
                 <p class="hint">{{ i18n.t('profile.friends.eloEmpty') }}</p>
               }

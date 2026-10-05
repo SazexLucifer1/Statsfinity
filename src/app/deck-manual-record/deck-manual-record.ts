@@ -1,6 +1,7 @@
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { I18nService } from '../i18n.service';
 import { DeckManualRecordService, ManualRecord } from '../deck-manual-record.service';
+import { Icon } from '../ui/icon/icon';
 
 /**
  * Nachgetragene Bilanz eines Decks in der Deck-Ansicht: alte Siege/Niederlagen/Unentschieden aus
@@ -9,6 +10,7 @@ import { DeckManualRecordService, ManualRecord } from '../deck-manual-record.ser
  */
 @Component({
   selector: 'app-deck-manual-record',
+  imports: [Icon],
   templateUrl: './deck-manual-record.html',
   styleUrl: './deck-manual-record.scss',
 })

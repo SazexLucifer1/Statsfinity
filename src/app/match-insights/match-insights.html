@@ -40,7 +40,12 @@
       }
 
       <!-- Gegner -->
-      <h3>{{ i18n.t('stats.insights.opponentsTitle') }}</h3>
+      <app-info-toggle [label]="i18n.t('stats.insights.infoAria')">
+        <h3 info-title>{{ i18n.t('stats.insights.opponentsTitle') }}</h3>
+        <p class="hint">
+          {{ i18n.t('stats.insights.opponentsInfo', { min: OPPONENT_MIN_GAMES }) }}
+        </p>
+      </app-info-toggle>
       @if (topOpponents().length === 0) {
         <p class="hint">
           {{ i18n.t('stats.insights.opponentsEmpty', { min: OPPONENT_MIN_GAMES }) }}
@@ -94,16 +99,22 @@
     }
 
     <!-- Zugreihenfolge -->
-    <h3>{{ i18n.t('stats.insights.turnOrderTitle') }}</h3>
+    <app-info-toggle [label]="i18n.t('stats.insights.infoAria')">
+      <h3 info-title>{{ i18n.t('stats.insights.turnOrderTitle') }}</h3>
+      <p class="hint">{{ i18n.t('stats.insights.turnOrderInfo') }}</p>
+    </app-info-toggle>
     @if (seats().length === 0) {
       <p class="hint">{{ i18n.t('stats.insights.turnOrderEmpty') }}</p>
     } @else {
-      <p class="hint">{{ i18n.t('stats.insights.turnOrderHint', { games: seatGames() }) }}</p>
+      <p class="hint">{{ i18n.t('stats.insights.turnOrderCount', { games: seatGames() }) }}</p>
       <app-bar-chart [data]="seatChart()" scale="percent" valueSuffix="%" />
     }
 
     <!-- Spieldauer -->
-    <h3>{{ i18n.t('stats.insights.durationTitle') }}</h3>
+    <app-info-toggle [label]="i18n.t('stats.insights.infoAria')">
+      <h3 info-title>{{ i18n.t('stats.insights.durationTitle') }}</h3>
+      <p class="hint">{{ i18n.t('stats.insights.durationInfo') }}</p>
+    </app-info-toggle>
     @if (duration(); as d) {
       <div class="duo">
         <div class="duo-card">
@@ -153,11 +164,13 @@
     }
 
     <!-- Deck gegen Deck -->
-    <h3>{{ i18n.t('stats.insights.matchupsTitle') }}</h3>
+    <app-info-toggle [label]="i18n.t('stats.insights.infoAria')">
+      <h3 info-title>{{ i18n.t('stats.insights.matchupsTitle') }}</h3>
+      <p class="hint">{{ i18n.t('stats.insights.matchupsHint') }}</p>
+    </app-info-toggle>
     @if (matchups().length === 0) {
       <p class="hint">{{ i18n.t('stats.insights.matchupsEmpty') }}</p>
     } @else {
-      <p class="hint">{{ i18n.t('stats.insights.matchupsHint') }}</p>
       <ul class="matchups">
         @for (m of matchups(); track m.a + '|' + m.b) {
           @let open = openMatchup() === m.a + '|' + m.b;

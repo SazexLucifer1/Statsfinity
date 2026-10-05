@@ -1,5 +1,5 @@
 @if (friends.verfuegbar() && auth.currentUser() && !isSelf()) {
-  <div class="friend-status">
+  <div class="friend-status" data-tutorial="profile-friend-status">
     <div class="friend-row">
       @if (status() === 'friends') {
         <span class="friend-badge">{{ i18n.t('profile.friends.alreadyFriends') }}</span>
