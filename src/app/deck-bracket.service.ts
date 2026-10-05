@@ -6,6 +6,7 @@ import {
   DEFAULT_BRACKET_BENCHMARK,
   PREIS_SCHWELLE_EUR,
   TUNING_BUMP_SCHWELLE,
+  AUTO_BRACKET_MAX,
   analyzeBracket,
   powerRange,
 } from './bracket';
@@ -152,6 +153,9 @@ export class DeckBracketService {
       powerSpanne: Math.round((powerBis - powerVon) * 10) / 10,
       /** true, wenn die Feinbewertung das Bracket tatsächlich um eine Stufe angehoben hat. */
       bumped: analysis.reasons.some((r) => r.key === 'tuning'),
+      /** true, wenn eine Anhebung überhaupt möglich war (unter B4, kein Precon). */
+      canBump: analysis.bracket < AUTO_BRACKET_MAX && !this.state.viewingDeck()?.isPrecon,
+      bumpThreshold: TUNING_BUMP_SCHWELLE,
       /** true, wenn der Kartenwert die Schwelle erreicht und damit mindestens Bracket 3 erzwingt. */
       pricePushed: analysis.reasons.some((r) => r.key === 'price'),
       /**

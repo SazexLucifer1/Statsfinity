@@ -147,6 +147,11 @@ export interface BracketAnalysis {
   bracket: BracketLevel;
   /** 1-10, eine Nachkommastelle - die vertraute Powerlevel-Skala, feiner als die fünf Brackets. */
   power: number;
+  /**
+   * Position des Decks innerhalb der Power-Spanne seines Brackets (0-1), aus dem Tuning-Grad
+   * abgeleitet - siehe powerPosition().
+   */
+  powerPosition: number;
   confidence: 'high' | 'medium' | 'low';
   reasons: BracketReason[];
   /** true = Bracket 4 und sehr hoch bewertet; die Oberfläche fragt dann nach Bracket 5. */
@@ -462,8 +467,8 @@ function anteil(wert: number, von: number, bis: number): number {
 }
 
 /**
- * Power-Spanne je Bracket, paarweise auf der gängigen 1-10-Skala: 1-2 Exhibition, 3-4 Core, 5-6
- * Upgraded, 7-8 Optimized, 9-10 cEDH.
+ * Power-Spanne je Bracket, je zwei Punkte der gängigen 1-10-Skala: 1-2,9 Exhibition, 3-4,9 Core,
+ * 5-6,9 Upgraded, 7-8,9 Optimized, 9-10 cEDH.
  */
 const POWER_SPANNE: Record<BracketLevel, [number, number]> = {
   1: [1, 2.9],
@@ -478,10 +483,27 @@ export function powerRange(bracket: BracketLevel): [number, number] {
   return POWER_SPANNE[bracket];
 }
 
-/** Power-Wert aus Bracket und Tuning-Grad, auf eine Nachkommastelle. */
-export function powerLevel(bracket: BracketLevel, tuning: number): number {
+/** Power-Wert aus Bracket und Position in dessen Spanne (0-1), auf eine Nachkommastelle. */
+export function powerLevel(bracket: BracketLevel, position: number): number {
   const [von, bis] = POWER_SPANNE[bracket];
-  return Math.round((von + tuning * (bis - von)) * 10) / 10;
+  const p = Math.min(1, Math.max(0, position));
+  return Math.round((von + p * (bis - von)) * 10) / 10;
+}
+
+/**
+ * Wo in der Spanne seines Brackets ein Deck steht (0-1).
+ *
+ * Früher war das schlicht der Tuning-Grad. Weil ab TUNING_BUMP_SCHWELLE aber das Bracket eine Stufe
+ * steigt, kam ein nicht angehobenes Deck nie über 0,7 seiner Spanne hinaus und ein angehobenes nie
+ * darunter - ein B2-Deck endete bei 4,3, ein angehobenes B3-Deck begann bei 6,3, und 4,4-4,9 kam
+ * nie vor. Deshalb wird der Teil des Tuning-Bereichs, der zu diesem Ergebnis gehört, auf die
+ * GANZE Spanne gestreckt: nicht angehoben 0 bis Schwelle, angehoben Schwelle bis 1. Wo gar keine
+ * Anhebung möglich ist (B4, Precons), ist es der Tuning-Grad selbst.
+ */
+export function powerPosition(tuning: number, bumped: boolean, canBump: boolean): number {
+  if (bumped) return (tuning - TUNING_BUMP_SCHWELLE) / (1 - TUNING_BUMP_SCHWELLE);
+  if (canBump) return tuning / TUNING_BUMP_SCHWELLE;
+  return tuning;
 }
 
 /**
@@ -522,12 +544,15 @@ export function analyzeBracket(input: BracketInput): BracketAnalysis {
     bracket = AUTO_BRACKET_MAX;
   }
 
-  if (tuning >= TUNING_BUMP_SCHWELLE && bracket < AUTO_BRACKET_MAX && !input.isPrecon) {
+  const canBump = bracket < AUTO_BRACKET_MAX && !input.isPrecon;
+  const bumped = canBump && tuning >= TUNING_BUMP_SCHWELLE;
+  if (bumped) {
     bracket = (bracket + 1) as BracketLevel;
     reasons.push({ key: 'tuning', minimum: bracket, cards: [] });
   }
 
-  const power = powerLevel(bracket, tuning);
+  const position = Math.min(1, Math.max(0, powerPosition(tuning, bumped, canBump)));
+  const power = powerLevel(bracket, position);
 
   // Übereinstimmung von A und B = belastbar; fehlt B oder weicht es um eine Stufe ab = Schätzung;
   // zwei Stufen = eine Quelle sieht, was die andere nicht kennt.
@@ -540,6 +565,7 @@ export function analyzeBracket(input: BracketInput): BracketAnalysis {
   return {
     bracket,
     power,
+    powerPosition: position,
     confidence,
     reasons,
     suggestsCedh: bracket === AUTO_BRACKET_MAX && tuning >= CEDH_TUNING_HINT,

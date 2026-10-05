@@ -295,12 +295,17 @@ export const deckView = {
     'deckView.bracketMathPowerRange':
       'Bracket {{level}} belegt auf der 1–10-Skala die Spanne {{from}} bis {{to}}.',
     'deckView.bracketMathPowerFormula': '{{from}} + {{tuning}} × {{span}} = {{power}}',
+    'deckView.bracketMathPowerPositionBelow':
+      'Position in der Spanne: Tuning {{tuning}} ÷ {{threshold}} = {{position}} – ab {{threshold}} stiege das Deck ein Bracket höher, deshalb reicht der Bereich bis dahin über die ganze Spanne.',
+    'deckView.bracketMathPowerPositionBumped':
+      'Position in der Spanne: (Tuning {{tuning}} − {{threshold}}) ÷ (1 − {{threshold}}) = {{position}} – das Tuning hat das Deck angehoben, gezählt wird nur der Teil über der Schwelle.',
+    'deckView.bracketMathPowerPositionPlain': 'Position in der Spanne = Tuning-Grad {{position}}.',
     'deckView.bracketTuning.tutors': 'Tutoren je 100 Karten',
     'deckView.bracketTuning.averageCmc': 'Ø Manawert',
     'deckView.bracketTuning.untappedLands': 'Ungetappte Länder',
     'deckView.bracketTuning.gameChangers': 'Game Changer',
     'deckView.bracketPowerExplain':
-      'Die vertraute 1–10-Skala, paarweise auf die Brackets gerastet: 1–2 Exhibition, 3–4 Core, 5–6 Upgraded, 7–8 Optimized, 9–10 cEDH. Das Bracket bestimmt die Spanne, der Tuning-Grad die Position darin.',
+      'Die vertraute 1–10-Skala, je zwei Punkte pro Bracket: 1–2,9 Exhibition, 3–4,9 Core, 5–6,9 Upgraded, 7–8,9 Optimized, 9–10 cEDH. Das Bracket bestimmt die Spanne, der Tuning-Grad die Position darin – jede Zahl der Skala kommt vor. Exhibition und cEDH vergibt die Automatik nie (das ist eine Frage der Absicht), automatisch liegt ein Deck deshalb zwischen 3,0 und 8,9.',
     'deckView.bracketSources':
       'Bracket-Regeln nach dem offiziellen Commander-Format, Kartendaten von Scryfall, Combo- und Kartenmarkierungen von Commander Spellbook.',
     'deckView.loadingAnalysis': 'Lade Analyse …',
@@ -704,12 +709,17 @@ export const deckView = {
     'deckView.bracketMathPowerRange':
       'Bracket {{level}} covers {{from}} to {{to}} on the 1–10 scale.',
     'deckView.bracketMathPowerFormula': '{{from}} + {{tuning}} × {{span}} = {{power}}',
+    'deckView.bracketMathPowerPositionBelow':
+      'Position in the range: tuning {{tuning}} ÷ {{threshold}} = {{position}} – from {{threshold}} on the deck would move up a bracket, so the part up to there spans the whole range.',
+    'deckView.bracketMathPowerPositionBumped':
+      'Position in the range: (tuning {{tuning}} − {{threshold}}) ÷ (1 − {{threshold}}) = {{position}} – the tuning moved the deck up, so only the part above the threshold counts.',
+    'deckView.bracketMathPowerPositionPlain': 'Position in the range = tuning level {{position}}.',
     'deckView.bracketTuning.tutors': 'Tutors per 100 cards',
     'deckView.bracketTuning.averageCmc': 'Avg. mana value',
     'deckView.bracketTuning.untappedLands': 'Untapped lands',
     'deckView.bracketTuning.gameChangers': 'Game Changers',
     'deckView.bracketPowerExplain':
-      'The familiar 1–10 scale, paired onto the brackets: 1–2 Exhibition, 3–4 Core, 5–6 Upgraded, 7–8 Optimized, 9–10 cEDH. The bracket sets the range, the tuning level the position within it.',
+      'The familiar 1–10 scale, two points per bracket: 1–2.9 Exhibition, 3–4.9 Core, 5–6.9 Upgraded, 7–8.9 Optimized, 9–10 cEDH. The bracket sets the range, the tuning level the position within it – every number on the scale can occur. The automatic rating never assigns Exhibition or cEDH (that is a matter of intent), so automatically a deck lands between 3.0 and 8.9.',
     'deckView.bracketSources':
       'Bracket rules from the official Commander format, card data from Scryfall, combo and card markings from Commander Spellbook.',
     'deckView.loadingAnalysis': 'Loading analysis …',

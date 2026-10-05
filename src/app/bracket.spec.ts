@@ -9,6 +9,7 @@ import {
   analyzeBracket,
   bracketBenchmarkFromRows,
   powerLevel,
+  powerPosition,
   powerRange,
   presentCombos,
   priceVerdict,
@@ -323,6 +324,17 @@ describe('bracket - Tuning-Grad aufgeschluesselt', () => {
 });
 
 describe('bracket - Power-Level', () => {
+  it('streckt den Tuning-Bereich jedes Ergebnisses auf die ganze Spanne - keine Lücken', () => {
+    // Nicht angehoben: 0 bis Schwelle (0,7) füllt die ganze Spanne.
+    expect(powerLevel(2, powerPosition(0.69, false, true))).toBe(4.9);
+    expect(powerLevel(2, powerPosition(0.35, false, true))).toBe(4);
+    // Angehoben: Schwelle bis 1 füllt die ganze Spanne des neuen Brackets.
+    expect(powerLevel(3, powerPosition(0.7, true, true))).toBe(5);
+    expect(powerLevel(3, powerPosition(1, true, true))).toBe(6.9);
+    // Keine Anhebung möglich (B4, Precon): der Tuning-Grad selbst.
+    expect(powerPosition(0.5, false, false)).toBe(0.5);
+  });
+
   it('rastet paarweise auf den Brackets ein', () => {
     expect(powerLevel(2, 0)).toBe(3);
     expect(powerLevel(3, 0)).toBe(5);

@@ -1809,8 +1809,9 @@
               <h3>{{ viewer.i18n.t('deckView.bracketMathPowerTitle') }}</h3>
               <p class="hint">{{ viewer.i18n.t('deckView.bracketPowerExplain') }}</p>
               <p class="hint">{{ viewer.i18n.t('deckView.bracketMathPowerRange', { level: analysis.bracket, from: (math.powerVon | number: '1.1-1') ?? '', to: (math.powerBis | number: '1.1-1') ?? '' }) }}</p>
+              <p class="hint">{{ viewer.i18n.t(math.bumped ? 'deckView.bracketMathPowerPositionBumped' : math.canBump ? 'deckView.bracketMathPowerPositionBelow' : 'deckView.bracketMathPowerPositionPlain', { tuning: (analysis.verdicts.tuning | number: '1.2-2') ?? '', threshold: (math.bumpThreshold | number: '1.2-2') ?? '', position: (analysis.powerPosition | number: '1.2-2') ?? '' }) }}</p>
               <p class="hint">
-                <strong>{{ viewer.i18n.t('deckView.bracketMathPowerFormula', { from: (math.powerVon | number: '1.1-1') ?? '', tuning: (analysis.verdicts.tuning | number: '1.2-2') ?? '', span: (math.powerSpanne | number: '1.1-1') ?? '', power: (analysis.power | number: '1.1-1') ?? '' }) }}</strong>
+                <strong>{{ viewer.i18n.t('deckView.bracketMathPowerFormula', { from: (math.powerVon | number: '1.1-1') ?? '', tuning: (analysis.powerPosition | number: '1.2-2') ?? '', span: (math.powerSpanne | number: '1.1-1') ?? '', power: (analysis.power | number: '1.1-1') ?? '' }) }}</strong>
               </p>
             }
           }
