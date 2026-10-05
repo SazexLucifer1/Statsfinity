@@ -43,10 +43,12 @@ import { splitPodium } from '../rank-sort';
 import { colorComboLabel, colorLabel, colorRadarData, colorVar, sortColors } from '../color-combo-names';
 import { Icon } from '../ui/icon/icon';
 import { CommentInbox } from '../comment-inbox/comment-inbox';
+import { FriendsPanel } from '../friends-panel/friends-panel';
+import { FriendStatus } from '../friend-status/friend-status';
 
 @Component({
   selector: 'app-profile-tab',
-  imports: [FormsModule, DatePipe, DecimalPipe, NgTemplateOutlet, DeckList, CardImage, CommanderStatList, FavoriteCommanderEditor, BarChart, RadarChart, Meter, ManaSymbol, Podium, PlayerMatchHistory, Icon, CommentInbox, ProfileRank],
+  imports: [FormsModule, DatePipe, DecimalPipe, NgTemplateOutlet, DeckList, CardImage, CommanderStatList, FavoriteCommanderEditor, BarChart, RadarChart, Meter, ManaSymbol, Podium, PlayerMatchHistory, Icon, CommentInbox, ProfileRank, FriendsPanel, FriendStatus],
   templateUrl: './profile-tab.html',
   styleUrl: './profile-tab.scss',
 })

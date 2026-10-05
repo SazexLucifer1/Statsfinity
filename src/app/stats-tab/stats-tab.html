@@ -321,6 +321,14 @@
   } }
 </section>
 
+<!-- Zugreihenfolge, Dauer, Gegner, Deck gegen Deck, Form - mit gewähltem Spieler für ihn, sonst
+     für die betrachtete Gruppe. -->
+<app-match-insights
+  [matches]="selectedPlayer() ? filteredMatches() : viewedFilteredMatches()"
+  [player]="selectedPlayer()"
+  [allMatches]="reviewMatches()"
+/>
+
 @if (totalGames() === 0) { @if (!selectedPlayer()) {
 <section class="glass-card">
   <p class="hint">{{ i18n.t('stats.noMatchesInMode') }}</p>

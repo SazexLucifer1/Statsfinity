@@ -12,7 +12,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
-import { GameSessionService, IngameUnit } from '../game-session.service';
+import { COUNTER_ICONS, COUNTER_KINDS, GameSessionService, IngameUnit, UndoEntry } from '../game-session.service';
 import { MtgService } from '../mtg.service';
 import { BackgroundService } from '../background.service';
 import { TournamentService } from '../tournament.service';
@@ -21,14 +21,15 @@ import { I18nService } from '../i18n.service';
 import { TutorialService } from '../tutorial.service';
 import { AuthService } from '../auth.service';
 import { Icon } from '../ui/icon/icon';
+import { LifeChart } from '../ui/life-chart/life-chart';
 
 const FIVE_MINUTES_MS = 5 * 60_000;
 
 @Component({
   selector: 'app-ingame-tracker',
-  imports: [CommonModule, Icon],
+  imports: [CommonModule, Icon, LifeChart],
   templateUrl: './ingame-tracker.html',
-  styleUrl: './ingame-tracker.scss',
+  styleUrls: ['./ingame-tracker.scss', './ingame-tracker.overlays.scss'],
 })
 export class IngameTracker implements AfterViewInit, OnDestroy {
   readonly session = inject(GameSessionService);
@@ -205,6 +206,7 @@ export class IngameTracker implements AfterViewInit, OnDestroy {
   readonly showOptionsMenu = signal(false);
 
   openOptionsMenu(): void {
+    this.lastUndone.set(null);
     this.showOptionsMenu.set(true);
   }
 
@@ -225,6 +227,114 @@ export class IngameTracker implements AfterViewInit, OnDestroy {
   chooseEndGame(): void {
     this.showOptionsMenu.set(false);
     this.session.showWinnerPanel.set(true);
+  }
+
+  // --- Rückgängig: bleibt im Menü, damit sich mehrere Schritte nacheinander zurücknehmen
+  // lassen; die Zeile darunter sagt, was zuletzt zurückgenommen wurde. ---
+
+  readonly lastUndone = signal<string | null>(null);
+  readonly counterKinds = COUNTER_KINDS;
+  readonly counterIcons = COUNTER_ICONS;
+
+  // --- Monarch/Initiative per Ziehen weitergeben: Marke antippen und gedrückt auf ein anderes
+  // Feld ziehen. Die Felder sind gedreht, deshalb zählt nur die Bildschirmposition beim Loslassen
+  // (elementFromPoint), nicht eine Richtung im Feld. ---
+
+  readonly markerDrag = signal<{ kind: 'monarch' | 'initiative'; x: number; y: number; moved: boolean } | null>(null);
+
+  startMarkerDrag(event: PointerEvent, kind: 'monarch' | 'initiative'): void {
+    event.preventDefault();
+    event.stopPropagation();
+    const startX = event.clientX;
+    const startY = event.clientY;
+    this.markerDrag.set({ kind, x: startX, y: startY, moved: false });
+
+    const move = (e: PointerEvent): void => {
+      const moved = Math.hypot(e.clientX - startX, e.clientY - startY) > 8;
+      this.markerDrag.update((d) => (d ? { ...d, x: e.clientX, y: e.clientY, moved: d.moved || moved } : d));
+    };
+    const end = (e: PointerEvent): void => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', end);
+      window.removeEventListener('pointercancel', end);
+      const drag = this.markerDrag();
+      this.markerDrag.set(null);
+      if (!drag?.moved || e.type === 'pointercancel') return;
+      const target = document.elementFromPoint(e.clientX, e.clientY)?.closest('[data-unit-key]');
+      const key = target?.getAttribute('data-unit-key');
+      if (!key) return;
+      if (kind === 'monarch') this.session.monarchKey.set(key);
+      else this.session.initiativeKey.set(key);
+      this.vibrateTick();
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', end);
+    window.addEventListener('pointercancel', end);
+  }
+
+  /** Panel-Key -> Anzeigename (bei 2HG "Anna & Ben" statt des Team-Schlüssels). */
+  readonly unitLabels = computed(() =>
+    Object.fromEntries(this.session.ingameUnits().map((u) => [u.key, u.label])),
+  );
+
+  undoLast(): void {
+    const entry = this.session.undoLast();
+    this.lastUndone.set(entry ? this.describeUndo(entry) : null);
+  }
+
+  private describeUndo(entry: UndoEntry): string {
+    const name = this.session.ingameUnits().find((u) => u.key === entry.key)?.label ?? entry.key;
+    const what =
+      entry.kind === 'life'
+        ? 'ingame.undoWhatLife'
+        : entry.kind === 'poison'
+          ? 'ingame.undoWhatPoison'
+          : 'ingame.undoWhatCommanderDamage';
+    const delta = `${entry.delta > 0 ? '+' : ''}${entry.delta}`;
+    return this.i18n.t('ingame.undone', { name, delta, what: this.i18n.t(what) });
+  }
+
+  // --- Startspieler von Hand festlegen (ausgewürfelt statt ausgelost) ---
+
+  readonly starterPickerOpen = signal(false);
+
+  openStarterPicker(): void {
+    this.showOptionsMenu.set(false);
+    this.starterPickerOpen.set(true);
+  }
+
+  pickStarter(key: string | null): void {
+    this.session.startingPlayerKey.set(key);
+    this.starterPickerOpen.set(false);
+  }
+
+  // --- Eingabe-Sheet je Spieler: Leben eintippen oder in größeren Schritten ändern, Monarch und
+  // Initiative vergeben. Ein eigenes Sheet statt weiterer Tippzonen - das Feld selbst ist schon
+  // voll mit +/- und gehört dem schnellen Tippen. ---
+
+  readonly playerSheetFor = signal<IngameUnit | null>(null);
+  readonly lifeDraft = signal('');
+
+  openPlayerSheet(unit: IngameUnit): void {
+    this.playerSheetFor.set(unit);
+    this.lifeDraft.set(String(this.session.lifeTotals()[unit.key] ?? ''));
+  }
+
+  closePlayerSheet(): void {
+    this.playerSheetFor.set(null);
+  }
+
+  changeLifeBy(key: string, delta: number): void {
+    this.vibrateTick();
+    this.session.changeLifeNow(key, delta);
+    this.lifeDraft.set(String(this.session.lifeTotals()[key] ?? ''));
+  }
+
+  applyLifeDraft(key: string): void {
+    const value = Number.parseInt(this.lifeDraft(), 10);
+    if (Number.isNaN(value)) return;
+    this.session.setLife(key, value);
+    this.closePlayerSheet();
   }
 
   // --- Spieler neu anordnen: Tippen-zum-Tauschen-Modus ---
@@ -328,6 +438,8 @@ export class IngameTracker implements AfterViewInit, OnDestroy {
 
       if (step >= totalSteps) {
         this.rouletteResultUnit.set(units[currentIndex]);
+        // Fürs Speichern merken (Zugreihenfolge) - im Sieger-Dialog lässt es sich noch ändern.
+        this.session.startingPlayerKey.set(units[currentIndex].key);
         return;
       }
 

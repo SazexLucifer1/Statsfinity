@@ -1,0 +1,278 @@
+<section class="deck-check" data-tutorial="deck-check">
+  <!-- Drei Spalten auf breiten Bildschirmen: Bewertung | Farben und Wahrscheinlichkeiten |
+       Empfehlungen. Auf dem Handy stehen sie untereinander. -->
+  <div class="check-col">
+    <div class="check-head">
+      <div
+        class="score"
+        [class]="'score-' + (score() >= 80 ? 'good' : score() >= 50 ? 'warn' : 'bad')"
+      >
+        <span class="score-value">{{ score() }}</span>
+        <span class="score-label">/ 100</span>
+      </div>
+      <div>
+        <h3>{{ i18n.t('deckView.check.title') }}</h3>
+        <p class="hint">{{ i18n.t('deckView.check.intro') }}</p>
+      </div>
+    </div>
+
+    <!-- Spielweise: verschiebt die Zielwerte (Tabelle des Users). Die Kurve wird automatisch
+         erkannt und steht nur zur Info dabei. -->
+    @if (isCommanderFormat()) {
+      <div class="styles">
+        <span class="styles-label">{{ i18n.t('deckView.check.playStyle') }}</span>
+        @for (s of playStyles(); track s) {
+          <span class="style-chip">{{ influenceLabel(s) }}</span>
+        }
+        @if (curve(); as c) {
+          <span class="style-chip auto" [title]="i18n.t('deckView.check.curveAuto')">{{
+            influenceLabel(c)
+          }}</span>
+        }
+        @if (playStyles().length === 0 && !curve()) {
+          <span class="hint">{{ i18n.t('deckView.check.noStyle') }}</span>
+        }
+        @if (viewer.state.canEditViewingDeck()) {
+          <button
+            class="style-edit"
+            [class.active]="editingStyles()"
+            (click)="editingStyles.set(!editingStyles())"
+          >
+            <app-icon [name]="editingStyles() ? 'check' : 'pencil'" />
+            {{ editingStyles() ? i18n.t('deckView.done') : i18n.t('deckView.check.chooseStyle') }}
+          </button>
+        }
+      </div>
+      @if (playStylesSuggested()) {
+        <p class="hint small">{{ i18n.t('deckView.check.styleSuggested') }}</p>
+      }
+      @if (editingStyles()) {
+        <div class="chip-row style-picker">
+          @for (s of PLAY_STYLES; track s) {
+            <button
+              class="glass-chip small"
+              [class.active]="playStyles().includes(s)"
+              (click)="toggleStyle(s)"
+            >
+              {{ influenceLabel(s) }}
+            </button>
+          }
+        </div>
+        @if (!playStyleSaveAvailable()) {
+          <p class="hint small">{{ i18n.t('deckView.check.styleNotSaved') }}</p>
+        }
+      }
+    }
+
+    <ul class="check-list">
+      @for (item of items(); track item.key) {
+        <li [class]="'lvl-' + item.level">
+          <span class="dot" [attr.aria-label]="levelLabel(item.level)"></span>
+          <span class="check-name"
+            >{{ itemLabel(item) }}: <strong>{{ num(item.value) }}</strong></span
+          >
+          <span class="check-target">{{
+            isCommanderFormat()
+              ? i18n.t('deckView.check.targetRange', {
+                  target: item.target,
+                  min: item.min,
+                  max: item.max,
+                })
+              : i18n.t('deckView.check.targetOnly', { target: item.target })
+          }}</span>
+          <span class="check-advice"
+            >{{ advice(item) }}
+            @if (influenceText(item); as why) {
+              <span class="why"> · {{ why }}</span>
+            }
+          </span>
+        </li>
+      }
+      @if (isCommanderFormat()) {
+        <!-- Win Cons: Ziel aus der Tabelle; automatisch erkannt werden nur Combos aus Commander
+             Spellbook - ein Sieg über Kampfschaden oder eine Einzelkarte fehlt dort. -->
+        <!-- Grün, sobald mindestens eine Win Con erkannt ist und es nicht übermäßig viele sind;
+             sonst grau statt rot - was Spellbook nicht kennt, fehlt deshalb nicht im Deck. -->
+        <li
+          [class]="
+            winCons().length >= 1 && winCons().length <= WINCON_TARGET * 2 ? 'lvl-good' : 'lvl-info'
+          "
+        >
+          <span class="dot"></span>
+          <span class="check-name"
+            >{{ i18n.t('deckView.check.wincons') }}:
+            <strong>{{ winCons().length > 0 ? winCons().length : '?' }}</strong></span
+          >
+          <span class="check-target">{{
+            i18n.t('deckView.check.winconsTarget', { target: WINCON_TARGET })
+          }}</span>
+          <span class="check-advice">
+            @if (winCons().length > 0) {
+              {{
+                i18n.t('deckView.check.winconsGrouped', {
+                  wincons: winCons().length,
+                  count: winningComboCount(),
+                  combos: foundCombos().length,
+                })
+              }}
+              <span class="combo-names">
+                @for (w of winCons().slice(0, 4); track $index; let last = $last) {
+                  {{ w.cardNames.join(' + ') }}
+                  @if (w.variants > 1) {
+                    ({{ i18n.t('deckView.check.winconsVariants', { n: w.variants - 1 }) }})
+                  }
+                  @if (!last) {
+                    ;
+                  }
+                }
+                @if (winCons().length > 4) {
+                  …
+                }
+              </span>
+            } @else {
+              {{
+                i18n.t('deckView.check.winconsFound', {
+                  count: winningComboCount(),
+                  combos: foundCombos().length,
+                })
+              }}
+            }
+            <span class="why">{{ i18n.t('deckView.check.winconsMaybeMissing') }}</span>
+          </span>
+        </li>
+      }
+    </ul>
+    @if (effectsLoading() && isCommanderFormat()) {
+      <p class="hint">{{ i18n.t('deckView.check.effectsLoading') }}</p>
+    }
+
+    @if (isCommanderFormat()) {
+      <p class="hint small">
+        {{ i18n.t('deckView.check.benchmarkSource') }}
+        <a [href]="benchmarkFile()" download>{{ i18n.t('deckView.check.benchmarkDownload') }}</a>
+      </p>
+    } @else {
+      <p class="hint small">
+        {{ i18n.t('deckView.check.landsSourceBefore') }}
+        <a [href]="karstenWiki" target="_blank" rel="noopener">Frank Karsten</a
+        >{{ i18n.t('deckView.check.landsSourceAfter', { lands: recommendedLands60() }) }}
+        <a [href]="karstenLands" target="_blank" rel="noopener">{{
+          i18n.t('deckView.check.sourceArticle')
+        }}</a>
+      </p>
+    }
+    @if (landInfo().mdfcUntapped + landInfo().mdfcTapped > 0) {
+      <p class="hint small">
+        {{
+          i18n.t('deckView.check.mdfcLine', {
+            untapped: landInfo().mdfcUntapped,
+            tapped: landInfo().mdfcTapped,
+            weight: num(MDFC_TAPPED_WEIGHT, 2),
+            value: num(landInfo().value),
+          })
+        }}
+        @if (landInfo().mdfcUntapped + landInfo().mdfcTapped > 6) {
+          {{ i18n.t('deckView.check.mdfcTooMany') }}
+        }
+      </p>
+    }
+  </div>
+
+  <div class="check-col">
+    @if (colors().length > 0) {
+      <h4>{{ i18n.t('deckView.check.colorsTitle') }}</h4>
+      <ul class="check-list">
+        @for (c of colors(); track c.color) {
+          <li class="with-card" [class]="'lvl-' + c.level">
+            <span class="dot" [attr.aria-label]="levelLabel(c.level)"></span>
+            <!-- Die Karte, die am meisten verlangt, als Bild: der Name allein sagt vielen nichts. -->
+            <button class="card-thumb" [title]="c.card" (click)="previewCard(c.card)">
+              @if (cardImage(c.card); as img) {
+                <img [src]="img" [alt]="c.card" />
+              }
+            </button>
+            <span class="check-name"
+              ><app-mana-symbol [symbol]="c.color" />
+              {{
+                i18n.t('deckView.check.sources', { sources: c.sources, required: c.required })
+              }}</span
+            >
+            <span class="check-advice"
+              >{{ i18n.t('deckView.check.colorCardBefore', { card: frontName(c.card) }) }}
+              <span class="cost">
+                @for (sym of costSymbols(c.manaCost); track $index) {
+                  <app-mana-symbol [symbol]="sym" />
+                }
+              </span>
+              {{ i18n.t('deckView.check.colorCardAfter') }}</span
+            >
+          </li>
+        }
+      </ul>
+      <p class="hint small">
+        {{ i18n.t('deckView.check.colorsSourceBefore') }}
+        <a [href]="karstenWiki" target="_blank" rel="noopener">Frank Karsten</a
+        >{{ i18n.t('deckView.check.colorsSourceAfter') }}
+      </p>
+    }
+
+    @if (odds(); as o) {
+      <h4>{{ i18n.t('deckView.check.oddsTitle') }}</h4>
+      <ul class="odds">
+        <li>
+          <span>{{ i18n.t('deckView.check.oddsKeepable') }}</span
+          ><strong>{{ o.keepableHand | percent: '1.0-0' }}</strong>
+        </li>
+        <li>
+          <span>{{ i18n.t('deckView.check.oddsThreeLands') }}</span
+          ><strong>{{ o.threeLandsByTurn3 | percent: '1.0-0' }}</strong>
+        </li>
+        <li>
+          <span>{{ i18n.t('deckView.check.oddsFourLands') }}</span
+          ><strong>{{ o.fourLandsByTurn4 | percent: '1.0-0' }}</strong>
+        </li>
+        @if (o.rampEarly !== null) {
+          <li>
+            <span>{{ i18n.t('deckView.check.oddsRamp') }}</span
+            ><strong>{{ o.rampEarly | percent: '1.0-0' }}</strong>
+          </li>
+        }
+        @if (o.drawByTurn4 !== null) {
+          <li>
+            <span>{{ i18n.t('deckView.check.oddsDraw') }}</span
+            ><strong>{{ o.drawByTurn4 | percent: '1.0-0' }}</strong>
+          </li>
+        }
+      </ul>
+      <p class="hint small">{{ i18n.t('deckView.check.oddsHint') }}</p>
+    }
+
+    <button class="glass-button small test-hand" (click)="openTestHand()">
+      <app-icon name="shuffle" /> {{ i18n.t('deckView.check.testHand') }}
+    </button>
+  </div>
+
+  <div class="check-col">
+    @if (suggestionsService.verfuegbar() && suggestionsLoaded()) {
+      <h4>{{ i18n.t('deckView.check.suggestionsTitle') }}</h4>
+      @if (suggestions().length === 0) {
+        <p class="hint">{{ i18n.t('deckView.check.suggestionsEmpty') }}</p>
+      } @else {
+        <p class="hint small">
+          {{ i18n.t('deckView.check.suggestionsHint', { total: suggestions()[0].totalDecks }) }}
+        </p>
+        <ul class="suggestions">
+          @for (s of suggestions(); track s.cardName) {
+            <li>
+              <button class="suggestion-name" (click)="previewCard(s.cardName)">
+                {{ s.cardName }}
+              </button>
+              <span class="suggestion-count">{{ s.deckCount }} / {{ s.totalDecks }}</span>
+              <app-meter [value]="s.deckCount" [max]="s.totalDecks" />
+            </li>
+          }
+        </ul>
+      }
+    }
+  </div>
+</section>

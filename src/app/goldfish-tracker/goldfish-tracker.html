@@ -3,6 +3,11 @@
   <div class="goldfish-header">
     <button class="glass-button small" (click)="goldfish.close()">{{ i18n.t('deckView.back') }}</button>
     <span class="goldfish-header-name">{{ deck.name }}</span>
+    @if (goldfish.hand().length > 0) {
+      <span class="goldfish-mulligan-badge" [class.lands-ok]="goldfish.handLands() >= 2 && goldfish.handLands() <= 4">{{
+        i18n.t('goldfish.handLands', { lands: goldfish.handLands(), cards: goldfish.hand().length })
+      }}</span>
+    }
     @if (goldfish.mulliganCount() > 0) {
       <span class="goldfish-mulligan-badge">{{ i18n.t('goldfish.mulliganCount', { count: goldfish.mulliganCount() }) }}</span>
     }

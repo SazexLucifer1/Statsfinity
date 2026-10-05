@@ -1,4 +1,5 @@
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
+import { ProfileService } from '../profile.service';
 import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import { MtgService } from '../mtg.service';
 import { I18nService } from '../i18n.service';
@@ -70,6 +71,12 @@ export class PlayerMatchHistory {
    * Besitzer nicht in der Gruppe des Betrachters spielt (MtgService.loadPublicMatchesForUser()).
    */
   readonly externalMatches = input<{ match: Match; selfName: string }[] | null>(null);
+  /**
+   * Eigenes Profil: zusätzlich die Freundesspiele (Partien ohne Gruppe, sql/freunde-2026-10-04.sql).
+   * Dort heißt man so wie im Profil, nicht wie in einer Gruppe.
+   */
+  readonly includeFriendGames = input(false);
+  private readonly profileService = inject(ProfileService);
 
   readonly page = signal(0);
   readonly pageSize = 10;
@@ -81,13 +88,21 @@ export class PlayerMatchHistory {
     const year = this.year();
 
     // Beide Quellen kommen bereits nach Datum absteigend sortiert.
-    const quelle = extern ?? this.mtg.history().map((match) => ({ match, selfName: name! }));
+    const eigene = this.mtg.history().map((match) => ({ match, selfName: name! }));
+    const profilName = this.profileService.profile()?.displayName;
+    const freunde =
+      this.includeFriendGames() && profilName
+        ? this.mtg.friendHistory().map((match) => ({ match, selfName: profilName }))
+        : [];
+    const quelle =
+      extern ??
+      (freunde.length > 0 ? [...eigene, ...freunde].sort((a, b) => b.match.date.localeCompare(a.match.date)) : eigene);
     // Über die GANZE Quelle gerechnet, nicht über die gefilterten Zeilen - die LP einer Partie
     // hängen an allem, was davor gespielt wurde, auch an Partien anderer Jahre. Nur für die eigene
     // Gruppe mit Rangsystem: Ränge sind Gruppensache, öffentliche Matches (extern) zeigen keine LP.
     const lp =
       !extern && this.groupService.rankedEnabled()
-        ? lpChangesByMatch(quelle.map((q) => q.match))
+        ? lpChangesByMatch(eigene.map((q) => q.match))
         : new Map<string, Map<string, number>>();
 
     const rows: PlayerMatchRow[] = [];
@@ -159,6 +174,10 @@ export class PlayerMatchHistory {
   private readonly requestedDeckIds = new Set<string>();
 
   constructor() {
+    effect(() => {
+      if (this.includeFriendGames()) this.mtg.loadFriendMatches();
+    });
+
     effect(() => {
       const names = new Set<string>();
       for (const row of this.pagedRows()) {

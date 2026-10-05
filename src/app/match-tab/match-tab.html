@@ -28,8 +28,20 @@
     </select>
   }
 
+  <!-- Mit der Gruppe oder mit Freunden (Partie ohne Gruppe, sql/freunde-2026-10-04.sql). -->
+  @if (auth.currentUser() && friends.verfuegbar()) {
+    <div class="segmented block friend-mode-toggle" role="group" [attr.aria-label]="i18n.t('match.playWithAria')">
+      <button [class.active]="!session.friendMode()" (click)="setFriendMode(false)">
+        <app-icon name="users" /> {{ i18n.t('match.playWithGroup') }}
+      </button>
+      <button [class.active]="session.friendMode()" (click)="setFriendMode(true)">
+        <app-icon name="heart" /> {{ i18n.t('match.playWithFriends') }}
+      </button>
+    </div>
+  }
+
   <!-- Ranked oder frei: nur, wenn die Gruppe das Rangsystem nutzt (Schalter des Gruppenleiters). -->
-  @if (groupService.rankedEnabled() && mtg.isRankedAvailable()) {
+  @if (!session.friendMode() && groupService.rankedEnabled() && mtg.isRankedAvailable()) {
     <div class="segmented block ranked-toggle" data-tutorial="match-ranked" role="group" [attr.aria-label]="i18n.t('match.rankedAria')">
       <button [class.active]="session.isRanked()" (click)="session.isRanked.set(true)">
         {{ i18n.t('match.ranked') }}
@@ -40,13 +52,20 @@
     </div>
   }
 
+  <!-- Einzelspiel oder Best of 3: bei Best of 3 startet nach jedem gespeicherten Spiel das
+       nächste mit denselben Spielern, bis jemand zwei Siege hat. -->
+  <div class="segmented block series-toggle" role="group" [attr.aria-label]="i18n.t('match.seriesAria')">
+    <button [class.active]="!session.bestOfThree()" (click)="session.bestOfThree.set(false)">{{ i18n.t('match.singleGame') }}</button>
+    <button [class.active]="session.bestOfThree()" (click)="session.bestOfThree.set(true)">{{ i18n.t('match.bestOfThree') }}</button>
+  </div>
+
   <!-- Als .glass-chip stand das direkt unter der Spielmodus-Auswahl und sah aus wie eine
        weitere Modus-Option. Es ist aber eine Aktion, die den ganzen Tab wechselt. -->
   <button class="glass-button" data-tutorial="match-tournament" (click)="openTournamentPanel()">
     {{ tournament.activeTournament() ? i18n.t('tournament.openPanelButton') : i18n.t('tournament.createButton') }}
   </button>
 
-  @if (session.otherGroupLiveSessions().length > 0) {
+  @if (!session.friendMode() && session.otherGroupLiveSessions().length > 0) {
     <h3>{{ i18n.t('match.liveSessionsHeading') }}</h3>
     <ul class="live-sessions-list">
       @for (s of session.otherGroupLiveSessions(); track s.id) {
@@ -60,7 +79,21 @@
     </ul>
   }
 
-  @if (auth.currentUser()) {
+  @if (auth.currentUser() && session.friendMode()) {
+  <h3 data-tutorial="match-players-heading">{{ i18n.t('match.whoPlays') }}</h3>
+  @if (friends.friends().length === 0) {
+    <p class="hint">{{ i18n.t('match.noFriendsYet') }}</p>
+  }
+  <div class="chip-row">
+    @for (fp of friendModePlayers(); track fp.userId) {
+      <button class="glass-chip avatar-chip" [class.active]="isSelected(fp.name)" (click)="toggleFriendPlayer(fp)">
+        <app-player-avatar [url]="fp.avatarUrl" />
+        {{ fp.name }}
+      </button>
+    }
+  </div>
+  <p class="hint">{{ i18n.t('match.friendGameHint') }}</p>
+  } @else if (auth.currentUser()) {
   <h3 data-tutorial="match-players-heading">{{ i18n.t('match.whoPlays') }}</h3>
   @if (mtg.allPlayers().length === 0) {
     <p class="hint">{{ i18n.t('match.noPlayersYet') }}</p>
@@ -123,10 +156,12 @@
             <div class="chip-row">
               <button class="glass-chip small" (click)="openSearch(p.name)">{{ i18n.t('match.searchCommander') }}</button>
               @if (session.mode() !== 'Cube') {
-                @if (mtg.playerUserIds()[p.name] || mtg.playerIdFor(p.name)) {
+                @if (p.userId || mtg.playerUserIds()[p.name] || mtg.playerIdFor(p.name)) {
                   <button class="glass-chip small" (click)="openOwnDeckPicker(p.name)">{{ i18n.t('match.chooseDeck') }}</button>
                 }
-                <button class="glass-chip small" (click)="openBorrowDeckPicker(p.name)">{{ i18n.t('match.borrowDeck') }}</button>
+                @if (!session.friendMode()) {
+                  <button class="glass-chip small" (click)="openBorrowDeckPicker(p.name)">{{ i18n.t('match.borrowDeck') }}</button>
+                }
               }
             </div>
           }
@@ -317,11 +352,21 @@
   <button class="glass-button primary save-button" data-tutorial="match-start" [disabled]="!session.canStartGame()" (click)="session.startGame()">
     {{ i18n.t('match.startGame') }}
   </button>
+  <!-- Für Partien, die ohne Handy am Tisch gespielt wurden: gleiches Setup, nur ohne Tracker. -->
+  <button class="glass-button backfill-button" [disabled]="!session.canStartGame()" (click)="openBackfill()">
+    {{ i18n.t('match.backfill') }}
+  </button>
   @if (session.selectedPlayers().length === 1) {
     <p class="hint">{{ i18n.t('match.needTwoPlayers') }}</p>
   }
   @if (successMessage()) {
     <p class="success">{{ successMessage() }}</p>
+  }
+  @if (session.lastSeriesResult(); as result) {
+    <p class="success">
+      {{ i18n.t('match.seriesWon', { name: seriesWinnerLabel(result.winner) }) }}
+      <button class="link-chip" (click)="session.lastSeriesResult.set(null)">✕</button>
+    </p>
   }
 </section>
 
@@ -379,23 +424,42 @@
       } @else {
         <span class="match-log-mode">{{ modeLabel(match.mode, match.format) }}</span>
       }
-      <span class="match-log-date">{{ match.date | date: 'dd.MM.yyyy, HH:mm' }}</span>
+      <span class="match-log-date"
+        >{{ match.date | date: 'dd.MM.yyyy, HH:mm' }}@if (matchDuration(match); as duration) { · {{ duration }}}</span
+      >
       <!-- Nur "Frei" wird markiert - Ranked ist der Normalfall und bräuchte an jeder Karte ein
            Etikett, das nichts sagt. Turnierspiele sind ohnehin nie Ranked. -->
       @if (groupService.rankedEnabled() && match.isRanked === false && !match.tournamentMatchId) {
         <span class="glass-chip small">{{ i18n.t('match.casual') }}</span>
       }
+      <!-- Freundesspiele haben keine Gruppenrechte; Korrekturen dort gibt es (noch) nicht. -->
       @if (
-        groupService.hasPermission('match.editResult') ||
-        groupService.hasPermission('match.editCommander') ||
-        groupService.hasPermission('match.editCube')
+        !session.friendMode() &&
+        (groupService.hasPermission('match.editResult') ||
+          groupService.hasPermission('match.editCommander') ||
+          groupService.hasPermission('match.editCube'))
       ) {
         <button class="icon-button" (click)="startEditResult(match)" [attr.aria-label]="i18n.t('match.changeWinner')"><app-icon name="pencil" /></button>
       }
-      @if (groupService.hasPermission('match.delete')) {
+      @if (!session.friendMode() && groupService.hasPermission('match.delete')) {
         <button class="icon-button" (click)="deleteMatch(match.id)" [attr.aria-label]="i18n.t('match.deleteMatch')"><app-icon name="trash" /></button>
       }
     </div>
+
+    @if (match.startedAt) {
+      <button class="link-chip" (click)="toggleLifeCurve(match.id)">
+        <app-icon name="chart" /> {{ lifeCurveFor() === match.id ? i18n.t('match.hideLifeCurve') : i18n.t('match.showLifeCurve') }}
+      </button>
+      @if (lifeCurveFor() === match.id) {
+        @if (lifeCurve(); as log) {
+          <app-life-chart [log]="log" [labels]="teamLabels(match)" [ariaLabel]="i18n.t('match.showLifeCurve')" />
+        } @else if (lifeCurveLoading()) {
+          <p class="hint">{{ i18n.t('match.lifeCurveLoading') }}</p>
+        } @else {
+          <p class="hint">{{ i18n.t('match.lifeCurveMissing') }}</p>
+        }
+      }
+    }
 
     <div class="match-log-players">
       @for (p of match.players; track p.name) {
@@ -590,6 +654,9 @@
         <app-icon name="trophy" />
       }
       <span class="match-log-name-text">{{ p.name }}</span>
+      @if (p.turnOrder === 1) {
+        <span class="match-log-starter"><app-icon name="play" [label]="i18n.t('match.wentFirst')" /></span>
+      }
       @if (p.placement) {
         <span
           class="match-log-place"
@@ -714,6 +781,47 @@
         }
       }
       <button class="glass-button" (click)="closeDeckPicker()">{{ i18n.t('match.cancel') }}</button>
+    </div>
+  </div>
+}
+
+@if (backfillOpen()) {
+  <div class="options-menu-overlay" (click)="closeBackfill()">
+    <div class="options-menu-sheet" (click)="$event.stopPropagation()">
+      <h3>{{ i18n.t('match.backfillTitle') }}</h3>
+      <p class="hint">{{ i18n.t('match.backfillHint') }}</p>
+      <label class="hint" for="backfill-date">{{ i18n.t('match.backfillDate') }}</label>
+      <input
+        id="backfill-date"
+        class="glass-input"
+        type="datetime-local"
+        [value]="backfillDate()"
+        (input)="backfillDate.set($any($event.target).value)"
+      />
+      <p class="hint">{{ i18n.t('ingame.whoWon') }}</p>
+      <div class="chip-row">
+        @for (opt of backfillWinnerOptions(); track opt.value) {
+          <button class="glass-chip" [class.active]="session.winner() === opt.value" (click)="session.winner.set(opt.value)">
+            {{ opt.label }}
+          </button>
+        }
+      </div>
+      <p class="hint">{{ i18n.t('ingame.whoStarted') }}</p>
+      <div class="chip-row">
+        @for (p of session.selectedPlayers(); track p.name) {
+          <button
+            class="glass-chip"
+            [class.active]="backfillStarter() === p.name"
+            (click)="backfillStarter.set(backfillStarter() === p.name ? null : p.name)"
+          >
+            {{ p.name }}
+          </button>
+        }
+      </div>
+      <button class="glass-button primary" [disabled]="!session.canSave() || session.saving()" (click)="saveBackfill()">
+        {{ session.saving() ? i18n.t('deckView.savingInfo') : i18n.t('match.backfillSave') }}
+      </button>
+      <button class="glass-button" (click)="closeBackfill()">{{ i18n.t('match.cancel') }}</button>
     </div>
   </div>
 }

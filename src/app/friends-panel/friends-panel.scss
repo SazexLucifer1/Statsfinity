@@ -1,0 +1,188 @@
+@use '../../styles/breakpoints' as bp;
+
+// Das Panel steht im Raster des Profils - der Host darf kein eigenes Rasterfeld belegen.
+:host {
+  display: contents;
+}
+
+.friends-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+
+  .badge {
+    min-width: 22px;
+    padding: 1px 6px;
+    border-radius: var(--r-pill, 999px);
+    background: var(--danger);
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-align: center;
+  }
+}
+
+// Drei gleich breite Reiter in einer Zeile - der globale Umschalter bricht sonst um.
+.segmented {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: var(--sp-4);
+
+  button {
+    min-width: 0;
+  }
+}
+
+.search {
+  width: 100%;
+  margin-top: var(--sp-5);
+}
+
+h3 {
+  margin: var(--sp-6) 0 var(--sp-3);
+}
+
+.people,
+.news,
+.ranking {
+  list-style: none;
+  margin: var(--sp-3) 0 0;
+  padding: 0;
+
+  li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    padding: var(--sp-3) 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+}
+
+.person,
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.person {
+  flex: 1 1 auto;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.link {
+  display: inline;
+  text-decoration: underline dotted;
+}
+
+.actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--sp-2);
+}
+
+.people li.stacked {
+  flex-wrap: wrap;
+
+  .person {
+    flex-basis: 100%;
+  }
+}
+
+.people .glass-button {
+  flex-shrink: 0;
+  color: var(--text);
+}
+
+.icon-button {
+  color: var(--text);
+}
+
+.news li {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  font-size: 0.9rem;
+}
+
+.news-date {
+  font-size: 0.75rem;
+  opacity: 0.6;
+}
+
+.ranking li {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  grid-template-areas:
+    'pos name rate'
+    'pos detail detail'
+    'pos bar bar';
+  row-gap: 2px;
+
+  .pos {
+    grid-area: pos;
+    font-weight: 700;
+    opacity: 0.7;
+  }
+
+  .person,
+  .name {
+    grid-area: name;
+    font-weight: 600;
+  }
+
+  .rate {
+    grid-area: rate;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .detail {
+    grid-area: detail;
+    font-size: 0.8rem;
+    opacity: 0.75;
+  }
+
+  app-meter {
+    grid-area: bar;
+  }
+}
+
+// Volle Breite im Profil-Raster. Die Regel `.span-full` des Profils erreicht diese Komponente
+// nicht (Stil-Kapselung), deshalb steht sie hier.
+.friends-panel {
+  grid-column: 1 / -1;
+}
+
+// Desktop: Listen in Spalten statt einer schmalen Säule über die volle Breite.
+@include bp.up(md) {
+  .ranking-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--sp-6);
+    align-items: start;
+  }
+
+  .people,
+  .news {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    column-gap: var(--sp-6);
+  }
+
+  .search {
+    max-width: 480px;
+  }
+}

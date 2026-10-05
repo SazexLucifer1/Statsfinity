@@ -49,6 +49,12 @@ export class NavigationService {
    * Geöffnet wird immer die öffentliche Deck-Ansicht: Wer einen QR-Code scannt, ist im Zweifel
    * gar nicht eingeloggt, und nicht-private Decks darf auch ein Fremder sehen.
    */
+  /** Ein öffentliches Deck öffnen, wie über einen QR-Code - z. B. aus den Neuigkeiten von Freunden. */
+  openPublicDeck(deckId: string): void {
+    this.pendingPublicDeckId.set(deckId);
+    this.activeTab.set('search');
+  }
+
   private deckLinkLesen(): void {
     let deckId: string | null = null;
     try {

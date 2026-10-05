@@ -1,6 +1,6 @@
 import { Injectable, WritableSignal, computed, effect, inject, signal } from '@angular/core';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { DeckFormat, GameMode, MatchPlayer, TEAM_OPTIONS, TeamName } from './models';
+import { DeckFormat, GameMode, LifeLog, LifeLogEvent, MatchPlayer, TEAM_OPTIONS, TeamName } from './models';
 
 /** Formate mit Singleton-Regel/eigenem Commander - steuert, ob bei Kategorie 'Normal' die Commander-Auswahl im Match-Tab erscheint (siehe GameSessionService.requiresCommanderSelection). */
 const COMMANDER_STYLE_FORMATS: DeckFormat[] = ['Commander', 'Pauper Commander', 'Brawl', 'Historic Brawl'];
@@ -9,6 +9,21 @@ import { I18nService } from './i18n.service';
 import { GroupService } from './group.service';
 import { AuthService } from './auth.service';
 import { supabase } from './supabase.client';
+
+/**
+ * Obergrenze für den Lebenspunkte-Verlauf einer Partie. Eine lange Commander-Runde kommt auf
+ * einige hundert Änderungen; die Grenze fängt nur einen Ausreißer ab (Finger auf dem Knopf
+ * vergessen), damit weder der Live-Sync noch die Zeile in matches ausufern.
+ */
+const LIFE_LOG_MAX_EVENTS = 3000;
+
+function readUprightPreference(): boolean {
+  try {
+    return localStorage.getItem('statsfinity.trackerUpright') === '1';
+  } catch {
+    return false;
+  }
+}
 
 /** Einmal pro Tab/Ladevorgang erzeugt - dient dazu, eigene Realtime-Updates (Echo) beim Empfang wiederzuerkennen und zu ignorieren. */
 const CLIENT_ID = crypto.randomUUID();
@@ -37,6 +52,13 @@ export interface LiveSessionState {
   format: DeckFormat | null;
   /** Ranked oder freies Match (Match.isRanked); fehlt bei Sessions von vor diesem Feature -> Ranked. */
   isRanked?: boolean;
+  /** Panel-Key mit Monarch- bzw. Initiative-Marke; fehlen bei älteren Sessions -> niemand. */
+  monarchKey?: string | null;
+  initiativeKey?: string | null;
+  /** Weitere Zähler je Panel (Energie, Erfahrung, …); fehlen bei älteren Sessions. */
+  counters?: Record<string, Partial<Record<CounterKind, number>>>;
+  /** Laufende Best-of-3-Serie außerhalb eines Turniers. */
+  series?: SeriesState | null;
   selectedPlayers: MatchPlayer[];
   selectedCubeId: string | null;
   selectedDraftSet: SelectedDraftSet | null;
@@ -50,6 +72,12 @@ export interface LiveSessionState {
   manualOrder: string[] | null;
   pinnedBottomKey: string | null;
   winner: string | null;
+  /** Ab hier optional: fehlen bei Sessions von vor dem Partie-Verlauf (sql/partie-verlauf-2026-10-04.sql). */
+  startedAt?: string | null;
+  startingPlayerKey?: string | null;
+  lifeLogUnits?: string[];
+  lifeLogStart?: number;
+  lifeLog?: LifeLogEvent[];
 }
 
 export interface SelectedDraftSet {
@@ -58,6 +86,30 @@ export interface SelectedDraftSet {
   name: string;
   releasedAt?: string;
   set_type?: string;
+}
+
+/** Weitere Zähler je Spieler neben Leben, Gift und Commander-Schaden. */
+export const COUNTER_ICONS = { energy: 'bolt', experience: 'star', rad: 'radiation' } as const;
+// Bewusst ohne Schätze: Treasure sind Artefakte auf dem Spielfeld, keine Spielerzähler.
+export const COUNTER_KINDS = ['energy', 'experience', 'rad'] as const;
+export type CounterKind = (typeof COUNTER_KINDS)[number];
+
+/** Best-of-3 außerhalb eines Turniers: Siege je Spieler (bzw. 2HG-Team) bis zum Seriensieg. */
+export interface SeriesState {
+  bestOf: 3;
+  wins: Record<string, number>;
+  /** Laufende Spielnummer innerhalb der Serie, 1-basiert. */
+  game: number;
+}
+
+/** Eine verrechnete Änderung, die "Rückgängig" per Gegenbuchung zurücknimmt. */
+export interface UndoEntry {
+  kind: 'life' | 'poison' | 'commanderDamage';
+  /** Panel-Key; bei Commander-Schaden das Ziel. */
+  key: string;
+  /** Nur bei Commander-Schaden: die Quelle ("Name::main"). */
+  sourceKey?: string;
+  delta: number;
 }
 
 export interface DamageSource {
@@ -167,6 +219,10 @@ export class GameSessionService {
     mode: this.mode(),
     format: this.format(),
     isRanked: this.isRanked(),
+    monarchKey: this.monarchKey(),
+    initiativeKey: this.initiativeKey(),
+    counters: this.counters(),
+    series: this.series(),
     selectedPlayers: this.selectedPlayers(),
     selectedCubeId: this.selectedCubeId(),
     selectedDraftSet: this.selectedDraftSet(),
@@ -180,7 +236,82 @@ export class GameSessionService {
     manualOrder: this.manualOrder(),
     pinnedBottomKey: this.pinnedBottomKey(),
     winner: this.winner(),
+    startedAt: this.startedAt(),
+    startingPlayerKey: this.startingPlayerKey(),
+    lifeLogUnits: this.lifeLogUnits(),
+    lifeLogStart: this.lifeLogStart(),
+    lifeLog: this.lifeLog(),
   }));
+
+  // --- Partie-Verlauf (sql/partie-verlauf-2026-10-04.sql): Startzeit, Startspieler und jede
+  // Lebenspunkte-/Giftänderung. Liegt im synchronisierten Zustand, damit das speichernde Gerät
+  // auch die Änderungen kennt, die auf einem anderen getippt wurden. ---
+
+  /** Zeitpunkt von startGame() als ISO-String. */
+  readonly startedAt = signal<string | null>(null);
+  /** Panel-Key der Einheit, die angefangen hat - aus der Auslosung oder im Sieger-Dialog gewählt. */
+  readonly startingPlayerKey = signal<string | null>(null);
+  /** Panel-Keys beim Spielstart; die Einträge in lifeLog verweisen per Index darauf. */
+  readonly lifeLogUnits = signal<string[]>([]);
+  readonly lifeLogStart = signal(0);
+  readonly lifeLog = signal<LifeLogEvent[]>([]);
+
+  private logLifeChange(key: string, delta: number, poison: boolean): void {
+    const startedAt = this.startedAt();
+    if (!startedAt || delta === 0) return;
+    const unit = this.lifeLogUnits().indexOf(key);
+    if (unit === -1) return;
+    const second = Math.max(0, Math.round((Date.now() - new Date(startedAt).getTime()) / 1000));
+    const event: LifeLogEvent = poison ? [second, unit, delta, 1] : [second, unit, delta];
+    this.lifeLog.update((log) => (log.length >= LIFE_LOG_MAX_EVENTS ? log : [...log, event]));
+  }
+
+  /** Startspieler setzen; derselbe Key ein zweites Mal hebt die Auswahl auf. */
+  toggleStartingPlayer(key: string): void {
+    this.startingPlayerKey.update((current) => (current === key ? null : key));
+  }
+
+  /**
+   * Sitzordnung im Uhrzeigersinn, so wie die Panels um das Handy herum liegen. In der
+   * zweispaltigen Ansicht sitzt die linke Spalte am linken Tischrand (Panel um 90° gedreht), die
+   * rechte am rechten, ein Sonderslot unten an der unteren Kante. Von oben gesehen im
+   * Uhrzeigersinn: rechte Spalte von oben nach unten, dann unten, dann linke Spalte von unten
+   * nach oben. Magic gibt den Zug nach links weiter - für jemanden, der zur Tischmitte schaut, ist
+   * das genau diese Richtung. Stimmt nur, wenn die Panels so liegen wie die Leute sitzen (dafür
+   * gibt es "Spieler neu anordnen").
+   */
+  private seatingRing(): string[] {
+    const units = this.ingameUnits().map((u) => u.key);
+    // Aufrecht verrät die Lage der Felder nichts über die Sitzordnung - dann zählt die
+    // Reihenfolge der Felder (lässt sich über "Spieler neu anordnen" an den Tisch anpassen).
+    if (this.ingameColumns() === 1 || this.uprightLayout()) return units;
+    const bottom = this.hasOddBottomSlot() ? units.pop() : undefined;
+    const left = units.filter((_, i) => i % 2 === 0);
+    const right = units.filter((_, i) => i % 2 === 1);
+    return [...right, ...(bottom ? [bottom] : []), ...left.reverse()];
+  }
+
+  /** Panel-Key -> Platz in der Zugreihenfolge (1 = Startspieler); leer, solange keiner gewählt ist. */
+  turnOrderByUnit(): Record<string, number> {
+    const starter = this.startingPlayerKey();
+    const ring = this.seatingRing();
+    const startIndex = starter ? ring.indexOf(starter) : -1;
+    if (startIndex === -1) return {};
+    const order: Record<string, number> = {};
+    ring.forEach((key, i) => {
+      order[key] = ((i - startIndex + ring.length) % ring.length) + 1;
+    });
+    return order;
+  }
+
+  /** Verlauf der laufenden Partie für die Kurve im Sieger-Dialog. */
+  readonly currentLifeLog = computed(() => this.buildLifeLog() ?? null);
+
+  /** Verlauf für matches.life_log, oder undefined, wenn die Partie nicht im Tracker lief. */
+  private buildLifeLog(): LifeLog | undefined {
+    if (!this.startedAt() || this.lifeLogUnits().length === 0) return undefined;
+    return { v: 1, start: this.lifeLogStart(), units: this.lifeLogUnits(), events: this.lifeLog() };
+  }
 
   /** Nach Panel-Key indiziert (Spielername bzw. 2HG-Team). */
   readonly lifeTotals = signal<Record<string, number>>({});
@@ -577,6 +708,10 @@ export class GameSessionService {
   private applySyncSnapshot(state: LiveSessionState): void {
     this.mode.set(state.mode);
     this.isRanked.set(state.isRanked ?? true);
+    this.monarchKey.set(state.monarchKey ?? null);
+    this.initiativeKey.set(state.initiativeKey ?? null);
+    this.counters.set(state.counters ?? {});
+    this.series.set(state.series ?? null);
     // Fallback für Sessions von vor diesem Feature (state.format fehlt dann im JSONB-Stand).
     this.format.set(state.format ?? (state.mode === 'Spezialevent' ? null : 'Commander'));
     this.selectedPlayers.set(state.selectedPlayers);
@@ -592,6 +727,11 @@ export class GameSessionService {
     this.manualOrder.set(state.manualOrder);
     this.pinnedBottomKey.set(state.pinnedBottomKey);
     this.winner.set(state.winner);
+    this.startedAt.set(state.startedAt ?? null);
+    this.startingPlayerKey.set(state.startingPlayerKey ?? null);
+    this.lifeLogUnits.set(state.lifeLogUnits ?? []);
+    this.lifeLogStart.set(state.lifeLogStart ?? 0);
+    this.lifeLog.set(state.lifeLog ?? []);
     this.lastSyncedSignature = stableStringify(state);
   }
 
@@ -600,6 +740,7 @@ export class GameSessionService {
    * erfolgreichem Insert setzen, sonst UPDATE auf eine noch fehlende Zeile.
    */
   private beginLiveSession(): void {
+    if (this.friendMode()) return;
     const groupId = this.groupService.groupId();
     const userId = this.auth.currentUser()?.id;
     if (!groupId || !userId) return;
@@ -687,6 +828,7 @@ export class GameSessionService {
 
   /** Alle Commander/Partner-Commander der Mitglieder einer Panel-Einheit als eigene Schadensquellen. */
   panelRotation(index: number): number {
+    if (this.uprightLayout()) return 0;
     const cols = this.ingameColumns();
 
     if (this.hasOddBottomSlot() && index === this.ingameUnits().length - 1) {
@@ -718,13 +860,15 @@ export class GameSessionService {
 
   adjustLife(key: string, delta: number): void {
     this.lifeTotals.update((totals) => ({ ...totals, [key]: (totals[key] ?? 0) + delta }));
+    this.logLifeChange(key, delta, false);
   }
 
-  adjustCommanderDamage(target: string, sourceKey: string, delta: number): void {
+  /** Gibt die tatsächlich verrechnete Änderung zurück (Schaden fällt nie unter 0). */
+  adjustCommanderDamage(target: string, sourceKey: string, delta: number): number {
     const current = this.commanderDamageValue(target, sourceKey);
     const next = Math.max(0, current + delta);
     const actualDelta = next - current;
-    if (actualDelta === 0) return;
+    if (actualDelta === 0) return 0;
 
     this.commanderDamage.update((all) => ({
       ...all,
@@ -732,6 +876,140 @@ export class GameSessionService {
     }));
     // Commander-Schaden ist zugleich normaler Lebenspunktverlust -> Leben sinkt, wenn Schaden steigt.
     this.adjustLife(target, -actualDelta);
+    return actualDelta;
+  }
+
+  // --- Freundesspiel (sql/freunde-2026-10-04.sql): Partie ohne Gruppe, Spieler sind Accounts.
+  // Bleibt über Partien hinweg eingeschaltet - wer mit Freunden spielt, spielt meist mehrere
+  // Runden. Ohne Gruppe gibt es keine Live-Session (live_game_sessions hängt an einer Gruppe):
+  // der Tracker läuft dann nur auf diesem Gerät. ---
+
+  readonly friendMode = signal(false);
+
+  setFriendMode(on: boolean): void {
+    if (this.friendMode() === on) return;
+    this.friendMode.set(on);
+    // Spieler der Gruppe und Freunde sind verschiedene Listen - eine halbe Auswahl aus der
+    // anderen Liste ergäbe eine Partie mit Spielern, die es dort nicht gibt.
+    this.selectedPlayers.set([]);
+    this.winner.set(null);
+  }
+
+  /** Spieler im Freundesmodus an-/abwählen; userId kommt mit, damit die Partie den Account kennt. */
+  toggleFriendPlayer(name: string, userId: string): void {
+    const current = this.selectedPlayers();
+    if (current.some((p) => p.name === name)) {
+      this.selectedPlayers.set(current.filter((p) => p.name !== name));
+      if (this.winner() === name) this.winner.set(null);
+    } else {
+      this.selectedPlayers.set([...current, { name, userId }]);
+    }
+  }
+
+  // --- Weitere Zähler (Energie, Erfahrung, Radioaktivität) ---
+
+  readonly counters = signal<Record<string, Partial<Record<CounterKind, number>>>>({});
+
+  counterValue(key: string, kind: CounterKind): number {
+    return this.counters()[key]?.[kind] ?? 0;
+  }
+
+  adjustCounter(key: string, kind: CounterKind, delta: number): void {
+    this.counters.update((all) => {
+      const next = Math.max(0, (all[key]?.[kind] ?? 0) + delta);
+      return { ...all, [key]: { ...(all[key] ?? {}), [kind]: next } };
+    });
+  }
+
+  /** Zähler eines Panels, die gerade nicht 0 sind - für die kleinen Marken neben dem Namen. */
+  activeCounters(key: string): { kind: CounterKind; value: number }[] {
+    const own = this.counters()[key] ?? {};
+    return COUNTER_KINDS.filter((k) => (own[k] ?? 0) > 0).map((kind) => ({ kind, value: own[kind]! }));
+  }
+
+  // --- Ausrichtung: "Tisch" dreht jedes Feld zu seinem Platz, "aufrecht" lässt alle Felder in
+  // Leserichtung - für ein Handy, das herumgereicht oder von einer Person bedient wird. Nur lokal,
+  // jedes Gerät liegt anders. ---
+
+  readonly uprightLayout = signal(readUprightPreference());
+
+  setUprightLayout(on: boolean): void {
+    this.uprightLayout.set(on);
+    try {
+      localStorage.setItem('statsfinity.trackerUpright', on ? '1' : '0');
+    } catch {
+      // Ohne Speicher gilt die Wahl eben nur bis zum Neuladen.
+    }
+  }
+
+  // --- Best-of-3 außerhalb von Turnieren: jedes Spiel wird einzeln gespeichert, danach startet
+  // das nächste mit denselben Spielern und Decks, bis jemand zwei Siege hat. ---
+
+  readonly series = signal<SeriesState | null>(null);
+  /** Im Setup gewählt: nächste Partie als Best-of-3 starten. */
+  readonly bestOfThree = signal(false);
+  /** Gesetzt, sobald eine Serie entschieden ist - für die Meldung nach dem letzten Spiel. */
+  readonly lastSeriesResult = signal<{ winner: string; wins: Record<string, number> } | null>(null);
+
+  readonly seriesLabel = computed(() => {
+    const s = this.series();
+    if (!s) return null;
+    const units = this.ingameUnits();
+    return units.map((u) => `${u.label} ${s.wins[u.key] ?? 0}`).join(' : ');
+  });
+
+  // --- Monarch und Initiative: je eine Marke am Tisch, höchstens ein Spieler hält sie. ---
+
+  readonly monarchKey = signal<string | null>(null);
+  readonly initiativeKey = signal<string | null>(null);
+
+  /** Gibt die Marke an diesen Spieler; hält er sie schon, wird sie abgelegt. */
+  toggleMonarch(key: string): void {
+    this.monarchKey.update((current) => (current === key ? null : key));
+  }
+
+  toggleInitiative(key: string): void {
+    this.initiativeKey.update((current) => (current === key ? null : key));
+  }
+
+  // --- Rückgängig: merkt sich jede verrechnete Änderung und macht die letzte durch die
+  // Gegenbuchung rückgängig - nicht durch Zurücksetzen auf einen alten Stand. So bleibt alles,
+  // was an den Änderungen hängt (Live-Sync, Lebenspunkte-Verlauf), ohne Sonderfall richtig, und
+  // eine inzwischen auf einem anderen Gerät getippte Änderung geht nicht verloren. Nur lokal:
+  // jedes Gerät nimmt seine eigenen Tipper zurück. ---
+
+  private static readonly UNDO_LIMIT = 50;
+  readonly undoStack = signal<UndoEntry[]>([]);
+  readonly canUndo = computed(() => this.undoStack().length > 0);
+
+  private rememberForUndo(entry: UndoEntry): void {
+    if (entry.delta === 0) return;
+    this.undoStack.update((stack) => [...stack, entry].slice(-GameSessionService.UNDO_LIMIT));
+  }
+
+  /** Nimmt die letzte eigene Änderung zurück; gibt sie zurück (für die Rückmeldung), sonst null. */
+  undoLast(): UndoEntry | null {
+    const stack = this.undoStack();
+    const last = stack[stack.length - 1];
+    if (!last) return null;
+    this.undoStack.set(stack.slice(0, -1));
+    if (last.kind === 'life') this.adjustLife(last.key, -last.delta);
+    else if (last.kind === 'poison') this.adjustPoison(last.key, -last.delta);
+    else if (last.sourceKey) this.adjustCommanderDamage(last.key, last.sourceKey, -last.delta);
+    return last;
+  }
+
+  /** Leben direkt auf einen Wert setzen (eingetippt) - als eine Änderung, also auch rückgängig zu machen. */
+  setLife(key: string, value: number): void {
+    if (!Number.isFinite(value)) return;
+    this.changeLifeNow(key, Math.round(value) - (this.lifeTotals()[key] ?? 0));
+  }
+
+  /** Leben sofort ändern, ohne die 700-ms-Pufferung (±5/±10 im Eingabe-Sheet). */
+  changeLifeNow(key: string, delta: number): void {
+    if (delta === 0) return;
+    this.adjustLife(key, delta);
+    this.rememberForUndo({ kind: 'life', key, delta });
   }
 
   poisonValue(key: string): number {
@@ -739,10 +1017,10 @@ export class GameSessionService {
   }
 
   adjustPoison(key: string, delta: number): void {
-    this.poisonCounters.update((totals) => ({
-      ...totals,
-      [key]: Math.max(0, (totals[key] ?? 0) + delta),
-    }));
+    const current = this.poisonValue(key);
+    const next = Math.max(0, current + delta);
+    this.poisonCounters.update((totals) => ({ ...totals, [key]: next }));
+    this.logLifeChange(key, next - current, true);
   }
 
   // --- Gepuffertes Tippen: Leben/Gift/Commander-Schaden sammeln ein sichtbares Delta ("-6") und
@@ -788,21 +1066,24 @@ export class GameSessionService {
 
   bufferLifeChange(key: string, delta: number): void {
     this.bufferChange(this.pendingLifeDelta, 'life', key, delta, (total) =>
-      this.adjustLife(key, total)
+      this.changeLifeNow(key, total)
     );
   }
 
   bufferPoisonChange(key: string, delta: number): void {
-    this.bufferChange(this.pendingPoisonDelta, 'poison', key, delta, (total) =>
-      this.adjustPoison(key, total)
-    );
+    this.bufferChange(this.pendingPoisonDelta, 'poison', key, delta, (total) => {
+      const before = this.poisonValue(key);
+      this.adjustPoison(key, total);
+      this.rememberForUndo({ kind: 'poison', key, delta: this.poisonValue(key) - before });
+    });
   }
 
   bufferCommanderDamageChange(target: string, sourceKey: string, delta: number): void {
     const key = `${target}::${sourceKey}`;
-    this.bufferChange(this.pendingCommanderDamageDelta, 'cd', key, delta, (total) =>
-      this.adjustCommanderDamage(target, sourceKey, total)
-    );
+    this.bufferChange(this.pendingCommanderDamageDelta, 'cd', key, delta, (total) => {
+      const actual = this.adjustCommanderDamage(target, sourceKey, total);
+      this.rememberForUndo({ kind: 'commanderDamage', key: target, sourceKey, delta: actual });
+    });
   }
 
   isPoisonView(key: string): boolean {
@@ -868,11 +1149,24 @@ export class GameSessionService {
     this.commanderDamage.set(damage);
     this.poisonCounters.set(poison);
     this.poisonView.set(poisonViews);
+    this.startedAt.set(new Date().toISOString());
+    this.startingPlayerKey.set(null);
+    this.lifeLogUnits.set(Object.keys(totals));
+    this.lifeLogStart.set(startLife);
+    this.lifeLog.set([]);
     this.commanderDamageFocus.set(null);
     this.deadPlayers.set({});
     this.showWinnerPanel.set(false);
     this.winner.set(null);
     this.minimized.set(false);
+    // Marken, Zähler und Rückgängig-Liste gehören zur Partie, nicht zur Sitzung.
+    this.counters.set({});
+    if (this.bestOfThree() && !this.activeTournamentMatchId() && !this.series()) {
+      this.series.set({ bestOf: 3, wins: {}, game: 1 });
+    }
+    this.monarchKey.set(null);
+    this.initiativeKey.set(null);
+    this.undoStack.set([]);
     this.phase.set('ingame');
 
     this.beginLiveSession();
@@ -898,7 +1192,12 @@ export class GameSessionService {
     try {
       const cube = this.mtg.cubes().find((c) => c.id === this.selectedCubeId());
       const draftSet = this.selectedDraftSet();
-      const players = this.selectedPlayers();
+      // Platz in der Zugreihenfolge je Spieler - bei 2HG teilen sich die Teammitglieder ihn.
+      const turnOrder = this.turnOrderByUnit();
+      const players = this.selectedPlayers().map((p) => {
+        const order = turnOrder[this.isTwoHeadedGiantMode() ? (p.team ?? '') : p.name];
+        return order ? { ...p, turnOrder: order } : p;
+      });
       const tournamentMatchId = this.activeTournamentMatchId() ?? undefined;
 
       const matchId = await this.mtg.addMatch({
@@ -919,17 +1218,99 @@ export class GameSessionService {
         tournamentMatchId,
         countsInGeneralStats: this.activeTournamentCountsInStats(),
         isRanked: this.isRanked(),
+        friendGame: this.friendMode(),
+        startedAt: this.startedAt() ?? undefined,
+        lifeLog: this.buildLifeLog(),
       });
 
       if (matchId) {
         this.lastFinishedMatch.set({ matchId, players, winner, tournamentMatchId });
       }
 
+      if (matchId && this.continueSeries(winner)) return;
+
       this.resetAll();
       this.deadMessageMap.set({});
     } finally {
       this.saving.set(false);
     }
+  }
+
+  /**
+   * Partie nachtragen, die ohne Tracker gespielt wurde: Spieler, Sieger und Modus kommen aus dem
+   * normalen Setup, dazu Datum und optional der Startspieler. Ohne Tracker kennt die App die
+   * Sitzordnung nicht - nur der Startspieler bekommt deshalb einen Platz (1), die anderen bleiben
+   * unbekannt. Keine Startzeit, kein Verlauf: eine Dauer wäre hier geraten.
+   */
+  async saveBackfill(playedAt: Date, startingPlayer: string | null): Promise<boolean> {
+    const winner = this.winner();
+    if (!winner || !this.canSave() || this.saving()) return false;
+    this.saving.set(true);
+    try {
+      const cube = this.mtg.cubes().find((c) => c.id === this.selectedCubeId());
+      const draftSet = this.selectedDraftSet();
+      const players = this.selectedPlayers().map((p) => (p.name === startingPlayer ? { ...p, turnOrder: 1 } : p));
+      const matchId = await this.mtg.addMatch({
+        mode: this.mode(),
+        format: this.format(),
+        players,
+        winner,
+        cube: cube ? { id: cube.id, name: cube.name, isCommander: cube.isCommander } : undefined,
+        draftSet:
+          this.mode() === 'Draft' && draftSet
+            ? { id: draftSet.id, code: draftSet.code, name: draftSet.name, releasedAt: draftSet.releasedAt }
+            : undefined,
+        isRanked: this.isRanked(),
+        friendGame: this.friendMode(),
+        playedAt: playedAt.toISOString(),
+      });
+      if (!matchId) return false;
+      this.resetAll();
+      return true;
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
+  /**
+   * Nach einem gespeicherten Spiel einer Best-of-3-Serie: Sieg zählen und - solange niemand zwei
+   * Siege hat - das nächste Spiel mit denselben Spielern, Decks und Einstellungen starten.
+   * Gibt true zurück, wenn ein neues Spiel läuft (dann hat diese Methode schon zurückgesetzt).
+   */
+  private continueSeries(winner: string): boolean {
+    const series = this.series();
+    if (!series) return false;
+    const wins = { ...series.wins };
+    if (winner !== this.DRAW && winner !== this.OTHERS) wins[winner] = (wins[winner] ?? 0) + 1;
+    const decided = Object.entries(wins).find(([, w]) => w >= 2);
+    if (decided) {
+      this.lastSeriesResult.set({ winner: decided[0], wins });
+      return false;
+    }
+
+    const setup = {
+      mode: this.mode(),
+      format: this.format(),
+      isRanked: this.isRanked(),
+      players: this.selectedPlayers().map(({ turnOrder: _, ...p }) => p),
+      cubeId: this.selectedCubeId(),
+      draftSet: this.selectedDraftSet(),
+      manualOrder: this.manualOrder(),
+      pinned: this.pinnedBottomKey(),
+    };
+    this.resetAll();
+    this.deadMessageMap.set({});
+    this.mode.set(setup.mode);
+    this.format.set(setup.format);
+    this.isRanked.set(setup.isRanked);
+    this.selectedPlayers.set(setup.players);
+    this.selectedCubeId.set(setup.cubeId);
+    this.selectedDraftSet.set(setup.draftSet);
+    this.manualOrder.set(setup.manualOrder);
+    this.pinnedBottomKey.set(setup.pinned);
+    this.series.set({ bestOf: 3, wins, game: series.game + 1 });
+    this.startGame();
+    return true;
   }
 
   /** Verwirft die Session ohne zu speichern. */
@@ -965,11 +1346,22 @@ export class GameSessionService {
     this.mode.set('Normal');
     this.format.set('Commander');
     this.isRanked.set(true);
+    this.counters.set({});
+    this.series.set(null);
+    this.bestOfThree.set(false);
+    this.monarchKey.set(null);
+    this.initiativeKey.set(null);
+    this.undoStack.set([]);
     this.pinnedBottomKey.set(null);
     this.pinnedBottomKey.set(null);
     this.manualOrder.set(null);
     this.activeTournamentMatchId.set(null);
     this.activeTournamentCountsInStats.set(true);
+    this.startedAt.set(null);
+    this.startingPlayerKey.set(null);
+    this.lifeLogUnits.set([]);
+    this.lifeLogStart.set(0);
+    this.lifeLog.set([]);
   }
 
   // --- Setup-Mutationen (Spieler, Commander, Team, Archenemy) ---

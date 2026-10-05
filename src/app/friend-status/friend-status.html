@@ -1,0 +1,38 @@
+@if (friends.verfuegbar() && auth.currentUser() && !isSelf()) {
+  <div class="friend-status">
+    <div class="friend-row">
+      @if (status() === 'friends') {
+        <span class="friend-badge">{{ i18n.t('profile.friends.alreadyFriends') }}</span>
+      } @else if (status() === 'outgoing') {
+        <span class="hint">{{ i18n.t('profile.friends.requestSent') }}</span>
+      } @else if (status() === 'incoming') {
+        <span class="hint">{{ i18n.t('profile.friends.wantsToBeFriends', { name: name() }) }}</span>
+      }
+      <button
+        class="glass-button small"
+        [class.primary]="status() === 'none' || status() === 'incoming'"
+        [disabled]="busy()"
+        (click)="act()"
+      >
+        {{ actionLabel() }}
+      </button>
+    </div>
+    @if (h2h(); as h) {
+      @if (h.games > 0) {
+        <p class="h2h-line">
+          {{
+            i18n.t('profile.friends.h2h', {
+              name: name(),
+              mine: h.myWins,
+              theirs: h.theirWins,
+              games: h.games,
+            })
+          }}
+        </p>
+        <app-split-bar [segments]="segments()" />
+      } @else {
+        <p class="hint">{{ i18n.t('profile.friends.h2hNone', { name: name() }) }}</p>
+      }
+    }
+  </div>
+}

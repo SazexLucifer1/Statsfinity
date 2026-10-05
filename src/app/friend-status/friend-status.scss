@@ -1,0 +1,29 @@
+.friend-status {
+  margin-top: var(--sp-5);
+}
+
+.friend-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+
+  .glass-button {
+    color: var(--text);
+  }
+}
+
+.friend-badge {
+  padding: 2px var(--sp-4);
+  border-radius: 999px;
+  background: rgba(125, 255, 155, 0.15);
+  color: var(--success);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.h2h-line {
+  margin: var(--sp-4) 0 var(--sp-2);
+  font-weight: 600;
+}

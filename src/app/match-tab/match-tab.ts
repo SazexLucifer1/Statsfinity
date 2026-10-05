@@ -21,6 +21,10 @@ import { Pager } from '../ui/pager/pager';
 import { DeckViewerService } from '../deck-viewer.service';
 import { storedDeckBracket } from '../bracket';
 import { Icon } from '../ui/icon/icon';
+import { LifeChart } from '../ui/life-chart/life-chart';
+import { LifeLog } from '../models';
+import { FriendsService } from '../friends.service';
+import { ProfileService } from '../profile.service';
 
 /** Ein einzelnes Spiel oder eine zu einer Karte zusammengefasste BO3-Turnierpartie (2-3 Einzelspiele) im Verlauf. */
 export type HistoryRow =
@@ -38,7 +42,7 @@ export type HistoryRow =
 
 @Component({
   selector: 'app-match-tab',
-  imports: [FormsModule, DatePipe, NgTemplateOutlet, PlayerAvatar, CardImage, BracketBadge, Pager, Icon],
+  imports: [FormsModule, DatePipe, NgTemplateOutlet, PlayerAvatar, CardImage, BracketBadge, Pager, Icon, LifeChart],
   templateUrl: './match-tab.html',
   styleUrl: './match-tab.scss',
 })
@@ -111,6 +115,36 @@ export class MatchTab {
   readonly draftSuggestions = signal<ScryfallSet[]>([] as any);
   readonly draftYear = signal<number | null>(null);
   private draftTimer: ReturnType<typeof setTimeout> | null = null;
+
+  // --- Freundesspiel (Partie ohne Gruppe) ---
+
+  readonly friends = inject(FriendsService);
+  private readonly profileService = inject(ProfileService);
+
+  /** Ich selbst und meine Freunde als Spieler-Chips im Freundesmodus. */
+  readonly friendModePlayers = computed(() => {
+    const me = this.auth.currentUser();
+    const profile = this.profileService.profile();
+    const own = me ? [{ userId: me.id, name: profile?.displayName ?? this.i18n.t('match.me'), avatarUrl: profile?.avatarUrl ?? null }] : [];
+    return [
+      ...own,
+      ...this.friends.friends().map((f) => ({ userId: f.otherId, name: f.displayName, avatarUrl: f.avatarUrl })),
+    ];
+  });
+
+  setFriendMode(on: boolean): void {
+    this.session.setFriendMode(on);
+    this.closeSearch();
+    if (on) {
+      this.friends.refresh();
+      this.mtg.loadFriendMatches();
+    }
+  }
+
+  toggleFriendPlayer(fp: { userId: string; name: string }): void {
+    this.session.toggleFriendPlayer(fp.name, fp.userId);
+    if (this.searchTarget()?.player === fp.name) this.closeSearch();
+  }
 
   // --- Spielerauswahl ---
 
@@ -327,7 +361,8 @@ export class MatchTab {
   readonly deckPickerHistoryMode = signal(false);
 
   async openOwnDeckPicker(playerName: string, historyMode = false): Promise<void> {
-    const userId = this.mtg.playerUserIds()[playerName];
+    const userId =
+      this.session.selectedPlayers().find((p) => p.name === playerName)?.userId ?? this.mtg.playerUserIds()[playerName];
     const playerId = this.mtg.playerIdFor(playerName);
     if (!userId && !playerId) return;
     const owner: DeckOwner = userId ? { kind: 'user', userId } : { kind: 'player', playerId: playerId! };
@@ -569,7 +604,9 @@ export class MatchTab {
    * nur die Anzeige im Verlauf lässt sie weg.
    */
   readonly visibleHistory = computed(() =>
-    this.mtg.history().filter((m) => new Date(m.date) >= LIVE_TRACKING_START_DATE)
+    (this.session.friendMode() ? this.mtg.friendHistory() : this.mtg.history()).filter(
+      (m) => new Date(m.date) >= LIVE_TRACKING_START_DATE,
+    ),
   );
 
   /**
@@ -719,6 +756,19 @@ export class MatchTab {
    */
   isWinner(match: Match, player: MatchPlayer): boolean {
     return isPlayerWinner(match.mode, match.winner, player.name, player.team, player.isArchenemy);
+  }
+
+  /**
+   * Spieldauer aus Tracker-Start und Speicherzeitpunkt (sql/partie-verlauf-2026-10-04.sql), oder
+   * null bei Partien ohne Startzeit. Unter einer Minute wird nichts gezeigt - das ist ein
+   * Fehlstart oder ein Test, keine Partie.
+   */
+  matchDuration(match: Match): string | null {
+    if (!match.startedAt) return null;
+    const minutes = Math.round((new Date(match.date).getTime() - new Date(match.startedAt).getTime()) / 60_000);
+    if (!Number.isFinite(minutes) || minutes < 1) return null;
+    if (minutes < 60) return this.i18n.t('match.durationMinutes', { min: minutes });
+    return this.i18n.t('match.durationHours', { h: Math.floor(minutes / 60), min: minutes % 60 });
   }
 
   /**
@@ -909,6 +959,80 @@ export class MatchTab {
     this.editingResultMatchId.set(null);
   }
   /** Mögliche Gewinner-Optionen für ein Match, abhängig vom Spielmodus. */
+  /** Seriensieger lesbar: bei 2HG steht dort der Team-Schlüssel. */
+  seriesWinnerLabel(key: string): string {
+    const last = this.mtg.history()[0] ?? this.mtg.friendHistory()[0];
+    return key.startsWith('Team ') && last ? teamMemberLabel(last.players, key) || key : key;
+  }
+
+  // --- Lebenspunkte-Kurve einer gespeicherten Partie (einzeln nachgeladen) ---
+
+  readonly lifeCurveFor = signal<string | null>(null);
+  readonly lifeCurve = signal<LifeLog | null>(null);
+  readonly lifeCurveLoading = signal(false);
+
+  async toggleLifeCurve(matchId: string): Promise<void> {
+    if (this.lifeCurveFor() === matchId) {
+      this.lifeCurveFor.set(null);
+      return;
+    }
+    this.lifeCurveFor.set(matchId);
+    this.lifeCurve.set(null);
+    this.lifeCurveLoading.set(true);
+    const log = await this.mtg.loadLifeLog(matchId);
+    if (this.lifeCurveFor() !== matchId) return;
+    this.lifeCurve.set(log);
+    this.lifeCurveLoading.set(false);
+  }
+
+  /** Bei 2HG stehen im Verlauf Team-Schlüssel - als "Anna & Ben" anzeigen. */
+  teamLabels(match: Match): Record<string, string> {
+    const teams = [...new Set(match.players.map((p) => p.team).filter((t): t is NonNullable<typeof t> => !!t))];
+    return Object.fromEntries(teams.map((t) => [t, teamMemberLabel(match.players, t)]));
+  }
+
+  // --- Partie nachtragen (ohne Tracker gespielt) ---
+
+  readonly backfillOpen = signal(false);
+  /** Wert des datetime-local-Felds ("2026-10-04T20:15"), Ortszeit. */
+  readonly backfillDate = signal('');
+  readonly backfillStarter = signal<string | null>(null);
+
+  readonly backfillWinnerOptions = computed(() =>
+    this.winnerOptions({
+      mode: this.session.mode(),
+      players: this.session.selectedPlayers(),
+    } as Match),
+  );
+
+  openBackfill(): void {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    this.backfillDate.set(now.toISOString().slice(0, 16));
+    this.backfillStarter.set(null);
+    this.session.winner.set(null);
+    this.backfillOpen.set(true);
+  }
+
+  closeBackfill(): void {
+    this.session.winner.set(null);
+    this.backfillOpen.set(false);
+  }
+
+  async saveBackfill(): Promise<void> {
+    const date = new Date(this.backfillDate());
+    if (Number.isNaN(date.getTime())) return;
+    if (date.getTime() > Date.now() + 60_000) {
+      await this.dialog.alert(this.i18n.t('match.backfillFuture'));
+      return;
+    }
+    const ok = await this.session.saveBackfill(date, this.backfillStarter());
+    if (!ok) return;
+    this.backfillOpen.set(false);
+    this.successMessage.set(this.i18n.t('match.backfillSaved'));
+    setTimeout(() => this.successMessage.set(''), 2500);
+  }
+
   winnerOptions(match: Match): { value: string; label: string }[] {
     const options: { value: string; label: string }[] = [];
 

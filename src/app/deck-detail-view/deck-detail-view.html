@@ -6,6 +6,22 @@
 <!-- Der Ablauf einer Combo. Nummeriert statt Aufzählungspunkte: Spellbooks Beschreibungen
      verweisen selbst auf Schrittnummern ("Repeat from step 4"), die vorher nirgends standen.
      Die Manasymbole stehen mitten im Satz ("by paying {1}") und werden deshalb inline gesetzt. -->
+<!-- Gemeinsamer Wert aus Karten-Tuning und Beständigkeit - steht in drei Erklär-Popups. -->
+<ng-template #combinedStep let-analysis let-bumped="bumped">
+  <p class="hint">
+    <strong>
+      @if (analysis.verdicts.consistency !== null) {
+        {{ viewer.i18n.t('deckView.bracketMathCombined', { cardShare: viewer.bracket.cardShare(), consistencyShare: viewer.bracket.consistencyShare(), tuning: (analysis.verdicts.tuning | number: '1.2-2') ?? '', consistency: (analysis.verdicts.consistency | number: '1.2-2') ?? '', combined: (analysis.verdicts.combined | number: '1.2-2') ?? '' }) }}
+      } @else {
+        {{ viewer.i18n.t('deckView.bracketMathCombinedCardsOnly', { combined: (analysis.verdicts.combined | number: '1.2-2') ?? '' }) }}
+      }
+    </strong>
+  </p>
+  @if (bumped) {
+    <p class="hint">{{ viewer.i18n.t('deckView.bracketMathStepBump', { percent: (analysis.verdicts.combined | percent: '1.0-0') ?? '', bump: viewer.bracket.tuningBumpPercent, level: analysis.bracket }) }}</p>
+  }
+</ng-template>
+
 <ng-template #comboStepList let-steps>
   <ol class="hint combo-step-list">
     @for (step of steps; track $index) {
@@ -316,6 +332,23 @@
                     </button>
                   </li>
                   <li>
+                    <span class="bracket-verdict-label">{{ viewer.i18n.t('deckView.bracketRowConsistency') }}</span>
+                    <strong class="bracket-verdict-value">
+                      @if (analysis.verdicts.consistency !== null) {
+                        {{ analysis.verdicts.consistency | percent: '1.0-0' }}
+                      } @else {
+                        {{ viewer.i18n.t('deckView.bracketValueUnavailable') }}
+                      }
+                    </strong>
+                    <button
+                      class="icon-button bracket-verdict-info"
+                      (click)="viewer.bracket.openBracketMath('consistency')"
+                      [attr.aria-label]="viewer.i18n.t('deckView.bracketExplainAria', { topic: viewer.i18n.t('deckView.bracketRowConsistency') })"
+                    >
+                      ⓘ
+                    </button>
+                  </li>
+                  <li>
                     <span class="bracket-verdict-label">{{ viewer.i18n.t('deckView.bracketRowPrice') }}</span>
                     <strong class="bracket-verdict-value">
                       @if (analysis.verdicts.price !== null) {
@@ -444,6 +477,14 @@
             </p>
           }
         </div>
+      }
+      @if (!viewer.hideViewingDeckStats()) {
+        <app-deck-manual-record
+          [deckId]="deck.id"
+          [canEdit]="viewer.state.canEditViewingDeck()"
+          [trackedGames]="viewer.viewingDeckGameStats()?.games ?? 0"
+          [trackedWins]="viewer.viewingDeckGameStats()?.wins ?? 0"
+        />
       }
 
       <!-- Vorher standen hier bis zu sieben gleich aussehende Chips in einer Reihe. Bilder/Text ist
@@ -978,6 +1019,7 @@
             @if (viewer.analysis.analysisBusy()) {
               <p class="hint">{{ viewer.i18n.t('deckView.loadingAnalysis') }}</p>
             } @else {
+              <app-deck-check />
               <section class="analysis-section analysis-section-wide">
                 <div class="stat-tiles">
                   <div class="stat-tile">
@@ -1766,12 +1808,39 @@
                 <strong>{{ viewer.i18n.t('deckView.bracketMathSum', { summands: math.summands, divisor: math.divisor, value: (analysis.verdicts.tuning | number: '1.2-2') ?? '', percent: (analysis.verdicts.tuning | percent: '1.0-0') ?? '' }) }}</strong>
               </p>
               <p class="hint">{{ viewer.i18n.t('deckView.bracketTuningExplain', { bump: viewer.bracket.tuningBumpPercent }) }}</p>
-              @if (math.bumped) {
-                <p class="hint">{{ viewer.i18n.t('deckView.bracketMathStepBump', { percent: (analysis.verdicts.tuning | percent: '1.0-0') ?? '', bump: viewer.bracket.tuningBumpPercent, level: analysis.bracket }) }}</p>
-              }
+              <ng-container [ngTemplateOutlet]="combinedStep" [ngTemplateOutletContext]="{ $implicit: analysis, bumped: math.bumped }"></ng-container>
               @if (analysis.verdicts.precon) {
                 <p class="hint">{{ viewer.i18n.t('deckView.bracketVerdictPrecon') }}</p>
               }
+            }
+            @case ('consistency') {
+              <h3>{{ viewer.i18n.t('deckView.bracketMathConsistencyTitle') }}</h3>
+              <p class="hint">{{ viewer.i18n.t('deckView.bracketMathConsistencyIntro') }}</p>
+              <ul class="game-changer-list">
+                @for (part of viewer.bracket.deckCheck.consistencyParts(); track part.key) {
+                  <li>
+                    <strong>{{ viewer.i18n.t('deckView.consistency.' + part.key) }}</strong>
+                    <span class="bracket-caveat">
+                      @if (part.key === 'gameplan') {
+                        {{ viewer.i18n.t('deckView.bracketMathPartMeasured', { value: (part.value | number: '1.0-0') ?? '' }) }} ·
+                        {{ viewer.i18n.t('deckView.bracketMathPartScale', { from: part.from, to: part.to }) }} ·
+                      } @else {
+                        {{ viewer.i18n.t('deckView.bracketMathPartMeasured', { value: (part.value | percent: '1.0-0') ?? '' }) }} ·
+                        {{ viewer.i18n.t('deckView.bracketMathPartScale', { from: (part.from | percent: '1.0-0') ?? '', to: (part.to | percent: '1.0-0') ?? '' }) }} ·
+                      }
+                      {{ viewer.i18n.t('deckView.bracketMathPartScore', { score: (part.score | number: '1.2-2') ?? '', weight: (part.weight | number: '1.2-2') ?? '' }) }}
+                    </span>
+                  </li>
+                } @empty {
+                  <li class="hint">{{ viewer.i18n.t('deckView.bracketMathConsistencyEmpty') }}</li>
+                }
+              </ul>
+              @if (analysis.verdicts.consistency !== null) {
+                <p class="hint">
+                  <strong>{{ viewer.i18n.t('deckView.bracketMathConsistencySum', { value: (analysis.verdicts.consistency | number: '1.2-2') ?? '', percent: (analysis.verdicts.consistency | percent: '1.0-0') ?? '' }) }}</strong>
+                </p>
+              }
+              <ng-container [ngTemplateOutlet]="combinedStep" [ngTemplateOutletContext]="{ $implicit: analysis, bumped: math.bumped }"></ng-container>
             }
             @case ('price') {
               <h3>{{ viewer.i18n.t('deckView.bracketMathPriceTitle') }}</h3>
@@ -1799,9 +1868,11 @@
             @case ('power') {
               <h3>{{ viewer.i18n.t('deckView.bracketMathPowerTitle') }}</h3>
               <p class="hint">{{ viewer.i18n.t('deckView.bracketPowerExplain') }}</p>
+              <ng-container [ngTemplateOutlet]="combinedStep" [ngTemplateOutletContext]="{ $implicit: analysis, bumped: math.bumped }"></ng-container>
               <p class="hint">{{ viewer.i18n.t('deckView.bracketMathPowerRange', { level: analysis.bracket, from: (math.powerVon | number: '1.1-1') ?? '', to: (math.powerBis | number: '1.1-1') ?? '' }) }}</p>
+              <p class="hint">{{ viewer.i18n.t(math.bumped ? 'deckView.bracketMathPowerPositionBumped' : math.canBump ? 'deckView.bracketMathPowerPositionBelow' : 'deckView.bracketMathPowerPositionPlain', { tuning: (analysis.verdicts.combined | number: '1.2-2') ?? '', threshold: (math.bumpThreshold | number: '1.2-2') ?? '', position: (analysis.powerPosition | number: '1.2-2') ?? '' }) }}</p>
               <p class="hint">
-                <strong>{{ viewer.i18n.t('deckView.bracketMathPowerFormula', { from: (math.powerVon | number: '1.1-1') ?? '', tuning: (analysis.verdicts.tuning | number: '1.2-2') ?? '', span: (math.powerSpanne | number: '1.1-1') ?? '', power: (analysis.power | number: '1.1-1') ?? '' }) }}</strong>
+                <strong>{{ viewer.i18n.t('deckView.bracketMathPowerFormula', { from: (math.powerVon | number: '1.1-1') ?? '', tuning: (analysis.powerPosition | number: '1.2-2') ?? '', span: (math.powerSpanne | number: '1.1-1') ?? '', to: (math.powerBis | number: '1.1-1') ?? '', power: (analysis.power | number: '1.1-1') ?? '' }) }}</strong>
               </p>
             }
           }

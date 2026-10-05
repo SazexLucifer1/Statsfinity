@@ -1,0 +1,48 @@
+@if (service.verfuegbar() && (record() || canEdit())) {
+  <div class="manual-record">
+    @if (editing()) {
+      <p class="hint">{{ i18n.t('deck.manualRecord.editHint') }}</p>
+      <div class="record-inputs">
+        @for (field of fields; track field) {
+          <label>
+            <span>{{ i18n.t('deck.manualRecord.' + field) }}</span>
+            <input
+              class="glass-input"
+              type="number"
+              min="0"
+              inputmode="numeric"
+              [value]="draft()[field]"
+              (input)="setDraft(field, $any($event.target).value)"
+            />
+          </label>
+        }
+      </div>
+      <div class="chip-row">
+        <button class="glass-button small primary" [disabled]="saving()" (click)="save()">
+          {{ i18n.t('deckView.save') }}
+        </button>
+        <button class="glass-button small" (click)="editing.set(false)">
+          {{ i18n.t('deckView.cancelX') }}
+        </button>
+      </div>
+    } @else if (record(); as r) {
+      <p class="record-line">
+        {{ i18n.t('deck.manualRecord.line', { wins: r.wins, losses: r.losses, draws: r.draws }) }}
+        @if (canEdit()) {
+          <button class="link-button" (click)="startEdit()">
+            {{ i18n.t('deck.manualRecord.edit') }}
+          </button>
+        }
+      </p>
+      @if (total(); as t) {
+        <p class="hint">
+          {{ i18n.t('deck.manualRecord.total', { games: t.games, wins: t.wins, rate: t.winRate }) }}
+        </p>
+      }
+    } @else {
+      <button class="link-button" (click)="startEdit()">
+        {{ i18n.t('deck.manualRecord.add') }}
+      </button>
+    }
+  </div>
+}

@@ -1,5 +1,5 @@
 import { Injectable, computed, effect, signal, inject } from '@angular/core';
-import { Match, MatchPlayer, Cube, GameMode, GAME_MODES } from './models';
+import { Match, MatchPlayer, Cube, GameMode, GAME_MODES, LifeLog } from './models';
 import { supabase } from './supabase.client';
 import { GroupService } from './group.service';
 import { AuthService } from './auth.service';
@@ -24,6 +24,7 @@ const MATCH_HISTORY_SELECT = `
   tournament_game_number,
   counts_in_general_stats,
   is_ranked,
+  started_at,
   cubes ( id, name, is_commander ),
   match_players (
     player_name,
@@ -33,6 +34,7 @@ const MATCH_HISTORY_SELECT = `
     is_archenemy,
     deck_id,
     placement,
+    turn_order,
     decks ( name, user_id, player_id, is_precon ),
     players ( display_name )
   )
@@ -66,7 +68,29 @@ function isMissingIsRankedError(error: { code?: string; message?: string } | nul
 }
 
 function ohneIsRanked(select: string): string {
-  return isRankedSpalteVerfuegbar ? select : select.replace('  is_ranked,\n', '');
+  const ohne = isRankedSpalteVerfuegbar ? select : select.replace('  is_ranked,\n', '');
+  return ohnePartieVerlauf(ohne);
+}
+
+/**
+ * Fehlen matches.started_at/life_log oder match_players.turn_order noch
+ * (sql/partie-verlauf-2026-10-04.sql)? Dann einmal je Sitzung ohne sie laden und speichern -
+ * Startspieler, Dauer und Lebenspunkte-Verlauf gehen dann verloren, die Partie selbst nicht.
+ */
+let partieVerlaufVerfuegbar = true;
+
+function isMissingPartieVerlaufError(error: { code?: string; message?: string } | null): boolean {
+  if (!error || !partieVerlaufVerfuegbar) return false;
+  if (error.code !== '42703' && error.code !== 'PGRST204') return false;
+  const message = error.message ?? '';
+  if (!['started_at', 'life_log', 'turn_order'].some((spalte) => message.includes(spalte))) return false;
+  console.warn('Spalten für den Partie-Verlauf fehlen noch - sql/partie-verlauf-2026-10-04.sql im Supabase-SQL-Editor ausführen. Bis dahin werden Startspieler, Dauer und Lebenspunkte-Verlauf nicht gespeichert.');
+  partieVerlaufVerfuegbar = false;
+  return true;
+}
+
+function ohnePartieVerlauf(select: string): string {
+  return partieVerlaufVerfuegbar ? select : select.replace('  started_at,\n', '').replace('    turn_order,\n', '');
 }
 
 @Injectable({ providedIn: 'root' })
@@ -762,6 +786,9 @@ export class MtgService {
   ): Promise<any[] | null> {
     let first = await run(ohneIsRanked(MATCH_HISTORY_SELECT));
     if (isMissingIsRankedError(first.error)) first = await run(ohneIsRanked(MATCH_HISTORY_SELECT));
+    if (isMissingPartieVerlaufError(first.error)) first = await run(ohneIsRanked(MATCH_HISTORY_SELECT));
+    // Erst die eine, dann die andere Spalte kann fehlen - jede schaltet sich einmal selbst ab.
+    if (isMissingIsRankedError(first.error)) first = await run(ohneIsRanked(MATCH_HISTORY_SELECT));
     if (!first.error) return first.data ?? [];
 
     if (isMissingGameFormatError(first.error)) {
@@ -789,6 +816,47 @@ export class MtgService {
     if (!rows) return;
 
     this.history.set(rows.map((row: any) => mapMatchRow(row)));
+  }
+
+  /**
+   * Freundesspiele (Partien ohne Gruppe), an denen ich teilgenommen oder die ich angelegt habe -
+   * RLS liefert ohnehin nur diese (sql/freunde-2026-10-04.sql). Fehlt die Migration, gibt es
+   * schlicht keine Zeilen mit group_id = null, die ich sehen darf.
+   */
+  readonly friendHistory = signal<Match[]>([]);
+
+  /**
+   * Lebenspunkte-Verlauf einer gespeicherten Partie - einzeln geladen, weil er bewusst nicht in
+   * MATCH_HISTORY_SELECT steht (je Partie einige kB, gebraucht nur für die eine geöffnete Kurve).
+   */
+  async loadLifeLog(matchId: string): Promise<LifeLog | null> {
+    if (!partieVerlaufVerfuegbar) return null;
+    const { data, error } = await supabase.from('matches').select('life_log').eq('id', matchId).maybeSingle();
+    if (error) {
+      if (!isMissingPartieVerlaufError(error)) console.error('Konnte Lebenspunkte-Verlauf nicht laden:', error);
+      return null;
+    }
+    const log = (data as { life_log?: LifeLog | null } | null)?.life_log;
+    return log && Array.isArray(log.units) && Array.isArray(log.events) ? log : null;
+  }
+
+  async loadFriendMatches(): Promise<Match[]> {
+    if (!this.auth.currentUser()) {
+      this.friendHistory.set([]);
+      return [];
+    }
+    const rows = await this.fetchMatchRows(
+      (select) =>
+        supabase
+          .from('matches')
+          .select(select)
+          .is('group_id', null)
+          .order('played_at', { ascending: false }),
+      'Konnte Freundesspiele nicht laden:',
+    );
+    const matches = (rows ?? []).map((row: any) => mapMatchRow(row));
+    this.friendHistory.set(matches);
+    return matches;
   }
 
   /** Spielername eines Accounts in einer (nicht unbedingt aktiven) eigenen Gruppe, oder null. */
@@ -885,14 +953,25 @@ export class MtgService {
       countsInGeneralStats?: boolean;
       /** Default true; Turnierspiele werden immer als frei gespeichert - siehe Match.isRanked. */
       isRanked?: boolean;
+      /** Lebenspunkte-Verlauf aus dem Tracker (matches.life_log) - nur gespeichert, nie lokal gehalten. */
+      lifeLog?: LifeLog;
+      /** Nachgetragene Partie: wann sie gespielt wurde (sonst setzt die Datenbank "jetzt"). */
+      playedAt?: string;
+      /** Freundesspiel: Partie ohne Gruppe (sql/freunde-2026-10-04.sql), Spieler über userId. */
+      friendGame?: boolean;
     }
   ): Promise<string | null> {
-    const groupId = this.groupService.groupId();
-    if (!groupId) return null;
+    const friendGame = match.friendGame === true;
+    const groupId = friendGame ? null : this.groupService.groupId();
+    const userId = this.auth.currentUser()?.id ?? null;
+    if (!friendGame && !groupId) return null;
+    if (friendGame && !userId) return null;
 
-    const players = await this.resolveAutoDeckLinks(match.players, match.mode);
+    // Die automatische Deck-Zuordnung sucht in der Gruppe - ein Freundesspiel hat keine.
+    const players = friendGame ? match.players : await this.resolveAutoDeckLinks(match.players, match.mode);
 
-    const isRanked = !match.tournamentMatchId && (match.isRanked ?? true);
+    // Ranked ist Gruppensache; Freundesspiele zählen nie für die Elo einer Gruppe.
+    const isRanked = !friendGame && !match.tournamentMatchId && (match.isRanked ?? true);
 
     // Schritt 1: Zeile in "matches" anlegen
     const insertMatch = () =>
@@ -911,11 +990,18 @@ export class MtgService {
           draft_set_released_at: match.draftSet?.releasedAt ?? null,
           tournament_match_id: match.tournamentMatchId ?? null,
           counts_in_general_stats: match.countsInGeneralStats ?? true,
+          ...(match.playedAt ? { played_at: match.playedAt } : {}),
+          ...(friendGame ? { created_by: userId } : {}),
+          ...(partieVerlaufVerfuegbar
+            ? { started_at: match.startedAt ?? null, life_log: match.lifeLog ?? null }
+            : {}),
         })
         .select('id, played_at')
         .single();
-    // Fehlt is_ranked noch, schaltet der erste Versuch sie ab und der zweite läuft ohne.
+    // Fehlt eine der neueren Spalten, schaltet der Versuch sie ab und der nächste läuft ohne.
     let { data: matchRow, error: matchError } = await insertMatch();
+    if (isMissingIsRankedError(matchError)) ({ data: matchRow, error: matchError } = await insertMatch());
+    if (isMissingPartieVerlaufError(matchError)) ({ data: matchRow, error: matchError } = await insertMatch());
     if (isMissingIsRankedError(matchError)) ({ data: matchRow, error: matchError } = await insertMatch());
 
     if (matchError || !matchRow) {
@@ -926,16 +1012,22 @@ export class MtgService {
     // Schritt 2: Für jeden Spieler eine Zeile in "match_players" anlegen
     const playerRows = players.map((p) => ({
       match_id: matchRow.id,
-      player_id: this.playerIdsByName()[p.name] ?? null,
+      player_id: friendGame ? null : (this.playerIdsByName()[p.name] ?? null),
+      ...(friendGame ? { user_id: p.userId ?? null } : {}),
       player_name: p.name,
       commander_name: p.commander ?? null,
       partner_commander_name: p.partnerCommander ?? null,
       team: p.team ?? null,
       is_archenemy: p.isArchenemy ?? false,
       deck_id: p.deckId ?? null,
+      ...(partieVerlaufVerfuegbar ? { turn_order: p.turnOrder ?? null } : {}),
     }));
 
-    const { error: playersError } = await supabase.from('match_players').insert(playerRows);
+    let { error: playersError } = await supabase.from('match_players').insert(playerRows);
+    if (isMissingPartieVerlaufError(playersError)) {
+      const ohneZugreihenfolge = playerRows.map(({ turn_order: _, ...row }: Record<string, unknown>) => row);
+      ({ error: playersError } = await supabase.from('match_players').insert(ohneZugreihenfolge));
+    }
 
     if (playersError) {
       console.error('Konnte Match-Spieler nicht anlegen:', playersError);
@@ -959,8 +1051,9 @@ export class MtgService {
       deckPrecons = Object.fromEntries((deckRows ?? []).map((d) => [d.id, d.is_precon]));
     }
 
+    const { lifeLog: _lifeLog, playedAt: _playedAt, friendGame: _friendGame, ...matchOhneVerlauf } = match;
     const full: Match = {
-      ...match,
+      ...matchOhneVerlauf,
       id: matchRow.id,
       date: matchRow.played_at,
       countsInGeneralStats: match.countsInGeneralStats ?? true,
@@ -973,7 +1066,8 @@ export class MtgService {
         deckIsPrecon: p.deckId ? deckPrecons[p.deckId] : undefined,
       })),
     };
-    this.history.update((matches) => [full, ...matches]);
+    if (friendGame) this.friendHistory.update((matches) => [full, ...matches]);
+    else this.history.update((matches) => [full, ...matches]);
     return matchRow.id;
   }
 

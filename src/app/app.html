@@ -89,9 +89,10 @@
       <app-icon [name]="tab.icon" />
       <!-- Ungelesene Deck-Kommentare. Sitzt am Symbol, nicht an der Beschriftung: die Zahl soll
            beim Blick auf die Leiste auffallen, ohne dass man sie liest. -->
-      @if (tab.id === 'profile' && inbox.unreadCount() > 0) {
-        <span class="tab-badge" [attr.aria-label]="i18n.t('inbox.badgeAria', { count: inbox.unreadCount() })">
-          {{ inbox.unreadCount() > 99 ? '99+' : inbox.unreadCount() }}
+      <!-- Dazu offene Freundschaftsanfragen: beides wartet im Profil auf eine Antwort. -->
+      @if (tab.id === 'profile' && profileBadgeCount() > 0) {
+        <span class="tab-badge" [attr.aria-label]="i18n.t('inbox.badgeAria', { count: profileBadgeCount() })">
+          {{ profileBadgeCount() > 99 ? '99+' : profileBadgeCount() }}
         </span>
       }
     </span>

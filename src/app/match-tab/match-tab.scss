@@ -349,3 +349,40 @@
 .ranked-toggle {
   margin-top: var(--sp-4);
 }
+
+/* Startspieler: kleines Abspielzeichen hinter dem Namen, in der Farbe des Namens. */
+.match-log-starter {
+  flex-shrink: 0;
+  display: inline-flex;
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+
+.backfill-button {
+  width: 100%;
+  margin-top: var(--sp-3);
+  color: var(--text);
+}
+
+.friend-mode-toggle {
+  margin-top: var(--sp-4);
+}
+
+.link-chip {
+  display: inline-flex;
+  gap: var(--sp-2);
+  align-items: center;
+  margin: var(--sp-2) 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.82rem;
+  opacity: 0.8;
+  cursor: pointer;
+}
+
+.series-toggle {
+  margin-top: var(--sp-4);
+}
