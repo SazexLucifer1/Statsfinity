@@ -12,7 +12,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
-import { COUNTER_KINDS, GameSessionService, IngameUnit, UndoEntry } from '../game-session.service';
+import { COUNTER_ICONS, COUNTER_KINDS, GameSessionService, IngameUnit, UndoEntry } from '../game-session.service';
 import { MtgService } from '../mtg.service';
 import { BackgroundService } from '../background.service';
 import { TournamentService } from '../tournament.service';
@@ -234,6 +234,43 @@ export class IngameTracker implements AfterViewInit, OnDestroy {
 
   readonly lastUndone = signal<string | null>(null);
   readonly counterKinds = COUNTER_KINDS;
+  readonly counterIcons = COUNTER_ICONS;
+
+  // --- Monarch/Initiative per Ziehen weitergeben: Marke antippen und gedrückt auf ein anderes
+  // Feld ziehen. Die Felder sind gedreht, deshalb zählt nur die Bildschirmposition beim Loslassen
+  // (elementFromPoint), nicht eine Richtung im Feld. ---
+
+  readonly markerDrag = signal<{ kind: 'monarch' | 'initiative'; x: number; y: number; moved: boolean } | null>(null);
+
+  startMarkerDrag(event: PointerEvent, kind: 'monarch' | 'initiative'): void {
+    event.preventDefault();
+    event.stopPropagation();
+    const startX = event.clientX;
+    const startY = event.clientY;
+    this.markerDrag.set({ kind, x: startX, y: startY, moved: false });
+
+    const move = (e: PointerEvent): void => {
+      const moved = Math.hypot(e.clientX - startX, e.clientY - startY) > 8;
+      this.markerDrag.update((d) => (d ? { ...d, x: e.clientX, y: e.clientY, moved: d.moved || moved } : d));
+    };
+    const end = (e: PointerEvent): void => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', end);
+      window.removeEventListener('pointercancel', end);
+      const drag = this.markerDrag();
+      this.markerDrag.set(null);
+      if (!drag?.moved || e.type === 'pointercancel') return;
+      const target = document.elementFromPoint(e.clientX, e.clientY)?.closest('[data-unit-key]');
+      const key = target?.getAttribute('data-unit-key');
+      if (!key) return;
+      if (kind === 'monarch') this.session.monarchKey.set(key);
+      else this.session.initiativeKey.set(key);
+      this.vibrateTick();
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', end);
+    window.addEventListener('pointercancel', end);
+  }
 
   /** Panel-Key -> Anzeigename (bei 2HG "Anna & Ben" statt des Team-Schlüssels). */
   readonly unitLabels = computed(() =>

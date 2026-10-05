@@ -197,15 +197,59 @@
     font-size: 1rem;
   }
 
-  // Weitere Zähler als kleine Marken unter dem Namen ("E 3  XP 2").
-  .panel-counters {
+  // Marken und Zähler unter dem Namen.
+  .panel-tokens {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 2px var(--sp-3);
-    font-size: 0.72rem;
-    font-weight: 700;
-    opacity: 0.85;
+    gap: var(--sp-3);
+    margin-top: var(--sp-2);
+  }
+
+  // Monarch/Initiative: groß genug zum Greifen, goldfarben auf dunklem Grund.
+  .marker-token {
+    display: flex;
+    width: 44px;
+    height: 44px;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--gold);
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.55);
+    color: var(--gold);
+    font-size: 1.5rem;
+    touch-action: none;
+    cursor: grab;
+
+    &.dragging {
+      opacity: 0.35;
+    }
+  }
+
+  // Zähler: Piktogramm groß und blass im Kreis, die Zahl obenauf.
+  .counter-token {
+    position: relative;
+    display: flex;
+    width: 40px;
+    height: 40px;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid rgba(255, 255, 255, 0.45);
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.45);
+
+    .counter-icon {
+      position: absolute;
+      font-size: 1.7rem;
+      opacity: 0.35;
+    }
+
+    .counter-value {
+      position: relative;
+      font-size: 1.05rem;
+      font-weight: 800;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+    }
   }
 
   // Monarch/Initiative hinter dem Namen - goldfarben, damit sie über jedem Hintergrund auffallen.

@@ -30,6 +30,8 @@
     @for (p of session.ingameUnits(); track p.key; let i = $index) {
     <div
       class="player-panel"
+      [attr.data-unit-key]="p.key"
+      [class.marker-drop-target]="markerDrag()?.moved"
       [class.player-panel--wide]="isBottomSpecialSlot(i)"
       #panelRef
       [attr.data-panel-index]="i"
@@ -106,18 +108,39 @@
             <span class="panel-name"
               >{{ p.label }}@if (session.startingPlayerKey() === p.key) {
                 <span class="panel-marker"><app-icon name="play" [label]="i18n.t('ingame.startedGame')" /></span>
-              }@if (session.monarchKey() === p.key) {
-                <span class="panel-marker"><app-icon name="crown" [label]="i18n.t('ingame.monarch')" /></span>
-              }@if (session.initiativeKey() === p.key) {
-                <span class="panel-marker"><app-icon name="castle" [label]="i18n.t('ingame.initiative')" /></span>
               }</span
             >
-            @if (session.activeCounters(p.key).length > 0) {
-              <span class="panel-counters">
-                @for (c of session.activeCounters(p.key); track c.kind) {
-                  <span [title]="i18n.t('ingame.counter.' + c.kind)">{{ i18n.t('ingame.counterShort.' + c.kind) }} {{ c.value }}</span>
+            <!-- Marken und Zähler: Monarch/Initiative als große Marken, die sich per Ziehen auf
+                 ein anderes Feld legen lassen; Zähler als runde Plakette mit Piktogramm dahinter. -->
+            @if (session.monarchKey() === p.key || session.initiativeKey() === p.key || session.activeCounters(p.key).length > 0) {
+              <div class="panel-tokens" (pointerdown)="$event.stopPropagation()">
+                @if (session.monarchKey() === p.key) {
+                  <button
+                    class="marker-token"
+                    [class.dragging]="markerDrag()?.kind === 'monarch'"
+                    [attr.aria-label]="i18n.t('ingame.dragMarker', { name: i18n.t('ingame.monarch') })"
+                    (pointerdown)="startMarkerDrag($event, 'monarch')"
+                  >
+                    <app-icon name="crown" />
+                  </button>
                 }
-              </span>
+                @if (session.initiativeKey() === p.key) {
+                  <button
+                    class="marker-token"
+                    [class.dragging]="markerDrag()?.kind === 'initiative'"
+                    [attr.aria-label]="i18n.t('ingame.dragMarker', { name: i18n.t('ingame.initiative') })"
+                    (pointerdown)="startMarkerDrag($event, 'initiative')"
+                  >
+                    <app-icon name="castle" />
+                  </button>
+                }
+                @for (c of session.activeCounters(p.key); track c.kind) {
+                  <span class="counter-token" role="img" [attr.aria-label]="i18n.t('ingame.counter.' + c.kind) + ': ' + c.value" [title]="i18n.t('ingame.counter.' + c.kind)">
+                    <app-icon class="counter-icon" [name]="counterIcons[c.kind]" />
+                    <span class="counter-value">{{ c.value }}</span>
+                  </span>
+                }
+              </div>
             }
             @if (session.commanderDamageFocus() === null && p.commander) {
             <span class="panel-commander">
@@ -244,6 +267,14 @@
     </div>
     }
   </div>
+
+  @if (markerDrag(); as drag) {
+    @if (drag.moved) {
+      <div class="marker-ghost" [style.left.px]="drag.x" [style.top.px]="drag.y">
+        <app-icon [name]="drag.kind === 'monarch' ? 'crown' : 'castle'" />
+      </div>
+    }
+  }
 
   <button
     class="center-menu-button"

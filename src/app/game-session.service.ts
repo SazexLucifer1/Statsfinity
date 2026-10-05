@@ -89,7 +89,9 @@ export interface SelectedDraftSet {
 }
 
 /** Weitere Zähler je Spieler neben Leben, Gift und Commander-Schaden. */
-export const COUNTER_KINDS = ['energy', 'experience', 'treasure', 'rad'] as const;
+export const COUNTER_ICONS = { energy: 'bolt', experience: 'star', rad: 'radiation' } as const;
+// Bewusst ohne Schätze: Treasure sind Artefakte auf dem Spielfeld, keine Spielerzähler.
+export const COUNTER_KINDS = ['energy', 'experience', 'rad'] as const;
 export type CounterKind = (typeof COUNTER_KINDS)[number];
 
 /** Best-of-3 außerhalb eines Turniers: Siege je Spieler (bzw. 2HG-Team) bis zum Seriensieg. */
@@ -904,7 +906,7 @@ export class GameSessionService {
     }
   }
 
-  // --- Weitere Zähler (Energie, Erfahrung, Schätze, Radioaktivität) ---
+  // --- Weitere Zähler (Energie, Erfahrung, Radioaktivität) ---
 
   readonly counters = signal<Record<string, Partial<Record<CounterKind, number>>>>({});
 

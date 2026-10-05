@@ -251,7 +251,7 @@ export const tutorial = {
       'Links tippen zieht einen Punkt ab, rechts tippen fügt einen hinzu. Gedrückt halten zählt automatisch weiter, nach kurzer Zeit in Zehnerschritten.',
     'tutorial.ingame.panelIcons.title': 'Eingeben, Marken, Hintergrund & Ausgeschieden',
     'tutorial.ingame.panelIcons.text':
-      'Der Stift öffnet das Feld zum Eintippen der Lebenspunkte (oder ±5/±10), für Zähler wie Energie, Erfahrung und Schätze und vergibt Monarch und Initiative - wer eine Marke hält, trägt sie neben dem Namen. Der Pinsel setzt ein Hintergrundbild für dieses Feld (angemeldet), der Totenkopf markiert den Spieler als ausgeschieden - rein zur Übersicht, am Ergebnis ändert das nichts.',
+      'Der Stift öffnet das Feld zum Eintippen der Lebenspunkte (oder ±5/±10), für Energie, Erfahrung und Radioaktivität und vergibt Monarch und Initiative. Die Marke erscheint dann im Feld und lässt sich per Ziehen auf ein anderes Feld weitergeben. Der Pinsel setzt ein Hintergrundbild für dieses Feld (angemeldet), der Totenkopf markiert den Spieler als ausgeschieden - rein zur Übersicht, am Ergebnis ändert das nichts.',
     'tutorial.ingame.modeToggle.title': 'Commander-Schaden & Gift',
     'tutorial.ingame.modeToggle.text':
       '„Commander DMG“ zeigt, wie viel Schaden dieser Spieler von jedem gegnerischen Commander bekommen hat (21 = raus). „Gift“ zeigt Giftmarken statt Lebenspunkten (10 = raus).',
@@ -530,7 +530,7 @@ export const tutorial = {
       'Tap the left side to lose a point, the right side to gain one. Holding keeps counting, after a moment in steps of ten.',
     'tutorial.ingame.panelIcons.title': 'Edit, markers, background & eliminated',
     'tutorial.ingame.panelIcons.text':
-      "The pencil lets you type in the life total (or ±5/±10), track counters like energy, experience and treasure, and hands out the monarch and the initiative - whoever holds a marker shows it next to their name. The brush sets a background image for this panel (signed in), the skull marks the player as eliminated - just for overview, it doesn't change the result.",
+      "The pencil lets you type in the life total (or ±5/±10), tracks energy, experience and rad counters, and hands out the monarch and the initiative. The marker then appears in the panel and can be dragged onto another panel to pass it. The brush sets a background image for this panel (signed in), the skull marks the player as eliminated - just for overview, it doesn't change the result.",
     'tutorial.ingame.modeToggle.title': 'Commander damage & poison',
     'tutorial.ingame.modeToggle.text':
       '“Commander DMG” shows how much damage this player took from each opposing commander (21 = out). “Poison” shows poison counters instead of life (10 = out).',

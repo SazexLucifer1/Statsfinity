@@ -311,3 +311,27 @@
     color: var(--text);
   }
 }
+
+// Marke, die gerade gezogen wird - folgt dem Finger, fängt selbst keine Ereignisse ab, damit beim
+// Loslassen das Feld darunter gefunden wird.
+.marker-ghost {
+  position: fixed;
+  z-index: 900;
+  display: flex;
+  width: 52px;
+  height: 52px;
+  align-items: center;
+  justify-content: center;
+  margin: -26px 0 0 -26px;
+  border: 2px solid var(--gold);
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.7);
+  color: var(--gold);
+  font-size: 1.8rem;
+  pointer-events: none;
+}
+
+.marker-drop-target {
+  outline: 2px dashed rgba(255, 209, 102, 0.35);
+  outline-offset: -4px;
+}
