@@ -295,7 +295,7 @@ export const deckView = {
     'deckView.bracketMathPowerTitle': 'So kommt der Power-Wert zustande',
     'deckView.bracketMathPowerRange':
       'Bracket {{level}} belegt auf der 1–10-Skala die Spanne {{from}} bis {{to}}.',
-    'deckView.bracketMathPowerFormula': '{{from}} + {{tuning}} × {{span}} = {{power}}',
+    'deckView.bracketMathPowerFormula': '{{from}} + {{tuning}} × ({{to}} − {{from}}) = {{from}} + {{tuning}} × {{span}} = {{power}}',
     'deckView.bracketMathPowerPositionBelow':
       'Position in der Spanne: gemeinsamer Wert {{tuning}} ÷ {{threshold}} = {{position}} – ab {{threshold}} stiege das Deck ein Bracket höher, deshalb reicht der Bereich bis dahin über die ganze Spanne.',
     'deckView.bracketMathPowerPositionBumped':
@@ -725,7 +725,7 @@ export const deckView = {
     'deckView.bracketMathPowerTitle': 'How the power value comes about',
     'deckView.bracketMathPowerRange':
       'Bracket {{level}} covers {{from}} to {{to}} on the 1–10 scale.',
-    'deckView.bracketMathPowerFormula': '{{from}} + {{tuning}} × {{span}} = {{power}}',
+    'deckView.bracketMathPowerFormula': '{{from}} + {{tuning}} × ({{to}} − {{from}}) = {{from}} + {{tuning}} × {{span}} = {{power}}',
     'deckView.bracketMathPowerPositionBelow':
       'Position in the range: combined value {{tuning}} ÷ {{threshold}} = {{position}} – from {{threshold}} on the deck would move up a bracket, so the part up to there spans the whole range.',
     'deckView.bracketMathPowerPositionBumped':
