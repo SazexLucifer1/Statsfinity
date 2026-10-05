@@ -33,7 +33,12 @@
           <span class="hint">{{ i18n.t('deckView.check.noStyle') }}</span>
         }
         @if (viewer.state.canEditViewingDeck()) {
-          <button class="link-button" (click)="editingStyles.set(!editingStyles())">
+          <button
+            class="style-edit"
+            [class.active]="editingStyles()"
+            (click)="editingStyles.set(!editingStyles())"
+          >
+            <app-icon [name]="editingStyles() ? 'check' : 'pencil'" />
             {{ editingStyles() ? i18n.t('deckView.done') : i18n.t('deckView.check.chooseStyle') }}
           </button>
         }

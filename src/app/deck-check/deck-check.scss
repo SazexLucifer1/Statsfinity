@@ -266,12 +266,22 @@
   }
 }
 
-.link-button {
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--accent);
+// Richtiger Knopf statt Textlink - als Link wurde er übersehen.
+.style-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-left: auto;
+  padding: var(--sp-2) var(--sp-4);
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--text);
   font: inherit;
-  text-decoration: underline;
+  font-weight: 600;
   cursor: pointer;
+
+  &.active {
+    background: var(--accent);
+  }
 }
