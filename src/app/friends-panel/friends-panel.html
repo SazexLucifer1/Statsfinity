@@ -175,62 +175,70 @@
         @if (!overallLoaded()) {
           <p class="hint">{{ i18n.t('profile.friends.loading') }}</p>
         } @else {
-          <h3>{{ i18n.t('profile.friends.rankingWinRate') }}</h3>
-          <p class="hint">{{ i18n.t('profile.friends.rankingWinRateHint', { min: MIN_GAMES }) }}</p>
-          @if (winRateRanking().length === 0) {
-            <p class="hint">{{ i18n.t('profile.friends.rankingEmpty') }}</p>
-          }
-          <ol class="ranking">
-            @for (r of winRateRanking(); track r.userId; let i = $index) {
-              <li>
-                <span class="pos">{{ i + 1 }}.</span>
-                <button class="person" (click)="openProfile(r.userId)">
-                  <app-player-avatar [url]="r.avatarUrl" /> {{ r.displayName }}
-                </button>
-                <span class="rate">{{ r.winRate.toFixed(0) }} %</span>
-                <span class="detail">{{
-                  i18n.t('profile.friends.winsOfGames', { wins: r.wins, games: r.games })
-                }}</span>
-                <app-meter [value]="r.winRate" />
-              </li>
-            }
-          </ol>
-          @if (belowMin().length > 0) {
-            <p class="hint">
-              {{
-                i18n.t('profile.friends.belowMin', {
-                  names: belowMin()
-                    .map((b) => b.displayName)
-                    .join(', '),
-                })
-              }}
-            </p>
-          }
-
-          <h3>{{ i18n.t('profile.friends.rankingElo') }}</h3>
-          <p class="hint">{{ i18n.t('profile.friends.rankingEloHint') }}</p>
-          @if (friendElo().length === 0) {
-            <p class="hint">{{ i18n.t('profile.friends.eloEmpty') }}</p>
-          }
-          <ol class="ranking">
-            @for (e of friendElo(); track e.name; let i = $index) {
-              <li>
-                <span class="pos">{{ i + 1 }}.</span>
-                <span class="name">{{ e.name }}</span>
-                <span class="rate">{{
-                  e.provisional
-                    ? i18n.t('profile.friends.placement', { games: e.games })
-                    : e.lp + ' LP'
-                }}</span>
-                <span class="detail"
-                  >{{ e.provisional ? '' : rankLabel(e.lp) + ' · '
-                  }}{{
-                    i18n.t('profile.friends.winsOfGames', { wins: e.wins, games: e.games })
-                  }}</span
-                >
-              </li>
-            }
-          </ol>
+          <!-- Auf breiten Bildschirmen nebeneinander, auf dem Handy untereinander. -->
+          <div class="ranking-columns">
+            <div>
+              <h3>{{ i18n.t('profile.friends.rankingWinRate') }}</h3>
+              <p class="hint">
+                {{ i18n.t('profile.friends.rankingWinRateHint', { min: MIN_GAMES }) }}
+              </p>
+              @if (winRateRanking().length === 0) {
+                <p class="hint">{{ i18n.t('profile.friends.rankingEmpty') }}</p>
+              }
+              <ol class="ranking">
+                @for (r of winRateRanking(); track r.userId; let i = $index) {
+                  <li>
+                    <span class="pos">{{ i + 1 }}.</span>
+                    <button class="person" (click)="openProfile(r.userId)">
+                      <app-player-avatar [url]="r.avatarUrl" /> {{ r.displayName }}
+                    </button>
+                    <span class="rate">{{ r.winRate.toFixed(0) }} %</span>
+                    <span class="detail">{{
+                      i18n.t('profile.friends.winsOfGames', { wins: r.wins, games: r.games })
+                    }}</span>
+                    <app-meter [value]="r.winRate" />
+                  </li>
+                }
+              </ol>
+              @if (belowMin().length > 0) {
+                <p class="hint">
+                  {{
+                    i18n.t('profile.friends.belowMin', {
+                      names: belowMin()
+                        .map((b) => b.displayName)
+                        .join(', '),
+                    })
+                  }}
+                </p>
+              }
+            </div>
+            <div>
+              <h3>{{ i18n.t('profile.friends.rankingElo') }}</h3>
+              <p class="hint">{{ i18n.t('profile.friends.rankingEloHint') }}</p>
+              @if (friendElo().length === 0) {
+                <p class="hint">{{ i18n.t('profile.friends.eloEmpty') }}</p>
+              }
+              <ol class="ranking">
+                @for (e of friendElo(); track e.name; let i = $index) {
+                  <li>
+                    <span class="pos">{{ i + 1 }}.</span>
+                    <span class="name">{{ e.name }}</span>
+                    <span class="rate">{{
+                      e.provisional
+                        ? i18n.t('profile.friends.placement', { games: e.games })
+                        : e.lp + ' LP'
+                    }}</span>
+                    <span class="detail"
+                      >{{ e.provisional ? '' : rankLabel(e.lp) + ' · '
+                      }}{{
+                        i18n.t('profile.friends.winsOfGames', { wins: e.wins, games: e.games })
+                      }}</span
+                    >
+                  </li>
+                }
+              </ol>
+            </div>
+          </div>
         }
       }
     }

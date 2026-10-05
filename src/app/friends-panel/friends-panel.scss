@@ -1,3 +1,5 @@
+@use '../../styles/breakpoints' as bp;
+
 // Das Panel steht im Raster des Profils - der Host darf kein eigenes Rasterfeld belegen.
 :host {
   display: contents;
@@ -155,5 +157,32 @@ h3 {
 
   app-meter {
     grid-area: bar;
+  }
+}
+
+// Volle Breite im Profil-Raster. Die Regel `.span-full` des Profils erreicht diese Komponente
+// nicht (Stil-Kapselung), deshalb steht sie hier.
+.friends-panel {
+  grid-column: 1 / -1;
+}
+
+// Desktop: Listen in Spalten statt einer schmalen Säule über die volle Breite.
+@include bp.up(md) {
+  .ranking-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--sp-6);
+    align-items: start;
+  }
+
+  .people,
+  .news {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    column-gap: var(--sp-6);
+  }
+
+  .search {
+    max-width: 480px;
   }
 }
