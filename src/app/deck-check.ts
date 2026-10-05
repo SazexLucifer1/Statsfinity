@@ -1,131 +1,238 @@
 /**
- * Deck-Check: aus den Zahlen der Deck-Analyse ein Urteil mit Handlungsanweisung - "Rampe 6,
- * empfohlen 10–12" statt nur "Rampe 6". Das ist der Teil, in dem Mythic Tools ausgereifter wirkte:
- * dort gibt es einen "Deck Health Score", hier stand bisher nur die Zahl.
+ * Deck-Check: aus den Zahlen der Deck-Analyse ein Urteil mit Handlungsanweisung - "Bretträumung 2,
+ * Ziel 6 (Control: eher mehr)" statt nur "Bretträumung 2".
  *
- * Alles reine Funktionen ohne Angular, damit deck-check.spec.ts sie prüfen kann. Die Richtwerte
- * sind veröffentlichte Faustregeln, keine eigene Erfindung:
- *   - Länderzahl: Frank Karstens Regression ("How Many Lands Do You Need in Your Deck? An Updated
- *     Analysis", 2022) - 99 Karten: 31,42 + 3,13 × Ø Manawert − 0,28 × billige Rampe/Draw,
- *     60 Karten: 19,59 + 1,90 × Ø Manawert − 0,28 × billige Rampe/Draw. "Billig" heißt Manawert
- *     höchstens 2. Doppelseitige Karten mit Land-Rückseite zählen anteilig als Land (0,38, eine
- *     mythische 0,74 - die Seltenheit kennt die App hier nicht, deshalb immer 0,38). Dazu seine
- *     Commander-Faustregel: kostet der Commander 5 oder mehr, ein Land mehr.
- *   - Farbquellen: angelehnt an Karstens Tabellen für rund 90 % Wahrscheinlichkeit, eine Karte auf
- *     Kurve zu wirken (Commander- und 60-Karten-Fassung), gerundet. Ein Richtwert, kein Gesetz -
- *     wer die Zahlen nachschärft, ändert nur KARSTEN_99/KARSTEN_60.
- *   - Rampe/Kartenziehen/Removal/Bretträumung: die verbreitete Commander-Vorlage ("10 Rampe,
- *     10 Draw, 8–10 Removal, 2–4 Wipes"). Für 60-Karten-Formate gibt es keine sinnvolle feste
- *     Zahl - dort entfallen sie.
+ * Alles reine Funktionen ohne Angular, damit deck-check.spec.ts sie prüfen kann.
+ *
+ * Die Richtwerte für Commander kommen aus der Deckbau-Tabelle des Users (public/richtwerte/,
+ * Blatt "Kennzahlen Kartentypen", Entscheidung des Users 05.10.2026): je Kategorie eine Spanne und
+ * welche Spielweisen eher an welches Ende gehören. Der Zielwert startet in der Mitte der Spanne und
+ * wandert je passender Spielweise um ein Viertel der Spanne Richtung "weniger" oder "mehr", nie
+ * darüber hinaus. Grün ist der Zielwert ± Toleranz, gelb noch innerhalb der Spanne, rot außerhalb.
+ * Wer eine Zahl ändert, ändert CATEGORY_RULES - und die Tabelle in public/richtwerte/ gleich mit,
+ * sonst lädt jemand eine Begründung herunter, die nicht mehr stimmt.
+ *
+ * 60-Karten-Formate: Die Tabelle gilt für Commander. Dort bleibt nur die Länderzahl nach Frank
+ * Karstens Regression (19,59 + 1,90 × Ø Manawert − 0,28 × billige Rampe/Draw).
+ *
+ * Doppelseitige Karten mit Land-Rückseite (Tabelle + Karsten): Kann das Land ungetappt kommen
+ * (z. B. "you may pay 3 life"), zählt es 1:1 als Land; kommt es immer getappt, 0,38.
  */
 
 export type CheckLevel = 'good' | 'warn' | 'bad';
 
-export interface CheckItem {
-  key: 'lands' | 'ramp' | 'draw' | 'removal' | 'boardwipe';
-  value: number;
+export type CategoryKey = 'lands' | 'ramp' | 'draw' | 'removal' | 'boardwipe';
+
+/** Spielweisen, die der Besitzer am Deck festlegt (decks.play_styles). */
+export const PLAY_STYLES = [
+  'aggro',
+  'control',
+  'combo',
+  'landfall',
+  'creatures',
+  'cedh',
+  'commanderDraws',
+  'commanderRemoves',
+  'weakness',
+] as const;
+export type PlayStyle = (typeof PLAY_STYLES)[number];
+
+/** Kurve wird nicht gewählt, sondern aus dem Ø Manawert abgelesen. */
+export type CurveStyle = 'lowCurve' | 'highCurve';
+export type Influence = PlayStyle | CurveStyle;
+
+/**
+ * Ab wann eine Kurve niedrig bzw. hoch ist. Die cEDH-Kurve aus der Tabelle (Blatt "Mana Curve")
+ * liegt bei Ø 2,8; Casual-Commander-Decks bei etwa 3,0-3,5.
+ */
+export const LOW_CURVE_MAX = 2.8;
+export const HIGH_CURVE_MIN = 3.6;
+
+export function curveStyle(averageCmc: number | null | undefined): CurveStyle | null {
+  if (averageCmc == null) return null;
+  if (averageCmc <= LOW_CURVE_MAX) return 'lowCurve';
+  if (averageCmc >= HIGH_CURVE_MIN) return 'highCurve';
+  return null;
+}
+
+export interface CategoryRule {
   min: number;
   max: number;
+  /** Spielweisen, die eher weniger brauchen. */
+  fewer: readonly Influence[];
+  /** Spielweisen, die eher mehr brauchen. */
+  more: readonly Influence[];
+  /** Ab welcher Abweichung vom Ziel es nicht mehr grün ist. */
+  tolerance: number;
+}
+
+/** Aus der Tabelle des Users, Blatt "Kennzahlen Kartentypen". */
+export const CATEGORY_RULES: Record<CategoryKey, CategoryRule> = {
+  lands: {
+    min: 29,
+    max: 37,
+    fewer: ['cedh', 'lowCurve'],
+    more: ['landfall', 'highCurve'],
+    tolerance: 1,
+  },
+  ramp: {
+    min: 9,
+    max: 17,
+    fewer: ['lowCurve', 'aggro'],
+    more: ['landfall', 'highCurve'],
+    tolerance: 2,
+  },
+  draw: {
+    min: 7,
+    max: 15,
+    fewer: ['commanderDraws', 'aggro'],
+    more: ['combo', 'control'],
+    tolerance: 2,
+  },
+  removal: {
+    min: 7,
+    max: 15,
+    fewer: ['commanderRemoves', 'combo'],
+    more: ['weakness', 'control'],
+    tolerance: 2,
+  },
+  boardwipe: { min: 0, max: 8, fewer: ['creatures', 'aggro'], more: ['control'], tolerance: 1 },
+};
+
+/** Empfohlene Win Cons laut Tabelle: etwa 3, je nach Deck ± 3. */
+export const WINCON_TARGET = 3;
+
+export interface CategoryTarget {
+  target: number;
+  min: number;
+  max: number;
+  /** Die Spielweisen, die das Ziel tatsächlich verschoben haben. */
+  fewer: Influence[];
+  more: Influence[];
+}
+
+export function categoryTarget(key: CategoryKey, influences: readonly Influence[]): CategoryTarget {
+  const rule = CATEGORY_RULES[key];
+  const fewer = rule.fewer.filter((i) => influences.includes(i));
+  const more = rule.more.filter((i) => influences.includes(i));
+  const step = (rule.max - rule.min) / 4;
+  const raw = (rule.min + rule.max) / 2 + step * (more.length - fewer.length);
+  const target = Math.round(Math.min(rule.max, Math.max(rule.min, raw)));
+  return { target, min: rule.min, max: rule.max, fewer, more };
+}
+
+export interface CheckItem extends CategoryTarget {
+  key: CategoryKey;
+  value: number;
   level: CheckLevel;
 }
 
 export interface DeckCheckInput {
-  /** Karten im Deck ohne Commander (Bibliothek): 99 bei Commander, 60 bei Constructed. */
-  librarySize: number;
   isCommanderFormat: boolean;
+  /** Effektive Länderzahl (siehe effectiveLands). */
   lands: number;
   averageCmc: number | null;
-  /** Karten der Kategorie Rampe (Effekt-Kategorie), inklusive Manasteine. */
   ramp: number | null;
-  /**
-   * Rampe- und Draw-Karten mit Manawert ≤ 2 (jede Karte einmal). Fehlt die Zahl, wird sie aus
-   * ramp + draw geschätzt (grob die Hälfte davon ist billig).
-   */
-  cheapRampDraw?: number | null;
-  /** Höchster Manawert unter den Commandern, null ohne Commander. */
-  commanderCmc?: number | null;
   draw: number | null;
   removal: number | null;
   boardwipe: number | null;
+  /** Gewählte Spielweisen; die Kurve kommt automatisch dazu. */
+  playStyles?: readonly PlayStyle[];
+  /** Nur 60 Karten: Rampe-/Draw-Karten mit Manawert ≤ 2 (Karsten). */
+  cheapRampDraw?: number | null;
 }
 
-/** Empfohlene Länderzahl nach Karsten, gerundet. */
-export function recommendedLands(
-  input: Pick<
-    DeckCheckInput,
-    'isCommanderFormat' | 'averageCmc' | 'ramp' | 'draw' | 'cheapRampDraw' | 'commanderCmc'
-  >,
+/** Spielweisen samt automatisch erkannter Kurve. */
+export function influencesFor(
+  input: Pick<DeckCheckInput, 'playStyles' | 'averageCmc'>,
+): Influence[] {
+  const curve = curveStyle(input.averageCmc);
+  return [...(input.playStyles ?? []), ...(curve ? [curve] : [])];
+}
+
+/** Länderzahl für 60-Karten-Decks nach Karsten, gerundet. */
+export function recommendedLands60(
+  averageCmc: number | null,
+  cheapRampDraw: number | null | undefined,
 ): number {
-  const avg = input.averageCmc ?? (input.isCommanderFormat ? 3.2 : 2.6);
-  // Karsten zählt nur BILLIGE Rampe/Draw (Manawert ≤ 2); ohne genaue Zahl grob die Hälfte.
-  const cheap = input.cheapRampDraw ?? ((input.ramp ?? 0) + (input.draw ?? 0)) / 2;
-  const raw = input.isCommanderFormat
-    ? 31.42 + 3.13 * avg - 0.28 * cheap + (commanderIsExpensive(input.commanderCmc) ? 1 : 0)
-    : 19.59 + 1.9 * avg - 0.28 * cheap;
-  return Math.round(raw);
+  return Math.round(19.59 + 1.9 * (averageCmc ?? 2.6) - 0.28 * (cheapRampDraw ?? 0));
 }
 
-/** Karstens Commander-Faustregel: ab Manawert 5 braucht der Commander ein Land mehr. */
-export function commanderIsExpensive(commanderCmc: number | null | undefined): boolean {
-  return (commanderCmc ?? 0) >= 5;
-}
-
-/** So viel "Land" ist eine doppelseitige Karte mit Land-Rückseite wert (Karsten, nicht mythisch). */
-export const MDFC_LAND_WEIGHT = 0.38;
+/** So viel "Land" ist eine doppelseitige Karte, deren Land-Rückseite immer getappt kommt (Karsten). */
+export const MDFC_TAPPED_WEIGHT = 0.38;
 
 /**
- * Effektive Länderzahl: echte Länder voll, doppelseitige Karten mit Land-Rückseite anteilig.
- * Erwartet die Typzeile wie Scryfall sie liefert ("Sorcery // Land").
+ * Kann die Land-Rückseite ungetappt ins Spiel kommen? "you may pay 3 life. If you don't, it enters
+ * tapped" ja, "This land enters tapped" nein. Ohne bekannten Text vorsichtshalber nein.
+ */
+export function mdfcCanEnterUntapped(backOracleText: string | null | undefined): boolean {
+  const text = (backOracleText ?? '').toLowerCase();
+  if (!text) return false;
+  if (text.includes('you may pay')) return true;
+  return !text.includes('tapped');
+}
+
+export interface LandInfo {
+  lands: number;
+  /** Doppelseitige Karten, deren Land ungetappt kommen kann - zählen voll. */
+  mdfcUntapped: number;
+  /** Doppelseitige Karten, deren Land immer getappt kommt - zählen 0,38. */
+  mdfcTapped: number;
+  value: number;
+}
+
+/**
+ * Effektive Länderzahl: echte Länder voll, doppelseitige Karten mit Land-Rückseite je nachdem, ob
+ * das Land ungetappt kommen kann. Erwartet die Typzeile wie Scryfall sie liefert ("Sorcery // Land").
  */
 export function effectiveLands(
-  cards: readonly { typeLine: string | null | undefined; quantity: number }[],
-): {
-  lands: number;
-  mdfc: number;
-  value: number;
-} {
+  cards: readonly {
+    typeLine: string | null | undefined;
+    quantity: number;
+    backOracleText?: string | null;
+  }[],
+): LandInfo {
   let lands = 0;
-  let mdfc = 0;
+  let mdfcUntapped = 0;
+  let mdfcTapped = 0;
   for (const c of cards) {
     const [front, back] = (c.typeLine ?? '').split(' // ');
     if (front.includes('Land')) lands += c.quantity;
-    else if (back?.includes('Land')) mdfc += c.quantity;
+    else if (back?.includes('Land')) {
+      if (mdfcCanEnterUntapped(c.backOracleText)) mdfcUntapped += c.quantity;
+      else mdfcTapped += c.quantity;
+    }
   }
-  return { lands, mdfc, value: Math.round((lands + mdfc * MDFC_LAND_WEIGHT) * 10) / 10 };
+  const value = Math.round((lands + mdfcUntapped + mdfcTapped * MDFC_TAPPED_WEIGHT) * 10) / 10;
+  return { lands, mdfcUntapped, mdfcTapped, value };
 }
 
-function level(value: number, min: number, max: number, tolerance: number): CheckLevel {
-  if (value >= min && value <= max) return 'good';
-  const off = value < min ? min - value : value - max;
-  return off <= tolerance ? 'warn' : 'bad';
+function levelFor(value: number, t: CategoryTarget, tolerance: number): CheckLevel {
+  if (Math.abs(value - t.target) <= tolerance) return 'good';
+  return value >= t.min && value <= t.max ? 'warn' : 'bad';
 }
 
 export function deckCheckItems(input: DeckCheckInput): CheckItem[] {
-  const target = recommendedLands(input);
-  const items: CheckItem[] = [
-    {
-      key: 'lands',
-      value: input.lands,
-      min: target - 1,
-      max: target + 1,
-      level: level(input.lands, target - 1, target + 1, 2),
-    },
-  ];
-  if (!input.isCommanderFormat) return items;
-  const add = (
-    key: CheckItem['key'],
-    value: number | null,
-    min: number,
-    max: number,
-    tolerance: number,
-  ) => {
-    if (value === null) return;
-    items.push({ key, value, min, max, level: level(value, min, max, tolerance) });
+  if (!input.isCommanderFormat) {
+    const target = recommendedLands60(input.averageCmc, input.cheapRampDraw);
+    const t: CategoryTarget = { target, min: target - 2, max: target + 2, fewer: [], more: [] };
+    return [{ key: 'lands', value: input.lands, ...t, level: levelFor(input.lands, t, 1) }];
+  }
+  const influences = influencesFor(input);
+  const items: CheckItem[] = [];
+  const values: Record<CategoryKey, number | null> = {
+    lands: input.lands,
+    ramp: input.ramp,
+    draw: input.draw,
+    removal: input.removal,
+    boardwipe: input.boardwipe,
   };
-  add('ramp', input.ramp, 10, 14, 2);
-  add('draw', input.draw, 10, 15, 3);
-  add('removal', input.removal, 8, 12, 2);
-  add('boardwipe', input.boardwipe, 2, 4, 1);
+  for (const key of Object.keys(CATEGORY_RULES) as CategoryKey[]) {
+    const value = values[key];
+    if (value === null) continue;
+    const t = categoryTarget(key, influences);
+    items.push({ key, value, ...t, level: levelFor(value, t, CATEGORY_RULES[key].tolerance) });
+  }
   return items;
 }
 

@@ -126,6 +126,19 @@
   .lvl-bad .dot {
     background: var(--danger);
   }
+  .lvl-info .dot {
+    background: rgba(255, 255, 255, 0.35);
+  }
+
+  .why,
+  .combo-names {
+    opacity: 0.75;
+  }
+
+  .combo-names {
+    display: block;
+    font-style: italic;
+  }
 }
 
 .odds {
@@ -218,9 +231,47 @@
   color: var(--accent);
 }
 
-.factors {
-  margin: var(--sp-2) 0 0;
-  padding-left: 1.1em;
-  font-size: 0.78rem;
-  opacity: 0.8;
+.styles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2) var(--sp-3);
+  margin-top: var(--sp-4);
+  font-size: 0.85rem;
+
+  .styles-label {
+    opacity: 0.8;
+  }
+}
+
+.style-chip {
+  padding: 2px var(--sp-4);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  font-weight: 600;
+
+  // Automatisch erkannt (Kurve): gestrichelt statt gefüllt.
+  &.auto {
+    border: 1px dashed rgba(255, 255, 255, 0.4);
+    background: none;
+    font-weight: 400;
+  }
+}
+
+.style-picker {
+  margin-top: var(--sp-3);
+
+  .glass-chip {
+    color: var(--text);
+  }
+}
+
+.link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
 }

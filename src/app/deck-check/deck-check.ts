@@ -9,15 +9,20 @@ import { regelFuer } from '../deck-regeln';
 import { isLand } from '../deck-analyse';
 import {
   CheckItem,
-  MDFC_LAND_WEIGHT,
-  commanderIsExpensive,
+  Influence,
+  MDFC_TAPPED_WEIGHT,
+  PLAY_STYLES,
+  PlayStyle,
+  WINCON_TARGET,
+  curveStyle,
   effectiveLands,
   colorRequirements,
   deckCheckItems,
   deckHealthScore,
   deckOdds,
-  recommendedLands,
+  recommendedLands60,
 } from '../deck-check';
+import { DeckPlayStyleService } from '../deck-play-style.service';
 import { ManaSymbol } from '../ui/mana-symbol/mana-symbol';
 import { Meter } from '../ui/meter/meter';
 import { Icon } from '../ui/icon/icon';
@@ -46,7 +51,9 @@ export class DeckCheck {
    * woher die Zahl kommt. Niederländischer Magic-Profi (Hall of Fame) und Mathematiker; seine
    * Artikel zu Länderzahl und Farbquellen sind in der Community der Standard.
    */
-  readonly MDFC_LAND_WEIGHT = MDFC_LAND_WEIGHT;
+  readonly MDFC_TAPPED_WEIGHT = MDFC_TAPPED_WEIGHT;
+  readonly WINCON_TARGET = WINCON_TARGET;
+  readonly PLAY_STYLES = PLAY_STYLES;
   readonly karstenWiki =
     'https://en.wikipedia.org/wiki/Frank_Karsten_(Magic:_The_Gathering_player)';
   readonly karstenLands =
@@ -69,8 +76,20 @@ export class DeckCheck {
 
   readonly effectsLoading = computed(() => this.viewer.effects.effectCategoryStats() === null);
 
-  /** Länder voll, doppelseitige Karten mit Land-Rückseite anteilig (Karsten). */
-  readonly landInfo = computed(() => effectiveLands(this.library()));
+  /**
+   * Länder voll, doppelseitige Karten mit Land-Rückseite voll, wenn das Land ungetappt kommen
+   * kann, sonst 0,38 (Rückseiten-Text aus den Kartendaten).
+   */
+  readonly landInfo = computed(() => {
+    const details = this.viewer.state.viewingCardDetails();
+    return effectiveLands(
+      this.library().map((c) => ({
+        typeLine: c.typeLine,
+        quantity: c.quantity,
+        backOracleText: details.get(c.cardName.toLowerCase())?.backOracleText,
+      })),
+    );
+  });
 
   /**
    * Rampe- und Draw-Karten mit Manawert ≤ 2, jede Karte einmal (eine Karte kann in beiden
@@ -89,21 +108,102 @@ export class DeckCheck {
       .reduce((sum, c) => sum + c.quantity, 0);
   });
 
-  /** Höchster Manawert unter den Commandern (Partner: der teurere zählt). */
-  readonly commanderCmc = computed<number | null>(() => {
-    const commanders = this.viewer.analysis.analysisDeckCards().filter((c) => c.isCommander);
-    return commanders.length ? Math.max(...commanders.map((c) => c.cmc)) : null;
-  });
-  readonly expensiveCommander = computed(
-    () => this.isCommanderFormat() && commanderIsExpensive(this.commanderCmc()),
+  // --- Spielweise (decks.play_styles) ---
+
+  private readonly playStyleService = inject(DeckPlayStyleService);
+  readonly playStyles = signal<PlayStyle[]>([]);
+  /** true = aus dem Archetyp des Decks vorgeschlagen, noch nicht vom Besitzer bestätigt. */
+  readonly playStylesSuggested = signal(false);
+  readonly editingStyles = signal(false);
+  readonly playStyleSaveAvailable = this.playStyleService.verfuegbar;
+  readonly curve = computed(() => curveStyle(this.viewer.analysis.averageCmc()));
+
+  constructor() {
+    effect(() => {
+      const deck = this.viewer.state.viewingDeck();
+      this.playStyles.set([]);
+      this.playStylesSuggested.set(false);
+      this.editingStyles.set(false);
+      if (!deck) return;
+      this.playStyleService.load(deck.id).then((styles) => {
+        if (this.viewer.state.viewingDeck()?.id !== deck.id) return;
+        if (styles) {
+          this.playStyles.set(styles);
+          return;
+        }
+        // Noch nie festgelegt: aus dem Archetyp des Decks vorschlagen, soweit er passt.
+        const fromTag = (['control', 'combo', 'landfall'] as const).find(
+          (s) => s === deck.edhrecTag,
+        );
+        if (fromTag) {
+          this.playStyles.set([fromTag]);
+          this.playStylesSuggested.set(true);
+        }
+      });
+    });
+    effect(() => {
+      const deck = this.viewer.state.viewingDeck();
+      this.suggestions.set([]);
+      this.suggestionsLoaded.set(false);
+      if (!deck) return;
+      this.suggestionsService.load(deck.id).then((list) => {
+        if (this.viewer.state.viewingDeck()?.id !== deck.id) return;
+        this.suggestions.set(list);
+        this.suggestionsLoaded.set(true);
+      });
+    });
+  }
+
+  async toggleStyle(style: PlayStyle): Promise<void> {
+    const next = this.playStyles().includes(style)
+      ? this.playStyles().filter((s) => s !== style)
+      : [...this.playStyles(), style];
+    this.playStyles.set(next);
+    this.playStylesSuggested.set(false);
+    const deck = this.viewer.state.viewingDeck();
+    if (deck && this.viewer.state.canEditViewingDeck())
+      await this.playStyleService.save(deck.id, next);
+  }
+
+  influenceLabel(i: Influence): string {
+    return this.i18n.t('deckView.style.' + i);
+  }
+
+  /** "Control: eher mehr" bzw. "Aggro, niedrige Kurve: eher weniger". */
+  influenceText(item: CheckItem): string {
+    const parts: string[] = [];
+    if (item.more.length)
+      parts.push(
+        this.i18n.t('deckView.check.styleMore', {
+          styles: item.more.map((i) => this.influenceLabel(i)).join(', '),
+        }),
+      );
+    if (item.fewer.length)
+      parts.push(
+        this.i18n.t('deckView.check.styleFewer', {
+          styles: item.fewer.map((i) => this.influenceLabel(i)).join(', '),
+        }),
+      );
+    return parts.join(' · ');
+  }
+
+  // --- Win Cons: Ziel aus der Tabelle, gefunden werden nur Combos aus Commander Spellbook ---
+
+  readonly foundCombos = computed(() => this.viewer.analysis.analysisCombos());
+  readonly winningComboCount = computed(() => this.viewer.analysis.winningCombos());
+
+  // --- Downloads der Richtwerte-Tabelle (public/richtwerte/) ---
+  readonly benchmarkFile = computed(() =>
+    this.i18n.lang() === 'de'
+      ? 'richtwerte/statsfinity-deckbau-richtwerte-de.xlsx'
+      : 'richtwerte/statsfinity-deckbuilding-benchmarks-en.xlsx',
   );
 
   private readonly checkInput = computed(() => ({
-    librarySize: this.librarySize(),
     isCommanderFormat: this.isCommanderFormat(),
     lands: this.landInfo().value,
     cheapRampDraw: this.cheapRampDraw(),
-    commanderCmc: this.commanderCmc(),
+    playStyles: this.playStyles(),
     averageCmc: this.viewer.analysis.averageCmc(),
     ramp: this.effectCount('ramp'),
     draw: this.effectCount('draw'),
@@ -113,7 +213,10 @@ export class DeckCheck {
 
   readonly items = computed<CheckItem[]>(() => deckCheckItems(this.checkInput()));
   readonly score = computed(() => deckHealthScore(this.items()));
-  readonly recommendedLands = computed(() => recommendedLands(this.checkInput()));
+  /** Nur 60-Karten-Formate: Länder nach Karsten. */
+  readonly recommendedLands60 = computed(() =>
+    recommendedLands60(this.viewer.analysis.averageCmc(), this.cheapRampDraw()),
+  );
 
   readonly colors = computed(() => {
     const details = this.viewer.state.viewingCardDetails();
@@ -133,26 +236,13 @@ export class DeckCheck {
     const size = this.librarySize();
     if (size < 40) return null;
     const input = this.checkInput();
-    return deckOdds(size, input.lands, input.ramp, input.draw);
+    // Wahrscheinlichkeiten brauchen ganze Karten - anteilige Länder abrunden.
+    return deckOdds(size, Math.floor(input.lands), input.ramp, input.draw);
   });
 
   // --- Empfehlungen aus eigenen Decks ---
   readonly suggestions = signal<CardSuggestion[]>([]);
   readonly suggestionsLoaded = signal(false);
-
-  constructor() {
-    effect(() => {
-      const deck = this.viewer.state.viewingDeck();
-      this.suggestions.set([]);
-      this.suggestionsLoaded.set(false);
-      if (!deck) return;
-      this.suggestionsService.load(deck.id).then((list) => {
-        if (this.viewer.state.viewingDeck()?.id !== deck.id) return;
-        this.suggestions.set(list);
-        this.suggestionsLoaded.set(true);
-      });
-    });
-  }
 
   /** Zahl in der App-Sprache ("36,4" bzw. "36.4"). */
   num(value: number, digits = 1): string {
@@ -173,9 +263,10 @@ export class DeckCheck {
   /** Was zu tun ist, in einem Satz. */
   advice(item: CheckItem): string {
     if (item.level === 'good') return this.i18n.t('deckView.check.adviceOk');
-    const diff = item.value < item.min ? item.min - item.value : item.value - item.max;
+    // Gemessen am Zielwert (Mitte der Spanne, verschoben durch die Spielweise).
+    const diff = Math.abs(item.value - item.target);
     return this.i18n.t(
-      item.value < item.min ? 'deckView.check.adviceMore' : 'deckView.check.adviceLess',
+      item.value < item.target ? 'deckView.check.adviceMore' : 'deckView.check.adviceLess',
       // Mit anteiligen Ländern kann die Lücke gebrochen sein - ganze Karten aufrunden.
       { count: Math.ceil(diff) },
     );

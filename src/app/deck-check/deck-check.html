@@ -16,6 +16,49 @@
       </div>
     </div>
 
+    <!-- Spielweise: verschiebt die Zielwerte (Tabelle des Users). Die Kurve wird automatisch
+         erkannt und steht nur zur Info dabei. -->
+    @if (isCommanderFormat()) {
+      <div class="styles">
+        <span class="styles-label">{{ i18n.t('deckView.check.playStyle') }}</span>
+        @for (s of playStyles(); track s) {
+          <span class="style-chip">{{ influenceLabel(s) }}</span>
+        }
+        @if (curve(); as c) {
+          <span class="style-chip auto" [title]="i18n.t('deckView.check.curveAuto')">{{
+            influenceLabel(c)
+          }}</span>
+        }
+        @if (playStyles().length === 0 && !curve()) {
+          <span class="hint">{{ i18n.t('deckView.check.noStyle') }}</span>
+        }
+        @if (viewer.state.canEditViewingDeck()) {
+          <button class="link-button" (click)="editingStyles.set(!editingStyles())">
+            {{ editingStyles() ? i18n.t('deckView.done') : i18n.t('deckView.check.chooseStyle') }}
+          </button>
+        }
+      </div>
+      @if (playStylesSuggested()) {
+        <p class="hint small">{{ i18n.t('deckView.check.styleSuggested') }}</p>
+      }
+      @if (editingStyles()) {
+        <div class="chip-row style-picker">
+          @for (s of PLAY_STYLES; track s) {
+            <button
+              class="glass-chip small"
+              [class.active]="playStyles().includes(s)"
+              (click)="toggleStyle(s)"
+            >
+              {{ influenceLabel(s) }}
+            </button>
+          }
+        </div>
+        @if (!playStyleSaveAvailable()) {
+          <p class="hint small">{{ i18n.t('deckView.check.styleNotSaved') }}</p>
+        }
+      }
+    }
+
     <ul class="check-list">
       @for (item of items(); track item.key) {
         <li [class]="'lvl-' + item.level">
@@ -24,51 +67,90 @@
             >{{ itemLabel(item) }}: <strong>{{ num(item.value) }}</strong></span
           >
           <span class="check-target">{{
-            i18n.t('deckView.check.target', { min: item.min, max: item.max })
+            isCommanderFormat()
+              ? i18n.t('deckView.check.targetRange', {
+                  target: item.target,
+                  min: item.min,
+                  max: item.max,
+                })
+              : i18n.t('deckView.check.targetOnly', { target: item.target })
           }}</span>
-          <span class="check-advice">{{ advice(item) }}</span>
+          <span class="check-advice"
+            >{{ advice(item) }}
+            @if (influenceText(item); as why) {
+              <span class="why"> · {{ why }}</span>
+            }
+          </span>
+        </li>
+      }
+      @if (isCommanderFormat()) {
+        <!-- Win Cons: Ziel aus der Tabelle; automatisch erkannt werden nur Combos aus Commander
+             Spellbook - ein Sieg über Kampfschaden oder eine Einzelkarte fehlt dort. -->
+        <li class="lvl-info">
+          <span class="dot"></span>
+          <span class="check-name"
+            >{{ i18n.t('deckView.check.wincons') }}: <strong>~{{ WINCON_TARGET }}</strong></span
+          >
+          <span class="check-target">{{ i18n.t('deckView.check.winconsTarget') }}</span>
+          <span class="check-advice">
+            {{
+              i18n.t('deckView.check.winconsFound', {
+                count: winningComboCount(),
+                combos: foundCombos().length,
+              })
+            }}
+            @if (foundCombos().length > 0) {
+              <span class="combo-names">
+                @for (c of foundCombos().slice(0, 4); track c.id; let last = $last) {
+                  {{ c.cardNames.join(' + ') }}
+                  @if (!last) {
+                    ;
+                  }
+                }
+                @if (foundCombos().length > 4) {
+                  …
+                }
+              </span>
+            }
+            <span class="why">{{ i18n.t('deckView.check.winconsMaybeMissing') }}</span>
+          </span>
         </li>
       }
     </ul>
     @if (effectsLoading() && isCommanderFormat()) {
       <p class="hint">{{ i18n.t('deckView.check.effectsLoading') }}</p>
     }
-    <p class="hint small">
-      {{ i18n.t('deckView.check.landsSourceBefore') }}
-      <a [href]="karstenWiki" target="_blank" rel="noopener">Frank Karsten</a
-      >{{ i18n.t('deckView.check.landsSourceAfter', { lands: recommendedLands() }) }}
-      <a [href]="karstenLands" target="_blank" rel="noopener">{{
-        i18n.t('deckView.check.sourceArticle')
-      }}</a>
-    </p>
-    <!-- Was in die Länderzahl eingerechnet ist - damit "39" keine Zahl aus dem Nichts ist. -->
-    <ul class="factors">
-      @if (viewer.analysis.averageCmc() !== null) {
-        <li>
-          {{
-            i18n.t('deckView.check.factorAvg', { avg: num(viewer.analysis.averageCmc() ?? 0, 2) })
-          }}
-        </li>
-      }
-      @if (cheapRampDraw() !== null) {
-        <li>{{ i18n.t('deckView.check.factorCheap', { count: cheapRampDraw() ?? 0 }) }}</li>
-      }
-      @if (expensiveCommander()) {
-        <li>{{ i18n.t('deckView.check.factorCommander', { cmc: commanderCmc() ?? 0 }) }}</li>
-      }
-      @if (landInfo().mdfc > 0) {
-        <li>
-          {{
-            i18n.t('deckView.check.factorMdfc', {
-              count: landInfo().mdfc,
-              weight: num(MDFC_LAND_WEIGHT, 2),
-              lands: landInfo().lands,
-              value: num(landInfo().value),
-            })
-          }}
-        </li>
-      }
-    </ul>
+
+    @if (isCommanderFormat()) {
+      <p class="hint small">
+        {{ i18n.t('deckView.check.benchmarkSource') }}
+        <a [href]="benchmarkFile()" download>{{ i18n.t('deckView.check.benchmarkDownload') }}</a>
+      </p>
+    } @else {
+      <p class="hint small">
+        {{ i18n.t('deckView.check.landsSourceBefore') }}
+        <a [href]="karstenWiki" target="_blank" rel="noopener">Frank Karsten</a
+        >{{ i18n.t('deckView.check.landsSourceAfter', { lands: recommendedLands60() }) }}
+        <a [href]="karstenLands" target="_blank" rel="noopener">{{
+          i18n.t('deckView.check.sourceArticle')
+        }}</a>
+      </p>
+    }
+    @if (landInfo().mdfcUntapped + landInfo().mdfcTapped > 0) {
+      <p class="hint small">
+        {{
+          i18n.t('deckView.check.mdfcLine', {
+            untapped: landInfo().mdfcUntapped,
+            tapped: landInfo().mdfcTapped,
+            weight: num(MDFC_TAPPED_WEIGHT, 2),
+            value: num(landInfo().value),
+          })
+        }}
+        @if (landInfo().mdfcUntapped + landInfo().mdfcTapped > 6) {
+          {{ i18n.t('deckView.check.mdfcTooMany') }}
+        }
+      </p>
+    }
   </div>
 
   <div class="check-col">

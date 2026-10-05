@@ -68,7 +68,7 @@ export class CardDataService {
 
   /** Spalten, aus denen sich ein vollständiges ScryfallCard zusammensetzen lässt (siehe toCard()). */
   private static readonly KARTEN_SPALTEN =
-    'oracle_id, name, front_name_normalized, type_line, cmc, mana_cost, color_identity, produced_mana, game_changer, oracle_text, keywords, image_url, back_image_url, back_type_line, all_parts';
+    'oracle_id, name, front_name_normalized, type_line, cmc, mana_cost, color_identity, produced_mana, game_changer, oracle_text, keywords, image_url, back_image_url, back_type_line, back_oracle_text, all_parts';
 
   /**
    * Schlüssel ist der normalisierte Vorderseiten-Name (front_name_normalized), "A // B" träfe nie.
@@ -163,6 +163,7 @@ export class CardDataService {
       keywords: wert<string[]>('keywords'),
       backImageUrl: wert<string>('back_image_url'),
       backTypeLine: wert<string>('back_type_line'),
+      backOracleText: wert<string>('back_oracle_text'),
       allParts: wert<ScryfallCard['allParts']>('all_parts'),
       oracleId: wert<string>('oracle_id'),
     };

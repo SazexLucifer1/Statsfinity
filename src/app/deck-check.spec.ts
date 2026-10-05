@@ -7,53 +7,73 @@ import {
   deckHealthScore,
   deckOdds,
   hypergeometric,
-  recommendedLands,
-  commanderIsExpensive,
+  categoryTarget,
+  curveStyle,
   effectiveLands,
+  influencesFor,
+  mdfcCanEnterUntapped,
+  recommendedLands60,
   requiredSources,
 } from './deck-check';
 
 describe('deck-check', () => {
-  it('rechnet die Länderzahl nach Karsten', () => {
-    expect(recommendedLands({ isCommanderFormat: true, averageCmc: 3, ramp: 0, draw: 0 })).toBe(41);
-    expect(recommendedLands({ isCommanderFormat: true, averageCmc: 3, ramp: 10, draw: 10 })).toBe(
-      38,
-    );
-    expect(recommendedLands({ isCommanderFormat: false, averageCmc: 2.5, ramp: 0, draw: 0 })).toBe(
-      24,
-    );
+  it('startet in der Mitte der Spanne und verschiebt das Ziel je Spielweise', () => {
+    expect(categoryTarget('boardwipe', [])).toMatchObject({ target: 4, min: 0, max: 8 });
+    expect(categoryTarget('boardwipe', ['control'])).toMatchObject({
+      target: 6,
+      more: ['control'],
+    });
+    expect(categoryTarget('boardwipe', ['creatures', 'aggro'])).toMatchObject({ target: 0 });
+    // Gegenläufige Spielweisen heben sich auf, über die Spanne hinaus geht es nie.
+    expect(categoryTarget('draw', ['combo', 'aggro']).target).toBe(11);
+    expect(categoryTarget('ramp', ['landfall', 'highCurve', 'landfall' as never]).target).toBe(17);
   });
 
-  it('zählt billige Rampe/Draw genau und gibt teuren Commandern ein Land mehr', () => {
-    const base = { isCommanderFormat: true, averageCmc: 3, ramp: 10, draw: 10 };
-    expect(recommendedLands({ ...base, cheapRampDraw: 0 })).toBe(41);
-    expect(recommendedLands({ ...base, cheapRampDraw: 11 })).toBe(38);
-    expect(recommendedLands({ ...base, cheapRampDraw: 11, commanderCmc: 4 })).toBe(38);
-    expect(recommendedLands({ ...base, cheapRampDraw: 11, commanderCmc: 6 })).toBe(39);
-    expect(commanderIsExpensive(5)).toBe(true);
-    expect(commanderIsExpensive(null)).toBe(false);
+  it('liest die Kurve aus dem Ø Manawert', () => {
+    expect(curveStyle(2.6)).toBe('lowCurve');
+    expect(curveStyle(3.2)).toBeNull();
+    expect(curveStyle(3.9)).toBe('highCurve');
+    expect(influencesFor({ playStyles: ['control'], averageCmc: 3.9 })).toEqual([
+      'control',
+      'highCurve',
+    ]);
   });
 
-  it('zählt doppelseitige Karten mit Land-Rückseite anteilig', () => {
+  it('zählt doppelseitige Länder voll, wenn sie ungetappt kommen können, sonst 0,38', () => {
+    expect(
+      mdfcCanEnterUntapped(
+        "As this land enters, you may pay 3 life. If you don't, it enters tapped.",
+      ),
+    ).toBe(true);
+    expect(mdfcCanEnterUntapped('This land enters tapped.\n{T}: Add {G}.')).toBe(false);
+    expect(mdfcCanEnterUntapped(null)).toBe(false);
     const info = effectiveLands([
       { typeLine: 'Basic Land — Forest', quantity: 30 },
       { typeLine: 'Land // Land', quantity: 1 },
-      { typeLine: 'Sorcery // Land', quantity: 2 },
+      {
+        typeLine: 'Sorcery // Land',
+        quantity: 1,
+        backOracleText: 'As this land enters, you may pay 3 life.',
+      },
+      {
+        typeLine: 'Creature — Elephant // Land',
+        quantity: 2,
+        backOracleText: 'This land enters tapped.',
+      },
       { typeLine: 'Creature — Elf', quantity: 1 },
     ]);
-    expect(info).toEqual({ lands: 31, mdfc: 2, value: 31.8 });
+    expect(info).toEqual({ lands: 31, mdfcUntapped: 1, mdfcTapped: 2, value: 32.8 });
   });
 
   it('bewertet Kategorien als gut, knapp oder schlecht', () => {
     const items = deckCheckItems({
-      librarySize: 99,
       isCommanderFormat: true,
-      lands: 38,
-      averageCmc: 3,
-      ramp: 10,
-      draw: 10,
-      removal: 5,
-      boardwipe: 1,
+      lands: 33,
+      averageCmc: 3.2,
+      ramp: 13,
+      draw: 9,
+      removal: 3,
+      boardwipe: 4,
     });
     const byKey = Object.fromEntries(items.map((i) => [i.key, i.level]));
     expect(byKey).toEqual({
@@ -61,14 +81,13 @@ describe('deck-check', () => {
       ramp: 'good',
       draw: 'good',
       removal: 'bad',
-      boardwipe: 'warn',
+      boardwipe: 'good',
     });
-    expect(deckHealthScore(items)).toBe(70);
+    expect(deckHealthScore(items)).toBe(80);
   });
 
-  it('prüft in 60-Karten-Formaten nur die Länder', () => {
+  it('prüft in 60-Karten-Formaten nur die Länder nach Karsten', () => {
     const items = deckCheckItems({
-      librarySize: 60,
       isCommanderFormat: false,
       lands: 24,
       averageCmc: 2.5,
@@ -77,7 +96,8 @@ describe('deck-check', () => {
       removal: 0,
       boardwipe: 0,
     });
-    expect(items.map((i) => i.key)).toEqual(['lands']);
+    expect(items.map((i) => [i.key, i.target, i.level])).toEqual([['lands', 24, 'good']]);
+    expect(recommendedLands60(2.5, 0)).toBe(24);
   });
 
   it('zählt farbige Symbole ohne Hybrid und findet die anspruchsvollste Karte', () => {

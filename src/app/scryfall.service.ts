@@ -33,6 +33,8 @@ export interface ScryfallCard {
    */
   backImageUrl?: string;
   backTypeLine?: string;
+  /** Regeltext der Rückseite (Transform/Modal-DFC) - z. B. ob ein MDFC-Land getappt kommt. */
+  backOracleText?: string;
   /** Von Scryfall mitgelieferte verwandte Karten (u.a. Marken, die diese Karte erzeugt) - component "token" ist der für den Marken-Scan relevante Fall. */
   allParts?: { id: string; component: string; name: string; typeLine?: string }[];
   /**
@@ -964,6 +966,7 @@ export class ScryfallService {
       keywords: data.keywords as string[] | undefined,
       backImageUrl: hasFlippableBack ? (backFace.image_uris?.normal as string) : undefined,
       backTypeLine: hasFlippableBack ? (backFace.type_line as string | undefined) : undefined,
+      backOracleText: hasFlippableBack ? (backFace.oracle_text as string | undefined) : undefined,
       allParts: (data.all_parts as any[] | undefined)?.map((p) => ({
         id: p.id as string,
         component: p.component as string,
