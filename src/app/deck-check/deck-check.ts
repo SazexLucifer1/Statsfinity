@@ -9,6 +9,9 @@ import { regelFuer } from '../deck-regeln';
 import { isLand } from '../deck-analyse';
 import {
   CheckItem,
+  MDFC_LAND_WEIGHT,
+  commanderIsExpensive,
+  effectiveLands,
   colorRequirements,
   deckCheckItems,
   deckHealthScore,
@@ -43,6 +46,7 @@ export class DeckCheck {
    * woher die Zahl kommt. Niederländischer Magic-Profi (Hall of Fame) und Mathematiker; seine
    * Artikel zu Länderzahl und Farbquellen sind in der Community der Standard.
    */
+  readonly MDFC_LAND_WEIGHT = MDFC_LAND_WEIGHT;
   readonly karstenWiki =
     'https://en.wikipedia.org/wiki/Frank_Karsten_(Magic:_The_Gathering_player)';
   readonly karstenLands =
@@ -65,10 +69,41 @@ export class DeckCheck {
 
   readonly effectsLoading = computed(() => this.viewer.effects.effectCategoryStats() === null);
 
+  /** Länder voll, doppelseitige Karten mit Land-Rückseite anteilig (Karsten). */
+  readonly landInfo = computed(() => effectiveLands(this.library()));
+
+  /**
+   * Rampe- und Draw-Karten mit Manawert ≤ 2, jede Karte einmal (eine Karte kann in beiden
+   * Kategorien stehen). null, solange die Kategorien noch laden.
+   */
+  readonly cheapRampDraw = computed<number | null>(() => {
+    const stats = this.viewer.effects.effectCategoryStats();
+    if (!stats) return null;
+    const names = new Set(
+      stats
+        .filter((s) => s.key === 'ramp' || s.key === 'draw')
+        .flatMap((s) => s.cards.map((c) => c.cardName)),
+    );
+    return this.library()
+      .filter((c) => names.has(c.cardName) && c.cmc <= 2)
+      .reduce((sum, c) => sum + c.quantity, 0);
+  });
+
+  /** Höchster Manawert unter den Commandern (Partner: der teurere zählt). */
+  readonly commanderCmc = computed<number | null>(() => {
+    const commanders = this.viewer.analysis.analysisDeckCards().filter((c) => c.isCommander);
+    return commanders.length ? Math.max(...commanders.map((c) => c.cmc)) : null;
+  });
+  readonly expensiveCommander = computed(
+    () => this.isCommanderFormat() && commanderIsExpensive(this.commanderCmc()),
+  );
+
   private readonly checkInput = computed(() => ({
     librarySize: this.librarySize(),
     isCommanderFormat: this.isCommanderFormat(),
-    lands: this.viewer.analysis.landCount(),
+    lands: this.landInfo().value,
+    cheapRampDraw: this.cheapRampDraw(),
+    commanderCmc: this.commanderCmc(),
     averageCmc: this.viewer.analysis.averageCmc(),
     ramp: this.effectCount('ramp'),
     draw: this.effectCount('draw'),
@@ -119,6 +154,14 @@ export class DeckCheck {
     });
   }
 
+  /** Zahl in der App-Sprache ("36,4" bzw. "36.4"). */
+  num(value: number, digits = 1): string {
+    return value.toLocaleString(this.i18n.lang() === 'de' ? 'de-DE' : 'en-US', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: digits,
+    });
+  }
+
   itemLabel(item: CheckItem): string {
     return this.i18n.t(`deckView.check.${item.key}`);
   }
@@ -133,7 +176,8 @@ export class DeckCheck {
     const diff = item.value < item.min ? item.min - item.value : item.value - item.max;
     return this.i18n.t(
       item.value < item.min ? 'deckView.check.adviceMore' : 'deckView.check.adviceLess',
-      { count: diff },
+      // Mit anteiligen Ländern kann die Lücke gebrochen sein - ganze Karten aufrunden.
+      { count: Math.ceil(diff) },
     );
   }
 

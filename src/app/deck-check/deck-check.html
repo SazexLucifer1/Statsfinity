@@ -21,7 +21,7 @@
         <li [class]="'lvl-' + item.level">
           <span class="dot" [attr.aria-label]="levelLabel(item.level)"></span>
           <span class="check-name"
-            >{{ itemLabel(item) }}: <strong>{{ item.value }}</strong></span
+            >{{ itemLabel(item) }}: <strong>{{ num(item.value) }}</strong></span
           >
           <span class="check-target">{{
             i18n.t('deckView.check.target', { min: item.min, max: item.max })
@@ -41,6 +41,34 @@
         i18n.t('deckView.check.sourceArticle')
       }}</a>
     </p>
+    <!-- Was in die Länderzahl eingerechnet ist - damit "39" keine Zahl aus dem Nichts ist. -->
+    <ul class="factors">
+      @if (viewer.analysis.averageCmc() !== null) {
+        <li>
+          {{
+            i18n.t('deckView.check.factorAvg', { avg: num(viewer.analysis.averageCmc() ?? 0, 2) })
+          }}
+        </li>
+      }
+      @if (cheapRampDraw() !== null) {
+        <li>{{ i18n.t('deckView.check.factorCheap', { count: cheapRampDraw() ?? 0 }) }}</li>
+      }
+      @if (expensiveCommander()) {
+        <li>{{ i18n.t('deckView.check.factorCommander', { cmc: commanderCmc() ?? 0 }) }}</li>
+      }
+      @if (landInfo().mdfc > 0) {
+        <li>
+          {{
+            i18n.t('deckView.check.factorMdfc', {
+              count: landInfo().mdfc,
+              weight: num(MDFC_LAND_WEIGHT, 2),
+              lands: landInfo().lands,
+              value: num(landInfo().value),
+            })
+          }}
+        </li>
+      }
+    </ul>
   </div>
 
   <div class="check-col">

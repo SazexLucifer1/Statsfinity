@@ -8,6 +8,8 @@ import {
   deckOdds,
   hypergeometric,
   recommendedLands,
+  commanderIsExpensive,
+  effectiveLands,
   requiredSources,
 } from './deck-check';
 
@@ -20,6 +22,26 @@ describe('deck-check', () => {
     expect(recommendedLands({ isCommanderFormat: false, averageCmc: 2.5, ramp: 0, draw: 0 })).toBe(
       24,
     );
+  });
+
+  it('zählt billige Rampe/Draw genau und gibt teuren Commandern ein Land mehr', () => {
+    const base = { isCommanderFormat: true, averageCmc: 3, ramp: 10, draw: 10 };
+    expect(recommendedLands({ ...base, cheapRampDraw: 0 })).toBe(41);
+    expect(recommendedLands({ ...base, cheapRampDraw: 11 })).toBe(38);
+    expect(recommendedLands({ ...base, cheapRampDraw: 11, commanderCmc: 4 })).toBe(38);
+    expect(recommendedLands({ ...base, cheapRampDraw: 11, commanderCmc: 6 })).toBe(39);
+    expect(commanderIsExpensive(5)).toBe(true);
+    expect(commanderIsExpensive(null)).toBe(false);
+  });
+
+  it('zählt doppelseitige Karten mit Land-Rückseite anteilig', () => {
+    const info = effectiveLands([
+      { typeLine: 'Basic Land — Forest', quantity: 30 },
+      { typeLine: 'Land // Land', quantity: 1 },
+      { typeLine: 'Sorcery // Land', quantity: 2 },
+      { typeLine: 'Creature — Elf', quantity: 1 },
+    ]);
+    expect(info).toEqual({ lands: 31, mdfc: 2, value: 31.8 });
   });
 
   it('bewertet Kategorien als gut, knapp oder schlecht', () => {

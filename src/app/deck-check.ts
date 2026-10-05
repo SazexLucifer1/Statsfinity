@@ -5,9 +5,12 @@
  *
  * Alles reine Funktionen ohne Angular, damit deck-check.spec.ts sie prüfen kann. Die Richtwerte
  * sind veröffentlichte Faustregeln, keine eigene Erfindung:
- *   - Länderzahl: Frank Karstens Regression ("How Many Lands Do You Need to Consistently Hit Your
- *     Land Drops?", 2022) - 99 Karten: 31,42 + 3,13 × Ø Manawert − 0,28 × billige Rampe/Draw,
- *     60 Karten: 19,59 + 1,90 × Ø Manawert − 0,28 × billige Rampe/Draw.
+ *   - Länderzahl: Frank Karstens Regression ("How Many Lands Do You Need in Your Deck? An Updated
+ *     Analysis", 2022) - 99 Karten: 31,42 + 3,13 × Ø Manawert − 0,28 × billige Rampe/Draw,
+ *     60 Karten: 19,59 + 1,90 × Ø Manawert − 0,28 × billige Rampe/Draw. "Billig" heißt Manawert
+ *     höchstens 2. Doppelseitige Karten mit Land-Rückseite zählen anteilig als Land (0,38, eine
+ *     mythische 0,74 - die Seltenheit kennt die App hier nicht, deshalb immer 0,38). Dazu seine
+ *     Commander-Faustregel: kostet der Commander 5 oder mehr, ein Land mehr.
  *   - Farbquellen: angelehnt an Karstens Tabellen für rund 90 % Wahrscheinlichkeit, eine Karte auf
  *     Kurve zu wirken (Commander- und 60-Karten-Fassung), gerundet. Ein Richtwert, kein Gesetz -
  *     wer die Zahlen nachschärft, ändert nur KARSTEN_99/KARSTEN_60.
@@ -34,6 +37,13 @@ export interface DeckCheckInput {
   averageCmc: number | null;
   /** Karten der Kategorie Rampe (Effekt-Kategorie), inklusive Manasteine. */
   ramp: number | null;
+  /**
+   * Rampe- und Draw-Karten mit Manawert ≤ 2 (jede Karte einmal). Fehlt die Zahl, wird sie aus
+   * ramp + draw geschätzt (grob die Hälfte davon ist billig).
+   */
+  cheapRampDraw?: number | null;
+  /** Höchster Manawert unter den Commandern, null ohne Commander. */
+  commanderCmc?: number | null;
   draw: number | null;
   removal: number | null;
   boardwipe: number | null;
@@ -41,16 +51,47 @@ export interface DeckCheckInput {
 
 /** Empfohlene Länderzahl nach Karsten, gerundet. */
 export function recommendedLands(
-  input: Pick<DeckCheckInput, 'isCommanderFormat' | 'averageCmc' | 'ramp' | 'draw'>,
+  input: Pick<
+    DeckCheckInput,
+    'isCommanderFormat' | 'averageCmc' | 'ramp' | 'draw' | 'cheapRampDraw' | 'commanderCmc'
+  >,
 ): number {
   const avg = input.averageCmc ?? (input.isCommanderFormat ? 3.2 : 2.6);
-  // Karsten zählt nur BILLIGE Rampe/Draw (Manawert ≤ 2). Die Kategorien hier unterscheiden das
-  // nicht - grob die Hälfte davon ist billig, deshalb halbes Gewicht.
-  const cheap = ((input.ramp ?? 0) + (input.draw ?? 0)) / 2;
+  // Karsten zählt nur BILLIGE Rampe/Draw (Manawert ≤ 2); ohne genaue Zahl grob die Hälfte.
+  const cheap = input.cheapRampDraw ?? ((input.ramp ?? 0) + (input.draw ?? 0)) / 2;
   const raw = input.isCommanderFormat
-    ? 31.42 + 3.13 * avg - 0.28 * cheap
+    ? 31.42 + 3.13 * avg - 0.28 * cheap + (commanderIsExpensive(input.commanderCmc) ? 1 : 0)
     : 19.59 + 1.9 * avg - 0.28 * cheap;
   return Math.round(raw);
+}
+
+/** Karstens Commander-Faustregel: ab Manawert 5 braucht der Commander ein Land mehr. */
+export function commanderIsExpensive(commanderCmc: number | null | undefined): boolean {
+  return (commanderCmc ?? 0) >= 5;
+}
+
+/** So viel "Land" ist eine doppelseitige Karte mit Land-Rückseite wert (Karsten, nicht mythisch). */
+export const MDFC_LAND_WEIGHT = 0.38;
+
+/**
+ * Effektive Länderzahl: echte Länder voll, doppelseitige Karten mit Land-Rückseite anteilig.
+ * Erwartet die Typzeile wie Scryfall sie liefert ("Sorcery // Land").
+ */
+export function effectiveLands(
+  cards: readonly { typeLine: string | null | undefined; quantity: number }[],
+): {
+  lands: number;
+  mdfc: number;
+  value: number;
+} {
+  let lands = 0;
+  let mdfc = 0;
+  for (const c of cards) {
+    const [front, back] = (c.typeLine ?? '').split(' // ');
+    if (front.includes('Land')) lands += c.quantity;
+    else if (back?.includes('Land')) mdfc += c.quantity;
+  }
+  return { lands, mdfc, value: Math.round((lands + mdfc * MDFC_LAND_WEIGHT) * 10) / 10 };
 }
 
 function level(value: number, min: number, max: number, tolerance: number): CheckLevel {
