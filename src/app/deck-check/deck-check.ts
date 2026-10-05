@@ -232,6 +232,32 @@ export class DeckCheck {
     return colorRequirements(cards, sources, this.isCommanderFormat());
   });
 
+  /** Kartenbild je Name (klein geschrieben) aus der geladenen Deckliste. */
+  private readonly imagesByName = computed(() => {
+    const details = this.viewer.state.viewingCardDetails();
+    const map = new Map<string, string>();
+    for (const c of this.library()) {
+      const key = c.cardName.toLowerCase();
+      const url = c.imageUrl ?? details.get(key)?.imageUrl;
+      if (url) map.set(key, url);
+    }
+    return map;
+  });
+
+  cardImage(name: string): string | null {
+    return this.imagesByName().get(name.toLowerCase()) ?? null;
+  }
+
+  /** "Venat, Heart of Hydaelyn // Hydaelyn, …" -> nur die Vorderseite. */
+  frontName(name: string): string {
+    return name.split(' // ')[0];
+  }
+
+  /** "{1}{W}{W}" -> ["1", "W", "W"]; bei doppelseitigen Karten nur die Vorderseite. */
+  costSymbols(cost: string): string[] {
+    return [...cost.split(' // ')[0].matchAll(/\{([^}]+)\}/g)].map((m) => m[1]);
+  }
+
   readonly odds = computed(() => {
     const size = this.librarySize();
     if (size < 40) return null;

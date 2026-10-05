@@ -163,17 +163,29 @@
       <h4>{{ i18n.t('deckView.check.colorsTitle') }}</h4>
       <ul class="check-list">
         @for (c of colors(); track c.color) {
-          <li [class]="'lvl-' + c.level">
+          <li class="with-card" [class]="'lvl-' + c.level">
             <span class="dot" [attr.aria-label]="levelLabel(c.level)"></span>
+            <!-- Die Karte, die am meisten verlangt, als Bild: der Name allein sagt vielen nichts. -->
+            <button class="card-thumb" [title]="c.card" (click)="previewCard(c.card)">
+              @if (cardImage(c.card); as img) {
+                <img [src]="img" [alt]="c.card" />
+              }
+            </button>
             <span class="check-name"
               ><app-mana-symbol [symbol]="c.color" />
               {{
                 i18n.t('deckView.check.sources', { sources: c.sources, required: c.required })
               }}</span
             >
-            <span class="check-advice">{{
-              i18n.t('deckView.check.colorCard', { card: c.card, cost: c.manaCost })
-            }}</span>
+            <span class="check-advice"
+              >{{ i18n.t('deckView.check.colorCardBefore', { card: frontName(c.card) }) }}
+              <span class="cost">
+                @for (sym of costSymbols(c.manaCost); track $index) {
+                  <app-mana-symbol [symbol]="sym" />
+                }
+              </span>
+              {{ i18n.t('deckView.check.colorCardAfter') }}</span
+            >
           </li>
         }
       </ul>
