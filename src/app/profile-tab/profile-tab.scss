@@ -580,3 +580,10 @@
     opacity: 0.75;
   }
 }
+
+// Top-Commander über alle Gruppen: Bild (ui/card-thumb) vor dem Namen.
+.top-commander {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+}

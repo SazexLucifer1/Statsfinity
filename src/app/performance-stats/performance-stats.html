@@ -35,6 +35,7 @@
         <ul class="stat-list">
           @for (d of visibleDecks(); track d.key) {
             <li class="stat-list-row">
+              <app-card-thumb [name]="d.commander" size="large" />
               <div class="stat-list-main">
                 <span class="stat-list-name">{{ d.label }}</span>
                 <span class="stat-list-meta"
@@ -75,6 +76,7 @@
         <ul class="stat-list">
           @for (m of visibleMatchups(); track m.label) {
             <li class="stat-list-row">
+              <app-card-thumb [name]="m.commander ?? m.label" size="large" />
               <div class="stat-list-main">
                 <span class="stat-list-name">{{ m.label }}</span>
                 <span class="stat-list-meta"

@@ -27,11 +27,7 @@
               [attr.aria-expanded]="isOpen"
               (click)="toggle(key(o))"
             >
-              @if (image(o.commander); as img) {
-                <span class="thumb"
-                  ><app-card-image [compact]="true" [imageUrl]="img" [alt]="o.commander ?? o.label"
-                /></span>
-              }
+              <app-card-thumb [name]="o.commander" size="large" />
               <span class="stat-list-main">
                 <span class="stat-list-name">{{ o.label }}</span>
                 <span class="stat-list-meta"

@@ -1,13 +1,12 @@
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { I18nService } from '../i18n.service';
-import { ScryfallService } from '../scryfall.service';
 import { DeckSocialService } from '../deck-social.service';
 import { supabase } from '../supabase.client';
 import { DeckOpponent, deckOpponents, winRateOf } from '../match-insights';
 import { Match } from '../models';
 import { SampleHint } from '../ui/sample-hint/sample-hint';
 import { formatRate, gameCount } from '../ui/performance-summary/performance-summary';
-import { CardImage } from '../card-image/card-image';
+import { CardThumb } from '../ui/card-thumb/card-thumb';
 import { SplitBar, SplitSegment } from '../ui/split-bar/split-bar';
 import { InfoToggle } from '../ui/info-toggle/info-toggle';
 
@@ -20,13 +19,12 @@ import { InfoToggle } from '../ui/info-toggle/info-toggle';
  */
 @Component({
   selector: 'app-deck-matchups',
-  imports: [CardImage, SplitBar, InfoToggle, SampleHint],
+  imports: [CardThumb, SplitBar, InfoToggle, SampleHint],
   templateUrl: './deck-matchups.html',
   styleUrl: './deck-matchups.scss',
 })
 export class DeckMatchups {
   readonly i18n = inject(I18nService);
-  private readonly scryfall = inject(ScryfallService);
   private readonly social = inject(DeckSocialService);
 
   /** Namen accountloser Deck-Besitzer (players.display_name), je players.id. */
@@ -47,8 +45,6 @@ export class DeckMatchups {
     this.showAll() ? this.all() : this.all().slice(0, this.PREVIEW),
   );
 
-  readonly commanderImages = signal<Record<string, string | null>>({});
-
   constructor() {
     effect(() => {
       const id = this.deckId();
@@ -63,25 +59,6 @@ export class DeckMatchups {
       this.all.set(opponents);
       this.loaded.set(true);
       void this.loadOwners(opponents);
-    });
-    effect(() => {
-      if (!this.expanded()) return;
-      const names = new Set(
-        this.visible()
-          .map((o) => o.commander)
-          .filter((c): c is string => !!c),
-      );
-      const known = this.commanderImages();
-      const missing = [...names].filter((n) => !(n.toLowerCase() in known));
-      if (missing.length === 0) return;
-      this.scryfall.findCardsBulk(missing).then((found) => {
-        this.commanderImages.update((current) => {
-          const next = { ...current };
-          for (const n of missing)
-            next[n.toLowerCase()] = found.get(n.toLowerCase())?.imageUrl ?? null;
-          return next;
-        });
-      });
     });
   }
 
@@ -136,10 +113,6 @@ export class DeckMatchups {
 
   key(o: DeckOpponent): string {
     return o.deckId ?? o.label;
-  }
-
-  image(name: string | null): string | null {
-    return name ? (this.commanderImages()[name.toLowerCase()] ?? null) : null;
   }
 
   toggle(label: string): void {

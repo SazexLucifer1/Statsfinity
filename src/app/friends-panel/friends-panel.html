@@ -159,6 +159,7 @@
                       {{ a.friendName }}
                     </button>
                     {{ i18n.t('profile.friends.newsDeck') }}
+                    <app-card-thumb [name]="a.commander" />
                     <button class="link" (click)="openDeck(a.deckId!)">{{ a.deckName }}</button>
                     @if (a.commander) {
                       <span class="hint"> · {{ a.commander }}</span>

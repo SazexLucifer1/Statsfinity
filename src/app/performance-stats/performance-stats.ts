@@ -9,6 +9,7 @@ import {
   pickPlayer,
   winConditionStats,
 } from '../match-insights';
+import { CardThumb } from '../ui/card-thumb/card-thumb';
 import { InfoToggle } from '../ui/info-toggle/info-toggle';
 import { SampleHint } from '../ui/sample-hint/sample-hint';
 import {
@@ -26,7 +27,7 @@ import {
  */
 @Component({
   selector: 'app-performance-stats',
-  imports: [InfoToggle, SampleHint, PerformanceSummaryView],
+  imports: [CardThumb, InfoToggle, SampleHint, PerformanceSummaryView],
   templateUrl: './performance-stats.html',
   styleUrl: './performance-stats.scss',
 })

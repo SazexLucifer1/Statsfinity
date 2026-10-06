@@ -113,7 +113,9 @@
           <ul class="commanders">
             @for (c of commanders(); track c.commander) {
               <li>
-                <span class="name">{{ c.commander }}</span>
+                <span class="name commander-cell"
+                  ><app-card-thumb [name]="c.commander" /> {{ c.commander }}</span
+                >
                 <span class="detail">{{
                   i18n.t('stats.friends.winsOfGames', { wins: c.wins, games: c.games })
                 }}</span>

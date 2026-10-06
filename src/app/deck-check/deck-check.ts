@@ -19,6 +19,7 @@ import {
 import { DeckPlayStyleService } from '../deck-play-style.service';
 import { ManaSymbol } from '../ui/mana-symbol/mana-symbol';
 import { Meter } from '../ui/meter/meter';
+import { CardThumb } from '../ui/card-thumb/card-thumb';
 import { Icon } from '../ui/icon/icon';
 import { InfoToggle } from '../ui/info-toggle/info-toggle';
 
@@ -29,7 +30,7 @@ import { InfoToggle } from '../ui/info-toggle/info-toggle';
  */
 @Component({
   selector: 'app-deck-check',
-  imports: [PercentPipe, ManaSymbol, Meter, Icon, InfoToggle],
+  imports: [PercentPipe, ManaSymbol, Meter, Icon, InfoToggle, CardThumb],
   templateUrl: './deck-check.html',
   styleUrl: './deck-check.scss',
 })

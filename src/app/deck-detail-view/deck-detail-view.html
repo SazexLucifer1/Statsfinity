@@ -563,13 +563,13 @@
                 @for (entry of group.added; track entry.cardName) {
                   <li>
                     <span class="change-icon" aria-hidden="true">+</span>
-                    <span class="change-text">{{ entry.quantity }}× {{ entry.cardName }}</span>
+                    <app-card-thumb [name]="entry.cardName" /><span class="change-text">{{ entry.quantity }}× {{ entry.cardName }}</span>
                   </li>
                 }
                 @for (entry of group.removed; track entry.cardName) {
                   <li>
                     <span class="change-icon" aria-hidden="true">−</span>
-                    <span class="change-text">{{ entry.quantity }}× {{ entry.cardName }}</span>
+                    <app-card-thumb [name]="entry.cardName" /><span class="change-text">{{ entry.quantity }}× {{ entry.cardName }}</span>
                   </li>
                 }
               </ul>
@@ -605,16 +605,16 @@
             <p class="hint">{{ viewer.i18n.t('deckView.unsavedChanges') }}</p>
             <ul class="pending-change-list">
               @for (c of viewer.edit.pendingChangeDetails().added; track c.cardName) {
-                <li class="added">{{ c.quantity }}× {{ c.cardName }}</li>
+                <li class="added"><app-card-thumb [name]="c.cardName" /> {{ c.quantity }}× {{ c.cardName }}</li>
               }
               @for (c of viewer.edit.pendingChangeDetails().removed; track c.cardName) {
-                <li class="removed">{{ c.quantity }}× {{ c.cardName }}</li>
+                <li class="removed"><app-card-thumb [name]="c.cardName" /> {{ c.quantity }}× {{ c.cardName }}</li>
               }
               @for (c of viewer.edit.pendingCommanderChangeDetails(); track c.cardName) {
-                <li class="added">{{ c.cardName }} {{ c.isCommander ? viewer.i18n.t('deckView.becomesCommander') : viewer.i18n.t('deckView.noLongerCommander') }}</li>
+                <li class="added"><app-card-thumb [name]="c.cardName" /> {{ c.cardName }} {{ c.isCommander ? viewer.i18n.t('deckView.becomesCommander') : viewer.i18n.t('deckView.noLongerCommander') }}</li>
               }
               @for (c of viewer.edit.pendingMaybeboardChangeDetails(); track c.cardName) {
-                <li class="added">{{ c.cardName }} {{ c.isMaybeboard ? viewer.i18n.t('deckView.movedToMaybeboard') : viewer.i18n.t('deckView.movedToDeck') }}</li>
+                <li class="added"><app-card-thumb [name]="c.cardName" /> {{ c.cardName }} {{ c.isMaybeboard ? viewer.i18n.t('deckView.movedToMaybeboard') : viewer.i18n.t('deckView.movedToDeck') }}</li>
               }
             </ul>
           }
