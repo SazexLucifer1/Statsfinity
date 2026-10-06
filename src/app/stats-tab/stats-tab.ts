@@ -210,13 +210,6 @@ export class StatsTab {
       this.mtg.loadMatchesForGroups([groupId]).then((matches) => this.viewedMatches.set(matches));
     });
 
-    // Eine lokal gepinnte Fremdgruppen-Ansicht bliebe sonst unbemerkt "hängen", wenn anderswo (z.B.
-    // im Gruppen-Tab) die echte aktive Gruppe gewechselt wird.
-    effect(() => {
-      this.groupService.groupId();
-      this.viewedGroupId.set(null);
-    });
-
     effect(() => {
       const names = new Set<string>();
       for (const e of this.pagedCombinedStats()) {
@@ -478,22 +471,19 @@ export class StatsTab {
     this.mtg.history().filter((m) => m.countsInGeneralStats !== false),
   );
 
-  // --- Lokaler Gruppen-Wechsler (nur Stats-Tab) ---
+  // --- Gruppen-Wechsler im Stats-Tab ---
   //
-  // filteredMatches() bleibt an der echten aktiven Gruppe (Spieler-Details, Head-to-Head,
-  // Berechtigungen). Die Auswertungen (Übersicht, Ranglisten, Farben) lesen
-  // viewedFilteredMatches(), das sich lokal auf eine andere eigene Gruppe umschalten lässt.
-
-  /** null = folgt der echten aktiven Gruppe (Default, entspricht dem bisherigen Verhalten). */
-  private readonly viewedGroupId = signal<string | null>(null);
-  readonly effectiveViewedGroupId = computed(
-    () => this.viewedGroupId() ?? this.groupService.groupId(),
-  );
+  // Wechselt die echte aktive Gruppe (dieselbe wie im Gruppen-Tab). Früher war das eine nur
+  // lokale Ansicht: Übersicht, Ranglisten und Farben sprangen um, Spieler-Details, Elo,
+  // Head-to-Head und Spiel-Analysen blieben aber an der aktiven Gruppe hängen - wer die
+  // Statistik einer anderen Gruppe sehen wollte, musste doch in den Gruppen-Tab (Wunsch des
+  // Users, 06.10.2026: umstellbar direkt hier).
+  readonly effectiveViewedGroupId = computed(() => this.groupService.groupId());
 
   setViewedGroup(groupId: string): void {
-    this.viewedGroupId.set(groupId);
     this.selectedCommanderDetail.set(null);
     this.selectedDeckDetail.set(null);
+    this.groupService.switchGroup(groupId);
   }
 
   /** Matches der lokal betrachteten Gruppe (Default: echte aktive Gruppe, kein Extra-Request). */

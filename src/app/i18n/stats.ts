@@ -174,7 +174,7 @@ export const stats = {
     // --- Stats-Tab: Global-Ansicht & lokaler Gruppen-Wechsler ---
     'stats.viewScopeGroup': 'Gruppe',
     'stats.viewScopeGlobal': 'Global',
-    'stats.groupSwitcherHint': 'Gruppe für diese Übersicht wählen.',
+    'stats.groupSwitcherHint': 'Gruppe wählen – gilt für die ganze Statistik und auch für neue Matches.',
     'stats.globalDecksAndCommandersHint':
       'Über alle Spieler der gesamten Website hinweg - ohne Spielernamen (die würden sonst Personen aus fremden Gruppen offenlegen). In der Winrate-Rangliste zählen nur Decks/Commander ab 10 Partien mit, sonst würde ein einzelnes Spiel mit 100% die Liste anführen.',
     'stats.globalLoading': 'Lade weltweite Statistik …',
@@ -376,7 +376,7 @@ export const stats = {
     // --- Stats tab: global view & local group switcher ---
     'stats.viewScopeGroup': 'Group',
     'stats.viewScopeGlobal': 'Global',
-    'stats.groupSwitcherHint': 'Choose a group for this overview.',
+    'stats.groupSwitcherHint': 'Choose a group – applies to all stats and to new matches too.',
     'stats.globalDecksAndCommandersHint':
       'Across every player on the whole website - no player names (those would otherwise expose people from groups you’re not in). The winrate ranking only counts decks/commanders with 10+ games, otherwise a single 100% game would top the list.',
     'stats.globalLoading': 'Loading global stats …',
