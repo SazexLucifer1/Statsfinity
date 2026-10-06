@@ -13,13 +13,16 @@ import { InfoToggle } from '../ui/info-toggle/info-toggle';
 import { SampleHint } from '../ui/sample-hint/sample-hint';
 import {
   PerformanceSummaryView,
-  formatNumber,
+  formatAverage,
+  formatRate,
+  gameCount,
 } from '../ui/performance-summary/performance-summary';
 
 /**
- * "Performance" im Statistik-Tab: Gesamt, Decks, Siegarten und - mit gewähltem Spieler - die
+ * "Performance" im Statistik-Tab: Kennzahlen, Siegarten, Decks und - mit gewähltem Spieler - die
  * Bilanz gegen gegnerische Commander. Bekommt dieselben gefilterten Partien wie die Spiel-Analysen
  * (match-insights/); gerechnet wird in match-insights.ts, ausschließlich aus gespeicherten Daten.
+ * Decks und Matchups sind zweizeilige Listen (.stat-list in styles.scss), keine Spaltentabellen.
  */
 @Component({
   selector: 'app-performance-stats',
@@ -34,7 +37,7 @@ export class PerformanceStats {
   /** Gewählter Spieler aus "Spieler-Details", null = ganze Gruppe. */
   readonly player = input<string | null>(null);
 
-  readonly PREVIEW = 6;
+  readonly PREVIEW = 5;
   readonly expanded = signal(true);
   readonly showAllDecks = signal(false);
   readonly showAllMatchups = signal(false);
@@ -62,18 +65,26 @@ export class PerformanceStats {
     this.showAllMatchups() ? this.matchups() : this.matchups().slice(0, this.PREVIEW),
   );
 
-  num(value: number | null, digits = 1): string {
-    return value === null ? '–' : formatNumber(value, this.i18n.lang(), digits);
-  }
+  readonly lead = computed(() => {
+    const games = this.overall().games;
+    return games === 1
+      ? this.i18n.t('stats.performance.leadOne')
+      : this.i18n.t('stats.performance.lead', { count: games });
+  });
 
   rate(value: number | null): string {
-    return value === null ? '–' : `${formatNumber(value, this.i18n.lang(), 0)} %`;
+    return formatRate(value, this.i18n.lang());
   }
 
-  minutes(value: number | null): string {
-    if (value === null) return '–';
-    const m = Math.round(value);
-    if (m < 60) return this.i18n.t('match.durationMinutes', { min: m });
-    return this.i18n.t('match.durationHours', { h: Math.floor(m / 60), min: m % 60 });
+  games(count: number): string {
+    return gameCount(count, this.i18n);
+  }
+
+  /** "Ø Platz 2,3" - nur, wenn es eingetragene Plätze gibt; sonst fehlt der Teil ganz. */
+  placement(value: number | null): string | null {
+    if (value === null) return null;
+    return this.i18n.t('stats.performance.placementShort', {
+      value: formatAverage(value, this.i18n.lang()),
+    });
   }
 }

@@ -6,7 +6,7 @@ import { supabase } from '../supabase.client';
 import { DeckOpponent, deckOpponents, winRateOf } from '../match-insights';
 import { Match } from '../models';
 import { SampleHint } from '../ui/sample-hint/sample-hint';
-import { formatNumber } from '../ui/performance-summary/performance-summary';
+import { formatRate, gameCount } from '../ui/performance-summary/performance-summary';
 import { CardImage } from '../card-image/card-image';
 import { SplitBar, SplitSegment } from '../ui/split-bar/split-bar';
 import { InfoToggle } from '../ui/info-toggle/info-toggle';
@@ -127,8 +127,11 @@ export class DeckMatchups {
 
   /** Siegquote gegen diesen Gegner in den aufgezeichneten Partien - nur gezählt, nicht gedeutet. */
   rate(o: DeckOpponent): string {
-    const rate = winRateOf(o.wins, o.games);
-    return rate === null ? '–' : `${formatNumber(rate, this.i18n.lang(), 0)} %`;
+    return formatRate(winRateOf(o.wins, o.games), this.i18n.lang());
+  }
+
+  games(count: number): string {
+    return gameCount(count, this.i18n);
   }
 
   key(o: DeckOpponent): string {

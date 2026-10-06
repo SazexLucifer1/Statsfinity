@@ -1,55 +1,67 @@
+<!-- 1. Wichtigste Zahlen: eine Zeile, keine Kästen. -->
 @if (summary(); as s) {
-  <div class="stat-tiles perf-tiles">
-    @if (showCounts()) {
-      <div class="stat-tile">
-        <span class="stat-value">{{ s.games }}</span>
-        <span class="stat-label">{{ i18n.t('stats.performance.games') }}</span>
-        <app-sample-hint [games]="s.games" />
+  @if (showCounts()) {
+    <div class="headline">
+      <div class="headline-item primary">
+        <span class="headline-value">{{ rate() }}</span>
+        <span class="headline-label">{{ i18n.t('stats.performance.winRate') }}</span>
       </div>
-      <div class="stat-tile">
-        <span class="stat-value">{{ s.wins }}</span>
-        <span class="stat-label">{{ i18n.t('stats.performance.wins') }}</span>
+      <div class="headline-item">
+        <span class="headline-value">{{ s.games }}</span>
+        <span class="headline-label">{{ i18n.t('stats.performance.games') }}</span>
+        <!-- Der Hinweis gehört zur Zahl der Spiele, nicht zur Winrate. -->
+        <app-sample-hint class="headline-hint" [games]="s.games" />
       </div>
-      <div class="stat-tile">
-        <span class="stat-value">{{ s.winRate === null ? '–' : num(s.winRate, 0) + ' %' }}</span>
-        <span class="stat-label">{{ i18n.t('stats.performance.winRate') }}</span>
+      <div class="headline-item">
+        <span class="headline-value">{{ s.wins }}</span>
+        <span class="headline-label">{{ i18n.t('stats.performance.wins') }}</span>
       </div>
-    }
-    <div class="stat-tile">
-      <span class="stat-value">{{ num(s.avgPlacement, 2) }}</span>
-      <span class="stat-label">{{ i18n.t('stats.performance.avgPlacement') }}</span>
-      <small class="from">{{
-        i18n.t('stats.performance.fromGames', { count: s.placementGames })
-      }}</small>
     </div>
-    <div class="stat-tile">
-      <span class="stat-value">{{ num(s.avgWinTurn) }}</span>
-      <span class="stat-label">{{ i18n.t('stats.performance.avgWinTurn') }}</span>
-      <small class="from">{{
-        i18n.t('stats.performance.fromGames', { count: s.winTurnGames })
-      }}</small>
-    </div>
-    <div class="stat-tile">
-      <span class="stat-value">{{ minutes(s.avgMinutes) }}</span>
-      <span class="stat-label">{{ i18n.t('stats.performance.avgDuration') }}</span>
-      <small class="from">{{
-        i18n.t('stats.performance.fromGames', { count: s.durationGames })
-      }}</small>
+  }
+} @else if (overall(); as o) {
+  <div class="headline">
+    <div class="headline-item primary">
+      <span class="headline-value">{{ o.games }}</span>
+      <span class="headline-label">{{ i18n.t('stats.performance.games') }}</span>
     </div>
   </div>
 }
 
-@if (winConditions(); as list) {
-  <h3 class="perf-subtitle">{{ i18n.t('stats.performance.winConditionsTitle') }}</h3>
-  @if (winConditionTotal() === 0) {
-    <p class="hint">{{ i18n.t('stats.performance.winConditionsEmpty') }}</p>
+<!-- 2. Schnitte: Liste mit Grundlage, fehlende Werte als "—" / "Keine Daten". -->
+@if (facts().length > 0) {
+  <dl class="facts">
+    @for (f of facts(); track f.label) {
+      <div class="fact" [class.missing]="f.missing">
+        <dt>{{ f.label }}</dt>
+        <dd>
+          <span class="fact-value">{{ f.value }}</span>
+          <span class="fact-basis">{{ f.basis }}</span>
+        </dd>
+      </div>
+    }
+  </dl>
+}
+
+<!-- 3. Siegarten: schlichte Liste mit dünnem Balken. -->
+@if (winConditions()) {
+  <app-info-toggle [label]="i18n.t('stats.performance.infoAria')">
+    <h3 info-title class="stat-list-title">{{ i18n.t('stats.performance.winConditionsTitle') }}</h3>
+    <p class="hint">{{ i18n.t('stats.performance.winConditionsInfo') }}</p>
+  </app-info-toggle>
+  @if (conditions().length === 0) {
+    <p class="empty">{{ i18n.t('stats.performance.noData') }}</p>
   } @else {
-    <ul class="win-conditions">
-      @for (w of list; track w.condition) {
+    <ul class="conditions">
+      @for (w of conditions(); track w.condition) {
         <li [class.unknown]="w.condition === 'unknown'">
-          <span class="wc-label">{{ i18n.t('stats.winCondition.' + w.condition) }}</span>
-          <app-meter [value]="w.count" [max]="winConditionMax()" />
-          <strong class="wc-count">{{ w.count }}</strong>
+          <span class="condition-label">{{ i18n.t('stats.winCondition.' + w.condition) }}</span>
+          <span class="condition-count">{{ w.count }}</span>
+          <app-meter
+            class="condition-bar"
+            [value]="w.count"
+            [max]="conditionMax()"
+            color="color-mix(in srgb, var(--accent) 60%, transparent)"
+          />
         </li>
       }
     </ul>

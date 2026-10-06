@@ -15,7 +15,9 @@ import { InfoToggle } from '../ui/info-toggle/info-toggle';
 import { SampleHint } from '../ui/sample-hint/sample-hint';
 import {
   PerformanceSummaryView,
-  formatNumber,
+  formatAverage,
+  formatRate,
+  gameCount,
 } from '../ui/performance-summary/performance-summary';
 
 /**
@@ -69,12 +71,20 @@ export class DeckPerformance {
     });
   }
 
-  num(value: number | null, digits = 1): string {
-    return value === null ? '–' : formatNumber(value, this.i18n.lang(), digits);
+  rate(value: number | null): string {
+    return formatRate(value, this.i18n.lang());
   }
 
-  rate(value: number | null): string {
-    return value === null ? '–' : `${formatNumber(value, this.i18n.lang(), 0)} %`;
+  games(count: number): string {
+    return gameCount(count, this.i18n);
+  }
+
+  /** "Ø Platz 2,3" - nur, wenn es eingetragene Plätze gibt. */
+  placement(value: number | null): string | null {
+    if (value === null) return null;
+    return this.i18n.t('stats.performance.placementShort', {
+      value: formatAverage(value, this.i18n.lang()),
+    });
   }
 
   compareText(): string | null {

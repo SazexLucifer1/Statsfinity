@@ -1,25 +1,11 @@
 :host {
-  display: inline-flex;
+  display: inline;
 }
 
+// Nur leiser Text, keine Pille und keine Farbe: der Hinweis ordnet die Zahl ein, er soll ihr
+// nicht die Aufmerksamkeit nehmen.
 .sample-hint {
-  display: inline-block;
-  padding: 1px var(--sp-2);
-  border-radius: var(--r-pill);
-  font-size: 0.7rem;
-  line-height: 1.4;
-  white-space: nowrap;
-  border: 1px solid var(--divider);
-  color: rgba(255, 255, 255, 0.65);
-}
-
-// Je weniger Partien, desto blasser - die Zahl daneben soll nicht lauter wirken als sie ist.
-.sample-veryLow {
+  font-size: inherit;
   opacity: 0.75;
-  font-style: italic;
-}
-
-.sample-more {
-  border-color: var(--series-1);
-  color: var(--series-1);
+  white-space: nowrap;
 }
