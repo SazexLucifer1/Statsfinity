@@ -196,6 +196,8 @@ export interface CommanderStats {
   wins: number;
   winRate: number;
   playedBy: string[];
+  /** true = mindestens eine dieser Partien lief mit einem Precon (sonst nur unverlinkte). */
+  isPrecon?: boolean;
 }
 
 export interface DeckStats {

@@ -1,5 +1,4 @@
 import { Component, Signal, computed, effect, inject, signal } from '@angular/core';
-import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
   DeckService,
@@ -137,7 +136,6 @@ class QualifiedRanking<T extends { name: string; games: number; wins: number; wi
 @Component({
   selector: 'app-global-stats',
   imports: [
-    DecimalPipe,
     FormsModule,
     CardImage,
     LoginRequired,

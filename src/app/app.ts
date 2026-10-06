@@ -13,6 +13,7 @@ import { ManualDeckLinkDialog } from './manual-deck-link-dialog/manual-deck-link
 import { CardPreviewDialog } from './card-preview-dialog/card-preview-dialog';
 import { TutorialOverlay } from './tutorial-overlay/tutorial-overlay';
 import { FeedbackDialog } from './feedback-dialog/feedback-dialog';
+import { UsernamePrompt } from './username-prompt/username-prompt';
 import { PlacementDialog } from './placement-dialog/placement-dialog';
 import { TournamentPanel } from './tournament-panel/tournament-panel';
 import { Dialog } from './dialog/dialog';
@@ -56,6 +57,7 @@ import { APP_VERSION, APP_COMMIT } from './version';
     ResetPassword,
     TutorialOverlay,
     FeedbackDialog,
+    UsernamePrompt,
     PlacementDialog,
     TournamentPanel,
     Dialog,

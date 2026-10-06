@@ -17,6 +17,12 @@ export interface BarChartDatum {
    * mehrdeutig und ohne Legende überhaupt nur zu erraten. Das Symbol sagt es eindeutig.
    */
   symbol?: string;
+  /**
+   * Nur senkrecht: wie viel möglich gewesen wäre, z.B. alle Partien der Gruppe in einem Monat.
+   * Dann steht die Säule blass in voller Höhe, der Wert füllt sie von unten, und oben steht
+   * "Wert/total".
+   */
+  total?: number;
 }
 
 /**
@@ -50,7 +56,9 @@ export class BarChart {
   readonly labelWidth = input('auto');
 
   readonly reference = computed(() =>
-    this.scale() === 'percent' ? 100 : maxValue(this.data().map((d) => d.value)),
+    this.scale() === 'percent'
+      ? 100
+      : maxValue(this.data().map((d) => Math.max(d.value, d.total ?? 0))),
   );
 
   percentOf(value: number): number {

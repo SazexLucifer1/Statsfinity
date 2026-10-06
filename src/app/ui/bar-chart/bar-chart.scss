@@ -99,6 +99,19 @@
   transition: height 0.2s ease;
 }
 
+// Säule mit Obergrenze (BarChartDatum.total): blass in voller Höhe, der Wert füllt von unten.
+.bc-ghost {
+  display: flex;
+  align-items: flex-end;
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.bc-fill {
+  width: 100%;
+  background: var(--accent);
+  border-radius: inherit;
+}
+
 .bc-cap {
   position: absolute;
   top: -18px;

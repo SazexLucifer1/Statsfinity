@@ -126,5 +126,9 @@
 <app-login />
 }
 
+@if (profiles.needsUsername() && !loginOverlay.active()) {
+<app-username-prompt />
+}
+
 <app-legal-page-view />
 <app-card-preview-dialog />

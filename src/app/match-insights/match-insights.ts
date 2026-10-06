@@ -1,11 +1,14 @@
 import { Component, computed, inject, input, signal } from '@angular/core';
 import { Match } from '../models';
 import { I18nService } from '../i18n.service';
+import { NavigationService } from '../navigation.service';
+import { ProfileService } from '../profile.service';
 import {
   OPPONENT_MIN_GAMES,
   durationStats,
   favoriteVictim,
   monthlyWinRate,
+  monthlyGames,
   nemesis,
   opponentStats,
   recentForm,
@@ -30,12 +33,19 @@ import { YearReviewDialog } from '../year-review-dialog/year-review-dialog';
 })
 export class MatchInsights {
   readonly i18n = inject(I18nService);
+  private readonly navigation = inject(NavigationService);
+  private readonly profileService = inject(ProfileService);
 
   readonly matches = input.required<readonly Match[]>();
   /** Gewählter Spieler aus "Spieler-Details", null = Auswertung über die ganze Gruppe. */
   readonly player = input<string | null>(null);
   /** Alle Partien ohne Jahresfilter - für den Jahresrückblick, der sein Jahr selbst wählt. */
   readonly allMatches = input<readonly Match[]>([]);
+  /**
+   * Spielername -> Benutzer-ID für alle, die ein Konto haben. Wer hier drinsteht, ist unter
+   * "Gegner" anklickbar und öffnet sein Profil; Spieler ohne Konto bleiben reiner Text.
+   */
+  readonly profileIds = input<Readonly<Record<string, string | null>>>({});
 
   readonly expanded = signal(true);
   readonly showYearReview = signal(false);
@@ -79,6 +89,16 @@ export class MatchInsights {
     }));
   });
 
+  readonly monthlyPlayed = computed<BarChartDatum[]>(() => {
+    const player = this.player();
+    if (!player) return [];
+    return monthlyGames(this.matches(), player).map((m) => ({
+      label: this.monthLabel(m.month),
+      value: m.games,
+      total: m.total,
+    }));
+  });
+
   private monthLabel(month: string): string {
     const [year, m] = month.split('-').map(Number);
     return new Date(year, m - 1, 1).toLocaleDateString(
@@ -88,6 +108,17 @@ export class MatchInsights {
         year: '2-digit',
       },
     );
+  }
+
+  isLinked(name: string): boolean {
+    return !!this.profileIds()[name];
+  }
+
+  async openProfile(name: string): Promise<void> {
+    const userId = this.profileIds()[name];
+    if (!userId) return;
+    this.navigation.goToTab('profile');
+    await this.profileService.viewProfile(userId);
   }
 
   formatMinutes(minutes: number): string {

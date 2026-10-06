@@ -54,7 +54,9 @@
       </span>
     }
   }
-  <span class="name">{{ p.entry.name }}</span>
+  <span class="name"
+    >@if (p.entry.icon) {<app-icon [name]="p.entry.icon" [label]="p.entry.iconLabel ?? ''" /> }{{ p.entry.name }}</span
+  >
   <span class="value">{{ p.entry.value }}</span>
   <span class="detail">{{ p.entry.detail }}</span>
 </ng-template>
