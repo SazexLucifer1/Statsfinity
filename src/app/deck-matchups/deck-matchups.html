@@ -15,10 +15,10 @@
     </app-info-toggle>
     @if (expanded()) {
       <ul class="matchups">
-        @for (o of visible(); track o.label) {
-          @let isOpen = open() === o.label;
+        @for (o of visible(); track key(o)) {
+          @let isOpen = open() === key(o);
           <li>
-            <button class="matchup-row" [attr.aria-expanded]="isOpen" (click)="toggle(o.label)">
+            <button class="matchup-row" [attr.aria-expanded]="isOpen" (click)="toggle(key(o))">
               <span class="side">
                 @if (image(o.commander); as img) {
                   <span class="thumb"
@@ -28,7 +28,14 @@
                       [alt]="o.commander ?? o.label"
                   /></span>
                 }
-                <span class="deck-name">{{ o.label }}</span>
+                <span class="deck-text">
+                  <span class="deck-name">{{ o.label }}</span>
+                  @if (owner(o); as name) {
+                    <small class="deck-owner">{{
+                      i18n.t('deckView.matchups.owner', { name })
+                    }}</small>
+                  }
+                </span>
               </span>
               <span
                 class="score"

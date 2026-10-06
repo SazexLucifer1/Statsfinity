@@ -475,6 +475,11 @@ export interface DeckOpponent {
   /** Deckname oder - ohne verknüpftes Deck - der Commander. */
   label: string;
   commander: string | null;
+  /** Verknüpftes Deck, null bei reinem Commander-Eintrag. */
+  deckId: string | null;
+  /** Besitzer des Decks (Konto bzw. accountloser Spieler) - nicht, wer es geliehen gespielt hat. */
+  ownerUserId: string | null;
+  ownerPlayerId: string | null;
   games: number;
   /** Dieses Deck hat gewonnen. */
   wins: number;
@@ -497,9 +502,14 @@ export function deckOpponents(matches: readonly Match[], deckId: string): DeckOp
       if (other === self || isAlly(m, self, other)) continue;
       const label = deckLabel(other);
       if (!label) continue;
-      const entry = map.get(label) ?? {
+      // Je Deck, nicht je Name: zwei gleichnamige Decks verschiedener Besitzer sind zwei Gegner.
+      const key = other.deckId ?? label;
+      const entry = map.get(key) ?? {
         label,
         commander: other.commander ?? null,
+        deckId: other.deckId ?? null,
+        ownerUserId: other.deckOwnerId ?? null,
+        ownerPlayerId: other.deckOwnerPlayerId ?? null,
         games: 0,
         wins: 0,
         losses: 0,
@@ -507,7 +517,7 @@ export function deckOpponents(matches: readonly Match[], deckId: string): DeckOp
       entry.games++;
       if (selfWon) entry.wins++;
       else if (didWin(m, other.name)) entry.losses++;
-      map.set(label, entry);
+      map.set(key, entry);
     }
   }
   return [...map.values()].sort((a, b) => b.games - a.games || b.wins - a.wins);

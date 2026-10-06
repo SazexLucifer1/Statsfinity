@@ -121,8 +121,26 @@ describe('match-insights', () => {
       match('C', [p('A', a), p('B', b), p('C', { commander: 'Atraxa' })]),
     ];
     expect(deckOpponents(matches, 'a')).toEqual([
-      { label: 'Beta', commander: null, games: 3, wins: 1, losses: 1 },
-      { label: 'Atraxa', commander: 'Atraxa', games: 2, wins: 1, losses: 1 },
+      {
+        label: 'Beta',
+        commander: null,
+        deckId: 'b',
+        ownerUserId: null,
+        ownerPlayerId: null,
+        games: 3,
+        wins: 1,
+        losses: 1,
+      },
+      {
+        label: 'Atraxa',
+        commander: 'Atraxa',
+        deckId: null,
+        ownerUserId: null,
+        ownerPlayerId: null,
+        games: 2,
+        wins: 1,
+        losses: 1,
+      },
     ]);
   });
 
