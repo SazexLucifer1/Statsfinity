@@ -4,7 +4,7 @@ import { DRAW, isImportLossDuplicate, isPlayerWinner } from './match-utils';
 /**
  * Auswertungen über Partien, die es vor dem Partie-Verlauf (sql/partie-verlauf-2026-10-04.sql)
  * nicht geben konnte oder die bisher fehlten: Zugreihenfolge, Spieldauer, Lieblingsgegner,
- * Deck-gegen-Deck, Form. Alles reine Funktionen über eine Match-Liste - die Komponente
+ * Form, und je Deck die Gegnerdecks (deckOpponents). Alles reine Funktionen über eine Match-Liste - die Komponente
  * match-insights reicht nur die schon gefilterten Partien des Statistik-Tabs herein.
  */
 
@@ -222,65 +222,6 @@ function pickBy(
   return [...candidates].sort((a, b) => rate(b) - rate(a) || count(b) - count(a))[0];
 }
 
-// --- Deck gegen Deck ---
-
-export interface Matchup {
-  a: string;
-  b: string;
-  /** Commander der beiden Decks (für das Kartenbild), falls bekannt. */
-  aCommander?: string;
-  bCommander?: string;
-  games: number;
-  aWins: number;
-  bWins: number;
-}
-
-/**
- * Wie oft hat Deck A gegen Deck B gewonnen und umgekehrt - aus jeder Partie, in der beide am
- * Tisch saßen. Ein Sieg zählt nur gegen die Decks am selben Tisch, nicht als Duell zwischen zwei
- * Verlierern. Mit player nur die Paarungen seiner Decks, sein Deck steht dann immer links.
- */
-export function deckMatchups(
-  matches: readonly Match[],
-  player?: string | null,
-  minGames = 2,
-): Matchup[] {
-  const pairs = new Map<string, Matchup>();
-  for (const match of countable(matches)) {
-    const winners = new Set(winnersOf(match).map((p) => p.name));
-    const seated = match.players
-      .map((p) => ({ p, key: deckKey(p), label: deckLabel(p) }))
-      .filter((e): e is { p: MatchPlayer; key: string; label: string } => !!e.key && !!e.label);
-    for (let i = 0; i < seated.length; i++) {
-      for (let j = i + 1; j < seated.length; j++) {
-        let [x, y] = [seated[i], seated[j]];
-        if (x.key === y.key || isAlly(match, x.p, y.p)) continue;
-        if (player) {
-          if (y.p.name === player && x.p.name !== player) [x, y] = [y, x];
-          if (x.p.name !== player) continue;
-        } else if (x.label.localeCompare(y.label) > 0) {
-          [x, y] = [y, x];
-        }
-        const id = `${x.key}|${y.key}`;
-        const entry = pairs.get(id) ?? {
-          a: x.label,
-          b: y.label,
-          aCommander: x.p.commander,
-          bCommander: y.p.commander,
-          games: 0,
-          aWins: 0,
-          bWins: 0,
-        };
-        entry.games++;
-        if (winners.has(x.p.name)) entry.aWins++;
-        if (winners.has(y.p.name)) entry.bWins++;
-        pairs.set(id, entry);
-      }
-    }
-  }
-  return [...pairs.values()].filter((m) => m.games >= minGames).sort((a, b) => b.games - a.games);
-}
-
 // --- Form ---
 
 export type FormResult = 'W' | 'L' | 'D';
@@ -411,4 +352,48 @@ export function yearReview(
     bestStreak,
     firstSeatWinRate: first && first.games >= 3 ? first.winRate : null,
   };
+}
+
+// --- Ein Deck gegen andere (Deck-Ansicht) ---
+
+export interface DeckOpponent {
+  /** Deckname oder - ohne verknüpftes Deck - der Commander. */
+  label: string;
+  commander: string | null;
+  games: number;
+  /** Dieses Deck hat gewonnen. */
+  wins: number;
+  /** Das Gegnerdeck hat gewonnen. */
+  losses: number;
+}
+
+/**
+ * Gegen welche Decks ein Deck gespielt hat und wie es dabei lief - aus Sicht dieses Decks. Ein
+ * Sieg eines Dritten zählt als Partie, aber weder als Sieg noch als Niederlage gegen den Gegner.
+ * Teamkollegen und Verbündete gegen den Archenemy sind keine Gegner.
+ */
+export function deckOpponents(matches: readonly Match[], deckId: string): DeckOpponent[] {
+  const map = new Map<string, DeckOpponent>();
+  for (const m of countable(matches)) {
+    const self = m.players.find((p) => p.deckId === deckId);
+    if (!self) continue;
+    const selfWon = didWin(m, self.name);
+    for (const other of m.players) {
+      if (other === self || isAlly(m, self, other)) continue;
+      const label = deckLabel(other);
+      if (!label) continue;
+      const entry = map.get(label) ?? {
+        label,
+        commander: other.commander ?? null,
+        games: 0,
+        wins: 0,
+        losses: 0,
+      };
+      entry.games++;
+      if (selfWon) entry.wins++;
+      else if (didWin(m, other.name)) entry.losses++;
+      map.set(label, entry);
+    }
+  }
+  return [...map.values()].sort((a, b) => b.games - a.games || b.wins - a.wins);
 }

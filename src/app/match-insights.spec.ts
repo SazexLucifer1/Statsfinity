@@ -1,5 +1,5 @@
 import {
-  deckMatchups,
+  deckOpponents,
   durationMinutes,
   durationStats,
   favoriteVictim,
@@ -108,19 +108,17 @@ describe('match-insights', () => {
     expect(opponentStats([arch], 'A')).toEqual([{ name: 'X', games: 1, lostTo: 0, beat: 1 }]);
   });
 
-  it('stellt Decks paarweise gegeneinander, mit Spieler steht sein Deck links', () => {
+  it('zeigt aus Sicht eines Decks, gegen welche Decks es wie oft gewonnen und verloren hat', () => {
     const a = { deckId: 'a', deckName: 'Alpha' };
     const b = { deckId: 'b', deckName: 'Beta' };
     const matches = [
       match('B', [p('B', b), p('A', a)]),
-      match('A', [p('A', a), p('B', b)]),
-      match('A', [p('A', a), p('B', b)]),
+      match('A', [p('A', a), p('B', b), p('C', { commander: 'Atraxa' })]),
+      match('C', [p('A', a), p('B', b), p('C', { commander: 'Atraxa' })]),
     ];
-    expect(deckMatchups(matches)).toEqual([
-      { a: 'Alpha', b: 'Beta', games: 3, aWins: 2, bWins: 1 },
-    ]);
-    expect(deckMatchups(matches, 'B')).toEqual([
-      { a: 'Beta', b: 'Alpha', games: 3, aWins: 1, bWins: 2 },
+    expect(deckOpponents(matches, 'a')).toEqual([
+      { label: 'Beta', commander: null, games: 3, wins: 1, losses: 1 },
+      { label: 'Atraxa', commander: 'Atraxa', games: 2, wins: 1, losses: 1 },
     ]);
   });
 
