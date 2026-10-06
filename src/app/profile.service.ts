@@ -1,4 +1,4 @@
-import { Injectable, effect, inject, signal } from '@angular/core';
+import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { supabase } from './supabase.client';
 import { AuthService } from './auth.service';
 import { NavigationService } from './navigation.service';
@@ -53,6 +53,44 @@ export class ProfileService {
    * eingeloggt = kein Alpha-Tester.
    */
   readonly isAlphaTester = signal(false);
+
+  /** Wer den Benutzernamen-Dialog schon beantwortet hat, je Gerät. */
+  private readonly usernameAnswered = signal<string | null>(ProfileService.leseUsernameAntwort());
+
+  /**
+   * true, solange das eigene Profil noch den Namen trägt, den die Datenbank beim Registrieren
+   * vergibt: den Teil der E-Mail vor dem @. Dann fragt username-prompt/ nach einem eigenen Namen -
+   * vorher musste man selbst darauf kommen, ihn im Profil zu ändern. Trifft auch ältere Konten,
+   * die ihren Namen nie geändert haben; wer bewusst denselben Namen eintippt, wird nicht wieder
+   * gefragt.
+   */
+  readonly needsUsername = computed(() => {
+    const profile = this.profile();
+    const email = this.auth.currentUser()?.email;
+    if (!profile || !email || this.usernameAnswered() === profile.id) return false;
+    const automatisch = email.split('@')[0].trim().toLowerCase();
+    return profile.displayName.trim().toLowerCase() === automatisch;
+  });
+
+  dismissUsernamePrompt(): void {
+    const id = this.profile()?.id ?? null;
+    this.usernameAnswered.set(id);
+    try {
+      if (id) localStorage.setItem(ProfileService.USERNAME_KEY, id);
+    } catch {
+      // Ohne Speicher gilt die Antwort nur bis zum Neuladen.
+    }
+  }
+
+  private static readonly USERNAME_KEY = 'statsfinity.usernameAnswered';
+
+  private static leseUsernameAntwort(): string | null {
+    try {
+      return localStorage.getItem(ProfileService.USERNAME_KEY);
+    } catch {
+      return null;
+    }
+  }
 
   /** Ist gesetzt, während im Profil-Tab statt des eigenen Profils das eines anderen Users
    * (nur lesend) angezeigt wird - z.B. nach "Profil ansehen" aus dem Gruppen-Tab. */

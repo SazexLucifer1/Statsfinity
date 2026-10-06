@@ -194,7 +194,6 @@
   <ul class="ranking">
     @for (m of playerModeStats(); track m.mode) {
     <li>
-      <span class="rank"><app-icon name="dice" /></span>
       <span class="name">{{ m.mode }}</span>
       <span class="detail">{{ m.wins }} / {{ m.games }} {{ i18n.t('stats.wins') }}</span>
       <span class="rate">{{ m.winRate | number: '1.0-0' }}%</span>
@@ -252,8 +251,8 @@
           <span class="chevron">{{ selectedDeckDetail() === d.deckId ? '▾' : '▸' }}</span>
         }
       </span>
-      <span class="detail">{{ d.wins }} / {{ d.games }} {{ i18n.t('stats.wins') }}</span>
-      <span class="rate">{{ d.winRate | number: '1.0-0' }}%</span>
+      <span class="detail">{{ rankDetail(d, playerDeckSortMode()) }}</span>
+      <span class="rate">{{ rankValue(d, playerDeckSortMode()) }}</span>
       <app-meter
         [value]="barValue(d, playerDeckSortMode())"
         [max]="barMax(playerDeckStats(), playerDeckSortMode())"
@@ -305,8 +304,8 @@
           <span class="chevron">{{ selectedCommanderDetail() === c.commander ? '▾' : '▸' }}</span>
         }
       </span>
-      <span class="detail">{{ c.wins }} / {{ c.games }} {{ i18n.t('stats.wins') }}</span>
-      <span class="rate">{{ c.winRate | number: '1.0-0' }}%</span>
+      <span class="detail">{{ rankDetail(c, playerCommanderSortMode()) }}</span>
+      <span class="rate">{{ rankValue(c, playerCommanderSortMode()) }}</span>
       <app-meter
         [value]="barValue(c, playerCommanderSortMode())"
         [max]="barMax(playerCommanderStats(), playerCommanderSortMode())"
@@ -337,6 +336,7 @@
   [matches]="selectedPlayer() ? filteredMatches() : viewedFilteredMatches()"
   [player]="selectedPlayer()"
   [allMatches]="reviewMatches()"
+  [profileIds]="mtg.playerUserIds()"
 />
 
 @if (totalGames() === 0) { @if (!selectedPlayer()) {
@@ -382,8 +382,8 @@
         <app-player-avatar [url]="mtg.playerAvatars()[p.name] ?? null" />
         {{ p.name }}
       </span>
-      <span class="detail">{{ p.wins }} / {{ p.games }} {{ i18n.t('stats.wins') }}</span>
-      <span class="rate">{{ p.winRate | number: '1.0-0' }}%</span>
+      <span class="detail">{{ rankDetail(p, playerSortMode()) }}</span>
+      <span class="rate">{{ rankValue(p, playerSortMode()) }}</span>
       <app-meter
         [value]="barValue(p, playerSortMode())"
         [max]="barMax(rankedPlayerStats(), playerSortMode())"
@@ -625,6 +625,7 @@
         </button>
         }
         <span class="card-name-text">
+          @if (e.isPrecon) {<span [title]="i18n.t('deck.preconBadge')"><app-icon name="package" [label]="i18n.t('deck.preconBadge')" /></span>}
           {{ e.name }}
           @if (e.isDeleted) {<span [title]="i18n.t('stats.deletedDeckBadge')"><app-icon name="trash" [label]="i18n.t('stats.deletedDeckBadge')" /></span>}
         </span>
@@ -633,7 +634,7 @@
         }
       </span>
       <span class="detail">
-        {{ e.wins }} / {{ e.games }} {{ i18n.t('stats.wins') }} · {{ i18n.t('stats.playedBy') }}
+        {{ rankDetail(e, deckSortMode()) }} · {{ i18n.t('stats.playedBy') }}
         @for (pilot of e.playedBy; track pilot.name; let last = $last) {
           <span
             [class.borrowed-pilot]="pilot.borrowed"
@@ -643,7 +644,7 @@
           >@if (!last) {, }
         }
       </span>
-      <span class="rate">{{ e.winRate | number: '1.0-0' }}%</span>
+      <span class="rate">{{ rankValue(e, deckSortMode()) }}</span>
       <app-meter
         [value]="barValue(e, deckSortMode())"
         [max]="barMax(rankedCombinedStats(), deckSortMode())"

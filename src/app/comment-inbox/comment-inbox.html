@@ -1,16 +1,45 @@
-@if (inbox.verfuegbar()) {
+@if (sichtbar()) {
   <section class="glass-card comment-inbox">
     <button class="comment-inbox-header" (click)="toggle()" [attr.aria-expanded]="offen()">
       <app-icon name="mail" />
       <span class="comment-inbox-title">{{ i18n.t('inbox.title') }}</span>
-      @if (inbox.unreadCount() > 0) {
-        <span class="comment-inbox-badge">{{ inbox.unreadCount() }}</span>
+      @if (badgeCount() > 0) {
+        <span class="comment-inbox-badge">{{ badgeCount() }}</span>
       }
       <span class="comment-inbox-chevron">{{ offen() ? '▾' : '▸' }}</span>
     </button>
 
     @if (offen()) {
-      @if (inbox.loading()) {
+      @if (friends.incoming().length > 0) {
+        <h4 class="comment-inbox-section">{{ i18n.t('inbox.friendRequests') }}</h4>
+        <ul class="comment-inbox-list">
+          @for (f of friends.incoming(); track f.otherId) {
+            <li class="comment-inbox-request">
+              <button class="comment-inbox-person" (click)="openProfile(f.otherId)">
+                <app-player-avatar [url]="f.avatarUrl" />
+                <span class="comment-inbox-subject">
+                  <span class="comment-inbox-dot" [attr.aria-label]="i18n.t('inbox.unreadAria')"></span>
+                  {{ i18n.t('inbox.subjectFriendRequest', { name: f.displayName }) }}
+                </span>
+              </button>
+              <div class="chip-row">
+                <button class="glass-button small primary" (click)="friends.accept(f.otherId)">
+                  {{ i18n.t('profile.friends.accept') }}
+                </button>
+                <button class="glass-button small" (click)="friends.remove(f.otherId)">
+                  {{ i18n.t('profile.friends.decline') }}
+                </button>
+              </div>
+            </li>
+          }
+        </ul>
+        @if (inbox.verfuegbar()) {
+          <h4 class="comment-inbox-section">{{ i18n.t('inbox.comments') }}</h4>
+        }
+      }
+      @if (!inbox.verfuegbar()) {
+        <!-- Ohne Kommentar-Migration gibt es hier nur Anfragen. -->
+      } @else if (inbox.loading()) {
         <p class="hint">{{ i18n.t('inbox.loading') }}</p>
       } @else if (inbox.loadFailed()) {
         <p class="hint error">{{ i18n.t('inbox.loadFailed') }}</p>

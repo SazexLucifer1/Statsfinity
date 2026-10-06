@@ -1,7 +1,7 @@
 import { Component, computed, input, output } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { ManaSymbol } from '../mana-symbol/mana-symbol';
-import { Icon } from '../icon/icon';
+import { Icon, IconName } from '../icon/icon';
 
 /** Anzahl Plätze auf dem Siegertreppchen. */
 export const PODIUM_SIZE = 3;
@@ -26,6 +26,10 @@ export interface PodiumEntry {
   imageUrl?: string | null;
   /** Nur bei shape 'symbols': die Manasymbole der Farbkombination ('C' für farblos). */
   symbols?: readonly string[];
+  /** Kleines Piktogramm vor dem Namen, z.B. 'package' für ein Precon. */
+  icon?: IconName;
+  /** Vorlesetext zum Piktogramm. */
+  iconLabel?: string;
 }
 
 /**

@@ -7,6 +7,7 @@ import {
   durationMinutes,
   durationStats,
   favoriteVictim,
+  monthlyGames,
   monthlyWinRate,
   nemesis,
   opponentStats,
@@ -154,6 +155,18 @@ describe('match-insights', () => {
     expect(monthlyWinRate(matches, 'A').map((m) => [m.month, m.games, m.wins])).toEqual([
       ['2026-07', 1, 1],
       ['2026-08', 2, 0],
+    ]);
+  });
+
+  it('zählt Spiele je Monat neben allen Spielen der Gruppe', () => {
+    const matches = [
+      match('A', [p('A'), p('B')], { date: '2026-07-03T20:00:00Z' }),
+      match('B', [p('B'), p('C')], { date: '2026-07-04T20:00:00Z' }),
+      match('B', [p('B'), p('C')], { date: '2026-08-04T20:00:00Z' }),
+    ];
+    expect(monthlyGames(matches, 'A').map((m) => [m.month, m.games, m.total])).toEqual([
+      ['2026-07', 1, 2],
+      ['2026-08', 0, 1],
     ]);
   });
 

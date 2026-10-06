@@ -17,4 +17,4 @@ alter table public.decks
   add column if not exists play_styles text[];
 
 comment on column public.decks.play_styles is
-  'Spielweisen für den Deck-Check (aggro, control, combo, landfall, creatures, cedh, commanderDraws, commanderRemoves, weakness). null = nicht festgelegt.';
+  'Spielweisen für den Deck-Check (aggro, control, combo, landfall, creatures, fastMana (früher cedh), commanderDraws, commanderRemoves, weakness). null = nicht festgelegt.';

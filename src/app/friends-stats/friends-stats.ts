@@ -75,6 +75,11 @@ export class FriendsStats {
     return list;
   });
 
+  /** Für die Gegner in den Spiel-Analysen: Profilname -> Benutzer-ID. */
+  readonly profileIds = computed<Record<string, string>>(() =>
+    Object.fromEntries(this.people().map((p) => [p.name, p.userId])),
+  );
+
   readonly selectedYear = signal<string>('Alle');
   readonly selectedFormat = signal<string>('Alle');
   readonly selectedPerson = signal<string | null>(null);

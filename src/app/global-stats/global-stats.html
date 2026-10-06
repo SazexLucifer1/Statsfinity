@@ -86,8 +86,8 @@
         <button type="button" class="glass-button small" (click)="openDeck(e.deckId)">{{ i18n.t('deck.view') }}</button>
         }
       </span>
-      <span class="detail">{{ e.wins }} / {{ e.games }} {{ i18n.t('stats.wins') }}</span>
-      <span class="rate">{{ e.winRate | number: '1.0-0' }}%</span>
+      <span class="detail">{{ rankDetail(e, decks.sortMode()) }}</span>
+      <span class="rate">{{ rankValue(e, decks.sortMode()) }}</span>
       <app-meter [value]="barValue(e, decks.sortMode())" [max]="barMax(decks.ranked(), decks.sortMode())" />
     </li>
     }
@@ -146,8 +146,8 @@
         }
         <span class="card-name-text">{{ e.name }}</span>
       </span>
-      <span class="detail">{{ e.wins }} / {{ e.games }} {{ i18n.t('stats.wins') }}</span>
-      <span class="rate">{{ e.winRate | number: '1.0-0' }}%</span>
+      <span class="detail">{{ rankDetail(e, commanders.sortMode()) }}</span>
+      <span class="rate">{{ rankValue(e, commanders.sortMode()) }}</span>
       <app-meter [value]="barValue(e, commanders.sortMode())" [max]="barMax(commanders.ranked(), commanders.sortMode())" />
     </li>
     }

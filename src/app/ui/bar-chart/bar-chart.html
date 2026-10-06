@@ -3,9 +3,16 @@
     @for (d of data(); track d.label) {
       <div class="bc-col">
         <div class="bc-track">
-          <div class="bc-bar" [style.height.%]="percentOf(d.value)" [style.background]="d.color ?? null">
-            <span class="bc-cap">{{ d.value }}{{ valueSuffix() }}</span>
-          </div>
+          @if (d.total != null) {
+            <div class="bc-bar bc-ghost" [style.height.%]="percentOf(d.total)">
+              <div class="bc-fill" [style.height.%]="d.total ? (d.value / d.total) * 100 : 0" [style.background]="d.color ?? null"></div>
+              <span class="bc-cap">{{ d.value }}/{{ d.total }}</span>
+            </div>
+          } @else {
+            <div class="bc-bar" [style.height.%]="percentOf(d.value)" [style.background]="d.color ?? null">
+              <span class="bc-cap">{{ d.value }}{{ valueSuffix() }}</span>
+            </div>
+          }
         </div>
         <span class="bc-col-label">{{ d.label }}</span>
       </div>

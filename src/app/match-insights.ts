@@ -271,6 +271,35 @@ export function monthlyWinRate(
     .map(([month, { games, wins }]) => ({ month, games, wins, winRate: (wins / games) * 100 }));
 }
 
+export interface MonthGames {
+  /** "2026-09" */
+  month: string;
+  /** Partien des Spielers in diesem Monat. */
+  games: number;
+  /** Alle Partien in diesem Monat - so viele hätte er mitspielen können. */
+  total: number;
+}
+
+/**
+ * Gespielte Partien je Monat neben allen Partien der Gruppe im selben Monat, die letzten `months`
+ * Monate mit Partien, älteste zuerst. Ein Monat, in dem die Gruppe gespielt hat, der Spieler aber
+ * nicht, steht mit 0 drin - genau das soll man hier sehen.
+ */
+export function monthlyGames(matches: readonly Match[], player: string, months = 12): MonthGames[] {
+  const byMonth = new Map<string, { games: number; total: number }>();
+  for (const match of countable(matches)) {
+    const month = match.date.slice(0, 7);
+    const entry = byMonth.get(month) ?? { games: 0, total: 0 };
+    entry.total++;
+    if (match.players.some((p) => p.name === player)) entry.games++;
+    byMonth.set(month, entry);
+  }
+  return [...byMonth.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-months)
+    .map(([month, { games, total }]) => ({ month, games, total }));
+}
+
 // --- Jahresrückblick ---
 
 export interface YearReview {

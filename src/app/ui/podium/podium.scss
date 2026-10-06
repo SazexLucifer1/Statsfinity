@@ -150,6 +150,11 @@
   max-width: 100%;
 }
 
+// Piktogramm vor dem Namen (PodiumEntry.icon), z.B. für ein Precon.
+.name app-icon {
+  margin-right: 0.25em;
+}
+
 .value {
   font-weight: 700;
   font-size: 1.05rem;

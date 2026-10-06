@@ -37,6 +37,10 @@
             valueSuffix="%"
           />
         }
+        @if (monthlyPlayed().length > 1) {
+          <p class="hint">{{ i18n.t('stats.insights.monthlyGamesHint') }}</p>
+          <app-bar-chart [data]="monthlyPlayed()" orientation="vertical" />
+        }
       }
 
       <!-- Gegner -->
@@ -57,7 +61,13 @@
               ><app-icon name="skull" /> {{ i18n.t('stats.insights.nemesis') }}</span
             >
             @if (nemesis(); as n) {
-              <strong>{{ n.name }}</strong>
+              @if (isLinked(n.name)) {
+                <button type="button" class="profile-link" (click)="openProfile(n.name)">
+                  <strong>{{ n.name }}</strong>
+                </button>
+              } @else {
+                <strong>{{ n.name }}</strong>
+              }
               <span class="hint">{{
                 i18n.t('stats.insights.lostToOf', { name: n.name, count: n.lostTo, games: n.games })
               }}</span>
@@ -70,7 +80,13 @@
               ><app-icon name="trophy" /> {{ i18n.t('stats.insights.victim') }}</span
             >
             @if (victim(); as v) {
-              <strong>{{ v.name }}</strong>
+              @if (isLinked(v.name)) {
+                <button type="button" class="profile-link" (click)="openProfile(v.name)">
+                  <strong>{{ v.name }}</strong>
+                </button>
+              } @else {
+                <strong>{{ v.name }}</strong>
+              }
               <span class="hint">{{
                 i18n.t('stats.insights.beatOf', { count: v.beat, games: v.games })
               }}</span>
@@ -82,7 +98,13 @@
         <ul class="rows">
           @for (o of topOpponents(); track o.name) {
             <li>
-              <span class="row-name">{{ o.name }}</span>
+              @if (isLinked(o.name)) {
+                <button type="button" class="row-name profile-link" (click)="openProfile(o.name)">
+                  {{ o.name }}
+                </button>
+              } @else {
+                <span class="row-name">{{ o.name }}</span>
+              }
               <span class="row-detail">{{
                 i18n.t('stats.insights.opponentLine', {
                   name: o.name,

@@ -37,6 +37,31 @@ export function barValue(
 }
 
 /**
+ * Die große Zahl einer Ranglisten-Zeile bzw. eines Treppchen-Platzes - immer die, nach der gerade
+ * sortiert wird. Stand früher fest auf der Winrate, dann wanderte beim Sortieren nach Siegen jemand
+ * mit 40 % über jemanden mit 60 %, und die hervorgehobene Zahl erklärte nicht, warum.
+ */
+export function rankValueText(
+  entry: { wins: number; games: number; winRate: number },
+  mode: RankSortMode,
+): string {
+  return mode === 'winRate' ? `${Math.round(entry.winRate)}%` : `${barValue(entry, mode)}`;
+}
+
+/**
+ * Die kleine Zeile darunter ("6 / 11 Siege"). Ist nicht nach Winrate sortiert, kommt sie hier
+ * dazu - sie verschwindet sonst ganz aus der Zeile.
+ */
+export function rankDetailText(
+  entry: { wins: number; games: number; winRate: number },
+  mode: RankSortMode,
+  winsLabel: string,
+): string {
+  const base = `${entry.wins} / ${entry.games} ${winsLabel}`;
+  return mode === 'winRate' ? base : `${base} · ${Math.round(entry.winRate)}%`;
+}
+
+/**
  * Bezugsgröße für die Balken einer Liste.
  *
  * Bei Winrate fest 100, damit 40% in jeder Liste gleich lang aussieht. Bei Absolutwerten der

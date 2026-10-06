@@ -1,0 +1,21 @@
+<div class="options-menu-overlay">
+  <div class="options-menu-sheet username-prompt" role="dialog" aria-modal="true">
+    <h3>{{ i18n.t('profile.usernamePrompt.title') }}</h3>
+    <p class="hint">{{ i18n.t('profile.usernamePrompt.hint') }}</p>
+    <input
+      class="glass-input"
+      type="text"
+      autocomplete="nickname"
+      [placeholder]="i18n.t('profile.displayNamePlaceholder')"
+      [value]="name()"
+      (input)="name.set($any($event.target).value)"
+      (keydown.enter)="save()"
+    />
+    @if (failed()) {
+      <p class="error">{{ i18n.t('profile.usernamePrompt.failed') }}</p>
+    }
+    <button class="glass-button primary" [disabled]="busy() || !name().trim()" (click)="save()">
+      {{ i18n.t('profile.usernamePrompt.save') }}
+    </button>
+  </div>
+</div>

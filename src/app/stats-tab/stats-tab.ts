@@ -45,6 +45,8 @@ import {
   medal as medalFor,
   barValue as barValueFor,
   barMax as barMaxFor,
+  rankValueText,
+  rankDetailText,
   splitPodium,
   podiumRestOffset,
 } from '../rank-sort';
@@ -90,6 +92,8 @@ interface CombinedRankEntry {
   deckId?: string;
   /** true = das Deck gibt es nicht mehr (Grabstein) - zählt weiter mit, lässt sich aber nicht mehr öffnen. */
   isDeleted?: boolean;
+  /** Commander-Sammelzeile, in der mindestens ein Precon steckt. */
+  isPrecon?: boolean;
 }
 
 @Component({
@@ -363,6 +367,9 @@ export class StatsTab {
   // --- Balken der Ranglisten: zeigen immer die Größe, nach der sortiert wird ---
   readonly barValue = barValueFor;
   readonly barMax = barMaxFor;
+  readonly rankValue = rankValueText;
+  readonly rankDetail = (e: { wins: number; games: number; winRate: number }, mode: RankSortMode) =>
+    rankDetailText(e, mode, this.i18n.t('stats.wins'));
 
   // --- Stats-Sichtbarkeit ---
 
@@ -580,8 +587,8 @@ export class StatsTab {
     this.playerSplit().podium.map((p) => ({
       key: p.name,
       name: p.name,
-      detail: `${p.wins} / ${p.games} ${this.i18n.t('stats.wins')}`,
-      value: `${Math.round(p.winRate)}%`,
+      detail: this.rankDetail(p, this.playerSortMode()),
+      value: this.rankValue(p, this.playerSortMode()),
       imageUrl: this.mtg.playerAvatars()[p.name] ?? null,
     }))
   );
@@ -623,13 +630,22 @@ export class StatsTab {
    * austauschbar. Eigene Decks laufen getrennt in deckStats().
    */
   readonly commanderStats = computed<CommanderStats[]>(() => {
-    const stats = new Map<string, { games: number; wins: number; playedBy: Set<string> }>();
+    const stats = new Map<
+      string,
+      { games: number; wins: number; playedBy: Set<string>; isPrecon: boolean }
+    >();
     for (const match of this.viewedFilteredMatches()) {
       for (const p of match.players) {
         if (!p.commander) continue;
         if (p.deckId && p.deckIsPrecon !== true) continue;
-        const entry = stats.get(p.commander) ?? { games: 0, wins: 0, playedBy: new Set<string>() };
+        const entry = stats.get(p.commander) ?? {
+          games: 0,
+          wins: 0,
+          playedBy: new Set<string>(),
+          isPrecon: false,
+        };
         entry.games++;
+        if (p.deckIsPrecon === true) entry.isPrecon = true;
         entry.playedBy.add(p.name);
         if (this.isPlayerWinner(match, p.name)) entry.wins++;
         stats.set(p.commander, entry);
@@ -642,6 +658,7 @@ export class StatsTab {
         wins: s.wins,
         winRate: s.games > 0 ? (s.wins / s.games) * 100 : 0,
         playedBy: [...s.playedBy],
+        isPrecon: s.isPrecon,
       }))
       .sort((a, b) => b.wins - a.wins || b.winRate - a.winRate);
   });
@@ -763,6 +780,7 @@ export class StatsTab {
       wins: c.wins,
       winRate: c.winRate,
       playedBy: c.playedBy.map((name) => ({ name, borrowed: false })),
+      isPrecon: c.isPrecon,
     })),
   ]);
 
@@ -814,9 +832,11 @@ export class StatsTab {
   readonly combinedPodium = computed<PodiumEntry[]>(() =>
     this.combinedSplit().podium.map((e) => ({
       key: e.key,
+      icon: e.isPrecon ? 'package' : undefined,
+      iconLabel: e.isPrecon ? this.i18n.t('deck.preconBadge') : undefined,
       name: e.name,
-      detail: `${e.wins} / ${e.games} ${this.i18n.t('stats.wins')}`,
-      value: `${Math.round(e.winRate)}%`,
+      detail: this.rankDetail(e, this.deckSortMode()),
+      value: this.rankValue(e, this.deckSortMode()),
       imageUrl: this.commanderImage(e.cardName, e.cardImageUrl),
     }))
   );
