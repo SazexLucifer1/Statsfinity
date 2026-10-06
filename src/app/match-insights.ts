@@ -412,3 +412,118 @@ export function yearReview(
     firstSeatWinRate: first && first.games >= 3 ? first.winRate : null,
   };
 }
+
+// --- Freunde gruppenübergreifend (Statistik-Tab, Ansicht "Freunde") ---
+
+/** Partien einer Person aus allen Gruppen, mit ihrem Namen in der jeweiligen Partie. */
+export interface PersonMatches {
+  userId: string;
+  /** Profilname - unter diesem Namen erscheint die Person in der zusammengeführten Liste. */
+  name: string;
+  entries: readonly { match: Match; selfName: string }[];
+}
+
+/**
+ * Führt die Partien mehrerer Personen zu einer Liste zusammen. Dieselbe Partie kommt dabei
+ * mehrfach herein (einmal je beteiligtem Freund) und zählt nur einmal. Weil dieselbe Person in
+ * jeder Gruppe anders heißen kann ("Fabi", "Fabian"), wird sie in jeder Partie auf ihren
+ * Profilnamen umbenannt - samt Sieger. Freundesspiele (ohne Gruppe) tragen statt des Namens die
+ * Konto-ID und werden darüber zugeordnet. Alle anderen Mitspieler behalten ihren Namen.
+ */
+export function mergePeopleMatches(
+  people: readonly PersonMatches[],
+  friendGames: readonly Match[] = [],
+): Match[] {
+  const byId = new Map<string, Match>();
+  const renames = new Map<string, Map<string, string>>();
+  const rename = (match: Match, from: string, to: string) => {
+    if (!byId.has(match.id)) byId.set(match.id, match);
+    const map = renames.get(match.id) ?? new Map<string, string>();
+    map.set(from, to);
+    renames.set(match.id, map);
+  };
+  for (const person of people) {
+    for (const { match, selfName } of person.entries) rename(match, selfName, person.name);
+  }
+  const nameByUser = new Map(people.map((p) => [p.userId, p.name]));
+  for (const match of friendGames) {
+    if (!byId.has(match.id)) byId.set(match.id, match);
+    for (const p of match.players) {
+      const name = p.userId ? nameByUser.get(p.userId) : undefined;
+      if (name) rename(match, p.name, name);
+    }
+  }
+  return [...byId.values()]
+    .map((match) => {
+      const map = renames.get(match.id);
+      if (!map) return match;
+      return {
+        ...match,
+        winner: map.get(match.winner) ?? match.winner,
+        players: match.players.map((p) => ({ ...p, name: map.get(p.name) ?? p.name })),
+      };
+    })
+    .sort((a, b) => b.date.localeCompare(a.date));
+}
+
+export interface PersonRecord {
+  name: string;
+  games: number;
+  wins: number;
+  winRate: number;
+}
+
+/** Bilanz je Person über die Partien, in denen sie mitgespielt hat. */
+export function peopleRecords(matches: readonly Match[], names: readonly string[]): PersonRecord[] {
+  return names.map((name) => {
+    let games = 0;
+    let wins = 0;
+    for (const m of countable(matches)) {
+      if (m.countsInGeneralStats === false) continue;
+      if (!m.players.some((p) => p.name === name)) continue;
+      games++;
+      if (didWin(m, name)) wins++;
+    }
+    return { name, games, wins, winRate: games ? (wins / games) * 100 : 0 };
+  });
+}
+
+/** Gemeinsame Partien zweier Personen und wer davon wie oft gewonnen hat. */
+export function headToHeadRecord(
+  matches: readonly Match[],
+  a: string,
+  b: string,
+): { games: number; aWins: number; bWins: number } {
+  let games = 0;
+  let aWins = 0;
+  let bWins = 0;
+  for (const m of countable(matches)) {
+    const names = m.players.map((p) => p.name);
+    if (!names.includes(a) || !names.includes(b)) continue;
+    games++;
+    if (didWin(m, a)) aWins++;
+    if (didWin(m, b)) bWins++;
+  }
+  return { games, aWins, bWins };
+}
+
+export interface CommanderRecord {
+  commander: string;
+  games: number;
+  wins: number;
+}
+
+/** Commander einer Person, meistgespielte zuerst. */
+export function commanderRecords(matches: readonly Match[], name: string): CommanderRecord[] {
+  const map = new Map<string, CommanderRecord>();
+  for (const m of countable(matches)) {
+    const p = m.players.find((x) => x.name === name);
+    if (!p?.commander) continue;
+    const label = p.partnerCommander ? `${p.commander} + ${p.partnerCommander}` : p.commander;
+    const entry = map.get(label) ?? { commander: label, games: 0, wins: 0 };
+    entry.games++;
+    if (didWin(m, name)) entry.wins++;
+    map.set(label, entry);
+  }
+  return [...map.values()].sort((a, b) => b.games - a.games || b.wins - a.wins);
+}

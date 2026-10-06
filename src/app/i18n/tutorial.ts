@@ -73,7 +73,7 @@ export const tutorial = {
     // --- Statistik-Tab ---
     'tutorial.stats.intro.title': 'Statistik-Tab',
     'tutorial.stats.intro.text':
-      'Ranglisten und Auswertungen für deine Gruppe. Bist du in mehreren Gruppen, wählst du oben, welche du ansiehst.',
+      'Ranglisten und Auswertungen für deine Gruppe. Bist du in mehreren Gruppen, wählst du oben, welche du ansiehst. „Global“ zeigt alle Gruppen, „Freunde“ vergleicht dich mit deinen Freunden über alle Gruppen hinweg.',
     'tutorial.stats.filters.title': 'Zeitraum, Format & Modus',
     'tutorial.stats.filters.text':
       'Wähle ein Jahr (oder alle Zeiten), das Format und die Spielmodi, die in die Auswertung einfließen. Modi, die dir gesperrt wurden, sind markiert.',
@@ -376,7 +376,7 @@ export const tutorial = {
     // --- Stats tab ---
     'tutorial.stats.intro.title': 'Stats tab',
     'tutorial.stats.intro.text':
-      "Rankings and analyses for your group. If you're in several groups, choose at the top which one you're looking at.",
+      "Rankings and analyses for your group. If you're in several groups, choose at the top which one you're looking at. “Global” shows all groups, “Friends” compares you with your friends across all groups.",
     'tutorial.stats.filters.title': 'Period, format & mode',
     'tutorial.stats.filters.text':
       "Pick a year (or all time), the format and the game modes to include. Modes you've been locked out of are marked.",
