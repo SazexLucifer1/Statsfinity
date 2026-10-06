@@ -1,0 +1,125 @@
+:host {
+  display: block;
+}
+
+// --- 1. Kopfzeile: Winrate, Spiele, Siege ---
+// Linksbündig nebeneinander statt drei Kacheln; die Winrate ist die eine Zahl, die etwas größer
+// sein darf, alles andere tritt einen Schritt zurück.
+.headline {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-5);
+  padding-top: var(--sp-2);
+}
+
+.headline-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.headline-value {
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.primary .headline-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+
+.headline-label {
+  font-size: 0.78rem;
+  opacity: 0.65;
+}
+
+.headline-hint {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+// --- 2. Schnitte ---
+.facts {
+  margin: var(--sp-6) 0 0;
+  border-top: 1px solid var(--divider);
+}
+
+.fact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-5);
+  min-height: 44px;
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--divider);
+
+  dt {
+    font-size: 0.92rem;
+    opacity: 0.85;
+  }
+
+  dd {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 1px;
+    margin: 0;
+    text-align: right;
+  }
+
+  &.missing .fact-value {
+    opacity: 0.45;
+  }
+}
+
+.fact-value {
+  font-size: 1rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.fact-basis {
+  font-size: 0.75rem;
+  opacity: 0.55;
+}
+
+// --- 3. Siegarten ---
+.conditions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  margin: var(--sp-2) 0 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: var(--sp-2);
+    align-items: baseline;
+    font-size: 0.92rem;
+  }
+
+  // "Unbekannt" ist kein Ergebnis, sondern eine Lücke in den Daten - leiser darstellen.
+  .unknown {
+    opacity: 0.55;
+  }
+}
+
+.condition-count {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.condition-bar {
+  grid-column: 1 / -1;
+}
+
+.empty {
+  margin: var(--sp-2) 0 0;
+  font-size: 0.88rem;
+  opacity: 0.55;
+}

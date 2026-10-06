@@ -84,6 +84,9 @@ export function mapMatchRow(row: any): Match {
     countsInGeneralStats: row.counts_in_general_stats ?? true,
     isRanked: row.is_ranked ?? true,
     startedAt: row.started_at ?? undefined,
+    winCondition: row.win_condition ?? undefined,
+    winTurn: row.win_turn ?? undefined,
+    note: row.note ?? undefined,
     players: (row.match_players ?? []).map((mp: any) => ({
       name: mp.player_name ?? mp.players?.display_name ?? '',
       commander: mp.commander_name ?? undefined,
@@ -98,6 +101,7 @@ export function mapMatchRow(row: any): Match {
       placement: mp.placement ?? undefined,
       turnOrder: mp.turn_order ?? undefined,
       eliminatedBy: mp.eliminated_by ?? undefined,
+      deckVersion: mp.deck_version ?? undefined,
     })),
   };
 

@@ -1,0 +1,11 @@
+:host {
+  display: inline;
+}
+
+// Nur leiser Text, keine Pille und keine Farbe: der Hinweis ordnet die Zahl ein, er soll ihr
+// nicht die Aufmerksamkeit nehmen.
+.sample-hint {
+  font-size: inherit;
+  opacity: 0.75;
+  white-space: nowrap;
+}

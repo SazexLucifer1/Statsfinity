@@ -502,6 +502,153 @@ h3 {
   }
 }
 
+/* --- Kennzahlen-Liste ---
+   Zweizeilige Listenzeilen für Auswertungen (Performance im Statistik-Tab und in der Deck-Ansicht:
+   Decks, Matchups, Versionen). Statt Spaltentabellen, die auf dem Handy gequetscht werden: links
+   Name und eine leise Meta-Zeile ("15 Spiele"), rechts der eine Wert, den man vergleichen will.
+   Global wie .stat-tiles, weil beide Ansichten genau gleich aussehen sollen. */
+
+.stat-list-title {
+  margin: var(--sp-7) 0 var(--sp-2);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.65;
+  text-shadow: none;
+}
+
+.stat-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stat-list-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-5);
+  min-height: 44px;
+  padding: var(--sp-3) 0;
+  border-top: 1px solid var(--divider);
+
+  &:first-child {
+    border-top: 0;
+  }
+
+  &.muted {
+    opacity: 0.6;
+  }
+}
+
+.stat-list-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.stat-list-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.stat-list-meta {
+  font-size: 0.8rem;
+  opacity: 0.65;
+  // Schneidet den Trennpunkt ab, der beim Umbruch am Zeilenanfang landen würde (siehe unten).
+  overflow: hidden;
+}
+
+// Teile einer Meta-Zeile ("4 Spiele · Ø Platz 2 · Erste Tendenz"), die auf schmalen Displays als
+// Ganzes umbrechen. Jeder Teil bringt seinen Punkt davor mit; die Zeile ist um genau dessen Breite
+// nach links verschoben, so dass der Punkt am Zeilenanfang im abgeschnittenen Bereich liegt.
+.stat-list-parts {
+  display: flex;
+  flex-wrap: wrap;
+  margin-left: -1em;
+
+  // Kein nowrap: ein überlanger Teil (langer Besitzername) bricht in sich um, statt abgeschnitten
+  // zu werden; kurze Teile passen ohnehin am Stück.
+  > * {
+    min-width: 0;
+    overflow-wrap: anywhere;
+
+    &::before {
+      content: '·';
+      display: inline-block;
+      width: 1em;
+      text-align: center;
+    }
+  }
+
+  > :empty {
+    display: none;
+  }
+}
+
+.stat-list-value {
+  flex-shrink: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-list-more {
+  min-height: 40px;
+  margin-top: var(--sp-3);
+}
+
+/* Aufklappzeile einer Auswertung (Deck-Ansicht: Performance, Gegnerdecks) - eine ganze Zeile als
+   Trefferfläche, links der Titel, rechts eine leise Zusammenfassung und der Pfeil. */
+.stat-disclosure {
+  display: flex;
+  width: 100%;
+  min-height: 44px;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  .stat-disclosure-title {
+    font-weight: 600;
+  }
+
+  .stat-disclosure-meta {
+    margin-left: auto;
+    font-size: 0.82rem;
+    opacity: 0.65;
+    white-space: nowrap;
+  }
+}
+
+// Dünner Winkel aus zwei Kanten statt eines Textzeichens (▸ zeichnet jede Schrift anders). Zeigt
+// nach rechts, im aufgeklappten Zustand (aria-expanded am Knopf) nach unten.
+.stat-disclosure-chevron {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  margin: 0 var(--sp-2) 0 var(--sp-1);
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  opacity: 0.6;
+  transform: rotate(-45deg);
+  transition: transform 0.15s ease;
+}
+
+[aria-expanded='true'] > .stat-disclosure-chevron {
+  transform: rotate(45deg);
+}
+
 /* --- Match-Verlauf ---
    Gemeinsames Aussehen der Spielliste im Match-Tab und in der Profil-Historie. Global, weil beide
    Listen dasselbe zeigen und vorher zwei fast identische Kopien derselben Regeln hatten, die

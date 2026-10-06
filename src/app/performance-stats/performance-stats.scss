@@ -1,0 +1,34 @@
+// Kopf wie die übrigen Karten im Statistik-Tab: Überschrift links, Aufklapp-Winkel rechts. Die
+// ganze Zeile ist die Trefferfläche.
+.perf-header {
+  display: flex;
+  width: 100%;
+  min-height: 44px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  h2 {
+    margin: 0;
+  }
+}
+
+.perf-lead {
+  margin: 0;
+  font-size: 0.85rem;
+  opacity: 0.65;
+}
+
+.perf-empty {
+  margin: var(--sp-5) 0 0;
+  opacity: 0.6;
+}
+
+app-performance-summary {
+  margin-top: var(--sp-4);
+}

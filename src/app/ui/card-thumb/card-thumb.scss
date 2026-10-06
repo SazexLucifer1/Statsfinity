@@ -1,0 +1,33 @@
+:host {
+  display: inline-flex;
+  flex-shrink: 0;
+  vertical-align: middle;
+  width: 30px;
+}
+
+:host(.large) {
+  width: clamp(40px, 3vw + 22px, 64px);
+}
+
+:host(.hidden) {
+  display: none;
+}
+
+// Echtes Kartenformat (63,5 × 88,9 mm), damit Bild und Platzhalter gleich groß sind.
+.thumb {
+  display: block;
+  width: 100%;
+  aspect-ratio: 63.5 / 88.9;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-xs);
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.placeholder {
+  background: var(--surface-tile);
+  cursor: default;
+}

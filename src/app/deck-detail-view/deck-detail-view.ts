@@ -17,7 +17,8 @@ import { EdhrecCardlist } from '../edhrec.service';
 import { CardImage } from '../card-image/card-image';
 import { DeckComments } from '../deck-comments/deck-comments';
 import { DeckManualRecord } from '../deck-manual-record/deck-manual-record';
-import { DeckMatchups } from '../deck-matchups/deck-matchups';
+import { DeckPerformance } from '../deck-performance/deck-performance';
+import { CardThumb } from '../ui/card-thumb/card-thumb';
 import { DeckCheck } from '../deck-check/deck-check';
 import { DeckPrimer } from '../deck-primer/deck-primer';
 import { DeckSteckbrief } from '../deck-steckbrief/deck-steckbrief';
@@ -33,7 +34,7 @@ import { BanlistService } from '../banlist.service';
 
 @Component({
   selector: 'app-deck-detail-view',
-  imports: [CurrencyPipe, DatePipe, DecimalPipe, NgTemplateOutlet, PercentPipe, FormsModule, CardImage, DeckCheck, DeckComments, DeckManualRecord, DeckMatchups, DeckPrimer, DeckSocial, DeckSteckbrief, BarChart, OverflowMenu, ColorFilter, CmcFilter, BracketBadge, ManaSymbol, Icon],
+  imports: [CurrencyPipe, DatePipe, DecimalPipe, NgTemplateOutlet, PercentPipe, FormsModule, CardImage, DeckCheck, DeckComments, DeckManualRecord, DeckPerformance, CardThumb, DeckPrimer, DeckSocial, DeckSteckbrief, BarChart, OverflowMenu, ColorFilter, CmcFilter, BracketBadge, ManaSymbol, Icon],
   templateUrl: './deck-detail-view.html',
   styleUrls: ['./deck-detail-view.scss', './deck-detail-view.bracket.scss'],
 })

@@ -37,6 +37,7 @@ import { FavoriteCommanderEditor } from '../favorite-commander-editor/favorite-c
 import { BarChart, BarChartDatum } from '../ui/bar-chart/bar-chart';
 import { RadarChart, RadarChartDatum } from '../ui/radar-chart/radar-chart';
 import { Meter } from '../ui/meter/meter';
+import { CardThumb } from '../ui/card-thumb/card-thumb';
 import { ManaSymbol } from '../ui/mana-symbol/mana-symbol';
 import { Podium, PodiumEntry, PODIUM_SIZE } from '../ui/podium/podium';
 import { PlayerMatchHistory } from '../player-match-history/player-match-history';
@@ -49,7 +50,7 @@ import { FriendStatus } from '../friend-status/friend-status';
 
 @Component({
   selector: 'app-profile-tab',
-  imports: [FormsModule, DatePipe, DecimalPipe, NgTemplateOutlet, DeckList, CardImage, CommanderStatList, FavoriteCommanderEditor, BarChart, RadarChart, Meter, ManaSymbol, Podium, PlayerMatchHistory, Icon, CommentInbox, ProfileRank, FriendsPanel, FriendStatus, RankedBadges],
+  imports: [FormsModule, DatePipe, DecimalPipe, NgTemplateOutlet, DeckList, CardImage, CommanderStatList, FavoriteCommanderEditor, BarChart, RadarChart, Meter, ManaSymbol, Podium, PlayerMatchHistory, Icon, CommentInbox, ProfileRank, FriendsPanel, FriendStatus, RankedBadges, CardThumb],
   templateUrl: './profile-tab.html',
   styleUrl: './profile-tab.scss',
 })

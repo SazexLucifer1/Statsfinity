@@ -25,6 +25,9 @@ const MATCH_HISTORY_SELECT = `
   counts_in_general_stats,
   is_ranked,
   started_at,
+  win_condition,
+  win_turn,
+  note,
   cubes ( id, name, is_commander ),
   match_players (
     player_name,
@@ -36,6 +39,7 @@ const MATCH_HISTORY_SELECT = `
     placement,
     turn_order,
     eliminated_by,
+    deck_version,
     decks ( name, user_id, player_id, is_precon ),
     players ( display_name )
   )
@@ -70,7 +74,7 @@ function isMissingIsRankedError(error: { code?: string; message?: string } | nul
 
 function ohneIsRanked(select: string): string {
   const ohne = isRankedSpalteVerfuegbar ? select : select.replace('  is_ranked,\n', '');
-  return ohneRauswurf(ohnePartieVerlauf(ohne));
+  return ohnePerformance(ohneRauswurf(ohnePartieVerlauf(ohne)));
 }
 
 /**
@@ -111,6 +115,33 @@ function isMissingRauswurfError(error: { code?: string; message?: string } | nul
 
 function ohneRauswurf(select: string): string {
   return rauswurfVerfuegbar ? select : select.replace('    eliminated_by,\n', '');
+}
+
+/**
+ * Fehlen matches.win_condition/win_turn/note oder match_players.deck_version noch
+ * (sql/partie-ergebnis-deck-version-2026-10-06.sql)? Dann einmal je Sitzung ohne sie laden und
+ * speichern - Siegart, Zug, Notiz und Deck-Version gehen dann verloren, die Partie nicht.
+ */
+let performanceVerfuegbar = true;
+
+const PERFORMANCE_SPALTEN = ['win_condition', 'win_turn', 'note', 'deck_version'];
+
+function isMissingPerformanceError(error: { code?: string; message?: string } | null): boolean {
+  if (!error || !performanceVerfuegbar) return false;
+  if (error.code !== '42703' && error.code !== 'PGRST204') return false;
+  const message = error.message ?? '';
+  if (!PERFORMANCE_SPALTEN.some((spalte) => message.includes(spalte))) return false;
+  console.warn('Spalten für Siegart/Zug/Notiz/Deck-Version fehlen noch - sql/partie-ergebnis-deck-version-2026-10-06.sql im Supabase-SQL-Editor ausführen. Bis dahin werden diese Angaben nicht gespeichert.');
+  performanceVerfuegbar = false;
+  return true;
+}
+
+function ohnePerformance(select: string): string {
+  return performanceVerfuegbar
+    ? select
+    : select
+        .replace('  win_condition,\n  win_turn,\n  note,\n', '')
+        .replace('    deck_version,\n', '');
 }
 
 @Injectable({ providedIn: 'root' })
@@ -813,10 +844,11 @@ export class MtgService {
     // Mehrere neuere Spalten können fehlen - jede schaltet sich beim ersten Fehler einmal selbst ab.
     for (
       let i = 0;
-      i < 3 &&
+      i < 4 &&
       (isMissingIsRankedError(first.error) ||
         isMissingPartieVerlaufError(first.error) ||
-        isMissingRauswurfError(first.error));
+        isMissingRauswurfError(first.error) ||
+        isMissingPerformanceError(first.error));
       i++
     ) {
       first = await run(ohneIsRanked(MATCH_HISTORY_SELECT));
@@ -1046,6 +1078,13 @@ export class MtgService {
           ...(partieVerlaufVerfuegbar
             ? { started_at: match.startedAt ?? null, life_log: match.lifeLog ?? null }
             : {}),
+          ...(performanceVerfuegbar
+            ? {
+                win_condition: match.winCondition ?? null,
+                win_turn: match.winTurn ?? null,
+                note: match.note?.trim() || null,
+              }
+            : {}),
         })
         .select('id, played_at')
         .single();
@@ -1054,6 +1093,7 @@ export class MtgService {
     if (isMissingIsRankedError(matchError)) ({ data: matchRow, error: matchError } = await insertMatch());
     if (isMissingPartieVerlaufError(matchError)) ({ data: matchRow, error: matchError } = await insertMatch());
     if (isMissingIsRankedError(matchError)) ({ data: matchRow, error: matchError } = await insertMatch());
+    if (isMissingPerformanceError(matchError)) ({ data: matchRow, error: matchError } = await insertMatch());
 
     if (matchError || !matchRow) {
       console.error('Konnte Match nicht anlegen:', matchError);
@@ -1109,6 +1149,21 @@ export class MtgService {
       deckPrecons = Object.fromEntries((deckRows ?? []).map((d) => [d.id, d.is_precon]));
     }
 
+    // Die Deck-Version setzt der Trigger (sql/partie-ergebnis-deck-version-2026-10-06.sql) - hier
+    // nur nachlesen, damit die gerade gespeicherte Partie gleich in der richtigen Version zählt.
+    let deckVersions: Record<string, number> = {};
+    if (deckIds.length > 0 && performanceVerfuegbar) {
+      const { data: versionRows } = await supabase
+        .from('match_players')
+        .select('player_name, deck_version')
+        .eq('match_id', matchRow.id);
+      deckVersions = Object.fromEntries(
+        ((versionRows as { player_name: string; deck_version: number | null }[] | null) ?? [])
+          .filter((r) => r.deck_version != null)
+          .map((r) => [r.player_name, r.deck_version as number]),
+      );
+    }
+
     const { lifeLog: _lifeLog, playedAt: _playedAt, friendGame: _friendGame, ...matchOhneVerlauf } = match;
     const full: Match = {
       ...matchOhneVerlauf,
@@ -1116,8 +1171,12 @@ export class MtgService {
       date: matchRow.played_at,
       countsInGeneralStats: match.countsInGeneralStats ?? true,
       isRanked,
+      winCondition: performanceVerfuegbar ? match.winCondition : undefined,
+      winTurn: performanceVerfuegbar ? match.winTurn : undefined,
+      note: (performanceVerfuegbar && match.note?.trim()) || undefined,
       players: players.map((p) => ({
         ...p,
+        deckVersion: deckVersions[p.name],
         deckName: p.deckId ? deckNames[p.deckId] : undefined,
         deckOwnerId: p.deckId ? deckOwners[p.deckId] : undefined,
         deckOwnerPlayerId: p.deckId ? deckOwnerPlayerIds[p.deckId] : undefined,

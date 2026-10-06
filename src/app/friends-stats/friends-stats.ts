@@ -17,6 +17,7 @@ import { eloRanking } from '../elo';
 import { MatchInsights } from '../match-insights/match-insights';
 import { PlayerAvatar } from '../player-avatar/player-avatar';
 import { Meter } from '../ui/meter/meter';
+import { CardThumb } from '../ui/card-thumb/card-thumb';
 import { InfoToggle } from '../ui/info-toggle/info-toggle';
 
 interface Person {
@@ -37,7 +38,7 @@ interface Person {
  */
 @Component({
   selector: 'app-friends-stats',
-  imports: [FormsModule, MatchInsights, PlayerAvatar, Meter, InfoToggle],
+  imports: [FormsModule, MatchInsights, PlayerAvatar, Meter, InfoToggle, CardThumb],
   templateUrl: './friends-stats.html',
   styleUrl: './friends-stats.scss',
 })

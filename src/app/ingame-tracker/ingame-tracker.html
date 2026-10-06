@@ -519,6 +519,52 @@
         }
       </div>
 
+      <!-- Optional und in Sekunden erledigt: Siegart, Zug und Notiz für die Performance-Statistik.
+           Nichts davon ist Pflicht - leer heißt "unbekannt", geraten wird nichts. -->
+      @if (session.winner() && session.winner() !== session.DRAW) {
+      <h3 class="winner-subtitle">{{ i18n.t('ingame.winConditionTitle') }}</h3>
+      <div class="chip-row">
+        @for (wc of winConditions; track wc) {
+        <button
+          class="glass-chip"
+          [class.active]="session.winCondition() === wc"
+          (click)="session.winCondition.set(session.winCondition() === wc ? null : wc)"
+        >
+          {{ i18n.t('stats.winCondition.' + wc) }}
+        </button>
+        }
+        <button class="glass-chip" [class.active]="!session.winCondition()" (click)="session.winCondition.set(null)">
+          {{ i18n.t('stats.winCondition.unknown') }}
+        </button>
+      </div>
+      }
+      <div class="result-extra">
+        <label class="result-turn">
+          <span class="winner-subtitle">{{ i18n.t('ingame.winTurn') }}</span>
+          <input
+            class="glass-input"
+            type="number"
+            inputmode="numeric"
+            min="1"
+            max="99"
+            [placeholder]="i18n.t('ingame.winTurnPlaceholder')"
+            [value]="session.winTurn() ?? ''"
+            (change)="session.setWinTurn($any($event.target).value)"
+          />
+        </label>
+        <label class="result-note">
+          <span class="winner-subtitle">{{ i18n.t('ingame.note') }}</span>
+          <input
+            class="glass-input"
+            type="text"
+            maxlength="500"
+            [placeholder]="i18n.t('ingame.notePlaceholder')"
+            [value]="session.matchNote()"
+            (input)="session.matchNote.set($any($event.target).value)"
+          />
+        </label>
+      </div>
+
           <button class="glass-button primary" [disabled]="!session.canSave() || session.saving()" (click)="finishGame()">
             {{ session.saving() ? i18n.t('deckView.savingInfo') : i18n.t('ingame.saveAndFinish') }}
           </button>

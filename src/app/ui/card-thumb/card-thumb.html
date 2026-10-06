@@ -1,0 +1,12 @@
+@if (image(); as img) {
+  <button type="button" class="thumb" [attr.aria-label]="cardName()" (click)="open($event)">
+    <app-card-image
+      [compact]="true"
+      [imageUrl]="img"
+      [backImageUrl]="backImage()"
+      [alt]="cardName()"
+    />
+  </button>
+} @else {
+  <span class="thumb placeholder" aria-hidden="true"></span>
+}

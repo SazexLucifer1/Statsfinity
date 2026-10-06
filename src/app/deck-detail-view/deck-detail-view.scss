@@ -542,6 +542,9 @@
   overflow-y: auto;
 
   li {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     font-size: 0.85rem;
     padding: 2px 0;
 

@@ -8,6 +8,10 @@ export const common = {
     // --- Wiederverwendbare Bausteine (Overflow-Menü, Mehrfachauswahl, Diagramme) ---
     'common.moreActions': 'Weitere Aktionen',
     'common.close': 'Schließen',
+    'common.sample.veryLow': 'Sehr wenig Daten',
+    'common.sample.trend': 'Erste Tendenz',
+    'common.sample.more': 'Mehr Daten',
+    'common.sample.title': 'Grobe Orientierung zur Zahl der Partien - keine statistische Bewertung',
     'common.multiSelectAll': 'Alle',
     'common.multiSelectNone': 'Keine Auswahl',
     'common.multiSelectCount': '{{count}} ausgewählt',
@@ -43,6 +47,10 @@ export const common = {
     // --- Reusable building blocks (overflow menu, multi-select, charts) ---
     'common.moreActions': 'More actions',
     'common.close': 'Close',
+    'common.sample.veryLow': 'Very little data',
+    'common.sample.trend': 'Early trend',
+    'common.sample.more': 'More data',
+    'common.sample.title': 'Rough guide to the number of games - not a statistical rating',
     'common.multiSelectAll': 'All',
     'common.multiSelectNone': 'Nothing selected',
     'common.multiSelectCount': '{{count}} selected',

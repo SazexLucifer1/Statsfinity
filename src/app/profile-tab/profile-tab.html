@@ -729,7 +729,7 @@
             @if (overall.topCommander; as top) {
               <li>
                 <span class="player-name">{{ i18n.t('profile.crossGroupTopCommander') }}</span>
-                <span class="hint">{{ top.commander }} ({{ top.wins }} / {{ top.games }} · {{ top.winRate | number: '1.0-0' }}%)</span>
+                <span class="hint top-commander"><app-card-thumb [name]="top.commander" /> {{ top.commander }} ({{ top.wins }} / {{ top.games }} · {{ top.winRate | number: '1.0-0' }}%)</span>
               </li>
             }
           </ul>

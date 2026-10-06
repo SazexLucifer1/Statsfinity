@@ -446,6 +446,21 @@
       }
     </div>
 
+    <!-- Optionale Angaben aus dem Sieger-Dialog - nur, was eingetragen wurde. -->
+    @if (match.winCondition || match.winTurn || match.note) {
+      <p class="match-log-details">
+        @if (match.winCondition) {
+          <span>{{ i18n.t('stats.winCondition.' + match.winCondition) }}</span>
+        }
+        @if (match.winTurn) {
+          <span>{{ i18n.t('match.winTurnShort', { turn: match.winTurn }) }}</span>
+        }
+        @if (match.note) {
+          <em class="match-log-note">{{ match.note }}</em>
+        }
+      </p>
+    }
+
     @if (match.startedAt) {
       <button class="link-chip" (click)="toggleLifeCurve(match.id)">
         <app-icon name="chart" /> {{ lifeCurveFor() === match.id ? i18n.t('match.hideLifeCurve') : i18n.t('match.showLifeCurve') }}

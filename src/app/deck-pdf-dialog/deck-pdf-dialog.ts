@@ -1,11 +1,12 @@
 import { Component, computed, inject } from '@angular/core';
+import { CardThumb } from '../ui/card-thumb/card-thumb';
 import { FormsModule } from '@angular/forms';
 import { DeckPdfService, PdfCardEntry, hatExemplarArtworks } from '../deck-pdf.service';
 import { Icon } from '../ui/icon/icon';
 
 @Component({
   selector: 'app-deck-pdf-dialog',
-  imports: [FormsModule, Icon],
+  imports: [FormsModule, Icon, CardThumb],
   templateUrl: './deck-pdf-dialog.html',
   styleUrl: './deck-pdf-dialog.scss',
 })

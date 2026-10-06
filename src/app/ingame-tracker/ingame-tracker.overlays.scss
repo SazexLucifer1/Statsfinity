@@ -35,6 +35,28 @@
     font-size: 0.95rem;
     opacity: 0.85;
   }
+
+  // Zug schmal, Notiz nimmt den Rest der Zeile.
+  .result-extra {
+    display: grid;
+    grid-template-columns: 6.5em minmax(0, 1fr);
+    gap: var(--sp-4);
+    margin-bottom: var(--sp-5);
+
+    label {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .winner-subtitle {
+      margin: var(--sp-6) 0 var(--sp-2);
+    }
+
+    input {
+      width: 100%;
+      box-sizing: border-box;
+    }
+  }
 }
 
 .background-picker-overlay {

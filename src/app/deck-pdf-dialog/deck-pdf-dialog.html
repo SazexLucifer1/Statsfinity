@@ -118,6 +118,7 @@
             (click)="$event.stopPropagation()"
             (change)="pdfService.toggleCard(entry.cardName)"
           />
+          <app-card-thumb [name]="entry.cardName" />
           <span class="deck-name">{{ entry.cardName }}</span>
           <span class="hint">{{ entry.quantity }}×</span>
           @if (hatExemplarArtworks(entry)) {

@@ -284,9 +284,12 @@
         <ul class="suggestions">
           @for (s of suggestions(); track s.cardName) {
             <li>
-              <button class="suggestion-name" (click)="previewCard(s.cardName)">
-                {{ s.cardName }}
-              </button>
+              <span class="suggestion-card">
+                <app-card-thumb [name]="s.cardName" />
+                <button class="suggestion-name" (click)="previewCard(s.cardName)">
+                  {{ s.cardName }}
+                </button>
+              </span>
               <span class="suggestion-count">{{ s.deckCount }} / {{ s.totalDecks }}</span>
               <app-meter [value]="s.deckCount" [max]="s.totalDecks" />
             </li>

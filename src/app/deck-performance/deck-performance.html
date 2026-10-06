@@ -1,0 +1,78 @@
+@if (summary(); as s) {
+  @if (s.games > 0) {
+    <div class="deck-performance">
+      <app-info-toggle [label]="i18n.t('deckView.performance.infoAria')">
+        <button
+          info-title
+          type="button"
+          class="stat-disclosure"
+          [attr.aria-expanded]="expanded()"
+          (click)="expanded.set(!expanded())"
+        >
+          <span class="stat-disclosure-chevron" aria-hidden="true"></span>
+          <span class="stat-disclosure-title">{{ i18n.t('deckView.performance.title') }}</span>
+          <span class="stat-disclosure-meta">{{
+            i18n.t('deckView.performance.summary', { games: games(s.games), rate: rate(s.winRate) })
+          }}</span>
+        </button>
+        <p class="hint">{{ i18n.t('deckView.performance.info') }}</p>
+      </app-info-toggle>
+
+      @if (expanded()) {
+        <div class="perf-body">
+          <!-- Winrate, Spiele und Siege stehen in der Zeile darüber - hier nur Schnitte und Siegarten. -->
+          <app-performance-summary
+            [summary]="s"
+            [showCounts]="false"
+            [winConditions]="winConditions()"
+          />
+
+          <!-- Versionen als Verlauf, neueste oben. -->
+          @if (showVersions()) {
+            <app-info-toggle [label]="i18n.t('deckView.performance.infoAria')">
+              <h3 info-title class="stat-list-title">
+                {{ i18n.t('deckView.performance.versionsTitle') }}
+              </h3>
+              <p class="hint">{{ i18n.t('deckView.performance.versionsInfo') }}</p>
+            </app-info-toggle>
+            <ul class="stat-list">
+              @for (v of versionStats(); track v.version) {
+                <li class="stat-list-row" [class.muted]="v.version === null">
+                  <div class="stat-list-main">
+                    <span class="stat-list-name">
+                      @if (v.version === null) {
+                        {{ i18n.t('deckView.performance.versionNone') }}
+                      } @else {
+                        {{ i18n.t('deckView.performance.version', { version: v.version }) }}
+                        @if (v.version === versions.current()) {
+                          <span class="current">{{
+                            i18n.t('deckView.performance.versionCurrent')
+                          }}</span>
+                        }
+                      }
+                    </span>
+                    <span class="stat-list-meta"
+                      ><span class="stat-list-parts">
+                        <span>{{ games(v.summary.games) }}</span>
+                        @if (placement(v.summary.avgPlacement); as p) {
+                          <span>{{ p }}</span>
+                        }
+                        <app-sample-hint [games]="v.summary.games" /> </span
+                    ></span>
+                  </div>
+                  <span class="stat-list-value">{{ rate(v.summary.winRate) }}</span>
+                </li>
+              }
+            </ul>
+            @if (compareText(); as text) {
+              <p class="compare">{{ text }}</p>
+            }
+          }
+        </div>
+      }
+    </div>
+  }
+}
+
+<!-- Gegen welche Decks: dieselben Partien, eigene Klappzeile. -->
+<app-deck-matchups [deckId]="deckId()" [deckName]="deckName()" [matches]="matches()" />

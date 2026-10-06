@@ -1,5 +1,6 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
+import { CardThumb } from '../ui/card-thumb/card-thumb';
 import { InfoToggle } from '../ui/info-toggle/info-toggle';
 import { I18nService } from '../i18n.service';
 import { DialogService } from '../dialog.service';
@@ -22,7 +23,7 @@ type FriendsTab = 'friends' | 'news' | 'ranking';
  */
 @Component({
   selector: 'app-friends-panel',
-  imports: [DatePipe, PlayerAvatar, Meter, Icon, InfoToggle],
+  imports: [DatePipe, PlayerAvatar, Meter, Icon, InfoToggle, CardThumb],
   templateUrl: './friends-panel.html',
   styleUrl: './friends-panel.scss',
 })

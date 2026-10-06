@@ -1,0 +1,107 @@
+<section class="glass-card performance" data-tutorial="stats-performance">
+  <button
+    type="button"
+    class="perf-header"
+    [attr.aria-expanded]="expanded()"
+    (click)="expanded.set(!expanded())"
+  >
+    <h2>
+      {{
+        player()
+          ? i18n.t('stats.performance.titlePlayer', { name: player() ?? '' })
+          : i18n.t('stats.performance.title')
+      }}
+    </h2>
+    <span class="stat-disclosure-chevron" aria-hidden="true"></span>
+  </button>
+
+  @if (expanded()) {
+    <app-info-toggle [label]="i18n.t('stats.performance.infoAria')">
+      <p info-title class="perf-lead">{{ lead() }}</p>
+      <p class="hint">{{ i18n.t('stats.performance.info') }}</p>
+    </app-info-toggle>
+
+    @if (overall().games === 0) {
+      <p class="perf-empty">{{ i18n.t('stats.performance.noGames') }}</p>
+    } @else {
+      @if (playerSummary(); as s) {
+        <app-performance-summary [summary]="s" [winConditions]="winConditions()" />
+      } @else {
+        <app-performance-summary [overall]="overall()" [winConditions]="winConditions()" />
+      }
+
+      @if (decks().length > 0) {
+        <h3 class="stat-list-title">{{ i18n.t('stats.performance.decksTitle') }}</h3>
+        <ul class="stat-list">
+          @for (d of visibleDecks(); track d.key) {
+            <li class="stat-list-row">
+              <app-card-thumb [name]="d.commander" size="large" />
+              <div class="stat-list-main">
+                <span class="stat-list-name">{{ d.label }}</span>
+                <span class="stat-list-meta"
+                  ><span class="stat-list-parts">
+                    <span>{{ games(d.summary.games) }}</span>
+                    @if (placement(d.summary.avgPlacement); as p) {
+                      <span>{{ p }}</span>
+                    }
+                    <app-sample-hint [games]="d.summary.games" /> </span
+                ></span>
+              </div>
+              <span class="stat-list-value">{{ rate(d.summary.winRate) }}</span>
+            </li>
+          }
+        </ul>
+        @if (decks().length > PREVIEW) {
+          <button
+            class="glass-chip small stat-list-more"
+            (click)="showAllDecks.set(!showAllDecks())"
+          >
+            {{
+              showAllDecks()
+                ? i18n.t('stats.insights.showLess')
+                : i18n.t('stats.insights.showAll', { count: decks().length })
+            }}
+          </button>
+        }
+      }
+
+      <!-- Gegen Commander: nur die gezählten Ergebnisse, keine "kontert"-Aussage. -->
+      @if (matchups().length > 0) {
+        <app-info-toggle [label]="i18n.t('stats.performance.infoAria')">
+          <h3 info-title class="stat-list-title">
+            {{ i18n.t('stats.performance.matchupsTitle') }}
+          </h3>
+          <p class="hint">{{ i18n.t('stats.performance.matchupsInfo') }}</p>
+        </app-info-toggle>
+        <ul class="stat-list">
+          @for (m of visibleMatchups(); track m.label) {
+            <li class="stat-list-row">
+              <app-card-thumb [name]="m.commander ?? m.label" size="large" />
+              <div class="stat-list-main">
+                <span class="stat-list-name">{{ m.label }}</span>
+                <span class="stat-list-meta"
+                  ><span class="stat-list-parts">
+                    <span>{{ games(m.games) }}</span>
+                    <app-sample-hint [games]="m.games" /> </span
+                ></span>
+              </div>
+              <span class="stat-list-value">{{ rate(m.winRate) }}</span>
+            </li>
+          }
+        </ul>
+        @if (matchups().length > PREVIEW) {
+          <button
+            class="glass-chip small stat-list-more"
+            (click)="showAllMatchups.set(!showAllMatchups())"
+          >
+            {{
+              showAllMatchups()
+                ? i18n.t('stats.insights.showLess')
+                : i18n.t('stats.insights.showAll', { count: matchups().length })
+            }}
+          </button>
+        }
+      }
+    }
+  }
+</section>

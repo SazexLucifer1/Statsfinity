@@ -4,47 +4,42 @@
     <app-info-toggle [label]="i18n.t('deckView.matchups.infoAria')">
       <button
         info-title
-        class="matchups-toggle"
+        type="button"
+        class="stat-disclosure"
         [attr.aria-expanded]="expanded()"
         (click)="expanded.set(!expanded())"
       >
-        <span class="chevron">{{ expanded() ? '▾' : '▸' }}</span>
-        {{ i18n.t('deckView.matchups.title', { count: all().length }) }}
+        <span class="stat-disclosure-chevron" aria-hidden="true"></span>
+        <span class="stat-disclosure-title">{{
+          i18n.t('deckView.matchups.title', { count: all().length })
+        }}</span>
       </button>
-      <p class="hint small">{{ i18n.t('deckView.matchups.info') }}</p>
+      <p class="hint">{{ i18n.t('deckView.matchups.info') }}</p>
     </app-info-toggle>
     @if (expanded()) {
-      <ul class="matchups">
+      <ul class="stat-list matchups">
         @for (o of visible(); track key(o)) {
           @let isOpen = open() === key(o);
           <li>
-            <button class="matchup-row" [attr.aria-expanded]="isOpen" (click)="toggle(key(o))">
-              <span class="side">
-                @if (image(o.commander); as img) {
-                  <span class="thumb"
-                    ><app-card-image
-                      [compact]="true"
-                      [imageUrl]="img"
-                      [alt]="o.commander ?? o.label"
-                  /></span>
-                }
-                <span class="deck-text">
-                  <span class="deck-name">{{ o.label }}</span>
-                  @if (owner(o); as name) {
-                    <small class="deck-owner">{{
-                      i18n.t('deckView.matchups.owner', { name })
-                    }}</small>
-                  }
-                </span>
+            <button
+              type="button"
+              class="stat-list-row matchup-row"
+              [attr.aria-expanded]="isOpen"
+              (click)="toggle(key(o))"
+            >
+              <app-card-thumb [name]="o.commander" size="large" />
+              <span class="stat-list-main">
+                <span class="stat-list-name">{{ o.label }}</span>
+                <span class="stat-list-meta"
+                  ><span class="stat-list-parts">
+                    @if (owner(o); as name) {
+                      <span>{{ i18n.t('deckView.matchups.owner', { name }) }}</span>
+                    }
+                    <span>{{ games(o.games) }}</span>
+                    <app-sample-hint [games]="o.games" /> </span
+                ></span>
               </span>
-              <span
-                class="score"
-                [class.lead-a]="o.wins > o.losses"
-                [class.lead-b]="o.losses > o.wins"
-              >
-                <strong>{{ o.wins }} : {{ o.losses }}</strong>
-                <small>{{ i18n.t('stats.insights.timedGames', { games: o.games }) }}</small>
-              </span>
+              <span class="stat-list-value">{{ rate(o) }}</span>
             </button>
             @if (isOpen) {
               <div class="matchup-detail">
@@ -66,7 +61,7 @@
         }
       </ul>
       @if (all().length > PREVIEW) {
-        <button class="glass-chip small show-all" (click)="showAll.set(!showAll())">
+        <button class="glass-chip small stat-list-more" (click)="showAll.set(!showAll())">
           {{
             showAll()
               ? i18n.t('stats.insights.showLess')

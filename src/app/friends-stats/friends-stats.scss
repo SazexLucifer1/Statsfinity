@@ -66,6 +66,13 @@
   }
 }
 
+.commander-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+
 .commanders li {
   display: flex;
   justify-content: space-between;

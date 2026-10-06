@@ -220,6 +220,14 @@
     }
   }
 
+  // Kartenbild links neben dem Namen (ui/card-thumb), Name darf umbrechen.
+  .suggestion-card {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    min-width: 0;
+  }
+
   .suggestion-name {
     padding: 0;
     border: 0;
