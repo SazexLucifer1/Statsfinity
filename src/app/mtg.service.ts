@@ -895,6 +895,25 @@ export class MtgService {
   }
 
   /**
+   * Alle Partien, in denen ein Deck gespielt wurde und die ich sehen darf (RLS: eigene Gruppen und
+   * Freundesspiele) - für "Gegen welche Decks" in der Deck-Ansicht.
+   */
+  async loadMatchesForDeck(deckId: string): Promise<Match[]> {
+    const { data, error } = await supabase.from('match_players').select('match_id').eq('deck_id', deckId);
+    if (error) {
+      console.error('Konnte Partien des Decks nicht laden:', error);
+      return [];
+    }
+    const ids = [...new Set(((data as { match_id: string }[] | null) ?? []).map((r) => r.match_id))];
+    if (ids.length === 0) return [];
+    const rows = await this.fetchMatchRows(
+      (select) => supabase.from('matches').select(select).in('id', ids.slice(0, 300)),
+      'Konnte Partien des Decks nicht laden:',
+    );
+    return (rows ?? []).map((row: any) => mapMatchRow(row));
+  }
+
+  /**
    * Alle Matches eines Accounts aus ALLEN Gruppen - für fremde Profile
    * (sql/oeffentliche-matches-2026-09-23.sql). selfName = Name im jeweiligen Match. null = Funktion
    * fehlt oder Fehler.

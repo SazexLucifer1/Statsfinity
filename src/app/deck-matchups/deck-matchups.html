@@ -1,0 +1,72 @@
+@if (loaded() && all().length > 0) {
+  <div class="deck-matchups">
+    <!-- Zugeklappt nur eine Zeile: wie viele Gegnerdecks, Details auf Antippen. -->
+    <app-info-toggle [label]="i18n.t('deckView.matchups.infoAria')">
+      <button
+        info-title
+        class="matchups-toggle"
+        [attr.aria-expanded]="expanded()"
+        (click)="expanded.set(!expanded())"
+      >
+        <span class="chevron">{{ expanded() ? '▾' : '▸' }}</span>
+        {{ i18n.t('deckView.matchups.title', { count: all().length }) }}
+      </button>
+      <p class="hint small">{{ i18n.t('deckView.matchups.info') }}</p>
+    </app-info-toggle>
+    @if (expanded()) {
+      <ul class="matchups">
+        @for (o of visible(); track o.label) {
+          @let isOpen = open() === o.label;
+          <li>
+            <button class="matchup-row" [attr.aria-expanded]="isOpen" (click)="toggle(o.label)">
+              <span class="side">
+                @if (image(o.commander); as img) {
+                  <span class="thumb"
+                    ><app-card-image
+                      [compact]="true"
+                      [imageUrl]="img"
+                      [alt]="o.commander ?? o.label"
+                  /></span>
+                }
+                <span class="deck-name">{{ o.label }}</span>
+              </span>
+              <span
+                class="score"
+                [class.lead-a]="o.wins > o.losses"
+                [class.lead-b]="o.losses > o.wins"
+              >
+                <strong>{{ o.wins }} : {{ o.losses }}</strong>
+                <small>{{ i18n.t('stats.insights.timedGames', { games: o.games }) }}</small>
+              </span>
+            </button>
+            @if (isOpen) {
+              <div class="matchup-detail">
+                <p class="hint small">
+                  {{
+                    i18n.t('deckView.matchups.explain', {
+                      games: o.games,
+                      wins: o.wins,
+                      losses: o.losses,
+                      other: o.games - o.wins - o.losses,
+                      name: o.label,
+                    })
+                  }}
+                </p>
+                <app-split-bar [segments]="segments(o)" />
+              </div>
+            }
+          </li>
+        }
+      </ul>
+      @if (all().length > PREVIEW) {
+        <button class="glass-chip small show-all" (click)="showAll.set(!showAll())">
+          {{
+            showAll()
+              ? i18n.t('stats.insights.showLess')
+              : i18n.t('stats.insights.showAll', { count: all().length })
+          }}
+        </button>
+      }
+    }
+  </div>
+}
