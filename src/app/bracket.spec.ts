@@ -12,6 +12,7 @@ import {
   powerPosition,
   powerRange,
   presentCombos,
+  earliestComboTurn,
   priceVerdict,
   rulesVerdict,
   spellbookVerdict,
@@ -111,51 +112,57 @@ describe('bracket - Urteil A: offizielle Ausschlusskriterien', () => {
     expect(rulesVerdict(basis({ cards: vier })).level).toBe(4);
   });
 
-  it('hebt eine schnelle Zwei-Karten-Combo (bis 5 Mana) auf Bracket 4', () => {
+  it('hebt eine Zwei-Karten-Combo vor Zug 6 auf Bracket 4', () => {
     const input = basis({
       cards: [karte('Thoracle', { cmc: 2 }), karte('Consult', { cmc: 1 })],
       combos: [combo('Thoracle', 'Consult', { bracketTag: 'S', manaValueNeeded: 0 })],
     });
     const { level, reasons } = rulesVerdict(input);
     expect(level).toBe(4);
-    expect(reasons.find((r) => r.key === 'comboFast')?.cards).toEqual(['Thoracle + Consult']);
+    const befund = reasons.find((r) => r.key === 'comboFast');
+    expect(befund?.cards).toEqual(['Thoracle + Consult']);
+    expect(befund?.turn).toBe(2);
   });
 
-  it('lässt eine langsame Combo (über 5 Mana) bei Bracket 3', () => {
+  it('lässt eine Combo ab Zug 6 bei Bracket 3', () => {
     const input = basis({
-      cards: [karte('Teil A', { cmc: 4 }), karte('Teil B', { cmc: 4 })],
-      combos: [combo('Teil A', 'Teil B', { bracketTag: 'S' })],
+      cards: [karte('Teil A', { cmc: 8 }), karte('Teil B', { cmc: 2 })],
+      combos: [combo('Teil A', 'Teil B', { bracketTag: 'S', manaValueNeeded: 1 })],
     });
-    expect(rulesVerdict(input).level).toBe(3);
+    const { level, reasons } = rulesVerdict(input);
+    expect(level).toBe(3);
+    expect(reasons.find((r) => r.key === 'comboLate')?.turn).toBe(8);
   });
 
-  it('rechnet das zusätzlich nötige Mana in die Combo-Geschwindigkeit ein', () => {
-    const cards = [karte('Teil A', { cmc: 2 }), karte('Teil B', { cmc: 2 })];
-    // 2 + 2 + 1 = 5 -> noch schnell; 2 + 2 + 2 = 6 -> nicht mehr.
-    expect(
-      rulesVerdict(basis({ cards, combos: [combo('Teil A', 'Teil B', { manaValueNeeded: 1 })] }))
-        .level,
-    ).toBe(4);
-    expect(
-      rulesVerdict(basis({ cards, combos: [combo('Teil A', 'Teil B', { manaValueNeeded: 2 })] }))
-        .level,
-    ).toBe(3);
+  it('rechnet den frühesten Zug mit einem Land je Zug plus einer Rampe', () => {
+    // Zug 1: 1 Mana, danach Zugnummer + 1.
+    expect(earliestComboTurn(1, 1, 0)).toBe(2);
+    expect(earliestComboTurn(2, 1, 0)).toBe(2);
+    // Zwei Vierer: einer in Zug 3, der andere in Zug 4.
+    expect(earliestComboTurn(4, 4, 0)).toBe(4);
+    // Der billige Teil kommt früh, der teure, sobald das Mana reicht: 7 Mana gibt es in Zug 6.
+    expect(earliestComboTurn(6, 1, 0)).toBe(5);
+    expect(earliestComboTurn(7, 1, 0)).toBe(6);
+    // Das zusätzlich nötige Mana kommt im Zug des zweiten Teils dazu.
+    expect(earliestComboTurn(2, 2, 5)).toBe(6);
   });
 
-  it('hebt eine als "ruthless" benotete Combo auch dann auf Bracket 4, wenn sie langsam ist', () => {
+  it('hebt eine als "ruthless" benotete, aber späte Combo nicht mehr auf Bracket 4', () => {
     const input = basis({
-      cards: [karte('Teil A', { cmc: 5 }), karte('Teil B', { cmc: 5 })],
-      combos: [combo('Teil A', 'Teil B', { bracketTag: 'R' })],
+      cards: [karte('Teil A', { cmc: 8 }), karte('Teil B', { cmc: 2 })],
+      combos: [combo('Teil A', 'Teil B', { bracketTag: 'R', manaValueNeeded: 1 })],
     });
-    expect(rulesVerdict(input).level).toBe(4);
+    const { level, reasons } = rulesVerdict(input);
+    expect(level).toBe(3);
+    expect(reasons.map((r) => r.key)).toEqual(['comboLate', 'comboRuthless']);
   });
 
-  it('lässt milde benotete Combos (E/C/O) ohne Aufschlag', () => {
+  it('hebt auch milde benotete Combos (E/C/O) auf Bracket 3 - Bracket 2 erlaubt keine', () => {
     const input = basis({
-      cards: [karte('Teil A', { cmc: 4 }), karte('Teil B', { cmc: 4 })],
+      cards: [karte('Teil A', { cmc: 6 }), karte('Teil B', { cmc: 6 })],
       combos: [combo('Teil A', 'Teil B', { bracketTag: 'O' })],
     });
-    expect(rulesVerdict(input).level).toBe(2);
+    expect(rulesVerdict(input).level).toBe(3);
   });
 
   it('wertet einzelne Extra-Turn-Karten nicht, eine Zugschleife dagegen als Bracket 4', () => {
@@ -395,11 +402,11 @@ describe('bracket - Anhebe-Schwelle', () => {
 });
 
 describe('bracket - Zusammenführung', () => {
-  it('nimmt die höhere der beiden unabhängigen Untergrenzen', () => {
+  it('nimmt die höhere der beiden Untergrenzen, Spellbook hebt aber höchstens auf Bracket 3', () => {
     const ergebnis = analyzeBracket(basis({ spellbookTag: 'R' }));
     expect(ergebnis.verdicts.rules).toBe(2);
     expect(ergebnis.verdicts.spellbook).toBe(4);
-    expect(ergebnis.bracket).toBe(4);
+    expect(ergebnis.bracket).toBe(3);
   });
 
   it('senkt niemals unter die harten Kriterien', () => {

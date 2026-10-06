@@ -126,7 +126,7 @@ export type BracketReasonKey =
   | 'extraTurnLoop'
   | 'comboRuthless'
   | 'comboFast'
-  | 'comboMidrange'
+  | 'comboLate'
   | 'price'
   | 'tuning'
   | 'comboAndTutors'
@@ -136,6 +136,8 @@ export interface BracketReason {
   key: BracketReasonKey;
   /** Untergrenze, die dieser Befund für sich genommen erzwingt. */
   minimum: BracketLevel;
+  /** Nur bei comboFast/comboLate: frühester Zug der schnellsten Combo dieses Befunds. */
+  turn?: number;
   /** Verantwortliche Karten in Anzeigeschreibweise; bei 'nothing', 'tuning' und 'price' leer. */
   cards: string[];
 }
@@ -231,10 +233,40 @@ export interface BracketInput {
 export interface PresentCombo {
   combo: SpellbookTwoCardCombo;
   cards: BracketCard[];
-  /** Manabetrag beider Teile plus zusätzlich nötiges Mana - Näherung für "wann steht sie". */
-  totalMana: number;
+  /** Frühester Zug, in dem die Combo auf normaler Kurve laufen kann - siehe earliestComboTurn(). */
+  earliestTurn: number;
   /** true = eine der beiden Karten gibt Extra-Turns, die Combo ist also eine Zugschleife. */
   isExtraTurnLoop: boolean;
+}
+
+/**
+ * Ab diesem Zug ist eine Zwei-Karten-Combo in Bracket 3 erlaubt - offizielle Tabelle: "No 2-card
+ * combos (before turn 6)", gemeint sind "game-enders, lockouts, or infinites". Eine unendliche
+ * Schleife genügt also, sie muss das Spiel nicht sofort beenden.
+ */
+export const COMBO_FRUEHESTER_ERLAUBTER_ZUG = 6;
+
+/**
+ * Mana in Zug T auf einer normalen Kurve: ein Land je Zug plus EIN Rampe-Zauber, also Zug 1 ein
+ * Mana, danach Zugnummer + 1. Bewusst keine glückliche Starthand (Sol Ring in Zug 1) und keine
+ * Kostensenkungen (Affinity, Convoke) - gemeint ist, was das Deck regelmäßig schafft, nicht was es
+ * im besten Fall schafft (Entscheidung des Users, 06.10.2026).
+ */
+function zugFuerMana(mana: number): number {
+  if (mana <= 1) return 1;
+  return Math.max(2, mana - 1);
+}
+
+/**
+ * Frühester Zug, in dem beide Teile liegen und die Combo läuft. Die Teile dürfen in verschiedenen
+ * Zügen kommen: erst eines, frühestens im Zug darauf das andere samt dem zusätzlich nötigen Mana -
+ * oder alles im selben Zug, wenn das Mana dafür reicht. Gezählt wird der frühere Weg.
+ */
+export function earliestComboTurn(cmcA: number, cmcB: number, extraMana: number): number {
+  const gleicherZug = zugFuerMana(cmcA + cmcB + extraMana);
+  const erstA = Math.max(zugFuerMana(cmcA) + 1, zugFuerMana(cmcB + extraMana));
+  const erstB = Math.max(zugFuerMana(cmcB) + 1, zugFuerMana(cmcA + extraMana));
+  return Math.min(gleicherZug, erstA, erstB);
 }
 
 /**
@@ -260,7 +292,7 @@ export function presentCombos(
     gefunden.push({
       combo,
       cards: [a, b],
-      totalMana: a.cmc + b.cmc + (combo.manaValueNeeded ?? 0),
+      earliestTurn: earliestComboTurn(a.cmc, b.cmc, combo.manaValueNeeded ?? 0),
       isExtraTurnLoop: flags.get(a.key)?.extraTurn === true || flags.get(b.key)?.extraTurn === true,
     });
   }
@@ -269,9 +301,9 @@ export function presentCombos(
 }
 
 /**
- * Urteil A - offizielle Ausschlusskriterien als Untergrenze, geschärft nach Draftsims offengelegter
- * Methodik: Combos dreistufig nach Spellbooks eigener Note (schnell → B4, mittel/spät → B3,
- * schwierig → nichts). Extra-Turn-Karten allein sind kein Aufschlag (verboten ist das Verketten).
+ * Urteil A - offizielle Ausschlusskriterien als Untergrenze. Zwei-Karten-Combos nach dem frühesten
+ * Zug (earliestComboTurn): vor Zug 6 → B4, sonst B3. Extra-Turn-Karten allein sind kein Aufschlag
+ * (verboten ist das Verketten).
  * Mass Land Denial und ab vier Game Changern → B4.
  */
 export function rulesVerdict(input: BracketInput): {
@@ -301,30 +333,34 @@ export function rulesVerdict(input: BracketInput): {
     reasons.push({ key: 'extraTurnLoop', minimum: 4, cards: comboNamen(schleifen) });
   }
 
-  const ruthless = anwesend.filter((c) => c.combo.bracketTag === 'R' && !c.isExtraTurnLoop);
-  if (ruthless.length > 0) {
-    reasons.push({ key: 'comboRuthless', minimum: 4, cards: comboNamen(ruthless) });
-  }
-
-  // "Vor Zug 4": fünf Mana sind mit einem Ramp-Zauber in Zug 3-4 da; mehr ist frühestens Zug 5 und
-  // in B3 erlaubt.
-  const schnell = anwesend.filter(
-    (c) => c.totalMana <= 5 && c.combo.bracketTag !== 'R' && !c.isExtraTurnLoop,
-  );
+  // Über die Stufe entscheidet der Zug, nicht Spellbooks Note: vor Zug 6 → B4, sonst B3, denn
+  // Bracket 2 erlaubt gar keine bewussten Zwei-Karten-Combos - auch milde Noten (E/C/O) zählen.
+  const normal = anwesend.filter((c) => !c.isExtraTurnLoop);
+  const schnell = normal.filter((c) => c.earliestTurn < COMBO_FRUEHESTER_ERLAUBTER_ZUG);
   if (schnell.length > 0) {
-    reasons.push({ key: 'comboFast', minimum: 4, cards: comboNamen(schnell) });
+    reasons.push({
+      key: 'comboFast',
+      minimum: 4,
+      cards: comboNamen(schnell),
+      turn: Math.min(...schnell.map((c) => c.earliestTurn)),
+    });
   }
 
-  // S (spicy) und P (powerful) sind ernst, aber langsamer. E, C, O sind milde Noten und lösen
-  // keinen Aufschlag aus.
-  const mittel = anwesend.filter(
-    (c) =>
-      (c.combo.bracketTag === 'S' || c.combo.bracketTag === 'P') &&
-      c.totalMana > 5 &&
-      !c.isExtraTurnLoop,
-  );
-  if (mittel.length > 0) {
-    reasons.push({ key: 'comboMidrange', minimum: 3, cards: comboNamen(mittel) });
+  const spaet = normal.filter((c) => c.earliestTurn >= COMBO_FRUEHESTER_ERLAUBTER_ZUG);
+  if (spaet.length > 0) {
+    reasons.push({
+      key: 'comboLate',
+      minimum: 3,
+      cards: comboNamen(spaet),
+      turn: Math.min(...spaet.map((c) => c.earliestTurn)),
+    });
+  }
+
+  // Spellbooks Note "ruthless" bleibt als Hinweis sichtbar, hebt aber nicht mehr selbst an - die
+  // Combo steht ohnehin schon unter comboFast oder comboLate.
+  const ruthless = normal.filter((c) => c.combo.bracketTag === 'R');
+  if (ruthless.length > 0) {
+    reasons.push({ key: 'comboRuthless', minimum: 3, cards: comboNamen(ruthless) });
   }
 
   const level = reasons.reduce<BracketLevel>((hoechstes, r) => maxLevel(hoechstes, r.minimum), 2);
@@ -347,6 +383,19 @@ function maxLevel(a: BracketLevel, b: BracketLevel): BracketLevel {
  * "R"), sondern das stärkste Einzelelement - als Untergrenze brauchbar. "B" (gesperrte Karte) sagt
  * nichts über die Stufe → null.
  */
+/**
+ * Höchste Stufe, auf die Urteil B allein anheben darf. Spellbooks "R" kommt meist von einer
+ * Zwei-Karten-Combo - ob die zu früh kommt, entscheidet aber der Zug in Urteil A (siehe
+ * earliestComboTurn). Alles andere, was "R" bedeuten kann (Mass Land Denial, Extra-Turn-Schleifen,
+ * viele Game Changer), prüft Urteil A ohnehin selbst.
+ */
+export const SPELLBOOK_MAX_ANHEBUNG: BracketLevel = 3;
+
+/** Urteil B, gedeckelt auf SPELLBOOK_MAX_ANHEBUNG - so zählt es für die Stufe. */
+export function spellbookLift(spellbook: BracketLevel | null): BracketLevel | null {
+  return spellbook === null ? null : (Math.min(spellbook, SPELLBOOK_MAX_ANHEBUNG) as BracketLevel);
+}
+
 export function spellbookVerdict(tag: SpellbookBracketTag | null): BracketLevel | null {
   switch (tag) {
     case 'R':
@@ -549,7 +598,8 @@ export function analyzeBracket(input: BracketInput): BracketAnalysis {
   const tuning = tuningVerdict(input);
   const price = priceVerdict(input.totalPrice);
 
-  let bracket = spellbook === null ? rules : maxLevel(rules, spellbook);
+  const lift = spellbookLift(spellbook);
+  let bracket = lift === null ? rules : maxLevel(rules, lift);
 
   if (price !== null) {
     // Der Preis IST ein Befund - "nichts gefunden" wäre daneben, wenn er gerade die Stufe treibt.
