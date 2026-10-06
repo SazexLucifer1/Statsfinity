@@ -45,6 +45,8 @@ import {
   medal as medalFor,
   barValue as barValueFor,
   barMax as barMaxFor,
+  rankValueText,
+  rankDetailText,
   splitPodium,
   podiumRestOffset,
 } from '../rank-sort';
@@ -363,6 +365,9 @@ export class StatsTab {
   // --- Balken der Ranglisten: zeigen immer die Größe, nach der sortiert wird ---
   readonly barValue = barValueFor;
   readonly barMax = barMaxFor;
+  readonly rankValue = rankValueText;
+  readonly rankDetail = (e: { wins: number; games: number; winRate: number }, mode: RankSortMode) =>
+    rankDetailText(e, mode, this.i18n.t('stats.wins'));
 
   // --- Stats-Sichtbarkeit ---
 
@@ -580,8 +585,8 @@ export class StatsTab {
     this.playerSplit().podium.map((p) => ({
       key: p.name,
       name: p.name,
-      detail: `${p.wins} / ${p.games} ${this.i18n.t('stats.wins')}`,
-      value: `${Math.round(p.winRate)}%`,
+      detail: this.rankDetail(p, this.playerSortMode()),
+      value: this.rankValue(p, this.playerSortMode()),
       imageUrl: this.mtg.playerAvatars()[p.name] ?? null,
     }))
   );
@@ -815,8 +820,8 @@ export class StatsTab {
     this.combinedSplit().podium.map((e) => ({
       key: e.key,
       name: e.name,
-      detail: `${e.wins} / ${e.games} ${this.i18n.t('stats.wins')}`,
-      value: `${Math.round(e.winRate)}%`,
+      detail: this.rankDetail(e, this.deckSortMode()),
+      value: this.rankValue(e, this.deckSortMode()),
       imageUrl: this.commanderImage(e.cardName, e.cardImageUrl),
     }))
   );

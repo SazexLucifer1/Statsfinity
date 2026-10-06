@@ -27,6 +27,8 @@ import {
   compareBySortMode,
   medal,
   barValue,
+  rankValueText,
+  rankDetailText,
   barMax,
   splitPodium,
   podiumRestOffset,
@@ -158,6 +160,9 @@ export class GlobalStats {
 
   readonly medal = medal;
   readonly barValue = barValue;
+  readonly rankValue = rankValueText;
+  readonly rankDetail = (e: { wins: number; games: number; winRate: number }, mode: RankSortMode) =>
+    rankDetailText(e, mode, this.i18n.t('stats.wins'));
   readonly barMax = barMax;
   readonly qualificationThreshold = QUALIFICATION_THRESHOLD;
 
@@ -193,21 +198,21 @@ export class GlobalStats {
     wins: number;
     winRate: number;
     commanderImageUrl: string | null;
-  }) {
+  }, mode: RankSortMode) {
     return {
       name: e.name,
-      detail: `${e.wins} / ${e.games} ${this.i18n.t('stats.wins')}`,
-      value: `${Math.round(e.winRate)}%`,
+      detail: rankDetailText(e, mode, this.i18n.t('stats.wins')),
+      value: rankValueText(e, mode),
       imageUrl: e.commanderImageUrl,
     };
   }
 
   readonly deckPodium = computed<PodiumEntry[]>(() =>
-    this.decks.podium().map((e) => ({ key: e.deckId, ...this.podiumFields(e) })),
+    this.decks.podium().map((e) => ({ key: e.deckId, ...this.podiumFields(e, this.decks.sortMode()) })),
   );
 
   readonly commanderPodium = computed<PodiumEntry[]>(() =>
-    this.commanders.podium().map((e) => ({ key: e.name, ...this.podiumFields(e) })),
+    this.commanders.podium().map((e) => ({ key: e.name, ...this.podiumFields(e, this.commanders.sortMode()) })),
   );
 
   /** Klick auf einen Treppchen-Platz zeigt die Karte groß - dasselbe wie ein Klick auf das

@@ -252,8 +252,8 @@
           <span class="chevron">{{ selectedDeckDetail() === d.deckId ? '▾' : '▸' }}</span>
         }
       </span>
-      <span class="detail">{{ d.wins }} / {{ d.games }} {{ i18n.t('stats.wins') }}</span>
-      <span class="rate">{{ d.winRate | number: '1.0-0' }}%</span>
+      <span class="detail">{{ rankDetail(d, playerDeckSortMode()) }}</span>
+      <span class="rate">{{ rankValue(d, playerDeckSortMode()) }}</span>
       <app-meter
         [value]="barValue(d, playerDeckSortMode())"
         [max]="barMax(playerDeckStats(), playerDeckSortMode())"
@@ -305,8 +305,8 @@
           <span class="chevron">{{ selectedCommanderDetail() === c.commander ? '▾' : '▸' }}</span>
         }
       </span>
-      <span class="detail">{{ c.wins }} / {{ c.games }} {{ i18n.t('stats.wins') }}</span>
-      <span class="rate">{{ c.winRate | number: '1.0-0' }}%</span>
+      <span class="detail">{{ rankDetail(c, playerCommanderSortMode()) }}</span>
+      <span class="rate">{{ rankValue(c, playerCommanderSortMode()) }}</span>
       <app-meter
         [value]="barValue(c, playerCommanderSortMode())"
         [max]="barMax(playerCommanderStats(), playerCommanderSortMode())"
@@ -382,8 +382,8 @@
         <app-player-avatar [url]="mtg.playerAvatars()[p.name] ?? null" />
         {{ p.name }}
       </span>
-      <span class="detail">{{ p.wins }} / {{ p.games }} {{ i18n.t('stats.wins') }}</span>
-      <span class="rate">{{ p.winRate | number: '1.0-0' }}%</span>
+      <span class="detail">{{ rankDetail(p, playerSortMode()) }}</span>
+      <span class="rate">{{ rankValue(p, playerSortMode()) }}</span>
       <app-meter
         [value]="barValue(p, playerSortMode())"
         [max]="barMax(rankedPlayerStats(), playerSortMode())"
@@ -633,7 +633,7 @@
         }
       </span>
       <span class="detail">
-        {{ e.wins }} / {{ e.games }} {{ i18n.t('stats.wins') }} · {{ i18n.t('stats.playedBy') }}
+        {{ rankDetail(e, deckSortMode()) }} · {{ i18n.t('stats.playedBy') }}
         @for (pilot of e.playedBy; track pilot.name; let last = $last) {
           <span
             [class.borrowed-pilot]="pilot.borrowed"
@@ -643,7 +643,7 @@
           >@if (!last) {, }
         }
       </span>
-      <span class="rate">{{ e.winRate | number: '1.0-0' }}%</span>
+      <span class="rate">{{ rankValue(e, deckSortMode()) }}</span>
       <app-meter
         [value]="barValue(e, deckSortMode())"
         [max]="barMax(rankedCombinedStats(), deckSortMode())"
