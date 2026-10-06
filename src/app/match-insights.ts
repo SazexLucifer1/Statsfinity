@@ -465,6 +465,10 @@ export function commanderRecords(matches: readonly Match[], name: string): Comma
     entry.games++;
     if (didWin(m, name)) entry.wins++;
     map.set(label, entry);
+  }
+  return [...map.values()].sort((a, b) => b.games - a.games || b.wins - a.wins);
+}
+
 // --- Ein Deck gegen andere (Deck-Ansicht) ---
 
 export interface DeckOpponent {
