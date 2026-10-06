@@ -177,6 +177,26 @@
   text-align: center;
 }
 
+// Tippbar trotz pointer-events: none am Overlay - öffnet die Rauswurf-Auswahl erneut.
+.dead-overlay-killer {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 90%;
+  padding: 4px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
 .dead-overlay-text {
   font-size: clamp(1.1rem, 6vw, 2.2rem);
   font-weight: 900;

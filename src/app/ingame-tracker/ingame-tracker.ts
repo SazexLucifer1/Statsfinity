@@ -171,7 +171,35 @@ export class IngameTracker implements AfterViewInit, OnDestroy {
 
   toggleDead(key: string): void {
     this.vibrateTick();
+    const dying = !this.session.isDead(key);
     this.session.toggleDead(key);
+    if (dying && this.session.tracksEliminations()) this.eliminationSheetFor.set(key);
+  }
+
+  // --- Rauswurf: beim Totenkopf fragen, wer den Spieler rausgeworfen hat ---
+
+  /** Panel-Key des gerade rausgeworfenen Spielers, solange das Sheet offen ist. */
+  readonly eliminationSheetFor = signal<string | null>(null);
+
+  /** Wer als Werfer infrage kommt: alle anderen, die noch leben. */
+  readonly eliminationCandidates = computed(() => {
+    const victim = this.eliminationSheetFor();
+    return this.session.ingameUnits().filter((u) => u.key !== victim && !this.session.isDead(u.key));
+  });
+
+  pickEliminatedBy(killer: string | null): void {
+    const victim = this.eliminationSheetFor();
+    if (victim) this.session.setEliminatedBy(victim, killer);
+    this.eliminationSheetFor.set(null);
+  }
+
+  /** Zeile im Totenkopf-Feld: wer es war, oder die Aufforderung, es nachzutragen. */
+  eliminationLabel(key: string): string {
+    const killer = this.session.eliminations()[key];
+    if (!killer) return this.i18n.t('ingame.eliminationAsk');
+    if (killer === key) return this.i18n.t('ingame.eliminationSelfShort');
+    const label = this.session.ingameUnits().find((u) => u.key === killer)?.label ?? killer;
+    return this.i18n.t('ingame.eliminatedByShort', { name: label });
   }
 
   readonly brokenBackgrounds = signal<Set<string>>(new Set());

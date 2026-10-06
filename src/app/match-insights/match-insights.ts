@@ -6,6 +6,7 @@ import { ProfileService } from '../profile.service';
 import {
   OPPONENT_MIN_GAMES,
   durationStats,
+  eliminationStats,
   favoriteVictim,
   monthlyWinRate,
   monthlyGames,
@@ -74,6 +75,23 @@ export class MatchInsights {
       .filter((o) => o.games >= OPPONENT_MIN_GAMES)
       .slice(0, 8),
   );
+
+  /** Rauswürfe: mit gewähltem Spieler nur seine Zeile, sonst die Rangliste der Gruppe. */
+  readonly knockouts = computed(() => {
+    const all = eliminationStats(this.matches());
+    const player = this.player();
+    return player ? all.filter((k) => k.name === player) : all;
+  });
+  /** Aufgeklappte Zeile der Rangliste; mit gewähltem Spieler ist seine immer offen. */
+  readonly knockoutOpen = signal<string | null>(null);
+
+  isKnockoutOpen(name: string): boolean {
+    return !!this.player() || this.knockoutOpen() === name;
+  }
+
+  toggleKnockout(name: string): void {
+    this.knockoutOpen.update((open) => (open === name ? null : name));
+  }
 
   readonly form = computed(() => {
     const player = this.player();

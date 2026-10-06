@@ -127,6 +127,65 @@
       }
     }
 
+    <!-- Rauswürfe: wer wen aus der Partie geworfen hat -->
+    <app-info-toggle [label]="i18n.t('stats.insights.infoAria')">
+      <h3 info-title>{{ i18n.t('stats.insights.knockoutsTitle') }}</h3>
+      <p class="hint">{{ i18n.t('stats.insights.knockoutsInfo') }}</p>
+    </app-info-toggle>
+    @if (knockouts().length === 0) {
+      <p class="hint">{{ i18n.t('stats.insights.knockoutsEmpty') }}</p>
+    } @else {
+      <ul class="rows">
+        @for (k of knockouts(); track k.name) {
+          <li>
+            <button
+              type="button"
+              class="knockout-head"
+              (click)="toggleKnockout(k.name)"
+              [disabled]="!!player()"
+            >
+              <span class="row-name">{{ k.name }}</span>
+              <span class="row-detail">{{
+                i18n.t('stats.insights.knockoutsLine', { kills: k.kills, deaths: k.deaths })
+              }}</span>
+            </button>
+            @if (isKnockoutOpen(k.name)) {
+              <div class="knockout-detail">
+                @if (k.victims.length > 0) {
+                  <span class="row-detail">{{ i18n.t('stats.insights.knockedOut') }}</span>
+                  <span class="knockout-chips">
+                    @for (v of k.victims; track v.name) {
+                      <span class="knockout-chip"
+                        >{{ v.name }}
+                        {{ i18n.t('stats.insights.knockoutTimes', { count: v.count }) }}</span
+                      >
+                    }
+                  </span>
+                }
+                @if (k.killers.length > 0) {
+                  <span class="row-detail">{{ i18n.t('stats.insights.knockedOutBy') }}</span>
+                  <span class="knockout-chips">
+                    @for (v of k.killers; track v.name) {
+                      <span class="knockout-chip"
+                        >{{ v.name }}
+                        {{ i18n.t('stats.insights.knockoutTimes', { count: v.count }) }}</span
+                      >
+                    }
+                  </span>
+                }
+                @if (k.selfDeaths > 0) {
+                  <span class="row-detail"
+                    >{{ i18n.t('stats.insights.knockedOutSelf') }}
+                    {{ i18n.t('stats.insights.knockoutTimes', { count: k.selfDeaths }) }}</span
+                  >
+                }
+              </div>
+            }
+          </li>
+        }
+      </ul>
+    }
+
     <!-- Zugreihenfolge -->
     <app-info-toggle [label]="i18n.t('stats.insights.infoAria')">
       <h3 info-title>{{ i18n.t('stats.insights.turnOrderTitle') }}</h3>

@@ -97,6 +97,7 @@ export function mapMatchRow(row: any): Match {
       deckIsPrecon: mp.decks?.is_precon ?? undefined,
       placement: mp.placement ?? undefined,
       turnOrder: mp.turn_order ?? undefined,
+      eliminatedBy: mp.eliminated_by ?? undefined,
     })),
   };
 
