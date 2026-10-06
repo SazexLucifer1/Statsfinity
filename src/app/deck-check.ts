@@ -30,7 +30,7 @@ export const PLAY_STYLES = [
   'combo',
   'landfall',
   'creatures',
-  'cedh',
+  'fastMana',
   'commanderDraws',
   'commanderRemoves',
   'weakness',
@@ -71,7 +71,7 @@ export const CATEGORY_RULES: Record<CategoryKey, CategoryRule> = {
   lands: {
     min: 29,
     max: 37,
-    fewer: ['cedh', 'lowCurve'],
+    fewer: ['fastMana', 'lowCurve'],
     more: ['landfall', 'highCurve'],
     tolerance: 1,
   },

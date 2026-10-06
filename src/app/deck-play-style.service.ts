@@ -24,8 +24,11 @@ export class DeckPlayStyleService {
       return null;
     }
     const raw = (data as { play_styles?: string[] | null } | null)?.play_styles;
+    // "cedh" hieß bis 06.10.2026 so, gemeint war schon immer das Fast Mana (weniger Länder).
     return raw
-      ? raw.filter((s): s is PlayStyle => (PLAY_STYLES as readonly string[]).includes(s))
+      ? raw
+          .map((s) => (s === 'cedh' ? 'fastMana' : s))
+          .filter((s): s is PlayStyle => (PLAY_STYLES as readonly string[]).includes(s))
       : null;
   }
 
