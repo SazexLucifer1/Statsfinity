@@ -1,15 +1,20 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { DeckCommentInboxService, InboxEntry } from '../deck-comment-inbox.service';
 import { DeckCommentService } from '../deck-comment.service';
 import { DeckService } from '../deck.service';
 import { DeckViewerService } from '../deck-viewer.service';
+import { FriendsService } from '../friends.service';
+import { ProfileService } from '../profile.service';
 import { I18nService } from '../i18n.service';
 import { PlayerAvatar } from '../player-avatar/player-avatar';
 import { Icon } from '../ui/icon/icon';
 
 /**
- * Das Postfach oben im Profil: Kommentare auf eigene Decks und Antworten auf eigene Kommentare.
+ * Das Postfach oben im Profil: Freundesanfragen, Kommentare auf eigene Decks und Antworten auf
+ * eigene Kommentare. Die Anfragen stehen zusätzlich im Freunde-Abschnitt weiter unten - hier
+ * oben, damit man für "Annehmen" nicht durchs ganze Profil scrollen muss (Wunsch des Users,
+ * 06.10.2026). Offene Anfragen klappen das Postfach von selbst auf.
  *
  * Eingeklappt, solange nichts Ungelesenes da ist - eine dauerhaft ausgeklappte, meist leere Liste
  * schiebt im Profil nur alles nach unten. Der Zähler an der Tab-Leiste (siehe app.html) ist die
@@ -29,18 +34,40 @@ export class CommentInbox {
   private readonly deckService = inject(DeckService);
   private readonly viewer = inject(DeckViewerService);
 
+  readonly friends = inject(FriendsService);
+  private readonly profileService = inject(ProfileService);
+
   readonly offen = signal(false);
   readonly oeffnenBusy = signal(false);
+  /** Einmal von Hand auf- oder zugeklappt: dann klappt eine Anfrage es nicht mehr selbst auf. */
+  private manuell = false;
+
+  /** Ungelesene Kommentare plus offene Freundesanfragen - dieselbe Zahl wie an der Tab-Leiste. */
+  readonly badgeCount = computed(() => this.inbox.unreadCount() + this.friends.incoming().length);
+  readonly sichtbar = computed(() => this.inbox.verfuegbar() || this.friends.incoming().length > 0);
 
   constructor() {
     // Beim Betreten des Profils den Zähler auffrischen - man kommt oft genau deswegen hierher.
     void this.inbox.refreshCount();
+    void this.friends.refresh();
+
+    effect(() => {
+      if (this.friends.incoming().length > 0 && !this.manuell && !this.offen()) {
+        this.offen.set(true);
+        void this.inbox.loadEntries();
+      }
+    });
   }
 
   async toggle(): Promise<void> {
+    this.manuell = true;
     const naechster = !this.offen();
     this.offen.set(naechster);
     if (naechster) await this.inbox.loadEntries();
+  }
+
+  openProfile(userId: string): void {
+    this.profileService.viewProfile(userId);
   }
 
   /**

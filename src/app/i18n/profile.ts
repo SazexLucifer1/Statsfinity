@@ -238,9 +238,12 @@ export const profile = {
     'profile.msg.shareFailed': 'Teilen fehlgeschlagen.',
     // --- Postfach fuer Deck-Kommentare ---
     'inbox.title': 'Postfach',
+    'inbox.friendRequests': 'Freundesanfragen',
+    'inbox.comments': 'Kommentare',
+    'inbox.subjectFriendRequest': '{{name}} möchte mit dir befreundet sein',
     'inbox.loading': 'Lade Nachrichten …',
     'inbox.empty':
-      'Keine Nachrichten. Hier landen Kommentare auf deine Decks und Antworten auf deine Kommentare.',
+      'Keine Nachrichten. Hier landen Freundesanfragen, Kommentare auf deine Decks und Antworten auf deine Kommentare.',
     'inbox.loadFailed': 'Nachrichten konnten nicht geladen werden.',
     'inbox.markAllRead': 'Alle als gelesen markieren',
     'inbox.unreadAria': 'Ungelesen',
@@ -484,8 +487,11 @@ export const profile = {
     'profile.msg.shareFailed': 'Sharing failed.',
     // --- Deck comment inbox ---
     'inbox.title': 'Inbox',
+    'inbox.friendRequests': 'Friend requests',
+    'inbox.comments': 'Comments',
+    'inbox.subjectFriendRequest': '{{name}} wants to be your friend',
     'inbox.loading': 'Loading messages …',
-    'inbox.empty': 'No messages. Comments on your decks and replies to your comments show up here.',
+    'inbox.empty': 'No messages. Friend requests, comments on your decks and replies to your comments show up here.',
     'inbox.loadFailed': 'Messages could not be loaded.',
     'inbox.markAllRead': 'Mark all as read',
     'inbox.unreadAria': 'Unread',
