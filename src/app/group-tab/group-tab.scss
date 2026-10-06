@@ -276,6 +276,20 @@ a {
   margin: 0 auto;
 }
 
+// Handy: Spieler mit Rang tragen einen Rahmen in Rangfarbe (.rank-tinted, styles.scss). In der
+// einspaltigen Liste stieß der als eckiger Kasten direkt an Profilbild und Knopf. Deshalb haben
+// alle Zeilen innen etwas Luft (sonst stünden Namen mit und ohne Rang versetzt), und nur die
+// gerahmten bekommen runde Ecken und Abstand zur Nachbarzeile.
+.player-list.player-grid li {
+  padding: 10px var(--sp-4);
+
+  &.rank-tinted {
+    border: 1px solid;
+    border-radius: var(--r-lg);
+    margin: var(--sp-2) 0;
+  }
+}
+
 // Ab Tablet passen mehrere Einträge nebeneinander - dasselbe Muster wie die Deck-Liste im Profil
 // (deck-list.scss): Raster statt einer einzelnen, immer breiter werdenden Spalte, Zeilen mit
 // eigenem Rahmen statt Trennlinie. Auf dem Handy bleibt die gewohnte einspaltige Liste.
@@ -291,6 +305,11 @@ a {
       border-radius: var(--r-lg);
       background: rgba(255, 255, 255, 0.05);
       border: 1px solid var(--glass-border);
+
+      // Im Raster sorgt schon der Spaltenabstand für Luft.
+      &.rank-tinted {
+        margin: 0;
+      }
     }
   }
 }
