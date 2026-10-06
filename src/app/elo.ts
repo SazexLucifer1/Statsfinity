@@ -1,5 +1,5 @@
 import { ARCHENEMY_OTHERS, DRAW, isImportLossDuplicate } from './match-utils';
-import { DeckFormat, GameMode, LIVE_TRACKING_START_DATE, Match } from './models';
+import { DeckFormat, GAME_MODES, GameMode, LIVE_TRACKING_START_DATE, Match } from './models';
 
 /**
  * Elo-Wertung je Spielmodus, aus dem Match-Verlauf berechnet (nichts gespeichert, deshalb auch
@@ -331,4 +331,30 @@ export function rankFromLp(total: number): Rank {
 /** Römische Ziffer der Division (V ... I). */
 export function divisionLabel(division: number | null): string {
   return division == null ? '' : ['I', 'II', 'III', 'IV', 'V'][division - 1];
+}
+
+export interface SeasonResult {
+  name: string;
+  mode: GameMode;
+  /** null = Modus ohne Format (Spezialevent). */
+  format: DeckFormat | null;
+  lp: number;
+}
+
+/**
+ * Endstand einer Saison für die Abzeichen: je Wertung (Modus + Format, wie der Rang im Profil)
+ * jeder Spieler mit FERTIGER Einstufung. Wer noch in der Einstufung steckt, hat keinen Endrang.
+ */
+export function seasonResults(matches: readonly Match[]): SeasonResult[] {
+  const results: SeasonResult[] = [];
+  const rated = matches.filter(isRatedMatch);
+  for (const mode of GAME_MODES) {
+    const formats = [...new Set(rated.filter((m) => m.mode === mode).map((m) => m.format ?? null))];
+    for (const format of formats) {
+      for (const e of eloRanking(matches, mode, { format })) {
+        if (!e.provisional) results.push({ name: e.name, mode, format, lp: Math.round(e.lp) });
+      }
+    }
+  }
+  return results;
 }

@@ -1,12 +1,8 @@
-import { Component, computed, effect, inject, input, signal } from '@angular/core';
-import { ScryfallService } from '../scryfall.service';
-import { CardImage } from '../card-image/card-image';
+import { Component, computed, inject, input, signal } from '@angular/core';
 import { Match } from '../models';
 import { I18nService } from '../i18n.service';
 import {
-  Matchup,
   OPPONENT_MIN_GAMES,
-  deckMatchups,
   durationStats,
   favoriteVictim,
   monthlyWinRate,
@@ -17,19 +13,18 @@ import {
 } from '../match-insights';
 import { BarChart, BarChartDatum } from '../ui/bar-chart/bar-chart';
 import { Meter } from '../ui/meter/meter';
-import { SplitBar, SplitSegment } from '../ui/split-bar/split-bar';
 import { InfoToggle } from '../ui/info-toggle/info-toggle';
 import { Icon } from '../ui/icon/icon';
 import { YearReviewDialog } from '../year-review-dialog/year-review-dialog';
 
 /**
- * "Spiel-Analysen" im Statistik-Tab: Zugreihenfolge, Spieldauer, Gegner, Deck gegen Deck und
- * Form. Bekommt die schon gefilterten Partien und den gewählten Spieler vom Statistik-Tab - die
+ * "Spiel-Analysen" im Statistik-Tab: Zugreihenfolge, Spieldauer, Gegner und Form ("Deck gegen
+ * Deck" steht seit 06.10.2026 je Deck in der Deck-Ansicht, deck-matchups/). Bekommt die schon gefilterten Partien und den gewählten Spieler vom Statistik-Tab - die
  * Rechnung steckt in match-insights.ts, hier wird nur angezeigt.
  */
 @Component({
   selector: 'app-match-insights',
-  imports: [CardImage, BarChart, Meter, SplitBar, Icon, YearReviewDialog, InfoToggle],
+  imports: [BarChart, Meter, Icon, YearReviewDialog, InfoToggle],
   templateUrl: './match-insights.html',
   styleUrl: './match-insights.scss',
 })
@@ -70,52 +65,6 @@ export class MatchInsights {
       .slice(0, 8),
   );
 
-  /** Alle Paarungen; sichtbar sind zuerst nur die häufigsten, der Rest auf Wunsch. */
-  readonly allMatchups = computed(() => deckMatchups(this.matches(), this.player()));
-  readonly showAllMatchups = signal(false);
-  readonly MATCHUPS_PREVIEW = 5;
-  readonly matchups = computed(() =>
-    this.showAllMatchups()
-      ? this.allMatchups()
-      : this.allMatchups().slice(0, this.MATCHUPS_PREVIEW),
-  );
-  /** Aufgeklappte Paarung (Schlüssel a|b) - Details erst auf Antippen. */
-  readonly openMatchup = signal<string | null>(null);
-
-  toggleMatchup(m: Matchup): void {
-    const key = m.a + '|' + m.b;
-    this.openMatchup.set(this.openMatchup() === key ? null : key);
-  }
-
-  // --- Commander-Bilder für die Paarungen (gebündelt nachgeladen, wie im Statistik-Tab) ---
-  private readonly scryfall = inject(ScryfallService);
-  readonly commanderImages = signal<Record<string, string | null>>({});
-
-  constructor() {
-    effect(() => {
-      const names = new Set<string>();
-      for (const m of this.matchups()) {
-        if (m.aCommander) names.add(m.aCommander);
-        if (m.bCommander) names.add(m.bCommander);
-      }
-      const known = this.commanderImages();
-      const missing = [...names].filter((n) => !(n.toLowerCase() in known));
-      if (missing.length === 0) return;
-      this.scryfall.findCardsBulk(missing).then((found) => {
-        this.commanderImages.update((current) => {
-          const next = { ...current };
-          for (const n of missing)
-            next[n.toLowerCase()] = found.get(n.toLowerCase())?.imageUrl ?? null;
-          return next;
-        });
-      });
-    });
-  }
-
-  commanderImage(name: string | undefined): string | null {
-    return name ? (this.commanderImages()[name.toLowerCase()] ?? null) : null;
-  }
-
   readonly form = computed(() => {
     const player = this.player();
     return player ? recentForm(this.matches(), player) : [];
@@ -139,24 +88,6 @@ export class MatchInsights {
         year: '2-digit',
       },
     );
-  }
-
-  matchupSegments(m: {
-    a: string;
-    b: string;
-    aWins: number;
-    bWins: number;
-    games: number;
-  }): SplitSegment[] {
-    return [
-      { label: m.a, value: m.aWins, color: 'var(--series-1)' },
-      {
-        label: this.i18n.t('stats.insights.otherResult'),
-        value: m.games - m.aWins - m.bWins,
-        color: 'var(--series-neutral)',
-      },
-      { label: m.b, value: m.bWins, color: 'var(--series-2)' },
-    ];
   }
 
   formatMinutes(minutes: number): string {

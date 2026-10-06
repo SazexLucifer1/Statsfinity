@@ -1,5 +1,5 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
-import { DecimalPipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MtgService } from '../mtg.service';
 import { GroupService } from '../group.service';
@@ -52,10 +52,13 @@ import { Podium, PodiumEntry } from '../ui/podium/podium';
 import { GlobalStats } from '../global-stats/global-stats';
 import { Icon } from '../ui/icon/icon';
 import { MatchInsights } from '../match-insights/match-insights';
+import { FriendsStats } from '../friends-stats/friends-stats';
+import { AuthService } from '../auth.service';
+import { FriendsService } from '../friends.service';
 
 export type StatsViewMode = 'stats' | 'tournaments';
 export type ColorStatsWeightMode = 'games' | 'decks';
-export type StatsScope = 'group' | 'global';
+export type StatsScope = 'group' | 'global' | 'friends';
 
 const PAGE_SIZE = 10;
 
@@ -95,6 +98,7 @@ interface CombinedRankEntry {
     RankBadge,
     MatchInsights,
     DecimalPipe,
+    DatePipe,
     PlayerAvatar,
     FormsModule,
     TournamentHistory,
@@ -107,6 +111,7 @@ interface CombinedRankEntry {
     MultiSelect,
     Podium,
     GlobalStats,
+    FriendsStats,
    Icon],
   templateUrl: './stats-tab.html',
   styleUrl: './stats-tab.scss',
@@ -114,6 +119,8 @@ interface CombinedRankEntry {
 export class StatsTab {
   readonly mtg = inject(MtgService);
   readonly groupService = inject(GroupService);
+  readonly auth = inject(AuthService);
+  readonly friends = inject(FriendsService);
   private readonly scryfall = inject(ScryfallService);
   private readonly deckService = inject(DeckService);
   private readonly viewer = inject(DeckViewerService);
@@ -210,13 +217,6 @@ export class StatsTab {
       this.mtg.loadMatchesForGroups([groupId]).then((matches) => this.viewedMatches.set(matches));
     });
 
-    // Eine lokal gepinnte Fremdgruppen-Ansicht bliebe sonst unbemerkt "hängen", wenn anderswo (z.B.
-    // im Gruppen-Tab) die echte aktive Gruppe gewechselt wird.
-    effect(() => {
-      this.groupService.groupId();
-      this.viewedGroupId.set(null);
-    });
-
     effect(() => {
       const names = new Set<string>();
       for (const e of this.pagedCombinedStats()) {
@@ -271,11 +271,15 @@ export class StatsTab {
   // Wie der Rang im Profil je Modus UND Format: dem Format-Filter oben folgend ("Alle" = alle
   // Formate eines Modus gemeinsam). Ein Modern-Sieg soll keinen Commander-Rang verschieben.
   // Nur in einer Gruppe mit eingeschaltetem Rangsystem (Schalter des Gruppenleiters).
+  /** Partien der laufenden Ranked-Saison (groups.ranked_since) - Grundlage aller Elo-Werte hier. */
+  private readonly seasonMatches = computed(() =>
+    this.groupService.seasonMatches(this.viewedMatches(), this.effectiveViewedGroupId()),
+  );
   readonly eloModes = computed(() =>
-    !this.groupService.isRankedGroup(this.effectiveViewedGroupId())
+    !this.groupService.canSeeRanked(this.effectiveViewedGroupId())
       ? []
       : ratedModes(
-          this.applyFormatFilter(this.viewedMatches()),
+          this.applyFormatFilter(this.seasonMatches()),
           GAME_MODES.filter((m) => this.canViewMode(m)),
         ),
   );
@@ -289,7 +293,7 @@ export class StatsTab {
     const mode = this.eloMode();
     if (!mode) return [];
     const format = this.selectedFormat();
-    return eloRanking(this.viewedMatches(), mode, format === 'Alle' ? {} : { format });
+    return eloRanking(this.seasonMatches(), mode, format === 'Alle' ? {} : { format });
   });
   readonly eloPage = signal(0);
   readonly pagedEloRanking = computed(() => {
@@ -308,6 +312,10 @@ export class StatsTab {
       }));
   });
   readonly showEloInfo = signal(false);
+  /** Rangsystem aus, aber der Gruppenleiter sieht die Wertung trotzdem (nur er). */
+  readonly eloHiddenForOthers = computed(
+    () => !this.groupService.isRankedGroup(this.effectiveViewedGroupId()),
+  );
   readonly placementTotal = ELO_PROVISIONAL_GAMES;
 
   /**
@@ -318,7 +326,7 @@ export class StatsTab {
     if (!this.groupService.isRankedGroup(this.effectiveViewedGroupId())) return new Map();
     const format = this.selectedFormat();
     return rankTiersFor(
-      this.viewedMatches(),
+      this.seasonMatches(),
       this.eloMode() ?? 'Normal',
       format === 'Alle' ? undefined : format,
     );
@@ -478,22 +486,19 @@ export class StatsTab {
     this.mtg.history().filter((m) => m.countsInGeneralStats !== false),
   );
 
-  // --- Lokaler Gruppen-Wechsler (nur Stats-Tab) ---
+  // --- Gruppen-Wechsler im Stats-Tab ---
   //
-  // filteredMatches() bleibt an der echten aktiven Gruppe (Spieler-Details, Head-to-Head,
-  // Berechtigungen). Die Auswertungen (Übersicht, Ranglisten, Farben) lesen
-  // viewedFilteredMatches(), das sich lokal auf eine andere eigene Gruppe umschalten lässt.
-
-  /** null = folgt der echten aktiven Gruppe (Default, entspricht dem bisherigen Verhalten). */
-  private readonly viewedGroupId = signal<string | null>(null);
-  readonly effectiveViewedGroupId = computed(
-    () => this.viewedGroupId() ?? this.groupService.groupId(),
-  );
+  // Wechselt die echte aktive Gruppe (dieselbe wie im Gruppen-Tab). Früher war das eine nur
+  // lokale Ansicht: Übersicht, Ranglisten und Farben sprangen um, Spieler-Details, Elo,
+  // Head-to-Head und Spiel-Analysen blieben aber an der aktiven Gruppe hängen - wer die
+  // Statistik einer anderen Gruppe sehen wollte, musste doch in den Gruppen-Tab (Wunsch des
+  // Users, 06.10.2026: umstellbar direkt hier).
+  readonly effectiveViewedGroupId = computed(() => this.groupService.groupId());
 
   setViewedGroup(groupId: string): void {
-    this.viewedGroupId.set(groupId);
     this.selectedCommanderDetail.set(null);
     this.selectedDeckDetail.set(null);
+    this.groupService.switchGroup(groupId);
   }
 
   /** Matches der lokal betrachteten Gruppe (Default: echte aktive Gruppe, kein Extra-Request). */

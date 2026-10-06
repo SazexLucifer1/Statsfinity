@@ -4,7 +4,16 @@ export const group = {
     'group.rankedTurnOff': 'Ranked-System ausschalten',
     'group.rankedTurnOn': 'Ranked-System einschalten',
     'group.rankedConfirmOff':
-      'Ranked-System für diese Gruppe ausschalten? Ränge, LP und die Auswahl Ranked/Frei verschwinden. Es geht nichts verloren – beim Wiedereinschalten sind die Ränge wieder da.',
+      'Ranked-System für diese Gruppe ausschalten? Ränge, LP und die Auswahl Ranked/Frei verschwinden für alle Mitglieder. Im Hintergrund läuft die Wertung weiter – du als Gruppenleiter siehst sie im Statistik-Tab, und beim Wiedereinschalten ist sie für alle wieder da.',
+    'group.rankedReset': 'Rangliste zurücksetzen',
+    'group.rankedResetConfirm':
+      'Rangliste dieser Gruppe zurücksetzen? Alle starten neu bei Silber V, ab jetzt zählen nur neue Partien. Die Partien selbst bleiben in der Statistik. Abzeichen gibt es dabei keine – dafür „Saison beenden“.',
+    'group.rankedResetDone': 'Die Rangliste startet neu.',
+    'group.rankedEndSeason': 'Saison beenden',
+    'group.rankedEndSeasonConfirm':
+      'Saison beenden? Jeder mit Konto und fertiger Einstufung bekommt für jede Wertung (Modus + Format) ein dauerhaftes Abzeichen mit Endrang und LP in sein Profil. Danach startet die Rangliste neu bei Silber V.',
+    'group.rankedEndSeasonDone': 'Saison beendet: {{count}} Abzeichen vergeben, die neue Saison läuft.',
+    'group.rankedSeasonFailed': 'Das hat nicht geklappt. Ist sql/ranked-saison-2026-10-06.sql schon ausgeführt?',
     'group.rankedConfirmOn':
       'Ranked-System für diese Gruppe einschalten? Alle Ranked-Partien der Gruppe zählen dann für die Ränge, auch die bisherigen.',
     // --- Gruppen-Tab ---
@@ -170,7 +179,16 @@ export const group = {
     'group.rankedTurnOff': 'Turn off ranked system',
     'group.rankedTurnOn': 'Turn on ranked system',
     'group.rankedConfirmOff':
-      'Turn off the ranked system for this group? Ranks, LP and the ranked/casual choice disappear. Nothing is lost – the ranks come back when you turn it on again.',
+      'Turn off the ranked system for this group? Ranks, LP and the ranked/casual choice disappear for all members. The ranking keeps running in the background – as group leader you see it in the stats tab, and it is back for everyone when you turn it on again.',
+    'group.rankedReset': 'Reset leaderboard',
+    'group.rankedResetConfirm':
+      'Reset this group\'s leaderboard? Everyone starts again at Silver V, from now on only new games count. The games themselves stay in the stats. No badges are awarded – use “End season” for that.',
+    'group.rankedResetDone': 'The leaderboard starts over.',
+    'group.rankedEndSeason': 'End season',
+    'group.rankedEndSeasonConfirm':
+      'End the season? Everyone with an account and finished placement gets a permanent badge with final rank and LP in their profile for each ranking (mode + format). Then the leaderboard starts over at Silver V.',
+    'group.rankedEndSeasonDone': 'Season ended: {{count}} badges awarded, the new season is running.',
+    'group.rankedSeasonFailed': 'That did not work. Has sql/ranked-saison-2026-10-06.sql been run yet?',
     'group.rankedConfirmOn':
       'Turn on the ranked system for this group? All ranked games of the group count towards the ranks, including past ones.',
     // --- Group tab ---

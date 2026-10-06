@@ -1,0 +1,162 @@
+@if (!friends.verfuegbar()) {
+  <section class="glass-card">
+    <p class="hint">{{ i18n.t('stats.friends.unavailable') }}</p>
+  </section>
+} @else if (people().length < 2 && friends.loaded()) {
+  <section class="glass-card">
+    <h2>{{ i18n.t('stats.friends.title') }}</h2>
+    <p class="hint">{{ i18n.t('stats.friends.noFriends') }}</p>
+  </section>
+} @else {
+  <section class="glass-card">
+    <h2>{{ i18n.t('stats.friends.filterTitle') }}</h2>
+    <div class="filters">
+      <select
+        class="glass-input"
+        [attr.aria-label]="i18n.t('stats.allTime')"
+        [ngModel]="selectedYear()"
+        (ngModelChange)="selectedYear.set($event)"
+      >
+        <option [ngValue]="'Alle'">{{ i18n.t('stats.allTime') }}</option>
+        @for (year of availableYears(); track year) {
+          <option [ngValue]="year">{{ year }}</option>
+        }
+      </select>
+      <select
+        class="glass-input"
+        [attr.aria-label]="i18n.t('stats.allFormats')"
+        [ngModel]="selectedFormat()"
+        (ngModelChange)="selectedFormat.set($event)"
+      >
+        <option [ngValue]="'Alle'">{{ i18n.t('stats.allFormats') }}</option>
+        @for (format of availableFormats(); track format) {
+          <option [ngValue]="format">{{ format }}</option>
+        }
+      </select>
+    </div>
+  </section>
+
+  @if (loading()) {
+    <section class="glass-card">
+      <p class="hint">{{ i18n.t('stats.friends.loading') }}</p>
+    </section>
+  } @else {
+    <section class="glass-card">
+      <app-info-toggle [label]="i18n.t('stats.friends.infoAria')">
+        <h2 info-title>{{ i18n.t('stats.friends.rankingTitle') }}</h2>
+        <p class="hint">{{ i18n.t('stats.friends.rankingInfo', { min: MIN_GAMES }) }}</p>
+      </app-info-toggle>
+      @if (ranking().length === 0) {
+        <p class="hint">{{ i18n.t('stats.friends.rankingEmpty', { min: MIN_GAMES }) }}</p>
+      }
+      <ol class="ranking">
+        @for (r of ranking(); track r.name; let i = $index) {
+          <li [class.me]="r.person.isMe">
+            <span class="pos">{{ i + 1 }}.</span>
+            <span class="name"><app-player-avatar [url]="r.person.avatarUrl" /> {{ r.name }}</span>
+            <span class="rate">{{ r.winRate.toFixed(0) }} %</span>
+            <span class="detail">{{
+              i18n.t('stats.friends.winsOfGames', { wins: r.wins, games: r.games })
+            }}</span>
+            <app-meter [value]="r.winRate" />
+          </li>
+        }
+      </ol>
+      @if (belowMin().length > 0) {
+        <p class="hint small">
+          {{
+            i18n.t('stats.friends.belowMin', {
+              min: MIN_GAMES,
+              names: belowMin()
+                .map((b) => b.name + ' (' + b.games + ')')
+                .join(', '),
+            })
+          }}
+        </p>
+      }
+    </section>
+
+    <section class="glass-card">
+      <h2>{{ i18n.t('stats.playerDetails') }}</h2>
+      <div class="chip-row">
+        @for (p of people(); track p.userId) {
+          <button
+            class="glass-chip avatar-chip"
+            [class.active]="selectedPerson() === p.name"
+            (click)="togglePerson(p.name)"
+          >
+            <app-player-avatar [url]="p.avatarUrl" /> {{ p.name }}
+          </button>
+        }
+      </div>
+      @if (selectedPerson(); as name) {
+        @if (headToHead(); as h) {
+          <h3>{{ i18n.t('stats.friends.vsTitle', { name }) }}</h3>
+          @if (h.games === 0) {
+            <p class="hint">{{ i18n.t('stats.friends.vsNone') }}</p>
+          } @else {
+            <p class="versus">
+              <strong>{{ h.aWins }} : {{ h.bWins }}</strong>
+              <span class="hint">{{
+                i18n.t('stats.friends.vsGames', {
+                  games: h.games,
+                  other: h.games - h.aWins - h.bWins,
+                })
+              }}</span>
+            </p>
+          }
+        }
+        <h3>{{ i18n.t('stats.friends.commandersTitle') }}</h3>
+        @if (commanders().length === 0) {
+          <p class="hint">{{ i18n.t('stats.friends.commandersEmpty') }}</p>
+        } @else {
+          <ul class="commanders">
+            @for (c of commanders(); track c.commander) {
+              <li>
+                <span class="name">{{ c.commander }}</span>
+                <span class="detail">{{
+                  i18n.t('stats.friends.winsOfGames', { wins: c.wins, games: c.games })
+                }}</span>
+              </li>
+            }
+          </ul>
+        }
+      } @else {
+        <p class="hint">{{ i18n.t('stats.friends.choosePerson') }}</p>
+      }
+    </section>
+
+    <app-match-insights
+      [matches]="filteredMatches()"
+      [player]="selectedPerson()"
+      [allMatches]="allMatchesForReview()"
+    />
+
+    <section class="glass-card">
+      <app-info-toggle [label]="i18n.t('stats.friends.infoAria')">
+        <h2 info-title>{{ i18n.t('stats.friends.eloTitle') }}</h2>
+        <p class="hint">{{ i18n.t('stats.friends.eloInfo') }}</p>
+      </app-info-toggle>
+      @if (elo().length === 0) {
+        <p class="hint">{{ i18n.t('stats.friends.eloEmpty') }}</p>
+      } @else {
+        <ol class="ranking">
+          @for (e of elo(); track e.name; let i = $index) {
+            <li>
+              <span class="pos">{{ i + 1 }}.</span>
+              <span class="name">{{ e.name }}</span>
+              <span class="rate">{{
+                e.provisional
+                  ? i18n.t('profile.friends.placement', { games: e.games })
+                  : e.lp + ' LP'
+              }}</span>
+              <span class="detail">{{
+                i18n.t('stats.friends.winsOfGames', { wins: e.wins, games: e.games })
+              }}</span>
+            </li>
+          }
+        </ol>
+      }
+    </section>
+  }
+}

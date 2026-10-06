@@ -18,11 +18,21 @@
   <button [class.active]="viewScope() === 'global'" (click)="setViewScope('global')">
     {{ i18n.t('stats.viewScopeGlobal') }}
   </button>
+  <!-- Ich und meine Freunde über alle Gruppen (friends-stats/). Nur mit Login und Freunde-Migration. -->
+  @if (auth.currentUser() && friends.verfuegbar()) {
+  <button [class.active]="viewScope() === 'friends'" (click)="setViewScope('friends')">
+    {{ i18n.t('stats.viewScopeFriends') }}
+  </button>
+  }
 </div>
 
 @if (viewScope() === 'global') {
 
 <app-global-stats />
+
+} @else if (viewScope() === 'friends') {
+
+<app-friends-stats />
 
 } @else {
 
@@ -404,6 +414,13 @@
   </div>
   @if (showEloInfo()) {
   <p class="hint">{{ i18n.t('stats.elo.info') }}</p>
+  @if (groupService.rankedSince(effectiveViewedGroupId()); as since) {
+  <p class="hint">{{ i18n.t('stats.elo.seasonSince', { date: (since | date: 'dd.MM.yyyy') ?? '' }) }}</p>
+  }
+  }
+  @if (eloHiddenForOthers()) {
+  <!-- Rangsystem aus: Die Wertung läuft weiter, sehen darf sie nur der Gruppenleiter. -->
+  <p class="elo-admin-only"><app-icon name="lock" /> {{ i18n.t('stats.elo.adminOnly') }}</p>
   }
   <div class="chip-row">
     @for (mode of eloModes(); track mode) {
