@@ -54,6 +54,7 @@ import { Podium, PodiumEntry } from '../ui/podium/podium';
 import { GlobalStats } from '../global-stats/global-stats';
 import { Icon } from '../ui/icon/icon';
 import { MatchInsights } from '../match-insights/match-insights';
+import { PerformanceStats } from '../performance-stats/performance-stats';
 import { FriendsStats } from '../friends-stats/friends-stats';
 import { AuthService } from '../auth.service';
 import { FriendsService } from '../friends.service';
@@ -101,6 +102,7 @@ interface CombinedRankEntry {
   imports: [
     RankBadge,
     MatchInsights,
+    PerformanceStats,
     DecimalPipe,
     DatePipe,
     PlayerAvatar,

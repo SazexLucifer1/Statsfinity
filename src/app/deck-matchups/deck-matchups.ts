@@ -1,10 +1,12 @@
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { I18nService } from '../i18n.service';
-import { MtgService } from '../mtg.service';
 import { ScryfallService } from '../scryfall.service';
 import { DeckSocialService } from '../deck-social.service';
 import { supabase } from '../supabase.client';
-import { DeckOpponent, deckOpponents } from '../match-insights';
+import { DeckOpponent, deckOpponents, winRateOf } from '../match-insights';
+import { Match } from '../models';
+import { SampleHint } from '../ui/sample-hint/sample-hint';
+import { formatNumber } from '../ui/performance-summary/performance-summary';
 import { CardImage } from '../card-image/card-image';
 import { SplitBar, SplitSegment } from '../ui/split-bar/split-bar';
 import { InfoToggle } from '../ui/info-toggle/info-toggle';
@@ -13,17 +15,17 @@ import { InfoToggle } from '../ui/info-toggle/info-toggle';
  * "Gegen welche Decks" in der Deck-Ansicht: gegen welche Decks dieses Deck gespielt hat und wie
  * es lief. Stand vorher als großflächiges "Deck gegen Deck" im Statistik-Tab (Wunsch des Users,
  * 06.10.2026: gehört zur Statistik des einzelnen Decks). Kompakt: zuerst die häufigsten Gegner,
- * Details erst auf Antippen.
+ * Details erst auf Antippen. Die Partien lädt deck-performance/ und reicht sie herein - beide
+ * zeigen dieselben Partien, eine zweite Abfrage wäre doppelt.
  */
 @Component({
   selector: 'app-deck-matchups',
-  imports: [CardImage, SplitBar, InfoToggle],
+  imports: [CardImage, SplitBar, InfoToggle, SampleHint],
   templateUrl: './deck-matchups.html',
   styleUrl: './deck-matchups.scss',
 })
 export class DeckMatchups {
   readonly i18n = inject(I18nService);
-  private readonly mtg = inject(MtgService);
   private readonly scryfall = inject(ScryfallService);
   private readonly social = inject(DeckSocialService);
 
@@ -32,6 +34,8 @@ export class DeckMatchups {
 
   readonly deckId = input.required<string>();
   readonly deckName = input('');
+  /** Partien mit diesem Deck; null = noch nicht geladen. */
+  readonly matches = input<readonly Match[] | null>(null);
 
   readonly PREVIEW = 4;
   readonly all = signal<DeckOpponent[]>([]);
@@ -48,16 +52,17 @@ export class DeckMatchups {
   constructor() {
     effect(() => {
       const id = this.deckId();
-      this.loaded.set(false);
-      this.all.set([]);
+      const matches = this.matches();
       this.open.set(null);
-      this.mtg.loadMatchesForDeck(id).then((matches) => {
-        if (this.deckId() !== id) return;
-        const opponents = deckOpponents(matches, id);
-        this.all.set(opponents);
-        this.loaded.set(true);
-        void this.loadOwners(opponents);
-      });
+      if (!matches) {
+        this.loaded.set(false);
+        this.all.set([]);
+        return;
+      }
+      const opponents = deckOpponents(matches, id);
+      this.all.set(opponents);
+      this.loaded.set(true);
+      void this.loadOwners(opponents);
     });
     effect(() => {
       if (!this.expanded()) return;
@@ -118,6 +123,12 @@ export class DeckMatchups {
     if (o.deckId && o.ownerUserId) return this.social.statsFor(o.deckId)?.ownerName ?? null;
     if (o.ownerPlayerId) return this.playerOwners().get(o.ownerPlayerId) ?? null;
     return null;
+  }
+
+  /** Siegquote gegen diesen Gegner in den aufgezeichneten Partien - nur gezählt, nicht gedeutet. */
+  rate(o: DeckOpponent): string {
+    const rate = winRateOf(o.wins, o.games);
+    return rate === null ? '–' : `${formatNumber(rate, this.i18n.lang(), 0)} %`;
   }
 
   key(o: DeckOpponent): string {

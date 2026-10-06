@@ -89,6 +89,9 @@ export const tutorial = {
     'tutorial.stats.elo.title': 'Elo-Wertung',
     'tutorial.stats.elo.text':
       'Die Ränge der Gruppe von Holz bis Infinity, je Format getrennt. Es zählen nur Ranked-Partien: Der Sieger gewinnt LP gegen jeden Gegner, alle anderen verlieren gegen den Sieger. Das i neben der Überschrift erklärt die Rechnung.',
+    'tutorial.stats.performance.title': 'Performance',
+    'tutorial.stats.performance.text':
+      'Partien, Siege, Winrate, Ø Platz, Ø Siegzug, Ø Dauer, Decks und Siegarten - nur aus den gespeicherten Partien. Jeder Schnitt nennt, aus wie vielen Partien er stammt; Siegart und Zug trägst du optional im Sieger-Dialog ein.',
     'tutorial.stats.insights.title': 'Spiel-Analysen',
     'tutorial.stats.insights.text':
       'Winrate je Startplatz und Spieldauer. Mit gewähltem Spieler zusätzlich Form, Winrate je Monat, Angst- und Lieblingsgegner sowie der Jahresrückblick als Bild zum Teilen.',
@@ -392,6 +395,9 @@ export const tutorial = {
     'tutorial.stats.elo.title': 'Elo rating',
     'tutorial.stats.elo.text':
       "The group's ranks from Wood to Infinity, separate per format. Only ranked games count: the winner gains LP against every opponent, everyone else loses against the winner. The i next to the heading explains the maths.",
+    'tutorial.stats.performance.title': 'Performance',
+    'tutorial.stats.performance.text':
+      'Games, wins, win rate, avg. placement, avg. win turn, avg. duration, decks and win conditions - only from saved games. Every average says how many games it is based on; win condition and turn are optional in the winner dialog.',
     'tutorial.stats.insights.title': 'Game insights',
     'tutorial.stats.insights.text':
       'Win rate by seat and game length. With a player selected, also form, win rate per month, nemesis and favourite opponent, and the year in review as an image to share.',

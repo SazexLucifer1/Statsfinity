@@ -1,0 +1,73 @@
+.perf-toggle {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  h2 {
+    margin: 0;
+  }
+}
+
+h3 {
+  margin: var(--sp-7) 0 var(--sp-3);
+}
+
+.perf-overall {
+  margin-bottom: var(--sp-3);
+
+  .stat-value {
+    font-size: 1.3rem;
+  }
+
+  .from {
+    font-size: 0.7rem;
+    opacity: 0.6;
+  }
+}
+
+// Tabelle als Raster: auf dem Handy bekommt der Name den Platz, die Zahlen bleiben schmal.
+.perf-table {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.86rem;
+}
+
+.perf-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 3.2em 3em 3.6em 3.6em;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) 0;
+  border-bottom: 1px solid var(--divider);
+
+  // Erste Spalte (Name) links, die Zahlen rechtsbündig untereinander.
+  > span:not(:first-child) {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.perf-head {
+  font-size: 0.72rem;
+  opacity: 0.7;
+}
+
+.perf-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-1) var(--sp-2);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.show-all {
+  margin-top: var(--sp-3);
+}

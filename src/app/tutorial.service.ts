@@ -80,6 +80,7 @@ const TUTORIALS: TutorialDef[] = [
       step('stats-overview', 'stats.overview'),
       step('stats-ranking', 'stats.ranking'),
       step('stats-elo', 'stats.elo'),
+      step('stats-performance', 'stats.performance'),
       step('stats-insights', 'stats.insights'),
       step('stats-h2h', 'stats.h2h'),
       step('stats-decks-commanders', 'stats.decksCommanders'),

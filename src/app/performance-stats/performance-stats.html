@@ -1,0 +1,130 @@
+<section class="glass-card performance" data-tutorial="stats-performance">
+  <button class="perf-toggle" [attr.aria-expanded]="expanded()" (click)="expanded.set(!expanded())">
+    <h2>
+      {{
+        player()
+          ? i18n.t('stats.performance.titlePlayer', { name: player() ?? '' })
+          : i18n.t('stats.performance.title')
+      }}
+    </h2>
+    <span class="chevron">{{ expanded() ? '▾' : '▸' }}</span>
+  </button>
+
+  @if (expanded()) {
+    <app-info-toggle [label]="i18n.t('stats.performance.infoAria')">
+      <span info-title class="hint">{{
+        i18n.t('stats.performance.basis', { count: overall().games })
+      }}</span>
+      <p class="hint">{{ i18n.t('stats.performance.info') }}</p>
+    </app-info-toggle>
+
+    @if (overall().games === 0) {
+      <p class="hint">{{ i18n.t('stats.performance.noGames') }}</p>
+    } @else {
+      <!-- Gesamt: mit Spieler seine Bilanz, ohne Spieler nur, was für eine Gruppe Sinn ergibt
+           (eine Gruppen-Winrate wäre immer "jede Partie hat einen Sieger"). -->
+      @if (playerSummary(); as s) {
+        <app-performance-summary [summary]="s" [winConditions]="winConditions()" />
+      } @else {
+        @let o = overall();
+        <div class="stat-tiles perf-overall">
+          <div class="stat-tile">
+            <span class="stat-value">{{ o.games }}</span>
+            <span class="stat-label">{{ i18n.t('stats.performance.games') }}</span>
+          </div>
+          <div class="stat-tile">
+            <span class="stat-value">{{ num(o.avgTurn) }}</span>
+            <span class="stat-label">{{ i18n.t('stats.performance.avgTurn') }}</span>
+            <small class="from">{{
+              i18n.t('stats.performance.fromGames', { count: o.turnGames })
+            }}</small>
+          </div>
+          <div class="stat-tile">
+            <span class="stat-value">{{ minutes(o.avgMinutes) }}</span>
+            <span class="stat-label">{{ i18n.t('stats.performance.avgDuration') }}</span>
+            <small class="from">{{
+              i18n.t('stats.performance.fromGames', { count: o.durationGames })
+            }}</small>
+          </div>
+        </div>
+        <app-performance-summary [winConditions]="winConditions()" />
+      }
+
+      <!-- Decks: Partien, Siege, Winrate, Ø Platz - jede Zeile mit ihrer Stichprobe. -->
+      @if (decks().length > 0) {
+        <h3>{{ i18n.t('stats.performance.decksTitle') }}</h3>
+        <div class="perf-table" role="table">
+          <div class="perf-row perf-head" role="row">
+            <span role="columnheader">{{ i18n.t('stats.performance.deck') }}</span>
+            <span role="columnheader">{{ i18n.t('stats.performance.games') }}</span>
+            <span role="columnheader">{{ i18n.t('stats.performance.wins') }}</span>
+            <span role="columnheader">{{ i18n.t('stats.performance.winRate') }}</span>
+            <span role="columnheader">{{ i18n.t('stats.performance.avgPlacement') }}</span>
+          </div>
+          @for (d of visibleDecks(); track d.key) {
+            <div class="perf-row" role="row">
+              <span class="perf-name" role="cell">
+                {{ d.label }}
+                <app-sample-hint [games]="d.summary.games" />
+              </span>
+              <span role="cell">{{ d.summary.games }}</span>
+              <span role="cell">{{ d.summary.wins }}</span>
+              <span role="cell">{{ rate(d.summary.winRate) }}</span>
+              <span role="cell">{{ num(d.summary.avgPlacement, 2) }}</span>
+            </div>
+          }
+        </div>
+        @if (decks().length > PREVIEW) {
+          <button class="glass-chip small show-all" (click)="showAllDecks.set(!showAllDecks())">
+            {{
+              showAllDecks()
+                ? i18n.t('stats.insights.showLess')
+                : i18n.t('stats.insights.showAll', { count: decks().length })
+            }}
+          </button>
+        }
+      }
+
+      <!-- Gegen Commander: nur die gezählten Ergebnisse, keine "kontert"-Aussage. -->
+      @if (matchups().length > 0) {
+        <app-info-toggle [label]="i18n.t('stats.performance.infoAria')">
+          <h3 info-title>{{ i18n.t('stats.performance.matchupsTitle') }}</h3>
+          <p class="hint">{{ i18n.t('stats.performance.matchupsInfo') }}</p>
+        </app-info-toggle>
+        <div class="perf-table" role="table">
+          <div class="perf-row perf-head" role="row">
+            <span role="columnheader">{{ i18n.t('stats.performance.opponent') }}</span>
+            <span role="columnheader">{{ i18n.t('stats.performance.games') }}</span>
+            <span role="columnheader">{{ i18n.t('stats.performance.wins') }}</span>
+            <span role="columnheader">{{ i18n.t('stats.performance.losses') }}</span>
+            <span role="columnheader">{{ i18n.t('stats.performance.winRate') }}</span>
+          </div>
+          @for (m of visibleMatchups(); track m.label) {
+            <div class="perf-row" role="row">
+              <span class="perf-name" role="cell">
+                {{ m.label }}
+                <app-sample-hint [games]="m.games" />
+              </span>
+              <span role="cell">{{ m.games }}</span>
+              <span role="cell">{{ m.wins }}</span>
+              <span role="cell">{{ m.losses }}</span>
+              <span role="cell">{{ rate(m.winRate) }}</span>
+            </div>
+          }
+        </div>
+        @if (matchups().length > PREVIEW) {
+          <button
+            class="glass-chip small show-all"
+            (click)="showAllMatchups.set(!showAllMatchups())"
+          >
+            {{
+              showAllMatchups()
+                ? i18n.t('stats.insights.showLess')
+                : i18n.t('stats.insights.showAll', { count: matchups().length })
+            }}
+          </button>
+        }
+      }
+    }
+  }
+</section>

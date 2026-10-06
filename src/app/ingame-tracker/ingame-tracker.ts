@@ -21,6 +21,7 @@ import { I18nService } from '../i18n.service';
 import { TutorialService } from '../tutorial.service';
 import { AuthService } from '../auth.service';
 import { Icon } from '../ui/icon/icon';
+import { WIN_CONDITIONS } from '../models';
 import { LifeChart } from '../ui/life-chart/life-chart';
 
 const FIVE_MINUTES_MS = 5 * 60_000;
@@ -261,6 +262,8 @@ export class IngameTracker implements AfterViewInit, OnDestroy {
   // lassen; die Zeile darunter sagt, was zuletzt zurückgenommen wurde. ---
 
   readonly lastUndone = signal<string | null>(null);
+  /** Siegarten im Sieger-Dialog (optional, sql/partie-ergebnis-deck-version-2026-10-06.sql). */
+  readonly winConditions = WIN_CONDITIONS;
   readonly counterKinds = COUNTER_KINDS;
   readonly counterIcons = COUNTER_ICONS;
 

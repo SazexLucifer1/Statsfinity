@@ -119,6 +119,11 @@ export interface MatchPlayer {
    */
   eliminatedBy?: string;
   /**
+   * Version des Decks, als die Partie gespeichert wurde (match_players.deck_version, vom Trigger
+   * aus decks.version gesetzt). Fehlt = Partie von vor der Versionierung bzw. ohne Deck.
+   */
+  deckVersion?: number;
+  /**
    * Nur bei Freundesspielen (Partie ohne Gruppe, sql/freunde-2026-10-04.sql): Account des
    * Spielers. Gruppenpartien kennen ihre Spieler über players, die es dort nicht gibt.
    */
@@ -130,6 +135,14 @@ export interface MatchPlayer {
  * `events` sind [Sekunde seit Spielstart, Index in `units`, Delta] - mit einer 1 an vierter Stelle
  * ist es Gift statt Leben. Kompakt statt sprechender Objekte, weil jede Änderung ein Eintrag ist.
  */
+/**
+ * Wie eine Partie gewonnen wurde (matches.win_condition, sql/partie-ergebnis-deck-version-2026-10-06.sql).
+ * Optional im Sieger-Dialog gewählt - fehlt der Wert, ist die Siegart unbekannt und wird nie geraten.
+ */
+export type WinCondition = 'combat' | 'combo' | 'commander_damage' | 'mill' | 'other';
+
+export const WIN_CONDITIONS: readonly WinCondition[] = ['combat', 'combo', 'commander_damage', 'mill', 'other'];
+
 export interface LifeLog {
   v: 1;
   start: number;
@@ -181,6 +194,12 @@ export interface Match {
   isRanked?: boolean;
   /** Start der Partie im Tracker (matches.started_at); Dauer = date - startedAt. Fehlt = unbekannt. */
   startedAt?: string;
+  /** Siegart (matches.win_condition). Fehlt = unbekannt. */
+  winCondition?: WinCondition;
+  /** Zug, in dem die Partie endete (matches.win_turn). Fehlt = unbekannt - nie als Zug 0 zählen. */
+  winTurn?: number;
+  /** Freie Notiz zur Partie (matches.note). */
+  note?: string;
 }
 
 export interface Cube {

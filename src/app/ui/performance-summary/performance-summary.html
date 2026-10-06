@@ -1,0 +1,57 @@
+@if (summary(); as s) {
+  <div class="stat-tiles perf-tiles">
+    @if (showCounts()) {
+      <div class="stat-tile">
+        <span class="stat-value">{{ s.games }}</span>
+        <span class="stat-label">{{ i18n.t('stats.performance.games') }}</span>
+        <app-sample-hint [games]="s.games" />
+      </div>
+      <div class="stat-tile">
+        <span class="stat-value">{{ s.wins }}</span>
+        <span class="stat-label">{{ i18n.t('stats.performance.wins') }}</span>
+      </div>
+      <div class="stat-tile">
+        <span class="stat-value">{{ s.winRate === null ? '–' : num(s.winRate, 0) + ' %' }}</span>
+        <span class="stat-label">{{ i18n.t('stats.performance.winRate') }}</span>
+      </div>
+    }
+    <div class="stat-tile">
+      <span class="stat-value">{{ num(s.avgPlacement, 2) }}</span>
+      <span class="stat-label">{{ i18n.t('stats.performance.avgPlacement') }}</span>
+      <small class="from">{{
+        i18n.t('stats.performance.fromGames', { count: s.placementGames })
+      }}</small>
+    </div>
+    <div class="stat-tile">
+      <span class="stat-value">{{ num(s.avgWinTurn) }}</span>
+      <span class="stat-label">{{ i18n.t('stats.performance.avgWinTurn') }}</span>
+      <small class="from">{{
+        i18n.t('stats.performance.fromGames', { count: s.winTurnGames })
+      }}</small>
+    </div>
+    <div class="stat-tile">
+      <span class="stat-value">{{ minutes(s.avgMinutes) }}</span>
+      <span class="stat-label">{{ i18n.t('stats.performance.avgDuration') }}</span>
+      <small class="from">{{
+        i18n.t('stats.performance.fromGames', { count: s.durationGames })
+      }}</small>
+    </div>
+  </div>
+}
+
+@if (winConditions(); as list) {
+  <h3 class="perf-subtitle">{{ i18n.t('stats.performance.winConditionsTitle') }}</h3>
+  @if (winConditionTotal() === 0) {
+    <p class="hint">{{ i18n.t('stats.performance.winConditionsEmpty') }}</p>
+  } @else {
+    <ul class="win-conditions">
+      @for (w of list; track w.condition) {
+        <li [class.unknown]="w.condition === 'unknown'">
+          <span class="wc-label">{{ i18n.t('stats.winCondition.' + w.condition) }}</span>
+          <app-meter [value]="w.count" [max]="winConditionMax()" />
+          <strong class="wc-count">{{ w.count }}</strong>
+        </li>
+      }
+    </ul>
+  }
+}

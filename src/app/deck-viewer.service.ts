@@ -1,4 +1,5 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
+import { DeckVersionService } from './deck-version.service';
 import { DeckService, Deck, DeckCard, DeckChangeEntry, DeckGameStats } from './deck.service';
 import { ScryfallService, ScryfallCard } from './scryfall.service';
 import { CardDataService } from './card-data.service';
@@ -138,6 +139,8 @@ export type BracketMathTopic =
 @Injectable({ providedIn: 'root' })
 export class DeckViewerService {
   private readonly deckService = inject(DeckService);
+  /** Deck-Versionen - Abfrage nach dem Speichern, aktuelle Nummer für deck-performance/. */
+  readonly versions = inject(DeckVersionService);
   private readonly scryfall = inject(ScryfallService);
   private readonly cardData = inject(CardDataService);
   private readonly auth = inject(AuthService);
@@ -772,11 +775,16 @@ export class DeckViewerService {
 
     const saved = this.state.savedQuantityByKey();
     const maybeboardChanges = this.state.pendingMaybeboardChanges();
+    const savedMaybeboardBefore = this.state.savedMaybeboardByKey();
+    // Hat sich das eigentliche Deck geändert (nicht nur die engere Auswahl)? Nur dann fragt
+    // DeckVersionService nach einer neuen Version.
+    let deckChanged = false;
     for (const change of this.state.pendingChanges().values()) {
       const key = change.cardName.toLowerCase();
       const savedQty = saved.get(key) ?? 0;
       const diff = change.quantity - savedQty;
       if (diff === 0) continue;
+      if (!(maybeboardChanges.get(key) ?? savedMaybeboardBefore.get(key) ?? false)) deckChanged = true;
 
       if (diff > 0) {
         await this.deckService.addCardToDeck(
@@ -826,6 +834,7 @@ export class DeckViewerService {
     const savedMaybeboard = this.state.savedMaybeboardByKey();
     for (const [key, isMaybeboard] of maybeboardChanges) {
       if (isMaybeboard === (savedMaybeboard.get(key) ?? false)) continue;
+      deckChanged = true;
       const cardName =
         this.state.editedDeckCards().find((c) => c.cardName.toLowerCase() === key)?.cardName ?? key;
       await this.deckService.setCardMaybeboardFlag(deck.id, cardName, isMaybeboard);
@@ -837,6 +846,7 @@ export class DeckViewerService {
     this.edhrecPanel.addCardMode.set('search');
     await this.reloadDeckCards();
     this.edit.editSaveBusy.set(false);
+    if (deckChanged || commanderChanged) await this.versions.askAfterSave(deck.id);
   }
 
   cancelEdits(): void {
@@ -978,6 +988,7 @@ export class DeckViewerService {
     this.primer.load(deck.id);
     // Dasselbe für die zwei Sätze des Steckbriefs - sie hängen an derselben decks-Zeile.
     this.steckbriefTexte.load(deck.id);
+    void this.versions.load(deck.id);
     this.showDeckStatsInfo.set(false);
     this.showDeckAnalysis.set(false);
     // Wie die anderen Info-Klappen daneben: eingeklappt starten. Blieb die Begründung offen,

@@ -485,8 +485,9 @@
           [trackedGames]="viewer.viewingDeckGameStats()?.games ?? 0"
           [trackedWins]="viewer.viewingDeckGameStats()?.wins ?? 0"
         />
-        <!-- Gegen welche Decks: zugeklappt eine Zeile, vorher großflächig im Statistik-Tab. -->
-        <app-deck-matchups [deckId]="deck.id" [deckName]="deck.name" />
+        <!-- Performance (Ø Platz, Siegzug, Dauer, Siegarten, Versionen) und darunter "Gegen welche
+             Decks" - beide zugeklappt eine Zeile, die Partien lädt deck-performance einmal. -->
+        <app-deck-performance [deckId]="deck.id" [deckName]="deck.name" />
       }
 
       <!-- Vorher standen hier bis zu sieben gleich aussehende Chips in einer Reihe. Bilder/Text ist

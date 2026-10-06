@@ -1,0 +1,48 @@
+:host {
+  display: block;
+}
+
+// Sechs Kacheln: auf dem Handy drei je Zeile statt zwei schmaler Reihen zu je vier.
+.perf-tiles {
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+
+  .stat-value {
+    font-size: 1.3rem;
+  }
+
+  .from {
+    font-size: 0.7rem;
+    opacity: 0.6;
+  }
+}
+
+.perf-subtitle {
+  margin: var(--sp-6) 0 var(--sp-3);
+  font-size: 1rem;
+}
+
+.win-conditions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: grid;
+    grid-template-columns: 9.5em 1fr 2em;
+    align-items: center;
+    gap: var(--sp-3);
+    font-size: 0.88rem;
+  }
+
+  // "Unbekannt" ist kein Ergebnis, sondern eine Lücke in den Daten - leiser darstellen.
+  .unknown {
+    opacity: 0.6;
+  }
+
+  .wc-count {
+    text-align: right;
+  }
+}

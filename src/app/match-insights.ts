@@ -1,10 +1,11 @@
-import { Match, MatchPlayer } from './models';
+import { Match, MatchPlayer, WIN_CONDITIONS, WinCondition } from './models';
 import { DRAW, isImportLossDuplicate, isPlayerWinner } from './match-utils';
 
 /**
  * Auswertungen über Partien, die es vor dem Partie-Verlauf (sql/partie-verlauf-2026-10-04.sql)
  * nicht geben konnte oder die bisher fehlten: Zugreihenfolge, Spieldauer, Lieblingsgegner,
- * Form, und je Deck die Gegnerdecks (deckOpponents). Alles reine Funktionen über eine Match-Liste - die Komponente
+ * Form, je Deck die Gegnerdecks (deckOpponents) und die Performance-Auswertung (Partien, Siege,
+ * Ø Platz, Ø Siegzug, Ø Dauer, Siegarten, Matchups, Deck-Versionen). Alles reine Funktionen über eine Match-Liste - die Komponente
  * match-insights reicht nur die schon gefilterten Partien des Statistik-Tabs herein.
  */
 
@@ -634,4 +635,307 @@ export function eliminationStats(matches: readonly Match[]): EliminationStat[] {
       killers: countsDesc(e.killers),
     }))
     .sort((a, b) => b.kills - a.kills || a.deaths - b.deaths || a.name.localeCompare(b.name));
+}
+
+// --- Performance: Spieler, Deck, Version (ohne Schätzung) ---
+//
+// Grundsatz: Jeder Schnitt rechnet nur über die Partien, in denen der Wert wirklich erfasst ist,
+// und nennt deren Zahl mit. Eine Partie ohne Zug ist kein Zug 0, eine ohne Platz kein letzter
+// Platz. Ursachen behauptet keine dieser Funktionen - sie zählen nur.
+
+/** Wählt in einer Partie den Spieler, um dessen Ergebnis es geht - oder undefined, wenn keiner. */
+export type SelfPicker = (match: Match) => MatchPlayer | undefined;
+
+export const pickPlayer =
+  (name: string): SelfPicker =>
+  (m) =>
+    m.players.find((p) => p.name === name);
+
+export const pickDeck =
+  (deckId: string): SelfPicker =>
+  (m) =>
+    m.players.find((p) => p.deckId === deckId);
+
+/** Schnitt einer Liste, null bei keiner Zahl (keine Division durch null). */
+export function average(values: readonly number[]): number | null {
+  if (values.length === 0) return null;
+  return values.reduce((sum, v) => sum + v, 0) / values.length;
+}
+
+/** Siegquote in Prozent, null bei 0 Partien. */
+export function winRateOf(wins: number, games: number): number | null {
+  return games > 0 ? (wins / games) * 100 : null;
+}
+
+/**
+ * Platz eines Spielers: eingetragen (match_players.placement), sonst nur im 1-gegen-1 ohne Teams,
+ * wo er eindeutig aus dem Sieger folgt. In größeren Runden ohne Eintrag: null - der Sieger allein
+ * mit Platz 1 und alle anderen ohne würden jeden Schnitt schönrechnen.
+ */
+export function placementOf(match: Match, self: MatchPlayer): number | null {
+  if (self.placement && self.placement >= 1) return self.placement;
+  const solo = !match.players.some((p) => p.team || p.isArchenemy);
+  if (match.players.length === 2 && solo && match.winner !== DRAW) {
+    return didWin(match, self.name) ? 1 : 2;
+  }
+  return null;
+}
+
+export interface PerformanceSummary {
+  games: number;
+  wins: number;
+  /** Prozent, null bei 0 Partien. */
+  winRate: number | null;
+  avgPlacement: number | null;
+  /** Partien mit bekanntem Platz - Grundlage von avgPlacement. */
+  placementGames: number;
+  /** Ø Zug der GEWONNENEN Partien mit eingetragenem Zug. */
+  avgWinTurn: number | null;
+  winTurnGames: number;
+  avgMinutes: number | null;
+  durationGames: number;
+}
+
+/** Partien, Siege, Siegquote, Ø Platz, Ø Siegzug und Ø Dauer aus Sicht von pick. */
+export function performanceSummary(
+  matches: readonly Match[],
+  pick: SelfPicker,
+): PerformanceSummary {
+  let games = 0;
+  let wins = 0;
+  const placements: number[] = [];
+  const winTurns: number[] = [];
+  const minutes: number[] = [];
+  for (const m of countable(matches)) {
+    const self = pick(m);
+    if (!self) continue;
+    games++;
+    const won = didWin(m, self.name);
+    if (won) {
+      wins++;
+      if (m.winTurn) winTurns.push(m.winTurn);
+    }
+    const place = placementOf(m, self);
+    if (place !== null) placements.push(place);
+    const duration = durationMinutes(m);
+    if (duration !== null) minutes.push(duration);
+  }
+  return {
+    games,
+    wins,
+    winRate: winRateOf(wins, games),
+    avgPlacement: average(placements),
+    placementGames: placements.length,
+    avgWinTurn: average(winTurns),
+    winTurnGames: winTurns.length,
+    avgMinutes: average(minutes),
+    durationGames: minutes.length,
+  };
+}
+
+export interface OverallSummary {
+  games: number;
+  /** Partien mit Sieger (ohne Unentschieden). */
+  decided: number;
+  /** Ø Zug, in dem die Partien endeten - nur Partien mit eingetragenem Zug. */
+  avgTurn: number | null;
+  turnGames: number;
+  avgMinutes: number | null;
+  durationGames: number;
+}
+
+/** Überblick über alle Partien ohne bestimmten Spieler (eine Siegquote der Gruppe wäre sinnlos). */
+export function overallSummary(matches: readonly Match[]): OverallSummary {
+  const all = countable(matches);
+  const turns = all.map((m) => m.winTurn).filter((t): t is number => !!t);
+  const minutes = all.map(durationMinutes).filter((d): d is number => d !== null);
+  return {
+    games: all.length,
+    decided: all.filter((m) => m.winner !== DRAW).length,
+    avgTurn: average(turns),
+    turnGames: turns.length,
+    avgMinutes: average(minutes),
+    durationGames: minutes.length,
+  };
+}
+
+export interface DeckPerformance {
+  key: string;
+  /** Deckname oder - ohne verknüpftes Deck - der Commander. */
+  label: string;
+  deckId: string | null;
+  commander: string | null;
+  summary: PerformanceSummary;
+}
+
+/**
+ * Performance je Deck (bzw. je Commander, wenn kein Deck verknüpft ist), meistgespielte zuerst.
+ * Mit player nur seine Decks.
+ */
+export function deckPerformance(
+  matches: readonly Match[],
+  player?: string | null,
+): DeckPerformance[] {
+  const meta = new Map<
+    string,
+    { label: string; deckId: string | null; commander: string | null }
+  >();
+  for (const m of countable(matches)) {
+    for (const p of m.players) {
+      if (player && p.name !== player) continue;
+      const key = deckKey(p);
+      const label = deckLabel(p);
+      if (!key || !label || meta.has(key)) continue;
+      meta.set(key, { label, deckId: p.deckId ?? null, commander: p.commander ?? null });
+    }
+  }
+  return [...meta.entries()]
+    .map(([key, info]) => ({
+      key,
+      ...info,
+      summary: performanceSummary(matches, (m) =>
+        m.players.find((p) => deckKey(p) === key && (!player || p.name === player)),
+      ),
+    }))
+    .sort(
+      (a, b) =>
+        b.summary.games - a.summary.games ||
+        b.summary.wins - a.summary.wins ||
+        a.label.localeCompare(b.label),
+    );
+}
+
+export type WinConditionKey = WinCondition | 'unknown';
+
+export interface WinConditionCount {
+  condition: WinConditionKey;
+  count: number;
+}
+
+/**
+ * Wie gewonnen wurde: mit pick nur die Siege dieses Spielers/Decks, ohne pick alle Partien mit
+ * Sieger. Ohne Eintrag zählt die Partie als "unknown" - geraten wird nichts. Immer alle Siegarten
+ * in fester Reihenfolge, auch mit 0.
+ */
+export function winConditionStats(
+  matches: readonly Match[],
+  pick?: SelfPicker,
+): WinConditionCount[] {
+  const counts = new Map<WinConditionKey, number>(
+    [...WIN_CONDITIONS, 'unknown' as const].map((c) => [c, 0]),
+  );
+  for (const m of countable(matches)) {
+    if (m.winner === DRAW) continue;
+    if (pick) {
+      const self = pick(m);
+      if (!self || !didWin(m, self.name)) continue;
+    }
+    const key: WinConditionKey =
+      m.winCondition && WIN_CONDITIONS.includes(m.winCondition) ? m.winCondition : 'unknown';
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return [...counts.entries()].map(([condition, count]) => ({ condition, count }));
+}
+
+export interface Matchup {
+  /** Commander des Gegners (Partner mit "+"), sonst sein Deckname. */
+  label: string;
+  commander: string | null;
+  games: number;
+  /** Eigene Siege in diesen Partien. */
+  wins: number;
+  /** Partien, die genau dieser Gegner gewonnen hat. */
+  losses: number;
+  winRate: number | null;
+}
+
+/**
+ * Bilanz gegen gegnerische Commander (bzw. Decks ohne Commander) aus Sicht von pick. Ein Sieg
+ * eines Dritten ist eine Partie, aber weder Sieg noch Niederlage gegen diesen Gegner. Nur die
+ * gezählten Ergebnisse - wer wen "kontert", sagt das nicht.
+ */
+export function commanderMatchups(matches: readonly Match[], pick: SelfPicker): Matchup[] {
+  const map = new Map<string, Matchup>();
+  for (const m of countable(matches)) {
+    const self = pick(m);
+    if (!self) continue;
+    const selfWon = didWin(m, self.name);
+    const seen = new Set<string>();
+    for (const other of m.players) {
+      if (other === self || isAlly(m, self, other)) continue;
+      const label = other.commander
+        ? other.partnerCommander
+          ? `${other.commander} + ${other.partnerCommander}`
+          : other.commander
+        : (other.deckName ?? null);
+      // Zwei Gegner mit demselben Commander in einer Partie sind trotzdem nur eine Partie.
+      if (!label || seen.has(label)) continue;
+      seen.add(label);
+      const entry = map.get(label) ?? {
+        label,
+        commander: other.commander ?? null,
+        games: 0,
+        wins: 0,
+        losses: 0,
+        winRate: null,
+      };
+      entry.games++;
+      if (selfWon) entry.wins++;
+      else if (didWin(m, other.name)) entry.losses++;
+      map.set(label, entry);
+    }
+  }
+  return [...map.values()]
+    .map((e) => ({ ...e, winRate: winRateOf(e.wins, e.games) }))
+    .sort((a, b) => b.games - a.games || b.wins - a.wins || a.label.localeCompare(b.label));
+}
+
+export interface DeckVersionStat {
+  /** null = Partien von vor der Versionierung (ohne gespeicherte Version). */
+  version: number | null;
+  summary: PerformanceSummary;
+}
+
+/** Performance je Deck-Version, neueste zuerst, Partien ohne Version am Ende. */
+export function deckVersionStats(matches: readonly Match[], deckId: string): DeckVersionStat[] {
+  const versions = new Set<number | null>();
+  for (const m of countable(matches)) {
+    const self = m.players.find((p) => p.deckId === deckId);
+    if (self) versions.add(self.deckVersion ?? null);
+  }
+  return [...versions]
+    .sort((a, b) => (a === null ? 1 : b === null ? -1 : b - a))
+    .map((version) => ({
+      version,
+      summary: performanceSummary(matches, (m) =>
+        m.players.find((p) => p.deckId === deckId && (p.deckVersion ?? null) === version),
+      ),
+    }));
+}
+
+export interface VersionComparison {
+  newer: DeckVersionStat;
+  older: DeckVersionStat;
+  /** Vergleich der aufgezeichneten Siegquoten - keine Aussage über die Ursache. */
+  direction: 'higher' | 'lower' | 'equal';
+}
+
+/** Die beiden neuesten Versionen mit Partien im Vergleich, oder null. */
+export function compareLatestVersions(stats: readonly DeckVersionStat[]): VersionComparison | null {
+  const versioned = stats.filter((s) => s.version !== null && s.summary.games > 0);
+  if (versioned.length < 2) return null;
+  const [newer, older] = versioned;
+  const a = newer.summary.winRate ?? 0;
+  const b = older.summary.winRate ?? 0;
+  return { newer, older, direction: a > b ? 'higher' : a < b ? 'lower' : 'equal' };
+}
+
+/** Orientierung zur Stichprobengröße - keine mathematische Aussage über Verlässlichkeit. */
+export type SampleSize = 'none' | 'veryLow' | 'trend' | 'more';
+
+export function sampleSize(games: number): SampleSize {
+  if (games <= 0) return 'none';
+  if (games < 5) return 'veryLow';
+  if (games < 10) return 'trend';
+  return 'more';
 }

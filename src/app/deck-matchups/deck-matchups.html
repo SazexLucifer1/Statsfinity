@@ -43,7 +43,11 @@
                 [class.lead-b]="o.losses > o.wins"
               >
                 <strong>{{ o.wins }} : {{ o.losses }}</strong>
-                <small>{{ i18n.t('stats.insights.timedGames', { games: o.games }) }}</small>
+                <small
+                  >{{ i18n.t('stats.insights.timedGames', { games: o.games }) }} ·
+                  {{ rate(o) }}</small
+                >
+                <app-sample-hint [games]="o.games" />
               </span>
             </button>
             @if (isOpen) {

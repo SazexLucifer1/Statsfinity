@@ -1,6 +1,6 @@
 import { Injectable, WritableSignal, computed, effect, inject, signal } from '@angular/core';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { DeckFormat, GameMode, LifeLog, LifeLogEvent, MatchPlayer, TEAM_OPTIONS, TeamName } from './models';
+import { DeckFormat, GameMode, LifeLog, LifeLogEvent, Match, MatchPlayer, TEAM_OPTIONS, TeamName, WinCondition } from './models';
 
 /** Formate mit Singleton-Regel/eigenem Commander - steuert, ob bei Kategorie 'Normal' die Commander-Auswahl im Match-Tab erscheint (siehe GameSessionService.requiresCommanderSelection). */
 const COMMANDER_STYLE_FORMATS: DeckFormat[] = ['Commander', 'Pauper Commander', 'Brawl', 'Historic Brawl'];
@@ -159,6 +159,13 @@ export class GameSessionService {
   readonly isRanked = signal(true);
   readonly selectedPlayers = signal<MatchPlayer[]>([]);
   readonly winner = signal<string | null>(null);
+  /**
+   * Optionale Angaben im Sieger-Dialog (sql/partie-ergebnis-deck-version-2026-10-06.sql): Siegart,
+   * Zug, in dem die Partie endete, und eine Notiz. Leer = unbekannt - nichts davon ist Pflicht.
+   */
+  readonly winCondition = signal<WinCondition | null>(null);
+  readonly winTurn = signal<number | null>(null);
+  readonly matchNote = signal('');
   readonly selectedCubeId = signal<string | null>(null);
   readonly selectedDraftSet = signal<SelectedDraftSet | null>(null);
 
@@ -1207,6 +1214,7 @@ export class GameSessionService {
     this.eliminations.set({});
     this.showWinnerPanel.set(false);
     this.winner.set(null);
+    this.resetResultDetails();
     this.minimized.set(false);
     // Marken, Zähler und Rückgängig-Liste gehören zur Partie, nicht zur Sitzung.
     this.counters.set({});
@@ -1272,6 +1280,7 @@ export class GameSessionService {
         friendGame: this.friendMode(),
         startedAt: this.startedAt() ?? undefined,
         lifeLog: this.buildLifeLog(),
+        ...this.resultDetailsForSave(winner),
       });
 
       if (matchId) {
@@ -1364,6 +1373,28 @@ export class GameSessionService {
     return true;
   }
 
+  private resetResultDetails(): void {
+    this.winCondition.set(null);
+    this.winTurn.set(null);
+    this.matchNote.set('');
+  }
+
+  /** Zug zwischen 1 und 99 übernehmen, alles andere (leer, 0, Unsinn) heißt "unbekannt". */
+  setWinTurn(value: number | string | null): void {
+    const n = typeof value === 'number' ? value : Number(String(value ?? '').trim());
+    this.winTurn.set(Number.isInteger(n) && n >= 1 && n <= 99 ? n : null);
+  }
+
+  /** Bei einem Unentschieden gibt es keine Siegart - sonst nur, was eingetragen wurde. */
+  private resultDetailsForSave(winner: string): Pick<Match, 'winCondition' | 'winTurn' | 'note'> {
+    const note = this.matchNote().trim().slice(0, 500);
+    return {
+      winCondition: winner === this.DRAW ? undefined : (this.winCondition() ?? undefined),
+      winTurn: this.winTurn() ?? undefined,
+      note: note || undefined,
+    };
+  }
+
   /** Verwirft die Session ohne zu speichern. */
   discardAndReset(): void {
     this.resetAll();
@@ -1392,6 +1423,7 @@ export class GameSessionService {
     this.deadPlayers.set({});
     this.selectedPlayers.set([]);
     this.winner.set(null);
+    this.resetResultDetails();
     this.selectedCubeId.set(null);
     this.selectedDraftSet.set(null);
     this.mode.set('Normal');

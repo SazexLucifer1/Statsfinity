@@ -330,6 +330,12 @@
   } }
 </section>
 
+<!-- Performance: Gesamt, Decks, Siegarten, Gegner-Commander - nur aus gespeicherten Partien. -->
+<app-performance-stats
+  [matches]="selectedPlayer() ? filteredMatches() : viewedFilteredMatches()"
+  [player]="selectedPlayer()"
+/>
+
 <!-- Zugreihenfolge, Dauer, Gegner, Deck gegen Deck, Form - mit gewähltem Spieler für ihn, sonst
      für die betrachtete Gruppe. -->
 <app-match-insights
