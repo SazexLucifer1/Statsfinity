@@ -32,7 +32,7 @@ Ein guter Auftrag beantwortet vier Fragen. Nicht förmlich, nicht als Formular �
 
 > ❌ „Der Profil-Tab sieht komisch aus"
 
-Claude weiß nicht, was „komisch" heißt, muss den ganzen Tab lesen (2025 Zeilen) und rät bei der Lösung.
+Claude weiß nicht, was „komisch" heißt, muss den ganzen Tab lesen (über 1200 Zeilen) und rät bei der Lösung.
 
 > ✅ „Profil-Tab: die Umschalter oben sind viel zu groß, und darunter stehen leere Riesenkästen, wenn noch keine Daten da sind. Umschalter kompakter, leere Kästen ganz ausblenden. Nur das Layout — die Statistiklogik nicht anfassen."
 
@@ -58,25 +58,35 @@ Bei Textänderungen ist der **wörtliche aktuelle Text** das Wertvollste, was du
 
 Wenn du diese Begriffe benutzt, entfällt die Suche.
 
-| Du sagst …                                         | Claude geht nach …                                    |
-| -------------------------------------------------- | ----------------------------------------------------- |
-| Beschriftung, Text, Übersetzung, „da steht …"      | `src/app/i18n/` (je Bereich eine Datei)               |
-| Match-Tab, neues Match erfassen                    | `src/app/match-tab/`                                  |
-| Suche-Tab, Kartensuche, Commander-Suche, Precons   | `src/app/search-tab/`                                 |
-| Statistik-Tab, Auswertungen, Diagramme, Zahlen     | `src/app/stats-tab/`                                  |
-| Gruppe, Mitspieler, Spielerliste                   | `src/app/group-tab/`, `group.service.ts`              |
-| Profil, Konto, Einstellungen                       | `src/app/profile-tab/`, `profile.service.ts`          |
-| Lebenspunkte-Zähler, In-Game, laufendes Spiel      | `src/app/ingame-tracker/`                             |
-| Goldfish, Solo-Testen                              | `src/app/goldfish-tracker/`                           |
-| Deck-Ansicht, Deck öffnen, Kartenliste eines Decks | `src/app/deck-detail-view/`, `deck-viewer.service.ts` (+ `deck-*.service.ts`) |
-| Deck importieren, Moxfield/Archidekt-Link          | `deck-import.service.ts`, `deck-import-dialogs/`      |
-| Deck-PDF, Proxys drucken                           | `deck-pdf.service.ts`, `deck-pdf-dialog/`             |
-| Turnier, Bracket, Platzierungen                    | `src/app/tournament-panel/`, `tournament.service.ts`  |
-| Anmeldung, Login, Passwort                         | `src/app/login/`, `auth.service.ts`                   |
-| Diagramm, Balken, Netz/Sechseck, Filter, ⋮-Menü    | `src/app/ui/`                                         |
-| Farben, Abstände, Rundungen, Grundlayout           | `src/styles.scss`                                     |
-| Kartendaten, Manasymbole, Scryfall                 | `scryfall.service.ts`, `mtg.service.ts`               |
-| Weißer Bildschirm, App lädt nicht mehr             | `app-recovery.service.ts`, `global-error-handler.ts`  |
+| Du sagst …                                             | Claude geht nach …                                                                      |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------------- |
+| Beschriftung, Text, Übersetzung, „da steht …"          | `src/app/i18n/` (je Bereich eine Datei)                                                 |
+| Match-Tab, neues Match erfassen, Partie nachtragen     | `src/app/match-tab/`, `game-session.service.ts`                                         |
+| Suche-Tab, Kartensuche, Precons, öffentliche Decks     | `src/app/search-tab/`, `public-card-search/`, `precon-browser/`, `public-deck-browser/` |
+| Statistik-Tab, Auswertungen, Diagramme, Zahlen         | `src/app/stats-tab/`                                                                    |
+| Spiel-Analysen, Zugreihenfolge, Nemesis, Rauswürfe     | `match-insights.ts`, `match-insights/`                                                  |
+| Elo, Ranked, Rang, LP, Saison, Abzeichen               | `elo.ts`, `profile-rank/`, `ranked-badges/`, `ui/rank-badge/`                           |
+| Gruppe, Mitspieler, Spielerliste, Rechte               | `src/app/group-tab/`, `group.service.ts`                                                |
+| Freunde, Freundesspiele, Freunde-Statistik             | `friends.service.ts`, `friends-panel/`, `friend-status/`, `friends-stats/`              |
+| Profil, Konto, Einstellungen                           | `src/app/profile-tab/`, `profile.service.ts`                                            |
+| Postfach, Benachrichtigungen                           | `comment-inbox/`, `deck-comment-inbox.service.ts`                                       |
+| Lebenspunkte-Zähler, In-Game, laufendes Spiel          | `src/app/ingame-tracker/`, `game-session.service.ts`                                    |
+| Goldfish, Solo-Testen                                  | `src/app/goldfish-tracker/`                                                             |
+| Deck-Ansicht, Deck öffnen, Kartenliste eines Decks     | `src/app/deck-detail-view/`, `deck-viewer.service.ts` (+ `deck-*.service.ts`)           |
+| Bracket, Power-Wert, Game Changer                      | `bracket.ts`, `deck-bracket.service.ts`                                                 |
+| Deck-Check, Richtwerte, Farbquellen, Starthand         | `deck-check.ts`, `deck-check/`, `deck-check.service.ts`                                 |
+| Primer, Steckbrief, Kommentare, Likes                  | `deck-primer/`, `deck-steckbrief/`, `deck-comments/`, `deck-social/`                    |
+| Bannliste, Bauregeln, Kartenzahl                       | `banlist.service.ts`, `deck-regeln.ts`                                                  |
+| Deck importieren, Moxfield/Archidekt-Link              | `deck-import.service.ts`, `deck-import-dialogs/`                                        |
+| Deck-PDF, Proxys drucken                               | `deck-pdf.service.ts`, `deck-pdf-dialog/`                                               |
+| Turnier, Swiss, Platzierungen                          | `src/app/tournament-panel/`, `tournament.service.ts`                                    |
+| Anmeldung, Login, Passwort                             | `src/app/login/`, `auth.service.ts`                                                     |
+| Erklär-Tour, Fragezeichen, Tutorial                    | `tutorial.service.ts`, `tutorial-overlay/`, `i18n/tutorial.ts`                          |
+| Diagramm, Balken, Netz/Sechseck, Filter, ⋮-Menü, Icons | `src/app/ui/`                                                                           |
+| Farben, Abstände, Rundungen, Grundlayout               | `src/styles.scss`                                                                       |
+| Kartendaten, Scryfall, Kartenbilder-Sprache            | `scryfall.service.ts`, `card-data.service.ts`, `art-language.service.ts`                |
+| Manasymbole                                            | `src/app/ui/mana-symbol/`                                                               |
+| Weißer Bildschirm, App lädt nicht mehr                 | `app-recovery.service.ts`, `global-error-handler.ts`                                    |
 
 Du musst **keine Dateipfade** nennen. Ein Begriff aus der linken Spalte reicht völlig.
 
