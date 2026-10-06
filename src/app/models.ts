@@ -113,6 +113,12 @@ export interface MatchPlayer {
   /** Platz in der Zugreihenfolge, 1 = hat angefangen (match_players.turn_order). Fehlt = unbekannt. */
   turnOrder?: number;
   /**
+   * Wer diesen Spieler aus der Partie geworfen hat (match_players.eliminated_by, Name wie in
+   * players). Der eigene Name = niemand / selbst rausgeflogen. Fehlt = unbekannt oder überlebt.
+   * Nur Commander-Partien im Tracker, siehe GameSessionService.tracksEliminations.
+   */
+  eliminatedBy?: string;
+  /**
    * Nur bei Freundesspielen (Partie ohne Gruppe, sql/freunde-2026-10-04.sql): Account des
    * Spielers. Gruppenpartien kennen ihre Spieler über players, die es dort nicht gibt.
    */

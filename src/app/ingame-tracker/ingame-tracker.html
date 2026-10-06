@@ -95,6 +95,11 @@
           @if (session.isDead(p.key)) {
           <div class="dead-overlay">
             <span class="dead-overlay-text">{{ session.deadMessage(p.key) }}</span>
+            @if (session.tracksEliminations()) {
+            <button type="button" class="dead-overlay-killer" (click)="eliminationSheetFor.set(p.key)">
+              {{ eliminationLabel(p.key) }}
+            </button>
+            }
           </div>
           }
 
@@ -340,6 +345,30 @@
         <button class="glass-button" (click)="pickStarter(null)">{{ i18n.t('ingame.clearStartingPlayer') }}</button>
       }
       <button class="glass-button" (click)="starterPickerOpen.set(false)">{{ i18n.t('group.cancel') }}</button>
+    </div>
+  </div>
+  } @if (eliminationSheetFor(); as victim) {
+  <div class="options-menu-overlay" (click)="eliminationSheetFor.set(null)">
+    <div class="options-menu-sheet" (click)="$event.stopPropagation()">
+      <h3>{{ i18n.t('ingame.eliminationTitle', { name: victim }) }}</h3>
+      <p class="hint">{{ i18n.t('ingame.eliminationHint') }}</p>
+      @for (unit of eliminationCandidates(); track unit.key) {
+        <button
+          class="glass-button"
+          [class.primary]="session.eliminations()[victim] === unit.key"
+          (click)="pickEliminatedBy(unit.key)"
+        >
+          {{ unit.label }}
+        </button>
+      }
+      <button
+        class="glass-button"
+        [class.primary]="session.eliminations()[victim] === victim"
+        (click)="pickEliminatedBy(victim)"
+      >
+        {{ i18n.t('ingame.eliminationSelf') }}
+      </button>
+      <button class="glass-button" (click)="pickEliminatedBy(null)">{{ i18n.t('ingame.eliminationSkip') }}</button>
     </div>
   </div>
   } @if (playerSheetFor(); as unit) {

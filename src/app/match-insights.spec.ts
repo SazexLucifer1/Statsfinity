@@ -6,6 +6,7 @@ import {
   peopleRecords,
   durationMinutes,
   durationStats,
+  eliminationStats,
   favoriteVictim,
   monthlyGames,
   monthlyWinRate,
@@ -229,5 +230,33 @@ describe('match-insights', () => {
     expect(commanderRecords(merged, 'Fabian')).toEqual([
       { commander: 'Atraxa', games: 1, wins: 1 },
     ]);
+  });
+});
+
+describe('eliminationStats', () => {
+  it('zählt Rauswürfe je Spieler, eigener Name = selbst rausgeflogen', () => {
+    const matches = [
+      match('A', [p('A'), p('B', { eliminatedBy: 'A' }), p('C', { eliminatedBy: 'B' })]),
+      match('B', [p('A', { eliminatedBy: 'A' }), p('B'), p('C', { eliminatedBy: 'B' })]),
+      match('C', [p('A'), p('B'), p('C')]),
+    ];
+    const stats = eliminationStats(matches);
+    expect(stats.map((s) => [s.name, s.kills, s.deaths])).toEqual([
+      ['B', 2, 1],
+      ['A', 1, 1],
+      ['C', 0, 2],
+    ]);
+    const b = stats.find((s) => s.name === 'B')!;
+    expect(b.victims).toEqual([{ name: 'C', count: 2 }]);
+    expect(b.killers).toEqual([{ name: 'A', count: 1 }]);
+    expect(stats.find((s) => s.name === 'A')!.selfDeaths).toBe(1);
+  });
+
+  it('benennt den Werfer beim Zusammenführen mit um', () => {
+    const m = match('Fabi', [p('Fabi'), p('B', { eliminatedBy: 'Fabi' })]);
+    const merged = mergePeopleMatches([
+      { userId: 'u1', name: 'Fabian', entries: [{ match: m, selfName: 'Fabi' }] },
+    ]);
+    expect(merged[0].players[1].eliminatedBy).toBe('Fabian');
   });
 });

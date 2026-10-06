@@ -35,6 +35,7 @@ const MATCH_HISTORY_SELECT = `
     deck_id,
     placement,
     turn_order,
+    eliminated_by,
     decks ( name, user_id, player_id, is_precon ),
     players ( display_name )
   )
@@ -69,7 +70,7 @@ function isMissingIsRankedError(error: { code?: string; message?: string } | nul
 
 function ohneIsRanked(select: string): string {
   const ohne = isRankedSpalteVerfuegbar ? select : select.replace('  is_ranked,\n', '');
-  return ohnePartieVerlauf(ohne);
+  return ohneRauswurf(ohnePartieVerlauf(ohne));
 }
 
 /**
@@ -91,6 +92,25 @@ function isMissingPartieVerlaufError(error: { code?: string; message?: string } 
 
 function ohnePartieVerlauf(select: string): string {
   return partieVerlaufVerfuegbar ? select : select.replace('  started_at,\n', '').replace('    turn_order,\n', '');
+}
+
+/**
+ * Fehlt match_players.eliminated_by noch (sql/rauswuerfe-2026-10-06.sql)? Dann einmal je Sitzung
+ * ohne sie laden und speichern - wer wen rausgeworfen hat, geht dann verloren, die Partie nicht.
+ */
+let rauswurfVerfuegbar = true;
+
+function isMissingRauswurfError(error: { code?: string; message?: string } | null): boolean {
+  if (!error || !rauswurfVerfuegbar) return false;
+  if (error.code !== '42703' && error.code !== 'PGRST204') return false;
+  if (!(error.message ?? '').includes('eliminated_by')) return false;
+  console.warn('Spalte match_players.eliminated_by fehlt noch - sql/rauswuerfe-2026-10-06.sql im Supabase-SQL-Editor ausführen. Bis dahin werden Rauswürfe nicht gespeichert.');
+  rauswurfVerfuegbar = false;
+  return true;
+}
+
+function ohneRauswurf(select: string): string {
+  return rauswurfVerfuegbar ? select : select.replace('    eliminated_by,\n', '');
 }
 
 @Injectable({ providedIn: 'root' })
@@ -512,7 +532,12 @@ export class MtgService {
       matches.map((m) => ({
         ...m,
         winner: m.winner === oldName ? trimmed : m.winner,
-        players: m.players.map((mp) => (mp.name === oldName ? { ...mp, name: trimmed } : mp)),
+        players: m.players.map((mp) => ({
+          ...mp,
+          name: mp.name === oldName ? trimmed : mp.name,
+          // In der Datenbank zieht ein Trigger eliminated_by mit (sql/rauswuerfe-2026-10-06.sql).
+          ...(mp.eliminatedBy === oldName ? { eliminatedBy: trimmed } : {}),
+        })),
       }))
     );
 
@@ -785,10 +810,17 @@ export class MtgService {
     label: string
   ): Promise<any[] | null> {
     let first = await run(ohneIsRanked(MATCH_HISTORY_SELECT));
-    if (isMissingIsRankedError(first.error)) first = await run(ohneIsRanked(MATCH_HISTORY_SELECT));
-    if (isMissingPartieVerlaufError(first.error)) first = await run(ohneIsRanked(MATCH_HISTORY_SELECT));
-    // Erst die eine, dann die andere Spalte kann fehlen - jede schaltet sich einmal selbst ab.
-    if (isMissingIsRankedError(first.error)) first = await run(ohneIsRanked(MATCH_HISTORY_SELECT));
+    // Mehrere neuere Spalten können fehlen - jede schaltet sich beim ersten Fehler einmal selbst ab.
+    for (
+      let i = 0;
+      i < 3 &&
+      (isMissingIsRankedError(first.error) ||
+        isMissingPartieVerlaufError(first.error) ||
+        isMissingRauswurfError(first.error));
+      i++
+    ) {
+      first = await run(ohneIsRanked(MATCH_HISTORY_SELECT));
+    }
     if (!first.error) return first.data ?? [];
 
     if (isMissingGameFormatError(first.error)) {
@@ -1040,11 +1072,18 @@ export class MtgService {
       is_archenemy: p.isArchenemy ?? false,
       deck_id: p.deckId ?? null,
       ...(partieVerlaufVerfuegbar ? { turn_order: p.turnOrder ?? null } : {}),
+      ...(rauswurfVerfuegbar ? { eliminated_by: p.eliminatedBy ?? null } : {}),
     }));
 
     let { error: playersError } = await supabase.from('match_players').insert(playerRows);
+    if (isMissingRauswurfError(playersError)) {
+      const ohneRauswurfSpalte = playerRows.map(({ eliminated_by: _, ...row }: Record<string, unknown>) => row);
+      ({ error: playersError } = await supabase.from('match_players').insert(ohneRauswurfSpalte));
+    }
     if (isMissingPartieVerlaufError(playersError)) {
-      const ohneZugreihenfolge = playerRows.map(({ turn_order: _, ...row }: Record<string, unknown>) => row);
+      const ohneZugreihenfolge = playerRows.map(
+        ({ turn_order: _, eliminated_by: __, ...row }: Record<string, unknown>) => row,
+      );
       ({ error: playersError } = await supabase.from('match_players').insert(ohneZugreihenfolge));
     }
 

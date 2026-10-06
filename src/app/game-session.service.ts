@@ -78,6 +78,8 @@ export interface LiveSessionState {
   lifeLogUnits?: string[];
   lifeLogStart?: number;
   lifeLog?: LifeLogEvent[];
+  /** Wer wen rausgeworfen hat (Opfer-Key -> Werfer-Key); fehlt bei älteren Sessions. */
+  eliminations?: Record<string, string>;
 }
 
 export interface SelectedDraftSet {
@@ -241,6 +243,7 @@ export class GameSessionService {
     lifeLogUnits: this.lifeLogUnits(),
     lifeLogStart: this.lifeLogStart(),
     lifeLog: this.lifeLog(),
+    eliminations: this.eliminations(),
   }));
 
   // --- Partie-Verlauf (sql/partie-verlauf-2026-10-04.sql): Startzeit, Startspieler und jede
@@ -339,12 +342,56 @@ export class GameSessionService {
   toggleDead(key: string): void {
     const wasDead = this.isDead(key);
     this.deadPlayers.update((all) => ({ ...all, [key]: !wasDead }));
+    // Wiederbelebt: der Rauswurf war wohl ein Irrtum.
+    if (wasDead) this.setEliminatedBy(key, null);
 
     if (!wasDead) {
       // Wird gerade als tot markiert -> neuen zufälligen Spruch ziehen.
       const msgKey = this.deathMessageKeys[Math.floor(Math.random() * this.deathMessageKeys.length)];
       this.deadMessageMap.update((all) => ({ ...all, [key]: this.i18n.t(msgKey) }));
     }
+  }
+
+  /**
+   * Rauswürfe (sql/rauswuerfe-2026-10-06.sql): eliminations[Opfer-Key] = Key dessen, der ihn
+   * rausgeworfen hat; der eigene Key = niemand / selbst. Fehlt ein Eintrag, entscheidet beim
+   * Speichern der Sieger (siehe eliminatedByForSave).
+   */
+  readonly eliminations = signal<Record<string, string>>({});
+
+  /**
+   * Nur in Commander-Partien mit je einem Panel pro Spieler - bei 2HG sind die Panels Teams, und
+   * in 1-gegen-1-Formaten ist der Rauswurf schlicht der Sieg.
+   */
+  readonly tracksEliminations = computed(
+    () => this.requiresCommanderSelection() && !this.isTwoHeadedGiantMode() && this.ingameUnits().length > 2,
+  );
+
+  setEliminatedBy(victim: string, killer: string | null): void {
+    this.eliminations.update((all) => {
+      const { [victim]: _, ...rest } = all;
+      return killer ? { ...rest, [victim]: killer } : rest;
+    });
+  }
+
+  /**
+   * Werfer je Spielername fürs Speichern. Wer nicht ausdrücklich erfasst ist, gilt als vom Sieger
+   * rausgeworfen - der letzte Gegner wird beim Sieg meist gar nicht mehr per Totenkopf markiert.
+   * Ohne einen einzelnen Sieger (Unentschieden, Archenemy-Verbündete) bleibt er unbekannt.
+   */
+  private eliminatedByForSave(winner: string): Record<string, string> {
+    if (!this.tracksEliminations()) return {};
+    const names = new Set(this.selectedPlayers().map((p) => p.name));
+    const result: Record<string, string> = {};
+    for (const [victim, killer] of Object.entries(this.eliminations())) {
+      if (names.has(victim) && names.has(killer)) result[victim] = killer;
+    }
+    if (names.has(winner)) {
+      for (const name of names) {
+        if (name !== winner && !result[name]) result[name] = winner;
+      }
+    }
+    return result;
   }
 
   /** Aktueller Todes-Spruch fürs Panel, Fallback falls (noch) keiner gezogen wurde. */
@@ -732,6 +779,7 @@ export class GameSessionService {
     this.lifeLogUnits.set(state.lifeLogUnits ?? []);
     this.lifeLogStart.set(state.lifeLogStart ?? 0);
     this.lifeLog.set(state.lifeLog ?? []);
+    this.eliminations.set(state.eliminations ?? {});
     this.lastSyncedSignature = stableStringify(state);
   }
 
@@ -1156,6 +1204,7 @@ export class GameSessionService {
     this.lifeLog.set([]);
     this.commanderDamageFocus.set(null);
     this.deadPlayers.set({});
+    this.eliminations.set({});
     this.showWinnerPanel.set(false);
     this.winner.set(null);
     this.minimized.set(false);
@@ -1194,9 +1243,11 @@ export class GameSessionService {
       const draftSet = this.selectedDraftSet();
       // Platz in der Zugreihenfolge je Spieler - bei 2HG teilen sich die Teammitglieder ihn.
       const turnOrder = this.turnOrderByUnit();
+      const eliminatedBy = this.eliminatedByForSave(winner);
       const players = this.selectedPlayers().map((p) => {
         const order = turnOrder[this.isTwoHeadedGiantMode() ? (p.team ?? '') : p.name];
-        return order ? { ...p, turnOrder: order } : p;
+        const withOrder = order ? { ...p, turnOrder: order } : p;
+        return eliminatedBy[p.name] ? { ...withOrder, eliminatedBy: eliminatedBy[p.name] } : withOrder;
       });
       const tournamentMatchId = this.activeTournamentMatchId() ?? undefined;
 
@@ -1292,7 +1343,7 @@ export class GameSessionService {
       mode: this.mode(),
       format: this.format(),
       isRanked: this.isRanked(),
-      players: this.selectedPlayers().map(({ turnOrder: _, ...p }) => p),
+      players: this.selectedPlayers().map(({ turnOrder: _, eliminatedBy: __, ...p }) => p),
       cubeId: this.selectedCubeId(),
       draftSet: this.selectedDraftSet(),
       manualOrder: this.manualOrder(),
@@ -1362,6 +1413,7 @@ export class GameSessionService {
     this.lifeLogUnits.set([]);
     this.lifeLogStart.set(0);
     this.lifeLog.set([]);
+    this.eliminations.set({});
   }
 
   // --- Setup-Mutationen (Spieler, Commander, Team, Archenemy) ---

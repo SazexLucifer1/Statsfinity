@@ -430,7 +430,11 @@ export function mergePeopleMatches(
       return {
         ...match,
         winner: map.get(match.winner) ?? match.winner,
-        players: match.players.map((p) => ({ ...p, name: map.get(p.name) ?? p.name })),
+        players: match.players.map((p) => ({
+          ...p,
+          name: map.get(p.name) ?? p.name,
+          ...(p.eliminatedBy ? { eliminatedBy: map.get(p.eliminatedBy) ?? p.eliminatedBy } : {}),
+        })),
       };
     })
     .sort((a, b) => b.date.localeCompare(a.date));
@@ -550,4 +554,84 @@ export function deckOpponents(matches: readonly Match[], deckId: string): DeckOp
     }
   }
   return [...map.values()].sort((a, b) => b.games - a.games || b.wins - a.wins);
+}
+
+// --- Rauswürfe: wer wen aus der Partie geworfen hat (match_players.eliminated_by) ---
+
+export interface EliminationCount {
+  name: string;
+  count: number;
+}
+
+export interface EliminationStat {
+  name: string;
+  /** Wie oft dieser Spieler jemand anderen rausgeworfen hat. */
+  kills: number;
+  /** Wie oft er rausgeflogen ist - durch jemand anderen oder selbst. */
+  deaths: number;
+  /** Davon ohne fremde Hilfe (eigener Name in eliminated_by). */
+  selfDeaths: number;
+  /** Wen er wie oft rausgeworfen hat, häufigster zuerst. */
+  victims: EliminationCount[];
+  /** Von wem er wie oft rausgeworfen wurde, häufigster zuerst. */
+  killers: EliminationCount[];
+}
+
+function countsDesc(map: Map<string, number>): EliminationCount[] {
+  return [...map.entries()]
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+}
+
+/**
+ * Rauswürfe je Spieler, nach Zahl der Rauswürfe sortiert. Grundlage ist allein
+ * MatchPlayer.eliminatedBy - Partien ohne diese Angabe (ältere, Nicht-Commander, 2HG) zählen nicht.
+ * Ein eigener Name dort heißt "niemand / selbst": zählt als rausgeflogen, aber für niemanden als
+ * Rauswurf.
+ */
+export function eliminationStats(matches: readonly Match[]): EliminationStat[] {
+  const stats = new Map<
+    string,
+    {
+      kills: number;
+      deaths: number;
+      selfDeaths: number;
+      victims: Map<string, number>;
+      killers: Map<string, number>;
+    }
+  >();
+  const entry = (name: string) => {
+    let e = stats.get(name);
+    if (!e) {
+      e = { kills: 0, deaths: 0, selfDeaths: 0, victims: new Map(), killers: new Map() };
+      stats.set(name, e);
+    }
+    return e;
+  };
+  for (const match of countable(matches)) {
+    for (const p of match.players) {
+      const by = p.eliminatedBy;
+      if (!by) continue;
+      const victim = entry(p.name);
+      victim.deaths++;
+      if (by === p.name) {
+        victim.selfDeaths++;
+        continue;
+      }
+      victim.killers.set(by, (victim.killers.get(by) ?? 0) + 1);
+      const killer = entry(by);
+      killer.kills++;
+      killer.victims.set(p.name, (killer.victims.get(p.name) ?? 0) + 1);
+    }
+  }
+  return [...stats.entries()]
+    .map(([name, e]) => ({
+      name,
+      kills: e.kills,
+      deaths: e.deaths,
+      selfDeaths: e.selfDeaths,
+      victims: countsDesc(e.victims),
+      killers: countsDesc(e.killers),
+    }))
+    .sort((a, b) => b.kills - a.kills || a.deaths - b.deaths || a.name.localeCompare(b.name));
 }
