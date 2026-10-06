@@ -27,6 +27,7 @@ export const deckView = {
     'deckView.matchups.infoAria': 'Wie wird das gezählt?',
     'deckView.matchups.info': 'Alle Partien mit diesem Deck, die du sehen kannst (deine Gruppen und Freundesspiele). Links steht, wie oft dieses Deck gewonnen hat, rechts, wie oft das Gegnerdeck - hat jemand Drittes gewonnen, zählt das für keine Seite. Teamkollegen und Verbündete gegen den Archenemy sind keine Gegner.',
     'deckView.matchups.thisDeck': 'Dieses Deck',
+    'deckView.matchups.owner': 'von {{name}}',
     'deckView.matchups.explain': '{{games}} Partien gegen {{name}}: {{wins}} hat dieses Deck gewonnen, {{losses}} das Gegnerdeck, {{other}} jemand anderes.',
     'deckView.statsInfoHint':
       'Zählt alle Spiele mit diesem Deck über alle Gruppen hinweg – unabhängig davon, wer es gespielt hat. Wurde es mal verliehen, fließen auch diese Spiele mit ein.',
@@ -471,6 +472,7 @@ export const deckView = {
     'deckView.matchups.infoAria': 'How is this counted?',
     'deckView.matchups.info': 'All games with this deck that you can see (your groups and friend games). On the left how often this deck won, on the right how often the opposing deck did - if someone else won, it counts for neither side. Teammates and allies against the Archenemy are not opponents.',
     'deckView.matchups.thisDeck': 'This deck',
+    'deckView.matchups.owner': 'by {{name}}',
     'deckView.matchups.explain': '{{games}} games against {{name}}: this deck won {{wins}}, the opposing deck {{losses}}, someone else {{other}}.',
     'deckView.statsInfoHint':
       'Counts all games with this deck across all groups – regardless of who played it. If it was ever lent out, those games are included too.',

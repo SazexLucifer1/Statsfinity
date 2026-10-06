@@ -2,6 +2,8 @@ import { Component, computed, effect, inject, input, signal } from '@angular/cor
 import { I18nService } from '../i18n.service';
 import { MtgService } from '../mtg.service';
 import { ScryfallService } from '../scryfall.service';
+import { DeckSocialService } from '../deck-social.service';
+import { supabase } from '../supabase.client';
 import { DeckOpponent, deckOpponents } from '../match-insights';
 import { CardImage } from '../card-image/card-image';
 import { SplitBar, SplitSegment } from '../ui/split-bar/split-bar';
@@ -23,6 +25,10 @@ export class DeckMatchups {
   readonly i18n = inject(I18nService);
   private readonly mtg = inject(MtgService);
   private readonly scryfall = inject(ScryfallService);
+  private readonly social = inject(DeckSocialService);
+
+  /** Namen accountloser Deck-Besitzer (players.display_name), je players.id. */
+  private readonly playerOwners = signal<ReadonlyMap<string, string>>(new Map());
 
   readonly deckId = input.required<string>();
   readonly deckName = input('');
@@ -47,8 +53,10 @@ export class DeckMatchups {
       this.open.set(null);
       this.mtg.loadMatchesForDeck(id).then((matches) => {
         if (this.deckId() !== id) return;
-        this.all.set(deckOpponents(matches, id));
+        const opponents = deckOpponents(matches, id);
+        this.all.set(opponents);
         this.loaded.set(true);
+        void this.loadOwners(opponents);
       });
     });
     effect(() => {
@@ -70,6 +78,50 @@ export class DeckMatchups {
         });
       });
     });
+  }
+
+  /**
+   * Besitzer der Gegnerdecks: Konto-Decks über deck_social_stats() (Profilname, wie das „von …“
+   * im Stöbern), Decks accountloser Spieler über deren players-Zeile.
+   */
+  private async loadOwners(opponents: DeckOpponent[]): Promise<void> {
+    const accountDecks = opponents.filter((o) => o.deckId && o.ownerUserId).map((o) => o.deckId!);
+    const playerIds = [
+      ...new Set(
+        opponents
+          .map((o) => (!o.ownerUserId ? o.ownerPlayerId : null))
+          .filter((x): x is string => !!x),
+      ),
+    ];
+    await Promise.all([
+      this.social.load(accountDecks),
+      (async () => {
+        if (playerIds.length === 0) return;
+        const { data } = await supabase
+          .from('players')
+          .select('id, display_name')
+          .in('id', playerIds);
+        this.playerOwners.set(
+          new Map(
+            ((data as { id: string; display_name: string }[] | null) ?? []).map((p) => [
+              p.id,
+              p.display_name,
+            ]),
+          ),
+        );
+      })(),
+    ]);
+  }
+
+  /** Wem das Gegnerdeck gehört - nicht, wer es gespielt hat. null ohne verknüpftes Deck. */
+  owner(o: DeckOpponent): string | null {
+    if (o.deckId && o.ownerUserId) return this.social.statsFor(o.deckId)?.ownerName ?? null;
+    if (o.ownerPlayerId) return this.playerOwners().get(o.ownerPlayerId) ?? null;
+    return null;
+  }
+
+  key(o: DeckOpponent): string {
+    return o.deckId ?? o.label;
   }
 
   image(name: string | null): string | null {
