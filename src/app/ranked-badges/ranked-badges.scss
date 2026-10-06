@@ -1,0 +1,41 @@
+:host {
+  display: contents;
+}
+
+// Volle Breite im Profil-Raster (die .span-full-Regel des Profils erreicht diese Komponente nicht).
+.ranked-badges {
+  grid-column: 1 / -1;
+}
+
+.badge-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--sp-3);
+  margin: var(--sp-3) 0 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    padding: var(--sp-3);
+    border-radius: var(--r-md);
+    background: rgba(255, 255, 255, 0.05);
+  }
+}
+
+.badge-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+
+  strong {
+    font-size: 0.9rem;
+  }
+
+  small {
+    font-size: 0.75rem;
+    opacity: 0.7;
+  }
+}

@@ -131,6 +131,8 @@ export const stats = {
     'stats.ranking': 'Spieler-Rangliste',
     'stats.elo.title': 'Elo-Wertung',
     'stats.elo.infoAria': 'Wie die Elo-Wertung funktioniert',
+    'stats.elo.adminOnly': 'Rangsystem ist aus – nur du als Gruppenleiter siehst die Wertung.',
+    'stats.elo.seasonSince': 'Laufende Saison seit {{date}}.',
     'stats.elo.info':
       'Jeder startet je Spielmodus und Format bei Silber V; die ersten 10 Partien sind die Einstufung und zählen stärker, erst danach erscheint der Rang. Gewertet wird im Format, das oben im Filter gewählt ist. Es zählt nur der Sieg: Der Sieger gewinnt gegen jeden Gegner, alle anderen verlieren gleich viel gegen den Sieger, egal auf welchem Platz. Ein Sieg gegen gleich Starke bringt rund 50 LP, gegen starke mehr; wer gegen einen starken Sieger verliert, verliert weniger. Dazu 5 LP je Partie. Gewertet werden live erfasste Partien.',
     'stats.elo.detail': '{{games}} Partien · {{wins}} Siege · Bestwert {{peak}}',
@@ -349,6 +351,8 @@ export const stats = {
     'stats.ranking': 'Player ranking',
     'stats.elo.title': 'Elo rating',
     'stats.elo.infoAria': 'How the Elo rating works',
+    'stats.elo.adminOnly': 'Ranked system is off – only you as group leader can see the ranking.',
+    'stats.elo.seasonSince': 'Current season since {{date}}.',
     'stats.elo.info':
       'Everyone starts in Silver V per game mode and format; the first 10 games are placements and count more, the rank only shows after them. The rating follows the format chosen in the filter above. Only the win counts: the winner beats every opponent, everyone else loses the same to the winner, whatever their place. A win against equals earns about 50 LP, more against strong ones; losing to a strong winner costs less. Plus 5 LP per game. Only live-tracked games are rated.',
     'stats.elo.detail': '{{games}} games · {{wins}} wins · peak {{peak}}',

@@ -101,8 +101,13 @@ export class PlayerMatchHistory {
     // hängen an allem, was davor gespielt wurde, auch an Partien anderer Jahre. Nur für die eigene
     // Gruppe mit Rangsystem: Ränge sind Gruppensache, öffentliche Matches (extern) zeigen keine LP.
     const lp =
-      !extern && this.groupService.rankedEnabled()
-        ? lpChangesByMatch(eigene.map((q) => q.match))
+      !extern && this.groupService.canSeeRankedHere()
+        ? lpChangesByMatch(
+            this.groupService.seasonMatches(
+              eigene.map((q) => q.match),
+              this.groupService.groupId(),
+            ),
+          )
         : new Map<string, Map<string, number>>();
 
     const rows: PlayerMatchRow[] = [];

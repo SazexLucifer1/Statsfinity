@@ -1,0 +1,20 @@
+@if (badges().length > 0) {
+  <section class="glass-card ranked-badges">
+    <app-info-toggle [label]="i18n.t('profile.badges.infoAria')">
+      <h2 info-title>{{ i18n.t('profile.badges.title') }}</h2>
+      <p class="hint">{{ i18n.t('profile.badges.info') }}</p>
+    </app-info-toggle>
+    <ul class="badge-list">
+      @for (b of badges(); track b.id) {
+        @let r = rank(b);
+        <li [title]="b.groupName">
+          <app-rank-badge [tier]="r.tier" [division]="r.division" [size]="44" />
+          <span class="badge-text">
+            <strong>{{ rankName(b) }} · {{ i18n.t('profile.rank.lp', { lp: b.lp }) }}</strong>
+            <small>{{ ranking(b) }}</small>
+          </span>
+        </li>
+      }
+    </ul>
+  </section>
+}

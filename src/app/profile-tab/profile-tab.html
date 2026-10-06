@@ -63,6 +63,11 @@
     }
   </section>
 
+  <!-- Saison-Abzeichen: für alle sichtbar, auch ohne Login (sql/ranked-saison-2026-10-06.sql). -->
+  @if (profileService.viewingUserId(); as badgeUserId) {
+    <app-ranked-badges [userId]="badgeUserId" />
+  }
+
   <!-- Die reduzierte Fremdansicht. In der Developer-Vollansicht tritt an ihre Stelle der
        vollständige Block aus dem eigenen Profil (ng-template #profileBody am Dateiende). -->
   @if (!devFullView()) {
@@ -420,6 +425,10 @@
     </div>
 
   </section>
+
+  @if (profileService.profile()?.id; as badgeUserId) {
+    <app-ranked-badges [userId]="badgeUserId" />
+  }
 
   <!-- Statistik- und Deck-Bereich. Steht als ng-template auf oberster Ebene, weil ihn die
        Developer-Vollansicht eines FREMDEN Profils unverändert mitbenutzt - eine zweite, von Hand

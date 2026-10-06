@@ -510,3 +510,15 @@
     opacity: 1;
   }
 }
+
+// Rangsystem aus, Gruppenleiter sieht die Wertung trotzdem - klar als "nur für dich" markiert.
+.elo-admin-only {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: 0 0 var(--sp-3);
+  padding: var(--sp-1) var(--sp-4);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 0.8rem;
+}

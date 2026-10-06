@@ -79,7 +79,11 @@ export class MatchTab {
     const key = `${mode}|${format ?? ''}`;
     let tiers = cache.get(key);
     if (!tiers) {
-      tiers = rankTiersFor(this.mtg.history(), mode, format);
+      tiers = rankTiersFor(
+        this.groupService.seasonMatches(this.mtg.history(), this.groupService.groupId()),
+        mode,
+        format,
+      );
       cache.set(key, tiers);
     }
     return tiers.get(name) ?? null;

@@ -61,6 +61,15 @@
                     {{ i18n.t(groupService.isRankedGroup(group.id) ? 'group.rankedTurnOff' : 'group.rankedTurnOn') }}
                   </button>
                 }
+                <!-- Saison: Neustart bzw. Abschluss mit Abzeichen (sql/ranked-saison-2026-10-06.sql). -->
+                @if (group.role === 'owner' && groupService.rankedSeasonAvailable()) {
+                  <button class="glass-button" (click)="endRankedSeason(group.id, group.name)">
+                    {{ i18n.t('group.rankedEndSeason') }}
+                  </button>
+                  <button class="glass-button danger" (click)="resetRanked(group.id)">
+                    {{ i18n.t('group.rankedReset') }}
+                  </button>
+                }
                 @if (groupService.hasPermissionFor(group.id, 'stats.visibility')) {
                   <button class="glass-button" (click)="openVisibilityDialog(group.id)">{{ i18n.t('group.visibility') }}</button>
                 }
