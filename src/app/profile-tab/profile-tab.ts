@@ -1,3 +1,4 @@
+import { RankedBadges } from '../ranked-badges/ranked-badges';
 import { Component, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DatePipe, DecimalPipe, NgTemplateOutlet } from '@angular/common';
@@ -48,7 +49,7 @@ import { FriendStatus } from '../friend-status/friend-status';
 
 @Component({
   selector: 'app-profile-tab',
-  imports: [FormsModule, DatePipe, DecimalPipe, NgTemplateOutlet, DeckList, CardImage, CommanderStatList, FavoriteCommanderEditor, BarChart, RadarChart, Meter, ManaSymbol, Podium, PlayerMatchHistory, Icon, CommentInbox, ProfileRank, FriendsPanel, FriendStatus],
+  imports: [FormsModule, DatePipe, DecimalPipe, NgTemplateOutlet, DeckList, CardImage, CommanderStatList, FavoriteCommanderEditor, BarChart, RadarChart, Meter, ManaSymbol, Podium, PlayerMatchHistory, Icon, CommentInbox, ProfileRank, FriendsPanel, FriendStatus, RankedBadges],
   templateUrl: './profile-tab.html',
   styleUrl: './profile-tab.scss',
 })
@@ -162,9 +163,13 @@ export class ProfileTab {
   private readonly rankMatches = computed<Match[]>(() => {
     const groupId = this.rankGroupId();
     if (!groupId) return [];
-    if (groupId === this.groupService.groupId()) return this.mtg.history();
+    // Nur die laufende Saison (groups.ranked_since) - ein Neustart beginnt bei allen von vorn.
+    if (groupId === this.groupService.groupId())
+      return this.groupService.seasonMatches(this.mtg.history(), groupId);
     const other = this.otherGroupRankData();
-    return other?.groupId === groupId ? other.matches : [];
+    return other?.groupId === groupId
+      ? this.groupService.seasonMatches(other.matches, groupId)
+      : [];
   });
   private readonly rankPlayerName = computed<string | null>(() => {
     const groupId = this.rankGroupId();

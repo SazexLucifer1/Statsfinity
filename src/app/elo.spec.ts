@@ -13,6 +13,8 @@ import {
   isRatedMatch,
   ratedModes,
   seatsOf,
+  seasonResults,
+  ELO_PROVISIONAL_GAMES,
 } from './elo';
 import { ARCHENEMY_OTHERS, DRAW, IMPORT_LOSS_PLACEHOLDER } from './match-utils';
 import { GameMode, Match, MatchPlayer } from './models';
@@ -221,5 +223,16 @@ describe('elo', () => {
     expect(ratedModes([match('Cube', 'A', [p('A'), p('B')])], ['Normal', 'Cube'])).toEqual([
       'Cube',
     ]);
+  });
+
+  it('gibt zum Saisonende je Wertung nur Spieler mit fertiger Einstufung aus', () => {
+    const games = Array.from({ length: ELO_PROVISIONAL_GAMES }, (_, i) =>
+      match('Normal', i % 2 ? 'A' : 'B', [p('A'), p('B')]),
+    );
+    games.push(match('Normal', 'A', [p('A'), p('C')]));
+    const results = seasonResults(games);
+    expect(results.map((r) => r.name).sort()).toEqual(['A', 'B']);
+    expect(results.every((r) => r.mode === 'Normal' && r.format === 'Commander')).toBe(true);
+    expect(results.every((r) => Number.isInteger(r.lp))).toBe(true);
   });
 });

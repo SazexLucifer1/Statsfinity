@@ -1,5 +1,5 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
-import { DecimalPipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MtgService } from '../mtg.service';
 import { GroupService } from '../group.service';
@@ -95,6 +95,7 @@ interface CombinedRankEntry {
     RankBadge,
     MatchInsights,
     DecimalPipe,
+    DatePipe,
     PlayerAvatar,
     FormsModule,
     TournamentHistory,
@@ -271,11 +272,15 @@ export class StatsTab {
   // Wie der Rang im Profil je Modus UND Format: dem Format-Filter oben folgend ("Alle" = alle
   // Formate eines Modus gemeinsam). Ein Modern-Sieg soll keinen Commander-Rang verschieben.
   // Nur in einer Gruppe mit eingeschaltetem Rangsystem (Schalter des Gruppenleiters).
+  /** Partien der laufenden Ranked-Saison (groups.ranked_since) - Grundlage aller Elo-Werte hier. */
+  private readonly seasonMatches = computed(() =>
+    this.groupService.seasonMatches(this.viewedMatches(), this.effectiveViewedGroupId()),
+  );
   readonly eloModes = computed(() =>
-    !this.groupService.isRankedGroup(this.effectiveViewedGroupId())
+    !this.groupService.canSeeRanked(this.effectiveViewedGroupId())
       ? []
       : ratedModes(
-          this.applyFormatFilter(this.viewedMatches()),
+          this.applyFormatFilter(this.seasonMatches()),
           GAME_MODES.filter((m) => this.canViewMode(m)),
         ),
   );
@@ -289,7 +294,7 @@ export class StatsTab {
     const mode = this.eloMode();
     if (!mode) return [];
     const format = this.selectedFormat();
-    return eloRanking(this.viewedMatches(), mode, format === 'Alle' ? {} : { format });
+    return eloRanking(this.seasonMatches(), mode, format === 'Alle' ? {} : { format });
   });
   readonly eloPage = signal(0);
   readonly pagedEloRanking = computed(() => {
@@ -308,6 +313,10 @@ export class StatsTab {
       }));
   });
   readonly showEloInfo = signal(false);
+  /** Rangsystem aus, aber der Gruppenleiter sieht die Wertung trotzdem (nur er). */
+  readonly eloHiddenForOthers = computed(
+    () => !this.groupService.isRankedGroup(this.effectiveViewedGroupId()),
+  );
   readonly placementTotal = ELO_PROVISIONAL_GAMES;
 
   /**
@@ -318,7 +327,7 @@ export class StatsTab {
     if (!this.groupService.isRankedGroup(this.effectiveViewedGroupId())) return new Map();
     const format = this.selectedFormat();
     return rankTiersFor(
-      this.viewedMatches(),
+      this.seasonMatches(),
       this.eloMode() ?? 'Normal',
       format === 'Alle' ? undefined : format,
     );
