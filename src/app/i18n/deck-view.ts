@@ -243,9 +243,12 @@ export const deckView = {
     'deckView.bracketReason.gameChangerMany': 'Vier oder mehr Game Changer',
     'deckView.bracketReason.gameChangerFew': 'Ein bis drei Game Changer',
     'deckView.bracketReason.extraTurnLoop': 'Extra-Turn-Schleife (Combo mit Extra-Zug-Karte)',
-    'deckView.bracketReason.comboRuthless': 'Zwei-Karten-Combo, von Spellbook als brutal benotet',
-    'deckView.bracketReason.comboFast': 'Zwei-Karten-Combo, vor Zug 4 aufstellbar',
-    'deckView.bracketReason.comboMidrange': 'Zwei-Karten-Combo, erst im späteren Spiel',
+    'deckView.bracketReason.comboRuthless':
+      'Davon von Spellbook als brutal benotet – nur ein Hinweis, die Stufe richtet sich nach dem Zug',
+    'deckView.bracketReason.comboFast':
+      'Zwei-Karten-Combo, schon in Zug {{turn}} möglich – Bracket 3 erlaubt sie erst ab Zug 6',
+    'deckView.bracketReason.comboLate':
+      'Zwei-Karten-Combo, frühestens in Zug {{turn}} – in Bracket 3 erlaubt, in Bracket 2 nicht',
     'deckView.bracketReason.price': 'Kartenwert über dem Precon-Niveau',
     'deckView.bracketReason.tuning': 'Karten-Tuning und Beständigkeit zusammen über {{bump}} %',
     'deckView.bracketReason.nothing': 'Nichts gefunden, was eine höhere Stufe erzwingt',
@@ -271,7 +274,7 @@ export const deckView = {
       'Die offiziellen Kriterien prüfen feste Merkmale: Game Changer, Mass Land Denial, Extra-Turn-Schleifen und Zwei-Karten-Combos. Jeder Befund erzwingt für sich eine Mindeststufe – es gilt die höchste davon. Ohne jeden Befund bleibt es bei Bracket 2.',
     'deckView.bracketMathSpellbookTitle': 'So kommt die Zweitmeinung zustande',
     'deckView.bracketMathSpellbookIntro':
-      'Commander Spellbook bewertet dieselbe Deckliste unabhängig und live, vor allem anhand der Combos, die es darin findet. Statsfinity übernimmt diese Note unverändert als zweites Urteil.',
+      'Commander Spellbook bewertet dieselbe Deckliste unabhängig und live, vor allem anhand der Combos, die es darin findet. Statsfinity übernimmt diese Note als zweites Urteil, hebt damit aber höchstens auf Bracket 3 an – ob eine Combo zu früh kommt, entscheidet der Zug bei den offiziellen Kriterien.',
     'deckView.bracketMathStepRules': 'Offizielle Kriterien → Bracket {{level}}',
     'deckView.bracketMathStepSpellbook': 'Zweitmeinung Commander Spellbook → Bracket {{level}}',
     'deckView.bracketMathStepSpellbookMissing':
@@ -685,9 +688,12 @@ export const deckView = {
     'deckView.bracketReason.gameChangerMany': 'Four or more Game Changers',
     'deckView.bracketReason.gameChangerFew': 'One to three Game Changers',
     'deckView.bracketReason.extraTurnLoop': 'Extra-turn loop (combo with an extra-turn card)',
-    'deckView.bracketReason.comboRuthless': 'Two-card combo, rated ruthless by Spellbook',
-    'deckView.bracketReason.comboFast': 'Two-card combo, assembles before turn 4',
-    'deckView.bracketReason.comboMidrange': 'Two-card combo, only in the later game',
+    'deckView.bracketReason.comboRuthless':
+      'Of these, rated ruthless by Spellbook – just a note, the bracket follows the turn',
+    'deckView.bracketReason.comboFast':
+      'Two-card combo, possible as early as turn {{turn}} – Bracket 3 only allows it from turn 6',
+    'deckView.bracketReason.comboLate':
+      'Two-card combo, turn {{turn}} at the earliest – allowed in Bracket 3, not in Bracket 2',
     'deckView.bracketReason.price': 'Deck value above precon level',
     'deckView.bracketReason.tuning': 'Card tuning and consistency together above {{bump}} %',
     'deckView.bracketReason.nothing': 'Nothing found that forces a higher bracket',
@@ -713,7 +719,7 @@ export const deckView = {
       'The official criteria check fixed traits: Game Changers, mass land denial, extra-turn loops and two-card combos. Each finding forces a minimum bracket on its own – the highest of them applies. With no finding at all it stays at Bracket 2.',
     'deckView.bracketMathSpellbookTitle': 'How the second opinion comes about',
     'deckView.bracketMathSpellbookIntro':
-      'Commander Spellbook rates the same decklist independently and live, mainly from the combos it finds in it. Statsfinity takes that rating as the second verdict, unchanged.',
+      'Commander Spellbook rates the same decklist independently and live, mainly from the combos it finds in it. Statsfinity takes that rating as the second verdict, but it lifts the deck to Bracket 3 at most – whether a combo comes too early is decided by the turn in the official criteria.',
     'deckView.bracketMathStepRules': 'Official criteria → Bracket {{level}}',
     'deckView.bracketMathStepSpellbook': 'Second opinion, Commander Spellbook → Bracket {{level}}',
     'deckView.bracketMathStepSpellbookMissing':

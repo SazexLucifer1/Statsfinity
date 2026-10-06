@@ -11,6 +11,7 @@ import {
   AUTO_BRACKET_MAX,
   analyzeBracket,
   powerRange,
+  spellbookLift,
 } from './bracket';
 import { I18nService } from './i18n.service';
 import { averageCmc } from './deck-analyse';
@@ -177,7 +178,10 @@ export class DeckBracketService {
        */
       rulesReasons: analysis.reasons.filter((r) => r.key !== 'tuning' && r.key !== 'price'),
       /** Stufe nach den beiden Urteilen, aber VOR einer möglichen Anhebung durch die Feinbewertung. */
-      baseBracket: Math.max(analysis.verdicts.rules, analysis.verdicts.spellbook ?? 0),
+      baseBracket: Math.max(
+        analysis.verdicts.rules,
+        spellbookLift(analysis.verdicts.spellbook) ?? 0,
+      ),
     };
   });
 
