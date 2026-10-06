@@ -28,19 +28,26 @@
             >
           }
         </div>
-        @if (monthly().length > 1) {
-          <p class="hint">{{ i18n.t('stats.insights.monthlyHint') }}</p>
-          <app-bar-chart
-            [data]="monthly()"
-            orientation="vertical"
-            scale="percent"
-            valueSuffix="%"
-          />
-        }
-        @if (monthlyPlayed().length > 1) {
-          <p class="hint">{{ i18n.t('stats.insights.monthlyGamesHint') }}</p>
-          <app-bar-chart [data]="monthlyPlayed()" orientation="vertical" />
-        }
+        <!-- Handy: untereinander, ab Tablet-Breite nebeneinander. -->
+        <div class="monthly-charts">
+          @if (monthly().length > 1) {
+            <div>
+              <p class="hint">{{ i18n.t('stats.insights.monthlyHint') }}</p>
+              <app-bar-chart
+                [data]="monthly()"
+                orientation="vertical"
+                scale="percent"
+                valueSuffix="%"
+              />
+            </div>
+          }
+          @if (monthlyPlayed().length > 1) {
+            <div>
+              <p class="hint">{{ i18n.t('stats.insights.monthlyGamesHint') }}</p>
+              <app-bar-chart [data]="monthlyPlayed()" orientation="vertical" />
+            </div>
+          }
+        </div>
       }
 
       <!-- Gegner -->

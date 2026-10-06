@@ -1,3 +1,5 @@
+@use '../../styles/breakpoints' as bp;
+
 .insights-toggle {
   display: flex;
   width: 100%;
@@ -122,4 +124,16 @@ h3 {
   cursor: pointer;
   text-decoration: underline dotted;
   text-underline-offset: 3px;
+}
+
+// Winrate je Monat und Spiele je Monat: ab Tablet-Breite nebeneinander (Wunsch des Users,
+// 06.10.2026) - untereinander bliebe auf dem Desktop rechts die halbe Karte leer.
+.monthly-charts {
+  display: grid;
+  gap: var(--sp-3);
+
+  @include bp.up(md) {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--sp-5);
+  }
 }
