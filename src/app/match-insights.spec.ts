@@ -1,5 +1,9 @@
 import {
+  commanderRecords,
   deckMatchups,
+  headToHeadRecord,
+  mergePeopleMatches,
+  peopleRecords,
   durationMinutes,
   durationStats,
   favoriteVictim,
@@ -152,5 +156,49 @@ describe('match-insights', () => {
     expect(review.topDeck?.label).toBe('Alpha');
     expect(review.bestDeck?.label).toBe('Alpha');
     expect(yearReview(matches, 'A', 2024)).toBeNull();
+  });
+
+  it('führt Partien mehrerer Freunde zusammen: jede Partie einmal, jede Person unter ihrem Profilnamen', () => {
+    const shared = match('Fabi', [p('Fabi', { commander: 'Atraxa' }), p('Ben')], { id: 'g1' });
+    const other = match('B. Müller', [p('Fabian'), p('B. Müller')], { id: 'g2' });
+    const friendGame = match('Ben', [p('Ben', { userId: 'u2' }), p('Fabian', { userId: 'u1' })], {
+      id: 'f1',
+    });
+    const merged = mergePeopleMatches(
+      [
+        {
+          userId: 'u1',
+          name: 'Fabian',
+          entries: [
+            { match: shared, selfName: 'Fabi' },
+            { match: other, selfName: 'Fabian' },
+          ],
+        },
+        {
+          userId: 'u2',
+          name: 'Bene',
+          entries: [
+            { match: shared, selfName: 'Ben' },
+            { match: other, selfName: 'B. Müller' },
+          ],
+        },
+      ],
+      [friendGame],
+    );
+    expect(merged.length).toBe(3);
+    const g1 = merged.find((m) => m.id === 'g1')!;
+    expect(g1.players.map((x) => x.name)).toEqual(['Fabian', 'Bene']);
+    expect(g1.winner).toBe('Fabian');
+    expect(merged.find((m) => m.id === 'g2')!.winner).toBe('Bene');
+    expect(merged.find((m) => m.id === 'f1')!.winner).toBe('Bene');
+
+    expect(peopleRecords(merged, ['Fabian', 'Bene'])).toEqual([
+      { name: 'Fabian', games: 3, wins: 1, winRate: (1 / 3) * 100 },
+      { name: 'Bene', games: 3, wins: 2, winRate: (2 / 3) * 100 },
+    ]);
+    expect(headToHeadRecord(merged, 'Fabian', 'Bene')).toEqual({ games: 3, aWins: 1, bWins: 2 });
+    expect(commanderRecords(merged, 'Fabian')).toEqual([
+      { commander: 'Atraxa', games: 1, wins: 1 },
+    ]);
   });
 });

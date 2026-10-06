@@ -52,10 +52,13 @@ import { Podium, PodiumEntry } from '../ui/podium/podium';
 import { GlobalStats } from '../global-stats/global-stats';
 import { Icon } from '../ui/icon/icon';
 import { MatchInsights } from '../match-insights/match-insights';
+import { FriendsStats } from '../friends-stats/friends-stats';
+import { AuthService } from '../auth.service';
+import { FriendsService } from '../friends.service';
 
 export type StatsViewMode = 'stats' | 'tournaments';
 export type ColorStatsWeightMode = 'games' | 'decks';
-export type StatsScope = 'group' | 'global';
+export type StatsScope = 'group' | 'global' | 'friends';
 
 const PAGE_SIZE = 10;
 
@@ -107,6 +110,7 @@ interface CombinedRankEntry {
     MultiSelect,
     Podium,
     GlobalStats,
+    FriendsStats,
    Icon],
   templateUrl: './stats-tab.html',
   styleUrl: './stats-tab.scss',
@@ -114,6 +118,8 @@ interface CombinedRankEntry {
 export class StatsTab {
   readonly mtg = inject(MtgService);
   readonly groupService = inject(GroupService);
+  readonly auth = inject(AuthService);
+  readonly friends = inject(FriendsService);
   private readonly scryfall = inject(ScryfallService);
   private readonly deckService = inject(DeckService);
   private readonly viewer = inject(DeckViewerService);
