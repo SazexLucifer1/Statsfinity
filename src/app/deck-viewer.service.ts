@@ -870,7 +870,13 @@ export class DeckViewerService {
    * Bild).
    */
   resolvedCardBackImage(card: DeckCard): string | null {
-    return this.state.viewingCardDetails().get(card.cardName.toLowerCase())?.backImageUrl ?? null;
+    const back = this.state.viewingCardDetails().get(card.cardName.toLowerCase())?.backImageUrl ?? null;
+    // Gewählter Scryfall-Druck einer Doppelkarte: Die Rückseite liegt unter derselben Adresse mit
+    // /back/ statt /front/ - sonst zeigte das Umdrehen die Rückseite des Standarddrucks.
+    if (back && card.imageUrl?.includes('cards.scryfall.io/') && card.imageUrl.includes('/front/')) {
+      return card.imageUrl.replace('/front/', '/back/');
+    }
+    return back;
   }
 
   /**
@@ -920,14 +926,27 @@ export class DeckViewerService {
     );
   }
 
+  /**
+   * Große Vorschau: Steht die Karte im Deck, zeigt sie das dort gewählte Artwork (deck_cards.image_url)
+   * wie die Kartenliste - sonst wechselte das Bild beim Vergrößern zurück auf den Standarddruck.
+   */
   previewCardImageUrl(): string | null {
     const name = this.previewCardName();
-    return name ? this.cardImageUrlFor(name) : null;
+    if (!name) return null;
+    const deckCard = this.previewDeckCard(name);
+    return (deckCard && this.resolvedCardImage(deckCard)) ?? this.cardImageUrlFor(name);
   }
 
   previewCardBackImageUrl(): string | null {
     const name = this.previewCardName();
-    return name ? this.cardBackImageUrlFor(name) : null;
+    if (!name) return null;
+    const deckCard = this.previewDeckCard(name);
+    return deckCard ? this.resolvedCardBackImage(deckCard) : this.cardBackImageUrlFor(name);
+  }
+
+  private previewDeckCard(name: string): DeckCard | undefined {
+    const key = name.toLowerCase();
+    return this.state.viewingDeckCards().find((c) => c.cardName.toLowerCase() === key && !!c.imageUrl);
   }
 
   private async reloadDeckCards(): Promise<void> {

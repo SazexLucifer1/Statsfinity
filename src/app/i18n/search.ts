@@ -56,6 +56,13 @@ export const search = {
     'publicSearch.placeholder': 'Kartenname eingeben …',
     'publicSearch.noResults': 'Keine Karte gefunden.',
     'publicSearch.resetFilters': 'Filter zurücksetzen',
+    'publicSearch.artistPlaceholder': 'Künstler',
+    'publicSearch.artTagPlaceholder': 'Artwork (dragon …)',
+    'publicSearch.flavorPlaceholder': 'Flavortext',
+    'publicSearch.lorePlaceholder': 'Lore (Phyrexia …)',
+    'publicSearch.printSearch': 'Künstler, Artwork, Flavor, Lore',
+    'publicSearch.printSearchHint':
+      'Englische Begriffe. Lore sucht in Name, Flavortext und Regeltext. Jedes passende Artwork erscheint einzeln.',
 
     // --- Archetyp-/Kreaturtyp-Auswahl (Deck-Ansicht, öffentliches Stöbern) ---
     'commanderRec.anyArchetype': 'Archetyp: alle',
@@ -163,6 +170,13 @@ export const search = {
     'publicSearch.placeholder': 'Enter card name …',
     'publicSearch.noResults': 'No card found.',
     'publicSearch.resetFilters': 'Reset filters',
+    'publicSearch.artistPlaceholder': 'Artist',
+    'publicSearch.artTagPlaceholder': 'Artwork (dragon …)',
+    'publicSearch.flavorPlaceholder': 'Flavor text',
+    'publicSearch.lorePlaceholder': 'Lore (Phyrexia …)',
+    'publicSearch.printSearch': 'Artist, artwork, flavor, lore',
+    'publicSearch.printSearchHint':
+      'English terms. Lore searches name, flavor text and rules text. Every matching artwork is shown separately.',
 
     // --- Archetype/creature-type pickers (deck view, public deck browser) ---
     'commanderRec.anyArchetype': 'Archetype: any',

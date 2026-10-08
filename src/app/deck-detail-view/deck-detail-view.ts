@@ -26,6 +26,7 @@ import { BarChart } from '../ui/bar-chart/bar-chart';
 import { OverflowMenu } from '../ui/overflow-menu/overflow-menu';
 import { ColorFilter } from '../ui/color-filter/color-filter';
 import { CmcFilter } from '../ui/cmc-filter/cmc-filter';
+import { PrintSearch } from '../ui/print-search/print-search';
 import { BracketBadge } from '../ui/bracket-badge/bracket-badge';
 import { ManaSymbol } from '../ui/mana-symbol/mana-symbol';
 import { Icon } from '../ui/icon/icon';
@@ -34,7 +35,7 @@ import { BanlistService } from '../banlist.service';
 
 @Component({
   selector: 'app-deck-detail-view',
-  imports: [CurrencyPipe, DatePipe, DecimalPipe, NgTemplateOutlet, PercentPipe, FormsModule, CardImage, DeckCheck, DeckComments, DeckManualRecord, DeckPerformance, CardThumb, DeckPrimer, DeckSocial, DeckSteckbrief, BarChart, OverflowMenu, ColorFilter, CmcFilter, BracketBadge, ManaSymbol, Icon],
+  imports: [CurrencyPipe, DatePipe, DecimalPipe, NgTemplateOutlet, PercentPipe, FormsModule, CardImage, DeckCheck, DeckComments, DeckManualRecord, DeckPerformance, CardThumb, DeckPrimer, DeckSocial, DeckSteckbrief, BarChart, OverflowMenu, ColorFilter, CmcFilter, PrintSearch, BracketBadge, ManaSymbol, Icon],
   templateUrl: './deck-detail-view.html',
   styleUrls: ['./deck-detail-view.scss', './deck-detail-view.bracket.scss'],
 })

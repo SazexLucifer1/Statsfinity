@@ -768,6 +768,10 @@
                 <option [ngValue]="k.value">{{ viewer.effects.keywordFilterLabel(k.value) }}</option>
               }
             </select>
+            <app-print-search
+              [value]="viewer.edit.addCardPrintSearch()"
+              (valueChange)="viewer.edit.onAddCardPrintSearchInput($event)"
+            />
           </div>
           <div class="chip-row">
             <button class="glass-chip small" [class.active]="viewer.edit.addCardSortMode() === 'name'" (click)="viewer.edit.setAddCardSortMode('name')">
@@ -845,7 +849,7 @@
             <p class="hint">{{ viewer.i18n.t('deckView.searching') }}</p>
           } @else if (viewer.edit.addCardResults().length > 0) {
             <div class="card-pick-grid">
-              @for (card of viewer.edit.pagedAddCardResults(); track card.name) {
+              @for (card of viewer.edit.pagedAddCardResults(); track card.imageUrl ?? card.name) {
                 <div class="card-pick-tile">
                   <div class="card-pick-image">
                     @if (viewer.edit.isAddCardFlipped(card.name) && card.backImageUrl) {

@@ -53,13 +53,15 @@ wegen des harten Style-Budgets von 12 kB: `deck-detail-view` hat ein zweites Sty
 
 ### Wiederverwendbare UI-Bausteine — hier zuerst nachsehen
 
-`src/app/ui/` enthält: `bar-chart`, `life-chart`, `radar-chart`, `meter`, `split-bar`, `pager`, `podium`, `overflow-menu`, `multi-select`, `color-filter`, `cmc-filter`, `mana-symbol`, `bracket-badge`, `rank-badge`, `icon`, `info-toggle`, `sample-hint`, `performance-summary`, `card-thumb` sowie `chart-scale.ts`.
+`src/app/ui/` enthält: `bar-chart`, `life-chart`, `radar-chart`, `meter`, `split-bar`, `pager`, `podium`, `overflow-menu`, `multi-select`, `color-filter`, `cmc-filter`, `print-search`, `mana-symbol`, `bracket-badge`, `rank-badge`, `icon`, `info-toggle`, `sample-hint`, `performance-summary`, `card-thumb` sowie `chart-scale.ts`.
 
 `info-toggle` ist die Überschrift mit ⓘ-Knopf, der eine Erklärung aufklappt (`<app-info-toggle [label]="…"><h3 info-title>…</h3> Erklärtext </app-info-toggle>`). **Erklärtexte gehören dahinter, nicht als Dauertext auf die Karte** (Wunsch des Users, 05.10.2026) - sichtbar bleibt nur, was man zum Ablesen braucht.
 
 `icon` ist der Piktogramm-Satz der App (`<app-icon name="trash" />`): ein gemeinsames 24er-Raster, eine Strichstärke, Farbe immer `currentColor`, Größe aus der `font-size` der Umgebung. **Er hat die Emojis abgelöst, die vorher überall in der Oberfläche standen** — die zeichnet jedes Betriebssystem anders, sie sind bunt und lassen sich weder einfärben noch in der Strichstärke angleichen. Ein neues Piktogramm gehört in `icon.html` (`@case`) **und** in die Union `IconName` in `icon.ts`; das eine ohne das andere kompiliert nicht bzw. zeichnet nichts. **Ein `<button>` um ein Icon herum muss eine eigene `color` setzen** — Knöpfe erben die Textfarbe nicht, sie nehmen die dunkle Browser-Standardfarbe, und das Piktogramm zeichnet in `currentColor`. Bei einem Emoji war das egal, hier wird der Knopf dadurch unsichtbar.
 
 `card-thumb` ist das kleine Kartenbild zu einem **Namen** (`<app-card-thumb [name]="deck.commander" />`, `size="large"` für Ranglisten-Zeilen): **Wo ein Deckname steht, gehört das Bild seines Commanders dazu, wo eine einzelne Karte genannt wird, ihr Bild** (Wunsch des Users, 06.10.2026). Das Bild kommt gebündelt aus `card-image-lookup.service.ts` (eine Anfrage je Liste statt je Zeile, Sitzungs-Cache, Artwork-Sprache über `ScryfallService.findCardsBulk()`), Antippen öffnet die Kartenvorschau, ohne Treffer nimmt der Baustein keinen Platz ein. Neue Listen benutzen ihn, statt eine eigene Nachlade-Logik mitzubringen (ältere Stellen wie der Statistik-Tab haben ihre eigene und bleiben so).
+
+`print-search` sind die vier Suchfelder Künstler (`a:`), Artwork (`art:`), Flavortext (`ft:`) und Lore (`lore:`), zugeklappt eine Zeile - in der Kartensuche (`public-card-search`) und im Deck-Editor. Die Scryfall-Glieder baut `printSearchQuery()` in `scryfall.service.ts`; ist eines davon aktiv, sucht `searchCards()` mit `unique=art` (jedes Artwork einzeln) und **ohne** Tausch in die Artwork-Sprache, weil der genau das gesuchte Bild ersetzen würde. Im Deck-Editor kommt das Artwork des angetippten Treffers mit ins Deck.
 
 **Regel: bevor ein Diagramm, ein Filter, ein Menü oder eine Blätterfunktion neu gebaut wird, prüfen, ob es das hier schon gibt.**
 
@@ -184,6 +186,7 @@ Bei diesen Dateien grundsätzlich `grep`/`Glob` vor `Read`; wenn doch gelesen we
 | 1058   | `src/app/match-tab/match-tab.ts`                 |
 | 1154   | `src/app/profile-tab/profile-tab.ts`             |
 | 1901   | `src/app/deck-detail-view/deck-detail-view.html` |
+| 1030   | `src/app/scryfall.service.ts`                    |
 
 ### Reihenfolge beim Suchen
 

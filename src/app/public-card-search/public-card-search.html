@@ -44,6 +44,8 @@
         <option [ngValue]="k">{{ keywordFilterLabel(k) }}</option>
       }
     </select>
+
+    <app-print-search [value]="printSearch()" (valueChange)="onPrintSearchInput($event)" />
   </div>
 
   @if (hasActiveFilters()) {
@@ -75,7 +77,7 @@
     <p class="hint">{{ i18n.t('deckView.searching') }}</p>
   } @else if (gridResults().length > 0) {
     <div class="card-pick-grid">
-      @for (card of pagedGridResults(); track card.name) {
+      @for (card of pagedGridResults(); track card.imageUrl ?? card.name) {
         <div class="card-pick-tile" (click)="openPreview(card)">
           <div class="card-pick-image">
             @if (card.imageUrl) {

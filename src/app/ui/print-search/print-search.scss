@@ -1,0 +1,25 @@
+// Volle Breite in der umbrechenden Filterleiste - die vier Felder sollen nicht zwischen die
+// Auswahllisten rutschen.
+:host {
+  flex: 1 1 100%;
+  display: block;
+}
+
+.print-search-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+
+  .glass-input.small {
+    min-width: 0;
+    padding: 7px 10px;
+    min-height: 34px;
+    font-size: 0.85rem;
+  }
+}
+
+.print-search-hint {
+  margin: var(--sp-1) 0 0;
+  font-size: 0.75rem;
+}

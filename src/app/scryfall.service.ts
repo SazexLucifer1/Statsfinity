@@ -82,6 +82,43 @@ interface PartnerProfile {
 
 const API = 'https://api.scryfall.com';
 
+/**
+ * Suchfelder, die an einem Druck hängen statt an der Karte (Scryfall-Syntax in Klammern):
+ * Künstler (a:), Artwork-Tag aus Scryfalls Tagger (art:, beschreibt, was auf dem Bild zu sehen
+ * ist), Flavortext (ft:) und Lore (lore: - Name, Flavortext und Regeltext zusammen, wie Scryfalls
+ * „Lore Finder"). Leere Felder zählen nicht.
+ */
+export interface PrintSearch {
+  artist?: string;
+  artTag?: string;
+  flavor?: string;
+  lore?: string;
+}
+
+export const EMPTY_PRINT_SEARCH: PrintSearch = {};
+
+export function printSearchActive(search: PrintSearch | undefined): boolean {
+  return printSearchQuery(search).length > 0;
+}
+
+/** Die Scryfall-Glieder zu einer PrintSearch, ohne leere Felder. */
+export function printSearchQuery(search: PrintSearch | undefined): string[] {
+  if (!search) return [];
+  const text = (v: string | undefined) => v?.trim().replace(/"/g, '') ?? '';
+  // Tags schreibt Scryfall klein und mit Bindestrich ("full-moon"), getippt wird "full moon".
+  const tag = (search.artTag ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  const teile: string[] = [];
+  if (text(search.artist)) teile.push(`a:"${text(search.artist)}"`);
+  if (tag) teile.push(`art:${tag}`);
+  if (text(search.flavor)) teile.push(`ft:"${text(search.flavor)}"`);
+  if (text(search.lore)) teile.push(`lore:"${text(search.lore)}"`);
+  return teile;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ScryfallService {
   private readonly artLang = inject(ArtLanguageService);
@@ -520,6 +557,8 @@ export class ScryfallService {
       effectQuery?: string;
       /** Fähigkeits-Keyword wie "lifelink" oder "first strike" (native Scryfall-Abfrage, kein Tagger-Tag). */
       keyword?: string;
+      /** Suche nach Künstler, Artwork, Flavortext und Lore - siehe PrintSearch. */
+      print?: PrintSearch;
       /** Sortierung der Ergebnisliste - Default 'name' (alphabetisch), 'cmc' sortiert nach Manawert aufsteigend. */
       order?: 'name' | 'cmc';
       /** Default true (bestehendes Verhalten fürs Deck-Hinzufügen). false = auch Nicht-Commander-legale Karten (öffentliche Suche ohne Format-Bezug). */
@@ -533,8 +572,10 @@ export class ScryfallService {
   ): Promise<ScryfallCard[]> {
     const trimmed = query.trim();
     const creatureType = filters.creatureType?.trim();
+    const druckTeile = printSearchQuery(filters.print);
     if (
       !trimmed &&
+      druckTeile.length === 0 &&
       !filters.type &&
       !creatureType &&
       filters.cmc == null &&
@@ -572,14 +613,24 @@ export class ScryfallService {
     if (filters.colorIdentitySubset) {
       parts.push(filters.colorIdentitySubset.length > 0 ? `id<=${filters.colorIdentitySubset.join('')}` : 'id:c');
     }
+    parts.push(...druckTeile);
 
+    // Künstler, Artwork, Flavortext und Lore hängen am Druck, nicht an der Karte: dann jedes
+    // Artwork einzeln (unique=art) statt eines beliebigen Drucks je Karte - der stammte oft gar
+    // nicht vom gesuchten Künstler bzw. trug einen anderen Flavortext.
+    const nachBild = druckTeile.length > 0;
     const q = encodeURIComponent(parts.join(' '));
-    const res = await this.fetchWithRetry(`${API}/cards/search?q=${q}&unique=cards&order=${filters.order ?? 'name'}`);
+    const res = await this.fetchWithRetry(
+      `${API}/cards/search?q=${q}&unique=${nachBild ? 'art' : 'cards'}&order=${filters.order ?? 'name'}`
+    );
     if (!res?.ok) return [];
     const data = await res.json();
     // Scryfall liefert pro Seite ohnehin maximal 175 Treffer - keine zusätzliche Begrenzung nötig,
     // die Aufteilung in Seiten für die Anzeige übernimmt deck-edit.service.ts (pagedAddCardResults).
     const rohdaten = (data.data as any[]) ?? [];
+    // Kein Tausch in die Artwork-Sprache: Der sucht zum Namen irgendeinen Druck in dieser Sprache
+    // und ersetzte damit genau das Bild, nach dem gesucht wurde.
+    if (nachBild) return rohdaten.map((c) => this.toCard(c));
     return this.inKartensprache(
       rohdaten.map((c) => this.toCard(c)),
       rohdaten.map((c) => c.lang as string | undefined)
