@@ -56,6 +56,8 @@ export const search = {
     'publicSearch.placeholder': 'Kartenname eingeben …',
     'publicSearch.noResults': 'Keine Karte gefunden.',
     'publicSearch.resetFilters': 'Filter zurücksetzen',
+    'publicSearch.artistPlaceholder': 'Künstler, z. B. Rebecca Guay',
+    'publicSearch.artTagPlaceholder': 'Artwork (englisch), z. B. dragon',
 
     // --- Archetyp-/Kreaturtyp-Auswahl (Deck-Ansicht, öffentliches Stöbern) ---
     'commanderRec.anyArchetype': 'Archetyp: alle',
@@ -163,6 +165,8 @@ export const search = {
     'publicSearch.placeholder': 'Enter card name …',
     'publicSearch.noResults': 'No card found.',
     'publicSearch.resetFilters': 'Reset filters',
+    'publicSearch.artistPlaceholder': 'Artist, e.g. Rebecca Guay',
+    'publicSearch.artTagPlaceholder': 'Artwork, e.g. dragon',
 
     // --- Archetype/creature-type pickers (deck view, public deck browser) ---
     'commanderRec.anyArchetype': 'Archetype: any',

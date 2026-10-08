@@ -184,6 +184,7 @@ Bei diesen Dateien grundsätzlich `grep`/`Glob` vor `Read`; wenn doch gelesen we
 | 1058   | `src/app/match-tab/match-tab.ts`                 |
 | 1154   | `src/app/profile-tab/profile-tab.ts`             |
 | 1901   | `src/app/deck-detail-view/deck-detail-view.html` |
+| 1002   | `src/app/scryfall.service.ts`                    |
 
 ### Reihenfolge beim Suchen
 

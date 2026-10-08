@@ -39,6 +39,9 @@ export class PublicCardSearch {
 
   readonly typeFilter = signal<'all' | string>('all');
   readonly creatureTypeFilter = signal('');
+  /** Scryfalls Suche nach Künstler (a:) und nach dem, was auf dem Bild zu sehen ist (art:). */
+  readonly artistFilter = signal('');
+  readonly artTagFilter = signal('');
   readonly cmcFilter = signal<CmcFilterValue>('all');
   readonly colorFilter = signal<ColorSelection>(EMPTY_COLOR_SELECTION);
   readonly effectFilter = signal<'all' | string>('all');
@@ -133,6 +136,8 @@ export class PublicCardSearch {
     return (
       this.typeFilter() !== 'all' ||
       this.creatureTypeFilter().trim() !== '' ||
+      this.artistFilter().trim() !== '' ||
+      this.artTagFilter().trim() !== '' ||
       this.cmcFilter() !== 'all' ||
       this.colorFilter().colors.length > 0 ||
       this.effectFilter() !== 'all' ||
@@ -143,6 +148,8 @@ export class PublicCardSearch {
   resetFilters(): void {
     this.typeFilter.set('all');
     this.creatureTypeFilter.set('');
+    this.artistFilter.set('');
+    this.artTagFilter.set('');
     this.cmcFilter.set('all');
     this.colorFilter.set(EMPTY_COLOR_SELECTION);
     this.effectFilter.set('all');
@@ -159,6 +166,21 @@ export class PublicCardSearch {
     this.creatureTypeFilter.set(value);
     if (this.searchTimer) clearTimeout(this.searchTimer);
     this.searchTimer = setTimeout(() => this.runFilterSearch(), 300);
+  }
+
+  onArtistInput(value: string): void {
+    this.artistFilter.set(value);
+    this.debouncedFilterSearch();
+  }
+
+  onArtTagInput(value: string): void {
+    this.artTagFilter.set(value);
+    this.debouncedFilterSearch();
+  }
+
+  private debouncedFilterSearch(): void {
+    if (this.searchTimer) clearTimeout(this.searchTimer);
+    this.searchTimer = setTimeout(() => this.runFilterSearch(), 400);
   }
 
   setCmcFilter(value: CmcFilterValue): void {
@@ -203,6 +225,8 @@ export class PublicCardSearch {
       effectQuery:
         this.effectFilter() === 'all' ? undefined : this.effectFilters.find((f) => f.value === this.effectFilter())?.query,
       keyword: this.keywordFilter() === 'all' ? undefined : this.keywordFilter(),
+      artist: this.artistFilter().trim() || undefined,
+      artTag: this.artTagFilter().trim() || undefined,
       order: this.sortMode(),
       commanderOnly: false,
     });

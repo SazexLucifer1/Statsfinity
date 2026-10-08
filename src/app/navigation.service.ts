@@ -23,6 +23,9 @@ export class NavigationService {
   }
 
   goToTab(tab: AppTab): void {
+    // Ein neuer Tab beginnt oben: Sonst bliebe die Scrollhöhe des vorigen stehen, und man landete
+    // z.B. mitten im Profil, unterhalb des Postfachs mit den Freundesanfragen.
+    if (tab !== this.activeTab()) window.scrollTo(0, 0);
     this.activeTab.set(tab);
   }
 

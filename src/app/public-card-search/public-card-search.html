@@ -27,6 +27,22 @@
       (ngModelChange)="onCreatureTypeInput($event)"
     />
 
+    <input
+      class="glass-input small"
+      type="text"
+      [placeholder]="i18n.t('publicSearch.artistPlaceholder')"
+      [ngModel]="artistFilter()"
+      (ngModelChange)="onArtistInput($event)"
+    />
+
+    <input
+      class="glass-input small"
+      type="text"
+      [placeholder]="i18n.t('publicSearch.artTagPlaceholder')"
+      [ngModel]="artTagFilter()"
+      (ngModelChange)="onArtTagInput($event)"
+    />
+
     <app-cmc-filter [value]="cmcFilter()" (valueChange)="setCmcFilter($event)" />
 
     <app-color-filter [value]="colorFilter()" (valueChange)="setColorFilter($event)" />
@@ -75,7 +91,7 @@
     <p class="hint">{{ i18n.t('deckView.searching') }}</p>
   } @else if (gridResults().length > 0) {
     <div class="card-pick-grid">
-      @for (card of pagedGridResults(); track card.name) {
+      @for (card of pagedGridResults(); track card.imageUrl ?? card.name) {
         <div class="card-pick-tile" (click)="openPreview(card)">
           <div class="card-pick-image">
             @if (card.imageUrl) {

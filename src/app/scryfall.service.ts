@@ -520,6 +520,10 @@ export class ScryfallService {
       effectQuery?: string;
       /** Fähigkeits-Keyword wie "lifelink" oder "first strike" (native Scryfall-Abfrage, kein Tagger-Tag). */
       keyword?: string;
+      /** Künstlername (Scryfall a:), Teilwort genügt. Liefert dann jedes Artwork einzeln statt einer Karte je Name. */
+      artist?: string;
+      /** Artwork-Tag aus Scryfalls Tagger (art:), z.B. "dragon" oder "full-moon" - beschreibt, was auf dem Bild zu sehen ist. */
+      artTag?: string;
       /** Sortierung der Ergebnisliste - Default 'name' (alphabetisch), 'cmc' sortiert nach Manawert aufsteigend. */
       order?: 'name' | 'cmc';
       /** Default true (bestehendes Verhalten fürs Deck-Hinzufügen). false = auch Nicht-Commander-legale Karten (öffentliche Suche ohne Format-Bezug). */
@@ -533,8 +537,17 @@ export class ScryfallService {
   ): Promise<ScryfallCard[]> {
     const trimmed = query.trim();
     const creatureType = filters.creatureType?.trim();
+    const artist = filters.artist?.trim().replace(/"/g, '');
+    // Tags schreibt Scryfall klein und mit Bindestrich ("full-moon"), getippt wird "full moon".
+    const artTag = filters.artTag
+      ?.trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, '-')
+      .replace(/^-+|-+$/g, '');
     if (
       !trimmed &&
+      !artist &&
+      !artTag &&
       !filters.type &&
       !creatureType &&
       filters.cmc == null &&
@@ -572,14 +585,24 @@ export class ScryfallService {
     if (filters.colorIdentitySubset) {
       parts.push(filters.colorIdentitySubset.length > 0 ? `id<=${filters.colorIdentitySubset.join('')}` : 'id:c');
     }
+    if (artist) parts.push(`a:"${artist}"`);
+    if (artTag) parts.push(`art:${artTag}`);
 
+    // Wer nach Künstler oder Artwork sucht, meint das Bild: jedes Artwork einzeln (unique=art) statt
+    // eines beliebigen Drucks je Karte - der stammte oft gar nicht vom gesuchten Künstler.
+    const nachBild = !!artist || !!artTag;
     const q = encodeURIComponent(parts.join(' '));
-    const res = await this.fetchWithRetry(`${API}/cards/search?q=${q}&unique=cards&order=${filters.order ?? 'name'}`);
+    const res = await this.fetchWithRetry(
+      `${API}/cards/search?q=${q}&unique=${nachBild ? 'art' : 'cards'}&order=${filters.order ?? 'name'}`
+    );
     if (!res?.ok) return [];
     const data = await res.json();
     // Scryfall liefert pro Seite ohnehin maximal 175 Treffer - keine zusätzliche Begrenzung nötig,
     // die Aufteilung in Seiten für die Anzeige übernimmt deck-edit.service.ts (pagedAddCardResults).
     const rohdaten = (data.data as any[]) ?? [];
+    // Kein Tausch in die Artwork-Sprache: Der sucht zum Namen irgendeinen Druck in dieser Sprache
+    // und ersetzte damit genau das Bild, nach dem gesucht wurde.
+    if (nachBild) return rohdaten.map((c) => this.toCard(c));
     return this.inKartensprache(
       rohdaten.map((c) => this.toCard(c)),
       rohdaten.map((c) => c.lang as string | undefined)
