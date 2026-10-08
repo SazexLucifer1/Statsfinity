@@ -1,0 +1,23 @@
+<button
+  type="button"
+  class="glass-chip small print-search-toggle"
+  [class.active]="aktiv()"
+  [attr.aria-expanded]="offen()"
+  (click)="toggle()"
+>
+  {{ i18n.t('publicSearch.printSearch') }} {{ offen() ? '▾' : '▸' }}
+</button>
+@if (offen()) {
+  <div class="print-search-fields">
+    @for (f of felder; track f.key) {
+      <input
+        class="glass-input small"
+        type="text"
+        [placeholder]="i18n.t(f.placeholder)"
+        [value]="value()[f.key] ?? ''"
+        (input)="set(f.key, $any($event.target).value)"
+      />
+    }
+  </div>
+  <p class="hint print-search-hint">{{ i18n.t('publicSearch.printSearchHint') }}</p>
+}

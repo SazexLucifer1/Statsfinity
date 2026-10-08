@@ -27,22 +27,6 @@
       (ngModelChange)="onCreatureTypeInput($event)"
     />
 
-    <input
-      class="glass-input small"
-      type="text"
-      [placeholder]="i18n.t('publicSearch.artistPlaceholder')"
-      [ngModel]="artistFilter()"
-      (ngModelChange)="onArtistInput($event)"
-    />
-
-    <input
-      class="glass-input small"
-      type="text"
-      [placeholder]="i18n.t('publicSearch.artTagPlaceholder')"
-      [ngModel]="artTagFilter()"
-      (ngModelChange)="onArtTagInput($event)"
-    />
-
     <app-cmc-filter [value]="cmcFilter()" (valueChange)="setCmcFilter($event)" />
 
     <app-color-filter [value]="colorFilter()" (valueChange)="setColorFilter($event)" />
@@ -60,6 +44,8 @@
         <option [ngValue]="k">{{ keywordFilterLabel(k) }}</option>
       }
     </select>
+
+    <app-print-search [value]="printSearch()" (valueChange)="onPrintSearchInput($event)" />
   </div>
 
   @if (hasActiveFilters()) {

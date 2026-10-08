@@ -1,6 +1,13 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { DeckService, Deck, DeckCard } from './deck.service';
-import { ScryfallService, ScryfallCard, ScryfallPrinting } from './scryfall.service';
+import {
+  EMPTY_PRINT_SEARCH,
+  PrintSearch,
+  printSearchActive,
+  ScryfallService,
+  ScryfallCard,
+  ScryfallPrinting,
+} from './scryfall.service';
 import { CardDataService } from './card-data.service';
 import { AuthService } from './auth.service';
 import { I18nService } from './i18n.service';
@@ -31,6 +38,8 @@ export class DeckEditService {
   readonly addCardCmcFilter = signal<'all' | number>('all');
   readonly addCardEffectFilter = signal('all');
   readonly addCardKeywordFilter = signal('all');
+  /** Künstler, Artwork, Flavortext und Lore - wie in der Kartensuche. Ein Treffer bringt sein Artwork mit ins Deck. */
+  readonly addCardPrintSearch = signal<PrintSearch>(EMPTY_PRINT_SEARCH);
   /** Sortierung der Suchergebnisse - Default alphabetisch, 'cmc' sortiert nach Manawert aufsteigend. */
   readonly addCardSortMode = signal<'name' | 'cmc'>('name');
   readonly addCardResults = signal<ScryfallCard[]>([]);
@@ -443,6 +452,11 @@ export class DeckEditService {
     this.triggerAddCardSearch();
   }
 
+  onAddCardPrintSearchInput(value: PrintSearch): void {
+    this.addCardPrintSearch.set(value);
+    this.triggerAddCardSearch();
+  }
+
   setAddCardSortMode(value: 'name' | 'cmc'): void {
     this.addCardSortMode.set(value);
     this.triggerAddCardSearch();
@@ -457,6 +471,7 @@ export class DeckEditService {
     const cmc = this.addCardCmcFilter();
     const effect = this.addCardEffectFilter();
     const keyword = this.addCardKeywordFilter();
+    const print = this.addCardPrintSearch();
 
     if (
       !query.trim() &&
@@ -465,7 +480,8 @@ export class DeckEditService {
       colors.colors.length === 0 &&
       cmc === 'all' &&
       effect === 'all' &&
-      keyword === 'all'
+      keyword === 'all' &&
+      !printSearchActive(print)
     ) {
       this.addCardResults.set([]);
       this.addCardResultsPage.set(0);
@@ -487,6 +503,7 @@ export class DeckEditService {
             ? undefined
             : this.effects.effectFilters.find((f) => f.value === effect)?.query,
         keyword: keyword === 'all' ? undefined : keyword,
+        print,
         colorIdentitySubset: this.state.deckColorIdentitySubset(),
         order: this.addCardSortMode(),
         // Das Format aus dem Bearbeiten-Feld, nicht das gespeicherte: wer es gerade umstellt,
@@ -571,6 +588,7 @@ export class DeckEditService {
     this.addCardCmcFilter.set('all');
     this.addCardEffectFilter.set('all');
     this.addCardKeywordFilter.set('all');
+    this.addCardPrintSearch.set(EMPTY_PRINT_SEARCH);
     this.addCardSortMode.set('name');
     this.addCardToMaybeboard.set(false);
     this.addCardResults.set([]);

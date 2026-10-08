@@ -82,6 +82,43 @@ interface PartnerProfile {
 
 const API = 'https://api.scryfall.com';
 
+/**
+ * Suchfelder, die an einem Druck hängen statt an der Karte (Scryfall-Syntax in Klammern):
+ * Künstler (a:), Artwork-Tag aus Scryfalls Tagger (art:, beschreibt, was auf dem Bild zu sehen
+ * ist), Flavortext (ft:) und Lore (lore: - Name, Flavortext und Regeltext zusammen, wie Scryfalls
+ * „Lore Finder"). Leere Felder zählen nicht.
+ */
+export interface PrintSearch {
+  artist?: string;
+  artTag?: string;
+  flavor?: string;
+  lore?: string;
+}
+
+export const EMPTY_PRINT_SEARCH: PrintSearch = {};
+
+export function printSearchActive(search: PrintSearch | undefined): boolean {
+  return printSearchQuery(search).length > 0;
+}
+
+/** Die Scryfall-Glieder zu einer PrintSearch, ohne leere Felder. */
+export function printSearchQuery(search: PrintSearch | undefined): string[] {
+  if (!search) return [];
+  const text = (v: string | undefined) => v?.trim().replace(/"/g, '') ?? '';
+  // Tags schreibt Scryfall klein und mit Bindestrich ("full-moon"), getippt wird "full moon".
+  const tag = (search.artTag ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  const teile: string[] = [];
+  if (text(search.artist)) teile.push(`a:"${text(search.artist)}"`);
+  if (tag) teile.push(`art:${tag}`);
+  if (text(search.flavor)) teile.push(`ft:"${text(search.flavor)}"`);
+  if (text(search.lore)) teile.push(`lore:"${text(search.lore)}"`);
+  return teile;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ScryfallService {
   private readonly artLang = inject(ArtLanguageService);
@@ -520,10 +557,8 @@ export class ScryfallService {
       effectQuery?: string;
       /** Fähigkeits-Keyword wie "lifelink" oder "first strike" (native Scryfall-Abfrage, kein Tagger-Tag). */
       keyword?: string;
-      /** Künstlername (Scryfall a:), Teilwort genügt. Liefert dann jedes Artwork einzeln statt einer Karte je Name. */
-      artist?: string;
-      /** Artwork-Tag aus Scryfalls Tagger (art:), z.B. "dragon" oder "full-moon" - beschreibt, was auf dem Bild zu sehen ist. */
-      artTag?: string;
+      /** Suche nach Künstler, Artwork, Flavortext und Lore - siehe PrintSearch. */
+      print?: PrintSearch;
       /** Sortierung der Ergebnisliste - Default 'name' (alphabetisch), 'cmc' sortiert nach Manawert aufsteigend. */
       order?: 'name' | 'cmc';
       /** Default true (bestehendes Verhalten fürs Deck-Hinzufügen). false = auch Nicht-Commander-legale Karten (öffentliche Suche ohne Format-Bezug). */
@@ -537,17 +572,10 @@ export class ScryfallService {
   ): Promise<ScryfallCard[]> {
     const trimmed = query.trim();
     const creatureType = filters.creatureType?.trim();
-    const artist = filters.artist?.trim().replace(/"/g, '');
-    // Tags schreibt Scryfall klein und mit Bindestrich ("full-moon"), getippt wird "full moon".
-    const artTag = filters.artTag
-      ?.trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9-]+/g, '-')
-      .replace(/^-+|-+$/g, '');
+    const druckTeile = printSearchQuery(filters.print);
     if (
       !trimmed &&
-      !artist &&
-      !artTag &&
+      druckTeile.length === 0 &&
       !filters.type &&
       !creatureType &&
       filters.cmc == null &&
@@ -585,12 +613,12 @@ export class ScryfallService {
     if (filters.colorIdentitySubset) {
       parts.push(filters.colorIdentitySubset.length > 0 ? `id<=${filters.colorIdentitySubset.join('')}` : 'id:c');
     }
-    if (artist) parts.push(`a:"${artist}"`);
-    if (artTag) parts.push(`art:${artTag}`);
+    parts.push(...druckTeile);
 
-    // Wer nach Künstler oder Artwork sucht, meint das Bild: jedes Artwork einzeln (unique=art) statt
-    // eines beliebigen Drucks je Karte - der stammte oft gar nicht vom gesuchten Künstler.
-    const nachBild = !!artist || !!artTag;
+    // Künstler, Artwork, Flavortext und Lore hängen am Druck, nicht an der Karte: dann jedes
+    // Artwork einzeln (unique=art) statt eines beliebigen Drucks je Karte - der stammte oft gar
+    // nicht vom gesuchten Künstler bzw. trug einen anderen Flavortext.
+    const nachBild = druckTeile.length > 0;
     const q = encodeURIComponent(parts.join(' '));
     const res = await this.fetchWithRetry(
       `${API}/cards/search?q=${q}&unique=${nachBild ? 'art' : 'cards'}&order=${filters.order ?? 'name'}`

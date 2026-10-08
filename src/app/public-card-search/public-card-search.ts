@@ -1,6 +1,13 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { CardSuggestion, ScryfallCard, ScryfallService } from '../scryfall.service';
+import {
+  CardSuggestion,
+  EMPTY_PRINT_SEARCH,
+  PrintSearch as PrintSearchValue,
+  printSearchActive,
+  ScryfallCard,
+  ScryfallService,
+} from '../scryfall.service';
 import { CardPreviewService } from '../card-preview.service';
 import { I18nService } from '../i18n.service';
 import { CardImage } from '../card-image/card-image';
@@ -8,6 +15,7 @@ import { CARD_EFFECT_FILTERS } from '../card-effect-filters';
 import { ColorFilter } from '../ui/color-filter/color-filter';
 import { ColorSelection, EMPTY_COLOR_SELECTION } from '../color-filter-match';
 import { CmcFilter, CmcFilterValue } from '../ui/cmc-filter/cmc-filter';
+import { PrintSearch } from '../ui/print-search/print-search';
 
 /**
  * Öffentliche Kartensuche - ohne Account nutzbar (Fan-Content-Policy). Nutzt bewusst
@@ -19,7 +27,7 @@ import { CmcFilter, CmcFilterValue } from '../ui/cmc-filter/cmc-filter';
  */
 @Component({
   selector: 'app-public-card-search',
-  imports: [FormsModule, CardImage, ColorFilter, CmcFilter],
+  imports: [FormsModule, CardImage, ColorFilter, CmcFilter, PrintSearch],
   templateUrl: './public-card-search.html',
   styleUrl: './public-card-search.scss',
 })
@@ -39,9 +47,8 @@ export class PublicCardSearch {
 
   readonly typeFilter = signal<'all' | string>('all');
   readonly creatureTypeFilter = signal('');
-  /** Scryfalls Suche nach Künstler (a:) und nach dem, was auf dem Bild zu sehen ist (art:). */
-  readonly artistFilter = signal('');
-  readonly artTagFilter = signal('');
+  /** Künstler, Artwork, Flavortext und Lore - siehe PrintSearch in scryfall.service.ts. */
+  readonly printSearch = signal<PrintSearchValue>(EMPTY_PRINT_SEARCH);
   readonly cmcFilter = signal<CmcFilterValue>('all');
   readonly colorFilter = signal<ColorSelection>(EMPTY_COLOR_SELECTION);
   readonly effectFilter = signal<'all' | string>('all');
@@ -136,8 +143,7 @@ export class PublicCardSearch {
     return (
       this.typeFilter() !== 'all' ||
       this.creatureTypeFilter().trim() !== '' ||
-      this.artistFilter().trim() !== '' ||
-      this.artTagFilter().trim() !== '' ||
+      printSearchActive(this.printSearch()) ||
       this.cmcFilter() !== 'all' ||
       this.colorFilter().colors.length > 0 ||
       this.effectFilter() !== 'all' ||
@@ -148,8 +154,7 @@ export class PublicCardSearch {
   resetFilters(): void {
     this.typeFilter.set('all');
     this.creatureTypeFilter.set('');
-    this.artistFilter.set('');
-    this.artTagFilter.set('');
+    this.printSearch.set(EMPTY_PRINT_SEARCH);
     this.cmcFilter.set('all');
     this.colorFilter.set(EMPTY_COLOR_SELECTION);
     this.effectFilter.set('all');
@@ -168,17 +173,8 @@ export class PublicCardSearch {
     this.searchTimer = setTimeout(() => this.runFilterSearch(), 300);
   }
 
-  onArtistInput(value: string): void {
-    this.artistFilter.set(value);
-    this.debouncedFilterSearch();
-  }
-
-  onArtTagInput(value: string): void {
-    this.artTagFilter.set(value);
-    this.debouncedFilterSearch();
-  }
-
-  private debouncedFilterSearch(): void {
+  onPrintSearchInput(value: PrintSearchValue): void {
+    this.printSearch.set(value);
     if (this.searchTimer) clearTimeout(this.searchTimer);
     this.searchTimer = setTimeout(() => this.runFilterSearch(), 400);
   }
@@ -225,8 +221,7 @@ export class PublicCardSearch {
       effectQuery:
         this.effectFilter() === 'all' ? undefined : this.effectFilters.find((f) => f.value === this.effectFilter())?.query,
       keyword: this.keywordFilter() === 'all' ? undefined : this.keywordFilter(),
-      artist: this.artistFilter().trim() || undefined,
-      artTag: this.artTagFilter().trim() || undefined,
+      print: this.printSearch(),
       order: this.sortMode(),
       commanderOnly: false,
     });
