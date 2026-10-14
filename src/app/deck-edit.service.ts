@@ -153,6 +153,12 @@ export class DeckEditService {
     this.state.pendingMaybeboardChanges.update((map) =>
       new Map(map).set(card.cardName.toLowerCase(), !card.isMaybeboard),
     );
+    // Gegenstück zu toggleCommanderMark(): Wer ins Maybeboard wandert, ist kein Commander mehr.
+    if (!card.isMaybeboard && card.isCommander) {
+      this.state.pendingCommanderChanges.update((map) =>
+        new Map(map).set(card.cardName.toLowerCase(), false),
+      );
+    }
   }
 
   readonly tokenScanBusy = signal(false);
@@ -233,6 +239,13 @@ export class DeckEditService {
     this.state.pendingCommanderChanges.update((map) =>
       new Map(map).set(card.cardName.toLowerCase(), true),
     );
+    // Ein Commander im Maybeboard zählt in keiner Analyse mit (Combos, Kartenzahl, Bannliste) -
+    // die Markierung holt ihn deshalb ins Deck.
+    if (card.isMaybeboard) {
+      this.state.pendingMaybeboardChanges.update((map) =>
+        new Map(map).set(card.cardName.toLowerCase(), false),
+      );
+    }
   }
 
   // Artwork/Edition einer Karte wechseln (Bearbeitungsmodus)

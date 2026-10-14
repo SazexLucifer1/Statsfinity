@@ -206,6 +206,14 @@ describe('DeckService.parseDecklistText', () => {
     expect(byName.get('Sol Ring')?.collectorNumber).toBe('263');
     expect(byName.get('Duress')?.isMaybeboard).toBe(true);
   });
+
+  it('holt einen als Commander markierten Sideboard-Eintrag ins Deck', () => {
+    const parsed = service.parseDecklistText('1 Sol Ring\nSB: 1 Smaug the Impenetrable *CMDR*');
+    const smaug = parsed.find((p) => p.name === 'Smaug the Impenetrable');
+
+    expect(smaug?.isCommander).toBe(true);
+    expect(smaug?.isMaybeboard).toBe(false);
+  });
 });
 
 describe('DeckService.parseDecklistText - aus der Deck-Ansicht kopiert', () => {

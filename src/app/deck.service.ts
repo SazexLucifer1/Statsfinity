@@ -786,6 +786,12 @@ export class DeckService {
       }
     }
 
+    // Eine Commander-Zeile im Sideboard-/Maybeboard-Abschnitt gehört trotzdem ins Deck - sonst
+    // zählt der Commander in keiner Analyse mit (Combos, Kartenzahl, Bannliste).
+    for (const entry of merged.values()) {
+      if (entry.isCommander) entry.isMaybeboard = false;
+    }
+
     return [...merged.values()];
   }
 
