@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { DeckService, deckKopieName } from './deck.service';
+import { DeckCard, DeckService, deckKopieName, deckListAsText } from './deck.service';
 
 /** Gekürzter, aber formattreuer Ausschnitt eines deckstats.net-Exports (Kategorie-Kommentare, Set-Kürzel, Maybeboard am Ende). */
 const DECKSTATS_EXPORT = `//Commander
@@ -213,6 +213,43 @@ describe('DeckService.parseDecklistText', () => {
 
     expect(smaug?.isCommander).toBe(true);
     expect(smaug?.isMaybeboard).toBe(false);
+  });
+});
+
+describe('deckListAsText - Export für Moxfield & Co.', () => {
+  const karte = (cardName: string, extra: Partial<DeckCard> = {}) => ({
+    cardName,
+    quantity: 1,
+    isCommander: false,
+    isMaybeboard: false,
+    isToken: false,
+    ...extra,
+  });
+  const karten = [
+    karte('Sol Ring'),
+    karte('Mountain', { quantity: 5 }),
+    karte('Smaug the Impenetrable', { isCommander: true }),
+    karte('Dizzying Gaze', { isMaybeboard: true }),
+    karte('Treasure', { isToken: true }),
+  ];
+
+  it('schreibt Commander und Deck als Abschnitte, ohne Maybeboard und Marken', () => {
+    expect(deckListAsText(karten)).toBe(
+      'Commander\n1 Smaug the Impenetrable\n\nDeck\n5 Mountain\n1 Sol Ring',
+    );
+  });
+
+  it('lässt den Commander-Abschnitt weg, wenn das Deck keinen hat', () => {
+    expect(deckListAsText([karte('Sol Ring')])).toBe('Deck\n1 Sol Ring');
+  });
+
+  it('übersteht den Weg zurück durch den eigenen Import', () => {
+    const parsed = TestBed.inject(DeckService).parseDecklistText(deckListAsText(karten));
+    expect(parsed.map((p) => [p.name, p.quantity, p.isCommander, p.isMaybeboard])).toEqual([
+      ['Smaug the Impenetrable', 1, true, false],
+      ['Mountain', 5, false, false],
+      ['Sol Ring', 1, false, false],
+    ]);
   });
 });
 

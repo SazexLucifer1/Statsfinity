@@ -943,3 +943,12 @@
     }
   }
 }
+
+/* Text-Export: Monospace, damit Anzahl und Name sauber untereinander stehen. */
+.text-export {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: ui-monospace, monospace;
+  font-size: 0.85rem;
+  resize: vertical;
+}

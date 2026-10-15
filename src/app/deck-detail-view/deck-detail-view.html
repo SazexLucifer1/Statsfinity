@@ -526,6 +526,9 @@
           <button class="glass-button" [disabled]="viewer.analysis.analysisBusy()" (click)="openPdfExport()">
             {{ viewer.i18n.t('deckView.asPdf') }}
           </button>
+          <button class="glass-button" (click)="openTextExport()">
+            {{ viewer.i18n.t('deckView.asText') }}
+          </button>
           @if (viewer.state.canEditViewingDeck()) {
             <button class="glass-button" (click)="reimportDecklist()">{{ viewer.i18n.t('deckView.reimportList') }}</button>
             <button
@@ -1621,6 +1624,21 @@
       <button class="glass-button" (click)="viewer.effects.closeEffectCategoryPopup()">
         {{ viewer.i18n.t('deckView.done') }}
       </button>
+    </div>
+  </div>
+}
+
+@if (exportText(); as text) {
+  <!-- Bewusst außerhalb von .deck-detail-page - gleicher Grund wie beim Artwork-Dialog oben. -->
+  <div class="options-menu-overlay" (click)="exportText.set(null)">
+    <div class="options-menu-sheet wide" (click)="$event.stopPropagation()">
+      <h3>{{ viewer.i18n.t('deckView.textExportTitle') }}</h3>
+      <p class="hint">{{ viewer.i18n.t('deckView.textExportHint') }}</p>
+      <textarea class="glass-input text-export" readonly rows="12" [value]="text" (focus)="$any($event.target).select()"></textarea>
+      <button class="glass-button primary" (click)="copyExportText()">
+        {{ viewer.i18n.t(exportCopied() ? 'deckView.textExportCopied' : 'deckView.textExportCopy') }}
+      </button>
+      <button class="glass-button" (click)="exportText.set(null)">{{ viewer.i18n.t('common.close') }}</button>
     </div>
   </div>
 }

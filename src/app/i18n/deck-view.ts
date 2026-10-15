@@ -51,6 +51,12 @@ export const deckView = {
     'deckView.edit': 'Bearbeiten',
     'deckView.history': 'Verlauf',
     'deckView.asPdf': 'Als PDF',
+    'deckView.asText': 'Als Text exportieren',
+    'deckView.textExportTitle': 'Deckliste als Text',
+    'deckView.textExportHint':
+      'Zum Einfügen beim Import in Moxfield, Archidekt & Co. Commander und Deck stehen getrennt, Maybeboard und Marken sind nicht dabei.',
+    'deckView.textExportCopy': 'Kopieren',
+    'deckView.textExportCopied': 'Kopiert ✓',
     'deckView.reimportList': 'Kartenliste neu einfügen',
     'deckView.noChangesLogYet': 'Noch keine Änderungen an diesem Deck.',
     'deckView.noAddedCardsInGroup':
@@ -512,6 +518,12 @@ export const deckView = {
     'deckView.edit': 'Edit',
     'deckView.history': 'History',
     'deckView.asPdf': 'As PDF',
+    'deckView.asText': 'Export as text',
+    'deckView.textExportTitle': 'Decklist as text',
+    'deckView.textExportHint':
+      'Paste it into the import of Moxfield, Archidekt & co. Commander and deck are separate, maybeboard and tokens are left out.',
+    'deckView.textExportCopy': 'Copy',
+    'deckView.textExportCopied': 'Copied ✓',
     'deckView.reimportList': 'Re-paste card list',
     'deckView.noChangesLogYet': 'No changes to this deck yet.',
     'deckView.noAddedCardsInGroup': 'This edit only removed cards - nothing to print.',

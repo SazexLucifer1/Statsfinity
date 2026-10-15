@@ -437,6 +437,28 @@ function commanderMetadataFrom(
   };
 }
 
+/**
+ * Deckliste als Text zum Einfügen in Moxfield, Archidekt & Co. (Import per Text): das Arena-Format
+ * mit den Abschnitten "Commander" und "Deck", je Zeile "Anzahl Name". Das verstehen die gängigen
+ * Seiten und auch der eigene Import (parseDecklistText). Maybeboard und Marken bleiben draußen -
+ * die Seiten legen unbekannte Abschnitte sonst ins Sideboard oder mitten ins Deck.
+ */
+export function deckListAsText(
+  cards: Pick<DeckCard, 'cardName' | 'quantity' | 'isCommander' | 'isMaybeboard' | 'isToken'>[],
+): string {
+  const zeilen = (liste: typeof cards) =>
+    [...liste]
+      .sort((a, b) => a.cardName.localeCompare(b.cardName))
+      .map((c) => `${c.quantity} ${c.cardName}`);
+  const commander = cards.filter((c) => c.isCommander);
+  const deck = cards.filter((c) => !c.isCommander && !c.isMaybeboard && !c.isToken);
+
+  const abschnitte: string[] = [];
+  if (commander.length > 0) abschnitte.push(['Commander', ...zeilen(commander)].join('\n'));
+  abschnitte.push(['Deck', ...zeilen(deck)].join('\n'));
+  return abschnitte.join('\n\n');
+}
+
 /** Erkennt eine bereits nummerierte Fassung am Ende des Decknamens ("Atraxa (2)"). */
 const VERSIONS_SUFFIX = /\s*\((\d+)\)\s*$/;
 
