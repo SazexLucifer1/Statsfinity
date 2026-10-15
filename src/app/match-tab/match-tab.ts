@@ -276,6 +276,8 @@ export class MatchTab {
       ownerName?: string;
       commanderName?: string;
       commanderImageUrl?: string | null;
+      /** Nur bei fremden privaten Decks: deren Karten sind nicht lesbar, selectDeck() nimmt diese. */
+      privateCommanders?: string[];
       createdAt: string;
       preconReleaseYear: number | null;
       /** Nur fuer das Bracket-Abzeichen - siehe storedDeckBracket() in bracket.ts. */
@@ -381,19 +383,9 @@ export class MatchTab {
     this.deckPickerSearchQuery.set('');
     this.deckPickerYearFilter.set(null);
 
-    const decks = await this.deckService.loadDecksForOwner(owner);
-    const options = decks.map((d) => ({
-      deckId: d.id,
-      deckName: d.name,
-      isPrecon: d.isPrecon,
-      createdAt: d.createdAt,
-      preconReleaseYear: d.preconReleaseYear,
-      format: d.format,
-      bracket: d.bracket,
-      bracketAuto: d.bracketAuto,
-    }));
+    const options = await this.deckOptionsFor(owner);
     this.deckPickerOptions.set(options);
-    if (decks.length === 0) {
+    if (options.length === 0) {
       this.deckPickerMessage.set(this.i18n.t('match.msg.noOwnDecksImported'));
     }
     this.deckPickerBusy.set(false);
@@ -433,20 +425,9 @@ export class MatchTab {
     const userId = this.mtg.playerUserIds()[owner];
     const playerId = this.mtg.playerIdFor(owner);
     const deckOwner: DeckOwner = userId ? { kind: 'user', userId } : { kind: 'player', playerId: playerId! };
-    const decks = await this.deckService.loadDecksForOwner(deckOwner);
-    const options = decks.map((d) => ({
-      deckId: d.id,
-      deckName: d.name,
-      isPrecon: d.isPrecon,
-      ownerName: owner,
-      createdAt: d.createdAt,
-      preconReleaseYear: d.preconReleaseYear,
-      format: d.format,
-      bracket: d.bracket,
-      bracketAuto: d.bracketAuto,
-    }));
+    const options = await this.deckOptionsFor(deckOwner, owner);
     this.deckPickerOptions.set(options);
-    if (decks.length === 0) {
+    if (options.length === 0) {
       this.deckPickerMessage.set(this.i18n.t('match.msg.noOwnDecksImported'));
     }
     this.deckPickerBusy.set(false);
@@ -472,6 +453,48 @@ export class MatchTab {
     this.deckPickerCards.set({});
     this.deckPickerSearchQuery.set('');
     this.deckPickerYearFilter.set(null);
+  }
+
+  /**
+   * Decks eines Spielers für die Auswahl: die sichtbaren plus seine privaten. Private fremde Decks
+   * kommen ohne Kartenliste (sql/private-decks-im-match-2026-10-15.sql) - auswählbar, aber nicht
+   * einsehbar; nach dem ersten gespeicherten Match macht die Datenbank sie öffentlich.
+   */
+  private async deckOptionsFor(owner: DeckOwner, ownerName?: string) {
+    const [decks, privat] = await Promise.all([
+      this.deckService.loadDecksForOwner(owner),
+      this.deckService.loadPrivateMatchDecks(owner),
+    ]);
+    const options: ReturnType<typeof this.deckPickerOptions>[number][] = decks.map((d) => ({
+      deckId: d.id,
+      deckName: d.name,
+      isPrecon: d.isPrecon,
+      ownerName,
+      createdAt: d.createdAt,
+      preconReleaseYear: d.preconReleaseYear,
+      format: d.format,
+      bracket: d.bracket,
+      bracketAuto: d.bracketAuto,
+    }));
+    const bekannt = new Set(options.map((o) => o.deckId));
+    for (const d of privat) {
+      if (bekannt.has(d.id)) continue;
+      options.push({
+        deckId: d.id,
+        deckName: d.name,
+        isPrecon: d.isPrecon,
+        ownerName,
+        commanderName: d.commanders[0]?.name,
+        commanderImageUrl: d.commanders[0]?.imageUrl ?? null,
+        privateCommanders: d.commanders.map((c) => c.name),
+        createdAt: d.createdAt,
+        preconReleaseYear: d.preconReleaseYear,
+        format: d.format,
+        bracket: d.bracket,
+        bracketAuto: d.bracketAuto,
+      });
+    }
+    return options;
   }
 
   /** Lädt den hinterlegten Commander je Deck (inkl. individuell gewähltem Artwork) und lädt fehlende Bilder per Scryfall nach, damit die Deck-Auswahl Vorschaubilder statt nur Namen zeigt. */
@@ -541,7 +564,11 @@ export class MatchTab {
     if (!playerName) return;
 
     const cards = await this.deckService.loadDeckCards(deckId);
-    const commanders = cards.filter((c) => c.isCommander);
+    let commanders = cards.filter((c) => c.isCommander).map((c) => c.cardName);
+    // Fremdes privates Deck: Karten nicht lesbar, die Commander kamen mit der Auswahl.
+    if (commanders.length === 0) {
+      commanders = this.deckPickerOptions().find((o) => o.deckId === deckId)?.privateCommanders ?? [];
+    }
 
     if (commanders.length === 0) {
       this.deckPickerMessage.set(this.i18n.t('match.msg.noCommanderInDeck'));
@@ -552,13 +579,13 @@ export class MatchTab {
       this.commanderDraft.update((draft) => ({
         ...draft,
         [playerName]: {
-          commander: commanders[0].cardName,
-          partnerCommander: commanders[1]?.cardName ?? null,
+          commander: commanders[0],
+          partnerCommander: commanders[1] ?? null,
           deckId,
         },
       }));
     } else {
-      this.session.assignDeck(playerName, deckId, commanders[0].cardName, commanders[1]?.cardName);
+      this.session.assignDeck(playerName, deckId, commanders[0], commanders[1]);
     }
     this.closeDeckPicker();
   }
