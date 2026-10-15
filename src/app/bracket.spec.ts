@@ -153,7 +153,7 @@ describe('bracket - Urteil A: offizielle Ausschlusskriterien', () => {
     });
     const { level, reasons } = rulesVerdict(input);
     expect(level).toBe(3);
-    expect(reasons.map((r) => r.key)).toEqual(['comboLate', 'comboRuthless']);
+    expect(reasons.map((r) => r.key)).toEqual(['comboLate']);
   });
 
   it('hebt auch milde benotete Combos (E/C/O) auf Bracket 3 - Bracket 2 erlaubt keine', () => {
@@ -540,7 +540,7 @@ describe('bracket - Urteil E: Kartenwert', () => {
     expect(analyse.verdicts.price).toBe(188.42);
   });
 
-  it('lässt die anderen Befunde daneben stehen, statt sie zu verdrängen', () => {
+  it('nennt den Preis nicht, wenn ein anderer Befund die Stufe schon trägt', () => {
     const analyse = analyzeBracket(
       basis({
         cards: [karte('Armageddon'), karte('Forest')],
@@ -549,7 +549,7 @@ describe('bracket - Urteil E: Kartenwert', () => {
       }),
     );
 
-    expect(analyse.reasons.map((r) => r.key)).toEqual(['massLandDenial', 'price']);
+    expect(analyse.reasons.map((r) => r.key)).toEqual(['massLandDenial']);
     // Der Preis ist eine Untergrenze, keine Obergrenze - Bracket 4 aus Urteil A bleibt stehen.
     expect(analyse.bracket).toBe(4);
   });

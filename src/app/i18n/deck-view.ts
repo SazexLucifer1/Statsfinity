@@ -262,8 +262,6 @@ export const deckView = {
     'deckView.bracketReason.gameChangerMany': 'Vier oder mehr Game Changer',
     'deckView.bracketReason.gameChangerFew': 'Ein bis drei Game Changer',
     'deckView.bracketReason.extraTurnLoop': 'Extra-Turn-Schleife (Combo mit Extra-Zug-Karte)',
-    'deckView.bracketReason.comboRuthless':
-      'Davon von Spellbook als brutal benotet – nur ein Hinweis, die Stufe richtet sich nach dem Zug',
     'deckView.bracketReason.comboFast':
       'Zwei-Karten-Combo, schon in Zug {{turn}} möglich – Bracket 3 erlaubt sie erst ab Zug 6',
     'deckView.bracketReason.comboLate':
@@ -726,8 +724,6 @@ export const deckView = {
     'deckView.bracketReason.gameChangerMany': 'Four or more Game Changers',
     'deckView.bracketReason.gameChangerFew': 'One to three Game Changers',
     'deckView.bracketReason.extraTurnLoop': 'Extra-turn loop (combo with an extra-turn card)',
-    'deckView.bracketReason.comboRuthless':
-      'Of these, rated ruthless by Spellbook – just a note, the bracket follows the turn',
     'deckView.bracketReason.comboFast':
       'Two-card combo, possible as early as turn {{turn}} – Bracket 3 only allows it from turn 6',
     'deckView.bracketReason.comboLate':

@@ -106,7 +106,6 @@ export type BracketReasonKey =
   | 'gameChangerMany'
   | 'gameChangerFew'
   | 'extraTurnLoop'
-  | 'comboRuthless'
   | 'comboFast'
   | 'comboLate'
   | 'price'
@@ -329,12 +328,8 @@ export function rulesVerdict(input: BracketInput): {
     });
   }
 
-  // Spellbooks Note "ruthless" bleibt als Hinweis sichtbar, hebt aber nicht mehr selbst an - die
-  // Combo steht ohnehin schon unter comboFast oder comboLate.
-  const ruthless = normal.filter((c) => c.combo.bracketTag === 'R');
-  if (ruthless.length > 0) {
-    reasons.push({ key: 'comboRuthless', minimum: 3, cards: comboNamen(ruthless) });
-  }
+  // Spellbooks Note "ruthless" hebt nicht an und steht seit 15.10.2026 auch nicht mehr als Hinweis
+  // da (Wunsch des Users) - über die Stufe entscheidet der Zug.
 
   const level = reasons.reduce<BracketLevel>((hoechstes, r) => maxLevel(hoechstes, r.minimum), 2);
   if (reasons.length === 0) reasons.push({ key: 'nothing', minimum: 2, cards: [] });
@@ -569,7 +564,9 @@ export function analyzeBracket(input: BracketInput): BracketAnalysis {
   const lift = spellbookLift(spellbook);
   let bracket = lift === null ? rules : maxLevel(rules, lift);
 
-  if (price !== null) {
+  // Der Preis steht nur da, wenn ER die Stufe treibt (Wunsch des Users, 15.10.2026): Liegt das Deck
+  // aus anderen Gründen schon so hoch, wäre "teuer" nur Rauschen neben dem eigentlichen Grund.
+  if (price !== null && price > bracket) {
     // Der Preis IST ein Befund - "nichts gefunden" wäre daneben, wenn er gerade die Stufe treibt.
     const nichtsGefunden = reasons.findIndex((r) => r.key === 'nothing');
     if (nichtsGefunden >= 0) reasons.splice(nichtsGefunden, 1);
