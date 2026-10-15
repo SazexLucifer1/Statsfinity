@@ -298,7 +298,7 @@ export class DeckAnalysisService {
    * (analysisCombos bevorzugt für die Anzeige die Live-Daten).
    */
   readonly spellbookCombos = signal<SpellbookTwoCardCombo[]>([]);
-  /** Spielbeendende Combos, vollständig im Deck (Urteil F), 0 solange nicht geladen. */
+  /** Spielbeendende Combos, vollständig im Deck (Win Cons im Deck-Check), 0 solange nicht geladen. */
   readonly winningCombos = signal(0);
 
   /**

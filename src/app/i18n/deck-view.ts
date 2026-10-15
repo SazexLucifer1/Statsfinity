@@ -253,8 +253,6 @@ export const deckView = {
       'Sehr hoch bewertet – falls das ein cEDH-Deck ist, stell Bracket 5 von Hand ein.',
     'deckView.bracketReasonHeading': 'Was die Stufe treibt',
     'deckView.bracketReason.massLandDenial': 'Mass Land Denial im Deck',
-    'deckView.bracketReason.comboAndTutors':
-      'Spielbeendende Combo im Deck und mindestens {{tutors}} Tutoren – Decks mit dieser Verbindung spielen fast immer Bracket 4 oder 5 (gemessen an Decks mit selbst gewähltem Bracket)',
     'deckView.bracketReason.gameChangerMany': 'Vier oder mehr Game Changer',
     'deckView.bracketReason.gameChangerFew': 'Ein bis drei Game Changer',
     'deckView.bracketReason.extraTurnLoop': 'Extra-Turn-Schleife (Combo mit Extra-Zug-Karte)',
@@ -713,8 +711,6 @@ export const deckView = {
     'deckView.bracketCedhHint': 'Rated very high – if this is a cEDH deck, set Bracket 5 manually.',
     'deckView.bracketReasonHeading': 'What drives the bracket',
     'deckView.bracketReason.massLandDenial': 'Mass land denial in the deck',
-    'deckView.bracketReason.comboAndTutors':
-      'Game-ending combo in the deck plus at least {{tutors}} tutors – decks with this combination almost always play bracket 4 or 5 (measured on decks with a self-chosen bracket)',
     'deckView.bracketReason.gameChangerMany': 'Four or more Game Changers',
     'deckView.bracketReason.gameChangerFew': 'One to three Game Changers',
     'deckView.bracketReason.extraTurnLoop': 'Extra-turn loop (combo with an extra-turn card)',

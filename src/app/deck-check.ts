@@ -106,8 +106,8 @@ export const WINCON_TARGET = 3;
  * Wann ein Combo-Ergebnis von Commander Spellbook ein Sieg ist - die WEITE Sieg-Definition aus
  * `spellbook_winning_combo_muster()` (sql/sieg-definition-breit-2026-09-17.sql) plus
  * "lifeloss": So schreibt Spellbook den unendlichen Lebensverlust ("Infinite lifeloss"), und genau
- * das fehlt dem SQL-Muster, das nur "loss of life" kennt. Die SQL-Fassung (Urteil F, Bracket)
- * bleibt bewusst unverändert, weil deren Schwellen an ihr geeicht sind.
+ * das fehlt dem SQL-Muster, das nur "loss of life" kennt. Die SQL-Fassung bleibt bewusst
+ * unverändert, weil der Bracket-Benchmark an ihr geeicht ist.
  */
 const WIN_RESULT =
   /win the game|(opponent|player)[^,]{0,40}loses? the game|(near-)?infinite[^,]{0,30}(damage|mill|turns|combat phases|storm count|loss of life|lifeloss|poison)|cast all spells in your library/i;

@@ -374,6 +374,19 @@ function blockRoles(lines: string[]): Map<number, 'commander' | 'sideboard'> {
   return roles;
 }
 
+/** Privates Deck in der Match-Auswahl (siehe DeckService.loadPrivateMatchDecks()). */
+export interface PrivateMatchDeck {
+  id: string;
+  name: string;
+  format: string | null;
+  isPrecon: boolean;
+  preconReleaseYear: number | null;
+  createdAt: string;
+  bracket: number | null;
+  bracketAuto: number | null;
+  commanders: { name: string; imageUrl: string | null }[];
+}
+
 /** Eine geparste Decklist-Zeile (siehe DeckService.parseDecklistText()). */
 export interface ParsedDecklistEntry {
   name: string;
@@ -1798,6 +1811,44 @@ export class DeckService {
       });
     }
     return result;
+  }
+
+  /** Fehlt sql/private-decks-im-match-2026-10-15.sql, nach dem ersten Versuch gar nicht mehr fragen. */
+  private static privateMatchDecksVerfuegbar = true;
+
+  /**
+   * Private Decks eines Mitspielers für die Match-Auswahl (match_deck_choices()): nur Name,
+   * Format, Bracket und Commander, nie die Kartenliste - auswählbar, aber nicht einsehbar. Die
+   * eigenen privaten Decks liefert loadDecksForOwner() ohnehin, die Funktion sie nochmal.
+   */
+  async loadPrivateMatchDecks(owner: DeckOwner): Promise<PrivateMatchDeck[]> {
+    if (!DeckService.privateMatchDecksVerfuegbar) return [];
+    const { data, error } = await supabase.rpc('match_deck_choices', {
+      p_user_id: owner.kind === 'user' ? owner.userId : null,
+      p_player_id: owner.kind === 'player' ? owner.playerId : null,
+    });
+    if (error) {
+      if (error.code === 'PGRST202' || error.code === '42883') {
+        DeckService.privateMatchDecksVerfuegbar = false;
+      } else {
+        console.error('Konnte private Decks für die Auswahl nicht laden:', error);
+      }
+      return [];
+    }
+    return ((data ?? []) as any[]).map((row) => ({
+      id: row.id,
+      name: row.name,
+      format: row.format,
+      isPrecon: row.is_precon ?? false,
+      preconReleaseYear: row.precon_release_year ?? null,
+      createdAt: row.created_at,
+      bracket: row.bracket ?? null,
+      bracketAuto: row.bracket_auto ?? null,
+      commanders: ((row.commanders ?? []) as any[]).map((c) => ({
+        name: c.name as string,
+        imageUrl: (c.image_url as string | null) ?? null,
+      })),
+    }));
   }
 
   /**
