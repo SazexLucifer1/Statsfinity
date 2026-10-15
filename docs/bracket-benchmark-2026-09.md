@@ -63,6 +63,9 @@ Befunde:
 
 ## Grundlage von Urteil F (Combo + mindestens 2 Tutoren ⇒ mindestens Bracket 4)
 
+> **Am 15.10.2026 aus der App entfernt** (Entscheidung des Users): Combo und Tutoren sagen, wie stark
+> ein Deck in seinem Bracket ist, nicht in welchem. Die Zahlen bleiben hier als Messung stehen.
+
 Verteilung der Decks mit **beiden** Merkmalen über die angegebenen Stufen:
 
 | Stufe | Decks | Anteil der Stufe |

@@ -72,29 +72,12 @@ export function combinedTuning(cardTuning: number, consistency: number | null | 
 export const PREIS_SCHWELLE_EUR = 150;
 
 /**
- * Urteil F: mindestens eine spielbeendende Combo UND mindestens N Tutoren ergibt mindestens Bracket
- * 4. Empirisch statt aus dem Regelwerk: Von 48.638 Decks mit selbst angegebener Stufe
- * (docs/bracket-benchmark-2026-09.md) liegen 93 % der Decks mit beiden Merkmalen in B4/B5; von B2
- * zu B4 Faktor 30.
- *
- * Nur beides zusammen trennt: Combo allein haben 9,9 % der B2-Decks (dort erlaubt), zwei Tutoren
- * allein 6,0 %. 61 % der B4-Decks zeigen keins der Merkmale - das Urteil ist also nur eine
- * Untergrenze.
- *
- * N (Start 2) wird seit 29.09.2026 nachts neu gemessen (bracket_benchmark.combo_tutor_min), sobald
- * B2, B3 und B4 je 100 Decks haben.
- */
-export const EMPIRISCH_MIN_COMBOS = 1;
-
-/**
  * Gemessene (nicht-offizielle) Teile der Einstufung, aus der Tabelle bracket_benchmark (nachts
  * gelernt, je Bracket ab 100 Decks). Ohne Tabelle gilt DEFAULT_BRACKET_BENCHMARK.
  */
 export interface BracketBenchmark {
   /** Tuning-Spanne je Messgröße: [zählt 0, zählt 1] = Median von Bracket 2 bzw. 5. */
   tuning: Record<TuningPart['key'], [number, number]>;
-  /** Urteil F: so viele Tutoren braucht es zusätzlich zur Gewinn-Combo. */
-  comboTutorMin: number;
   /** Gewicht je Messgröße im Tuning-Grad = Trennschärfe (|AUC - 0,5|, Bracket 2 gegen 4). */
   weights: Record<TuningPart['key'], number>;
 }
@@ -112,7 +95,6 @@ export const DEFAULT_BRACKET_BENCHMARK: BracketBenchmark = {
     untappedLands: [70, 95],
     gameChangers: [0, 6],
   },
-  comboTutorMin: 2,
   // Aus docs/bracket-benchmark-2026-09.md: Game Changer 0,40, Tutoren 0,27. Für die beiden anderen
   // gibt es dort nur Näherungen (Mana in Zug 3: 0,16, Länder/Rampe: 0,13).
   weights: { gameChangers: 0.4, tutors: 0.27, untappedLands: 0.16, averageCmc: 0.13 },
@@ -129,7 +111,6 @@ export type BracketReasonKey =
   | 'comboLate'
   | 'price'
   | 'tuning'
-  | 'comboAndTutors'
   | 'nothing';
 
 export interface BracketReason {
@@ -164,8 +145,6 @@ export interface BracketVerdicts {
   precon: boolean;
   /** Urteil E: gemessener Kartenwert in Euro, null solange der Preis noch nicht vorliegt. */
   price: number | null;
-  /** Urteil F: so viele Tutoren braucht es zur Gewinn-Combo (gemessen, siehe BracketBenchmark). */
-  comboTutorMin: number;
 }
 
 export interface BracketAnalysis {
@@ -210,12 +189,6 @@ export interface BracketInput {
   untappedLandPercent: number | null;
   /** Anzahl Tutoren im Deck (aus der kuratierten Liste). */
   tutorCount: number;
-  /**
-   * Anzahl SPIELBEENDENDER Combos (beliebig viele Karten), die vollständig im Deck liegen - anders
-   * als `combos` (Zwei-Karten-Combos jeder Art). Aus winning_combos_in_deck; 0 solange unbekannt,
-   * dann hebt Urteil F nicht an.
-   */
-  winningCombos: number;
   /** Gesamtzahl Karten - Bezugsgröße für die Tutorendichte. */
   totalCards: number;
   /** Kartenwert in Euro (billigste Druckvariante), null = unbekannt und löst nichts aus. */
@@ -486,7 +459,6 @@ export interface BracketBenchmarkRow {
   avg_cmc: number | null;
   untapped_land_percent: number | null;
   game_changers: number | null;
-  combo_tutor_min: number | null;
   /** Gelernte Gewichte, nur in der Zeile von Bracket 4 (sql/bracket-gewichte-2026-09-29.sql). */
   weight_tutors?: number | null;
   weight_avg_cmc?: number | null;
@@ -495,7 +467,7 @@ export interface BracketBenchmarkRow {
 }
 
 /**
- * Tabellenzeilen → Schwellen: Tuning-Spannen B2 bis B5, Urteil F aus der B4-Zeile. Je Merkmal
+ * Tabellenzeilen → Schwellen: Tuning-Spannen B2 bis B5, Gewichte aus der B4-Zeile. Je Merkmal
  * abgesichert: fehlt ein Wert oder ist die Spanne 0 breit, gilt der Startwert.
  */
 export function bracketBenchmarkFromRows(rows: BracketBenchmarkRow[]): BracketBenchmark {
@@ -514,7 +486,6 @@ export function bracketBenchmarkFromRows(rows: BracketBenchmarkRow[]): BracketBe
     return [von, bis];
   };
 
-  const tutoren = zeile(4)?.combo_tutor_min;
   const b4 = zeile(4);
   const gewicht = (key: TuningPart['key'], wert: number | null | undefined): number =>
     wert != null && wert > 0 ? wert : DEFAULT_BRACKET_BENCHMARK.weights[key];
@@ -525,8 +496,6 @@ export function bracketBenchmarkFromRows(rows: BracketBenchmarkRow[]): BracketBe
       untappedLands: spanne('untappedLands', 'untapped_land_percent'),
       gameChangers: spanne('gameChangers', 'game_changers'),
     },
-    comboTutorMin:
-      tutoren != null && tutoren >= 1 ? tutoren : DEFAULT_BRACKET_BENCHMARK.comboTutorMin,
     weights: {
       tutors: gewicht('tutors', b4?.weight_tutors),
       averageCmc: gewicht('averageCmc', b4?.weight_avg_cmc),
@@ -592,7 +561,6 @@ export function powerPosition(tuning: number, bumped: boolean, canBump: boolean)
  * Harte Kriterien aus A gelten für Precons unverändert.
  */
 export function analyzeBracket(input: BracketInput): BracketAnalysis {
-  const benchmark = input.benchmark ?? DEFAULT_BRACKET_BENCHMARK;
   const { level: rules, reasons } = rulesVerdict(input);
   const spellbook = spellbookVerdict(input.spellbookTag);
   const tuning = tuningVerdict(input);
@@ -607,19 +575,6 @@ export function analyzeBracket(input: BracketInput): BracketAnalysis {
     if (nichtsGefunden >= 0) reasons.splice(nichtsGefunden, 1);
     reasons.push({ key: 'price', minimum: price, cards: [] });
     bracket = maxLevel(bracket, price);
-  }
-
-  // Urteil F (siehe EMPIRISCH_MIN_COMBOS) ist ein harter Befund und steht deshalb vor der
-  // Feinbewertung.
-  if (
-    input.winningCombos >= EMPIRISCH_MIN_COMBOS &&
-    input.tutorCount >= benchmark.comboTutorMin &&
-    bracket < AUTO_BRACKET_MAX
-  ) {
-    const nichtsGefunden = reasons.findIndex((r) => r.key === 'nothing');
-    if (nichtsGefunden >= 0) reasons.splice(nichtsGefunden, 1);
-    reasons.push({ key: 'comboAndTutors', minimum: AUTO_BRACKET_MAX, cards: [] });
-    bracket = AUTO_BRACKET_MAX;
   }
 
   const consistency = input.consistency ?? null;
@@ -658,7 +613,6 @@ export function analyzeBracket(input: BracketInput): BracketAnalysis {
       combined,
       precon: input.isPrecon,
       price: input.totalPrice,
-      comboTutorMin: benchmark.comboTutorMin,
     },
   };
 }

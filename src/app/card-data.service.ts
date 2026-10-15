@@ -277,7 +277,7 @@ export class CardDataService {
   /** Gemessene Bracket-Schwellen, einmal je Sitzung. Ohne Tabelle oder Netz die Startwerte. */
   bracketBenchmark(): Promise<BracketBenchmark> {
     this.bracketBenchmarkPromise ??= (async () => {
-      const basis = 'bracket, tutor_density, avg_cmc, untapped_land_percent, game_changers, combo_tutor_min';
+      const basis = 'bracket, tutor_density, avg_cmc, untapped_land_percent, game_changers';
       const gewichte = 'weight_tutors, weight_avg_cmc, weight_untapped_lands, weight_game_changers';
       let { data, error } = await supabase.from('bracket_benchmark').select(`${basis}, ${gewichte}`);
       // Gewichte-Migration noch nicht ausgeführt: ohne die Spalten, dann gelten die Start-Gewichte.
@@ -300,7 +300,7 @@ export class CardDataService {
   }
 
   /**
-   * Anzahl spielbeendender Combos, vollständig im Deck (Urteil F), über die Funktion
+   * Anzahl spielbeendender Combos, vollständig im Deck (Win Cons im Deck-Check), über die Funktion
    * winning_combos_in_deck (Namen im Rumpf statt kilobytelanger URL). 0 bei Fehler.
    */
   async winningCombosIn(cardNames: string[], commanderNames: string[]): Promise<number> {
@@ -314,7 +314,7 @@ export class CardDataService {
 
     if (error) {
       console.warn(
-        'Gewinn-Combos konnten nicht gezählt werden, Bracket-Einstufung ohne Urteil F:',
+        'Gewinn-Combos konnten nicht gezählt werden, Deck-Check ohne Gewinn-Combos:',
         error.message,
       );
       return 0;

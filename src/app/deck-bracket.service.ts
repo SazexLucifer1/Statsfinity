@@ -63,7 +63,6 @@ export class DeckBracketService {
       averageCmc: this.analysis.averageCmc(),
       untappedLandPercent: this.analysis.untappedLandPercent(),
       tutorCount: this.analysis.tutorCards().reduce((sum, c) => sum + c.quantity, 0),
-      winningCombos: this.analysis.winningCombos(),
       totalCards: this.state.viewingTotalCards(),
       totalPrice: this.analysis.totalDeckPrice(),
       benchmark: this.bracketBenchmark(),
