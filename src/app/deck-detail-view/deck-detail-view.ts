@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { CurrencyPipe, DatePipe, DecimalPipe, NgTemplateOutlet, PercentPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
@@ -10,7 +10,7 @@ import {
   GameChangerEntry,
 } from '../deck-viewer.service';
 import { BracketReason } from '../bracket';
-import { DeckService, DeckCard, DeckOwner } from '../deck.service';
+import { DeckService, DeckCard, DeckOwner, deckListAsText } from '../deck.service';
 import { DeckImportService } from '../deck-import.service';
 import { DeckPdfService } from '../deck-pdf.service';
 import { EdhrecCardlist } from '../edhrec.service';
@@ -119,6 +119,27 @@ export class DeckDetailView {
       const fresh = decks.find((d) => d.id === deck.id) ?? deck;
       await this.viewer.open(fresh);
     });
+  }
+
+  /** Text-Export (siehe deckListAsText()): null = Fenster zu. */
+  readonly exportText = signal<string | null>(null);
+  readonly exportCopied = signal(false);
+
+  openTextExport(): void {
+    this.exportCopied.set(false);
+    this.exportText.set(deckListAsText(this.viewer.state.viewingDeckCards()));
+  }
+
+  async copyExportText(): Promise<void> {
+    const text = this.exportText();
+    if (text === null) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      this.exportCopied.set(true);
+    } catch {
+      // Ohne Zugriff auf die Zwischenablage bleibt das Textfeld zum Markieren von Hand.
+      this.exportCopied.set(false);
+    }
   }
 
   async openPdfExport(): Promise<void> {
