@@ -94,8 +94,11 @@ export class CardScanner implements OnInit, OnDestroy {
       this.stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: { ideal: 'environment' },
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
+          // So hoch wie die Kamera kann: Die Sammlerzeile ist auf der Karte gut 1 mm hoch, und
+          // bei 1080p blieben davon auf dem iPhone kaum lesbare Pixel übrig. "ideal" scheitert
+          // nicht, wenn die Kamera weniger kann - sie liefert dann ihr Bestes.
+          width: { ideal: 3840 },
+          height: { ideal: 2160 },
         },
         audio: false,
       });
@@ -208,7 +211,7 @@ export class CardScanner implements OnInit, OnDestroy {
     this.status.set('reading');
     try {
       const card = document.createElement('canvas');
-      card.width = Math.round(Math.min(rect.w, 900));
+      card.width = Math.round(Math.min(rect.w, 1400));
       card.height = Math.round((card.width * 88) / 63);
       card
         .getContext('2d')
