@@ -1,6 +1,7 @@
 import { RankedBadges } from '../ranked-badges/ranked-badges';
 import { CollectionPanel } from '../collection-panel/collection-panel';
 import { CollectionService } from '../collection.service';
+import { CubeService } from '../cube.service';
 import { Component, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DatePipe, DecimalPipe, NgTemplateOutlet } from '@angular/common';
@@ -88,6 +89,7 @@ import { FriendStatus } from '../friend-status/friend-status';
 export class ProfileTab {
   readonly profileService = inject(ProfileService);
   readonly collection = inject(CollectionService);
+  readonly cubes = inject(CubeService);
   readonly artLanguage = inject(ArtLanguageService);
   readonly artLanguages = ART_LANGUAGES;
 

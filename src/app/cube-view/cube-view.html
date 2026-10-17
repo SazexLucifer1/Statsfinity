@@ -1,0 +1,412 @@
+<div class="cube-view">
+  <div class="view-header">
+    <button type="button" class="glass-button small back" (click)="cubes.back()">
+      ‹ {{ cubeId() ? i18n.t('cube.backToList') : i18n.t('cube.back') }}
+    </button>
+    <h2>{{ cubeId() ? (current()?.name ?? '') : i18n.t('cube.title') }}</h2>
+    @if (current(); as cube) {
+      <app-overflow-menu [label]="i18n.t('cube.actions')" [heading]="cube.name">
+        <button class="glass-button" (click)="openEdit()">{{ i18n.t('cube.edit') }}</button>
+        <button class="glass-button" (click)="copyList()">{{ i18n.t('cube.copyList') }}</button>
+        <button class="glass-button danger" (click)="deleteCube()">
+          {{ i18n.t('cube.delete') }}
+        </button>
+      </app-overflow-menu>
+    }
+  </div>
+
+  @if (!cubes.available()) {
+    <section class="glass-card">
+      <p class="hint">{{ i18n.t('cube.unavailable') }}</p>
+    </section>
+  } @else if (!cubeId()) {
+    <!-- Übersicht der eigenen Cubes -->
+    <section class="glass-card create">
+      <p class="hint">{{ i18n.t('cube.intro') }}</p>
+      <form class="create-row" (submit)="$event.preventDefault(); create()">
+        <input
+          class="glass-input"
+          [placeholder]="i18n.t('cube.newPlaceholder')"
+          maxlength="80"
+          [ngModel]="newName()"
+          (ngModelChange)="newName.set($event)"
+          name="newName"
+        />
+        <button
+          type="submit"
+          class="glass-button primary"
+          [disabled]="!newName().trim() || creating()"
+        >
+          <app-icon name="plus" /> {{ i18n.t('cube.create') }}
+        </button>
+      </form>
+    </section>
+
+    @if (cubes.cubes(); as list) {
+      @if (list.length === 0) {
+        <p class="hint">{{ i18n.t('cube.none') }}</p>
+      } @else {
+        <ul class="cube-list">
+          @for (cube of list; track cube.id) {
+            <li>
+              <button type="button" class="glass-card cube-row" (click)="cubes.openCube(cube.id)">
+                <strong>{{ cube.name }}</strong>
+                <span class="meta">
+                  {{ i18n.t('cube.cardCount', { count: cube.cardCount }) }}
+                  @if (cube.collectionOnly) {
+                    · {{ i18n.t('cube.modeCollection') }}
+                  }
+                </span>
+              </button>
+            </li>
+          }
+        </ul>
+      }
+    } @else {
+      <p class="hint">{{ i18n.t('cube.loading') }}</p>
+    }
+  } @else if (current(); as cube) {
+    <!-- Kopf des Cubes -->
+    <section class="glass-card head">
+      @if (cube.description) {
+        <p class="description">{{ cube.description }}</p>
+      }
+      <div class="totals">
+        <div>
+          <strong>{{ totalCards() }}</strong>
+          <span>{{ i18n.t('cube.cards') }}</span>
+        </div>
+        <div>
+          <strong>{{ items().length }}</strong>
+          <span>{{ i18n.t('cube.distinct') }}</span>
+        </div>
+        <div>
+          <strong>{{ totalCards() - missingCopies() }}</strong>
+          <span>{{ i18n.t('cube.inCollection') }}</span>
+        </div>
+      </div>
+
+      <!-- Quelle der Karten: alle existierenden oder nur die eigene Sammlung. -->
+      <div
+        class="segmented block source-toggle"
+        role="radiogroup"
+        [attr.aria-label]="i18n.t('cube.source')"
+      >
+        <button [class.active]="!cube.collectionOnly" (click)="setCollectionOnly(false)">
+          {{ i18n.t('cube.modeAll') }}
+        </button>
+        <button [class.active]="cube.collectionOnly" (click)="setCollectionOnly(true)">
+          {{ i18n.t('cube.modeCollection') }}
+        </button>
+      </div>
+      @if (cube.collectionOnly && missingCopies() > 0) {
+        <p class="hint warn">{{ i18n.t('cube.missingHint', { count: missingCopies() }) }}</p>
+      }
+      @if (cube.collectionOnly && collection.totalCards() === 0) {
+        <p class="hint warn">{{ i18n.t('cube.emptyCollection') }}</p>
+      }
+
+      <!-- Hinzufügen -->
+      <div class="add">
+        <input
+          class="glass-input"
+          type="search"
+          [placeholder]="
+            cube.collectionOnly ? i18n.t('cube.addFromCollection') : i18n.t('cube.addPlaceholder')
+          "
+          [ngModel]="addQuery()"
+          (ngModelChange)="onAddQuery($event)"
+          (keydown.enter)="suggestions().length && addCard(suggestions()[0])"
+        />
+        @if (suggestions().length) {
+          <ul class="suggestions">
+            @for (name of suggestions(); track name) {
+              <li>
+                <button type="button" class="glass-button small" (click)="addCard(name)">
+                  <app-icon name="plus" /> {{ name }}
+                </button>
+              </li>
+            }
+          </ul>
+        }
+        <button type="button" class="glass-button small bulk-toggle" (click)="bulkOpen.set(true)">
+          {{ i18n.t('cube.bulk') }}
+        </button>
+        @if (addMessage(); as message) {
+          <p class="hint">{{ message }}</p>
+        }
+      </div>
+    </section>
+
+    <div class="segmented block tabs">
+      <button [class.active]="tab() === 'cards'" (click)="tab.set('cards')">
+        {{ i18n.t('cube.tabCards') }}
+      </button>
+      <button [class.active]="tab() === 'analysis'" (click)="tab.set('analysis')">
+        {{ i18n.t('cube.tabAnalysis') }}
+      </button>
+      <button
+        [class.active]="tab() === 'pack'"
+        (click)="tab.set('pack'); pack().length || newPack()"
+      >
+        {{ i18n.t('cube.tabPack') }}
+      </button>
+    </div>
+
+    @if (cards() === null) {
+      <p class="hint">{{ i18n.t('cube.loading') }}</p>
+    } @else if (items().length === 0) {
+      <section class="glass-card">
+        <p class="hint">{{ i18n.t('cube.empty') }}</p>
+      </section>
+    } @else if (tab() === 'cards') {
+      <section class="glass-card toolbar">
+        <input
+          class="glass-input"
+          type="search"
+          [placeholder]="i18n.t('cube.searchPlaceholder')"
+          [ngModel]="search()"
+          (ngModelChange)="search.set($event)"
+        />
+        <div class="segmented">
+          <button [class.active]="display() === 'table'" (click)="display.set('table')">
+            {{ i18n.t('cube.displayTable') }}
+          </button>
+          <button [class.active]="display() === 'spoiler'" (click)="display.set('spoiler')">
+            {{ i18n.t('cube.displaySpoiler') }}
+          </button>
+          <button [class.active]="display() === 'list'" (click)="display.set('list')">
+            {{ i18n.t('cube.displayList') }}
+          </button>
+        </div>
+      </section>
+
+      @if (display() === 'table') {
+        <!-- Tabelle wie bei CubeCobra: eine Spalte je Farbe, darin Abschnitte nach Typ. Auf dem
+             Handy seitlich wischbar, statt acht Spalten auf 390 px zu quetschen. -->
+        <div class="table-scroll">
+          <div class="cube-table">
+            @for (column of table(); track column.key) {
+              <div class="column" [style.--column-color]="columnColor(column.key)">
+                <h3 class="column-head">
+                  {{ columnLabel(column.key) }} <span>{{ column.count }}</span>
+                </h3>
+                @for (group of column.groups; track group.type) {
+                  <h4 class="group-head">{{ typeLabel(group.type) }} ({{ group.count }})</h4>
+                  @for (item of group.cards; track item.name) {
+                    <button
+                      type="button"
+                      class="cell"
+                      [class.missing]="collectionOnly() && missingNames().has(item.name)"
+                      (click)="openPreview(item)"
+                    >
+                      @if (item.quantity > 1) {
+                        <span class="qty">{{ item.quantity }}×</span>
+                      }
+                      {{ item.name }}
+                    </button>
+                  }
+                }
+              </div>
+            }
+          </div>
+        </div>
+      } @else if (display() === 'spoiler') {
+        @for (column of table(); track column.key) {
+          <h3 class="section-title">
+            {{ columnLabel(column.key) }} <span class="section-meta">{{ column.count }}</span>
+          </h3>
+          <div class="grid">
+            @for (group of column.groups; track group.type) {
+              @for (item of group.cards; track item.name) {
+                <button
+                  type="button"
+                  class="tile"
+                  [class.missing]="collectionOnly() && missingNames().has(item.name)"
+                  (click)="openPreview(item)"
+                >
+                  @if (item.image) {
+                    <img [src]="item.image" [alt]="item.name" loading="lazy" />
+                  } @else {
+                    <span class="no-image">{{ item.name }}</span>
+                  }
+                  @if (item.quantity > 1) {
+                    <span class="badge">{{ item.quantity }}×</span>
+                  }
+                </button>
+              }
+            }
+          </div>
+        }
+      } @else {
+        <ul class="list">
+          @for (item of listItems(); track item.name) {
+            <li [class.missing]="collectionOnly() && missingNames().has(item.name)">
+              <button type="button" class="thumb" (click)="openPreview(item)">
+                @if (item.image) {
+                  <img [src]="item.image" [alt]="item.name" loading="lazy" />
+                }
+              </button>
+              <div class="info">
+                <span class="name">{{ item.name }}</span>
+                <span class="meta">
+                  {{ columnLabel(categoryOf(item)) }}
+                  @if (item.cmc !== null) {
+                    · {{ i18n.t('cube.cmc', { cmc: item.cmc }) }}
+                  }
+                  · {{ i18n.t('cube.owned', { count: item.owned }) }}
+                </span>
+              </div>
+              <div class="qty-controls">
+                <button
+                  type="button"
+                  class="icon-button"
+                  [attr.aria-label]="i18n.t('cube.less')"
+                  (click)="setQuantity(item, item.quantity - 1)"
+                >
+                  @if (item.quantity > 1) {
+                    −
+                  } @else {
+                    <app-icon name="trash" />
+                  }
+                </button>
+                <span>{{ item.quantity }}</span>
+                <button
+                  type="button"
+                  class="icon-button"
+                  [attr.aria-label]="i18n.t('cube.more')"
+                  [disabled]="collectionOnly() && item.quantity >= item.owned"
+                  (click)="setQuantity(item, item.quantity + 1)"
+                >
+                  +
+                </button>
+              </div>
+            </li>
+          }
+        </ul>
+      }
+    } @else if (tab() === 'analysis') {
+      <section class="glass-card analysis">
+        <div class="totals">
+          <div>
+            <strong>{{ averageCmc() === null ? '—' : averageCmc()!.toFixed(2) }}</strong>
+            <span>{{ i18n.t('cube.avgCmc') }}</span>
+          </div>
+          <div>
+            <strong>{{ draftPlayers() }}</strong>
+            <span>{{ i18n.t('cube.draftPlayers') }}</span>
+          </div>
+        </div>
+        <h3>{{ i18n.t('cube.colors') }}</h3>
+        <app-bar-chart [data]="columnChart()" labelWidth="110px" />
+        <h3>{{ i18n.t('cube.curve') }}</h3>
+        <app-bar-chart [data]="curveChart()" orientation="vertical" />
+        <h3>{{ i18n.t('cube.types') }}</h3>
+        <app-bar-chart [data]="typeChart()" labelWidth="110px" />
+        @if (gaps().length) {
+          <!-- Zugeklappt: im Modus "Alle Karten" ist das schnell eine lange Einkaufsliste. -->
+          <details class="gaps">
+            <summary>{{ i18n.t('cube.notInCollection', { count: missingCopies() }) }}</summary>
+            <ul class="gap-list">
+              @for (gap of gaps(); track gap.name) {
+                <li>
+                  <span>{{ gap.name }}</span
+                  ><span class="meta">{{ gap.missing }}×</span>
+                </li>
+              }
+            </ul>
+          </details>
+        }
+      </section>
+    } @else {
+      <section class="glass-card pack">
+        <div class="pack-head">
+          <p class="hint">{{ i18n.t('cube.packHint', { size: pack().length }) }}</p>
+          <button type="button" class="glass-button small primary" (click)="newPack()">
+            {{ i18n.t('cube.newPack') }}
+          </button>
+        </div>
+        <div class="grid">
+          @for (item of pack(); track $index) {
+            <button type="button" class="tile" (click)="openPreview(item)">
+              @if (item.image) {
+                <img [src]="item.image" [alt]="item.name" />
+              } @else {
+                <span class="no-image">{{ item.name }}</span>
+              }
+            </button>
+          }
+        </div>
+      </section>
+    }
+  } @else {
+    <p class="hint">{{ i18n.t('cube.loading') }}</p>
+  }
+</div>
+
+@if (bulkOpen()) {
+  <div class="options-menu-overlay" (click)="bulkOpen.set(false)">
+    <div class="options-menu-sheet wide bulk-sheet" (click)="$event.stopPropagation()">
+      <h3>{{ i18n.t('cube.bulkTitle') }}</h3>
+      <p class="hint">
+        {{ collectionOnly() ? i18n.t('cube.bulkHintCollection') : i18n.t('cube.bulkHint') }}
+      </p>
+      <textarea
+        class="glass-input"
+        rows="10"
+        [placeholder]="'1 Sol Ring\n1 Lightning Bolt\nCounterspell'"
+        [ngModel]="bulkText()"
+        (ngModelChange)="bulkText.set($event)"
+      ></textarea>
+      <div class="chip-row">
+        <button type="button" class="glass-button" (click)="bulkOpen.set(false)">
+          {{ i18n.t('dialog.cancel') }}
+        </button>
+        <button
+          type="button"
+          class="glass-button primary"
+          [disabled]="!bulkText().trim() || bulkBusy()"
+          (click)="importBulk()"
+        >
+          {{ bulkBusy() ? i18n.t('cube.loading') : i18n.t('cube.bulkAdd') }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (editOpen()) {
+  <div class="options-menu-overlay" (click)="editOpen.set(false)">
+    <div class="options-menu-sheet wide" (click)="$event.stopPropagation()">
+      <h3>{{ i18n.t('cube.edit') }}</h3>
+      <input
+        class="glass-input"
+        maxlength="80"
+        [placeholder]="i18n.t('cube.newPlaceholder')"
+        [ngModel]="editName()"
+        (ngModelChange)="editName.set($event)"
+      />
+      <textarea
+        class="glass-input"
+        rows="5"
+        maxlength="2000"
+        [placeholder]="i18n.t('cube.descriptionPlaceholder')"
+        [ngModel]="editDescription()"
+        (ngModelChange)="editDescription.set($event)"
+      ></textarea>
+      <div class="chip-row">
+        <button type="button" class="glass-button" (click)="editOpen.set(false)">
+          {{ i18n.t('dialog.cancel') }}
+        </button>
+        <button
+          type="button"
+          class="glass-button primary"
+          [disabled]="!editName().trim()"
+          (click)="saveEdit()"
+        >
+          {{ i18n.t('cube.save') }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
