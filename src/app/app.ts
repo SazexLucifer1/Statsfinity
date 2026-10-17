@@ -6,6 +6,8 @@ import { ProfileTab } from './profile-tab/profile-tab';
 import { GroupTab } from './group-tab/group-tab';
 import { IngameTracker } from './ingame-tracker/ingame-tracker';
 import { DeckDetailView } from './deck-detail-view/deck-detail-view';
+import { CollectionView } from './collection-view/collection-view';
+import { CollectionService } from './collection.service';
 import { GoldfishTracker } from './goldfish-tracker/goldfish-tracker';
 import { DeckImportDialogs } from './deck-import-dialogs/deck-import-dialogs';
 import { DeckPdfDialog } from './deck-pdf-dialog/deck-pdf-dialog';
@@ -48,6 +50,7 @@ import { APP_VERSION, APP_COMMIT } from './version';
     GroupTab,
     IngameTracker,
     DeckDetailView,
+    CollectionView,
     GoldfishTracker,
     DeckImportDialogs,
     DeckPdfDialog,
@@ -82,10 +85,13 @@ export class App {
   readonly tournament = inject(TournamentService);
   readonly loginOverlay = inject(LoginOverlayService);
   readonly deckViewer = inject(DeckViewerService);
+  readonly collection = inject(CollectionService);
   /** Nur fuer das Abzeichen an der Profil-Schaltflaeche der Tab-Leiste (ungelesene Deck-Kommentare). */
   readonly inbox = inject(DeckCommentInboxService);
   private readonly friends = inject(FriendsService);
-  readonly profileBadgeCount = computed(() => this.inbox.unreadCount() + this.friends.incoming().length);
+  readonly profileBadgeCount = computed(
+    () => this.inbox.unreadCount() + this.friends.incoming().length,
+  );
 
   /** Nur injiziert, damit der Dienst überhaupt existiert: er hängt sich an den Tab-Wechsel und holt
    * die Ansicht zurück, falls nach dem Zurückkommen nichts mehr gerendert wird (weißer Bildschirm). */

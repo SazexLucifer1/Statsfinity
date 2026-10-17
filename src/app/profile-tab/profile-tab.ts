@@ -1,5 +1,6 @@
 import { RankedBadges } from '../ranked-badges/ranked-badges';
 import { CollectionPanel } from '../collection-panel/collection-panel';
+import { CollectionService } from '../collection.service';
 import { Component, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DatePipe, DecimalPipe, NgTemplateOutlet } from '@angular/common';
@@ -43,7 +44,13 @@ import { ManaSymbol } from '../ui/mana-symbol/mana-symbol';
 import { Podium, PodiumEntry, PODIUM_SIZE } from '../ui/podium/podium';
 import { PlayerMatchHistory } from '../player-match-history/player-match-history';
 import { splitPodium } from '../rank-sort';
-import { colorComboLabel, colorLabel, colorRadarData, colorVar, sortColors } from '../color-combo-names';
+import {
+  colorComboLabel,
+  colorLabel,
+  colorRadarData,
+  colorVar,
+  sortColors,
+} from '../color-combo-names';
 import { Icon } from '../ui/icon/icon';
 import { CommentInbox } from '../comment-inbox/comment-inbox';
 import { FriendsPanel } from '../friends-panel/friends-panel';
@@ -51,12 +58,36 @@ import { FriendStatus } from '../friend-status/friend-status';
 
 @Component({
   selector: 'app-profile-tab',
-  imports: [FormsModule, DatePipe, DecimalPipe, NgTemplateOutlet, DeckList, CardImage, CommanderStatList, FavoriteCommanderEditor, BarChart, RadarChart, Meter, ManaSymbol, Podium, PlayerMatchHistory, Icon, CommentInbox, ProfileRank, FriendsPanel, FriendStatus, RankedBadges, CardThumb, CollectionPanel],
+  imports: [
+    FormsModule,
+    DatePipe,
+    DecimalPipe,
+    NgTemplateOutlet,
+    DeckList,
+    CardImage,
+    CommanderStatList,
+    FavoriteCommanderEditor,
+    BarChart,
+    RadarChart,
+    Meter,
+    ManaSymbol,
+    Podium,
+    PlayerMatchHistory,
+    Icon,
+    CommentInbox,
+    ProfileRank,
+    FriendsPanel,
+    FriendStatus,
+    RankedBadges,
+    CardThumb,
+    CollectionPanel,
+  ],
   templateUrl: './profile-tab.html',
   styleUrl: './profile-tab.scss',
 })
 export class ProfileTab {
   readonly profileService = inject(ProfileService);
+  readonly collection = inject(CollectionService);
   readonly artLanguage = inject(ArtLanguageService);
   readonly artLanguages = ART_LANGUAGES;
 
@@ -92,7 +123,7 @@ export class ProfileTab {
    * (Host ausgenommen).
    */
   readonly othersStatsHidden = computed(
-    () => this.isViewingOther() && this.mtg.allModesHiddenForMe() && !this.groupService.isOwner()
+    () => this.isViewingOther() && this.mtg.allModesHiddenForMe() && !this.groupService.isOwner(),
   );
 
   /**
@@ -258,11 +289,13 @@ export class ProfileTab {
 
   /** Ob überhaupt ein fremdes Profil angesehen wird (Account oder NPC) statt des eigenen. */
   readonly isViewingOther = computed(
-    () => !!this.profileService.viewingUserId() || !!this.profileService.viewingPlayerId()
+    () => !!this.profileService.viewingUserId() || !!this.profileService.viewingPlayerId(),
   );
 
   /** Ob der Umschalter auf die Vollansicht angeboten wird: nur Developer, nur im fremden Profil. */
-  readonly canDevFullView = computed(() => !!this.profileService.profile()?.isDeveloper && this.isViewingOther());
+  readonly canDevFullView = computed(
+    () => !!this.profileService.profile()?.isDeveloper && this.isViewingOther(),
+  );
 
   private readonly devFullViewChoice = signal(false);
 
@@ -281,7 +314,9 @@ export class ProfileTab {
    * Besitzer des Hauptbereichs: der eigene Account, in der Developer-Vollansicht das fremde Profil.
    */
   readonly statsOwner = computed<DeckOwner | null>(() =>
-    this.devFullView() ? this.viewingDeckOwner() ?? this.viewingNpcDeckOwner() : this.ownDeckOwner()
+    this.devFullView()
+      ? (this.viewingDeckOwner() ?? this.viewingNpcDeckOwner())
+      : this.ownDeckOwner(),
   );
 
   /**
@@ -289,13 +324,15 @@ export class ProfileTab {
    * anderen Gruppen).
    */
   readonly statsUserId = computed<string | null>(() =>
-    this.devFullView() ? this.profileService.viewingUserId() : this.profileService.profile()?.id ?? null
+    this.devFullView()
+      ? this.profileService.viewingUserId()
+      : (this.profileService.profile()?.id ?? null),
   );
 
   /** Lieblingscommander des angesehenen NPC-Profils, direkt aus MtgService. */
   readonly viewingNpcFavoriteCommanders = computed<string[]>(() => {
     const name = this.profileService.viewingPlayerName();
-    return name ? this.mtg.playerFavoriteCommanders()[name] ?? [] : [];
+    return name ? (this.mtg.playerFavoriteCommanders()[name] ?? []) : [];
   });
 
   /**
@@ -350,7 +387,9 @@ export class ProfileTab {
       const placement = match.players.find((p) => p.name === name)?.placement;
       if (placement != null) counts.set(placement, (counts.get(placement) ?? 0) + 1);
     }
-    return [...counts.entries()].sort((a, b) => a[0] - b[0]).map(([placement, count]) => ({ placement, count }));
+    return [...counts.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([placement, count]) => ({ placement, count }));
   }
 
   /** Platzierungsverteilung als Säulendiagramm. */
@@ -378,7 +417,11 @@ export class ProfileTab {
   // --- Umschalter der drei "kein eigenes Deck"-Listen im eigenen Profil ---
 
   /** Reihenfolge der Listen: 'none' zuerst, nur dort gibt es etwas zu tun. */
-  private static readonly COMMANDER_LIST_MODES: UnassignedCommanderCategory[] = ['none', 'borrowed', 'cube'];
+  private static readonly COMMANDER_LIST_MODES: UnassignedCommanderCategory[] = [
+    'none',
+    'borrowed',
+    'cube',
+  ];
 
   private readonly commanderListModeChoice = signal<UnassignedCommanderCategory>('none');
 
@@ -448,7 +491,7 @@ export class ProfileTab {
   readonly crossGroupStats = signal<CrossGroupPersonalStats | null>(null);
 
   /** Umschalter Statistik/Decks im eigenen Profil, Start auf den Decks (dort wird gearbeitet). */
-  readonly profileViewTab = signal<'stats' | 'decks' | 'collection'>('decks');
+  readonly profileViewTab = signal<'stats' | 'decks'>('decks');
 
   // --- Zeitraum-Filter der Profil-Statistiken ---
 
@@ -469,7 +512,7 @@ export class ProfileTab {
     this.statsYear.set(year);
   }
 
-  setProfileViewTab(tab: 'stats' | 'decks' | 'collection'): void {
+  setProfileViewTab(tab: 'stats' | 'decks'): void {
     this.profileViewTab.set(tab);
   }
 
@@ -515,12 +558,12 @@ export class ProfileTab {
 
   /** Höchster Zählwert für die relative Balkenbreite in der Karten-Rangliste. */
   readonly maxMostUsedCardCount = computed(() =>
-    Math.max(1, ...this.rankedMostUsedCards().map((c) => this.countFor(c)))
+    Math.max(1, ...this.rankedMostUsedCards().map((c) => this.countFor(c))),
   );
 
   /** Höchster Zählwert für die relative Balkenbreite in der Farbkombinations-Rangliste. */
   readonly maxColorComboCount = computed(() =>
-    Math.max(1, ...this.rankedColorComboRanking().map((c) => this.countFor(c)))
+    Math.max(1, ...this.rankedColorComboRanking().map((c) => this.countFor(c))),
   );
 
   // --- Siegertreppchen für die ersten drei Plätze; die Listen sind hier nicht seitenweise, die
@@ -537,17 +580,17 @@ export class ProfileTab {
       detail: '',
       value: `${this.countFor(c)}×`,
       imageUrl: this.mostUsedCardImage(c),
-    }))
+    })),
   );
 
   /** Bild einer meistgespielten Karte: bevorzugt das im Deck hinterlegte, sonst das über Scryfall
    * nachgeladene (siehe commanderCards) - im Deck steckt in der Regel nur für Commander eines. */
-  readonly mostUsedCardImage = (card: { cardName: string; imageUrl: string | null }): string | null =>
-    card.imageUrl ?? this.commanderImage(card.cardName);
+  readonly mostUsedCardImage = (card: {
+    cardName: string;
+    imageUrl: string | null;
+  }): string | null => card.imageUrl ?? this.commanderImage(card.cardName);
 
-  private readonly colorComboSplit = computed(() =>
-    splitPodium(this.rankedColorComboRanking(), 0)
-  );
+  private readonly colorComboSplit = computed(() => splitPodium(this.rankedColorComboRanking(), 0));
   readonly colorComboRest = computed(() => this.colorComboSplit().rest);
   readonly colorComboPodium = computed<PodiumEntry[]>(() =>
     this.colorComboSplit().podium.map((combo) => ({
@@ -556,7 +599,7 @@ export class ProfileTab {
       detail: '',
       value: `${this.countFor(combo)}×`,
       symbols: combo.colors.length === 0 ? ['C'] : this.comboColors(combo.colors),
-    }))
+    })),
   );
 
   /** Öffnet das geliehene (fremde) Deck; Bearbeiten schaltet die Detailansicht selbst ab. */
@@ -576,9 +619,7 @@ export class ProfileTab {
   private async refreshUnassignedAndDecks(): Promise<void> {
     const owner = this.statsOwner();
     if (!owner) return;
-    this.unassignedCommanderStats.set(
-      await this.deckService.getUnassignedCommanderStats(owner)
-    );
+    this.unassignedCommanderStats.set(await this.deckService.getUnassignedCommanderStats(owner));
     await this.deckListRef()?.refreshDecks();
   }
 
@@ -715,7 +756,9 @@ export class ProfileTab {
         this.favoriteCommanderCards.set({});
         return;
       }
-      Promise.all(names.map((n) => this.scryfall.findCard(n).then((card) => [n, card] as const))).then((entries) => {
+      Promise.all(
+        names.map((n) => this.scryfall.findCard(n).then((card) => [n, card] as const)),
+      ).then((entries) => {
         this.favoriteCommanderCards.set(Object.fromEntries(entries));
       });
     });
@@ -793,7 +836,7 @@ export class ProfileTab {
   readonly visibleFeedbackEntries = computed(() =>
     this.feedback.showDoneEntries()
       ? this.feedback.entries()
-      : this.feedback.entries().filter((e) => e.status === 'open')
+      : this.feedback.entries().filter((e) => e.status === 'open'),
   );
 
   // --- Top-3-Lieblings-Commander (füllt den sonst leeren Bereich neben Avatar/Gruppen) ---
@@ -838,7 +881,10 @@ export class ProfileTab {
       const commander = match.players.find((p) => p.name === playerName)?.commander;
       if (commander) counts.set(commander, (counts.get(commander) ?? 0) + 1);
     }
-    return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([name]) => name).slice(0, limit);
+    return [...counts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([name]) => name)
+      .slice(0, limit);
   }
 
   readonly canAutofillFavoriteCommanders = computed(() => {
@@ -889,7 +935,7 @@ export class ProfileTab {
     this.npcFavoriteCommanderBusy.set(true);
     await this.mtg.setPlayerFavoriteCommanders(
       playerName,
-      current.filter((c) => c !== name)
+      current.filter((c) => c !== name),
     );
     this.npcFavoriteCommanderBusy.set(false);
   };
@@ -1053,7 +1099,7 @@ export class ProfileTab {
     this.repairProgress.set({ done: 0, total: 0 });
 
     const result = await this.deckService.repairCommanderNames(owner, (done, total) =>
-      this.repairProgress.set({ done, total })
+      this.repairProgress.set({ done, total }),
     );
     const preconResult = await this.deckService.backfillPreconReleaseYears(owner);
 
@@ -1078,10 +1124,12 @@ export class ProfileTab {
             updated: preconResult.updated,
             checked: preconResult.checked,
             names: preconResult.unmatchedNames.join(', '),
-          })
+          }),
         );
       } else {
-        messages.push(this.i18n.t('profile.msg.repairPreconYears', { updated: preconResult.updated }));
+        messages.push(
+          this.i18n.t('profile.msg.repairPreconYears', { updated: preconResult.updated }),
+        );
       }
     }
     this.repairMessage.set(messages.join(' '));
@@ -1108,7 +1156,9 @@ export class ProfileTab {
   async openManualLinkDialogFor(viewingUserId: string): Promise<void> {
     const owner: DeckOwner = { kind: 'user', userId: viewingUserId };
     await this.manualDeckLink.open(owner, async () => {
-      this.viewingUnassignedCommanderStats.set(await this.deckService.getUnassignedCommanderStats(owner));
+      this.viewingUnassignedCommanderStats.set(
+        await this.deckService.getUnassignedCommanderStats(owner),
+      );
     });
   }
 
@@ -1116,7 +1166,9 @@ export class ProfileTab {
   async openManualLinkDialogForNpc(playerId: string): Promise<void> {
     const owner: DeckOwner = { kind: 'player', playerId };
     await this.manualDeckLink.open(owner, async () => {
-      this.viewingNpcUnassignedCommanderStats.set(await this.deckService.getUnassignedCommanderStats(owner));
+      this.viewingNpcUnassignedCommanderStats.set(
+        await this.deckService.getUnassignedCommanderStats(owner),
+      );
     });
   }
 
@@ -1165,7 +1217,9 @@ export class ProfileTab {
       }
     }
 
-    this.shareCandidates.set([...seen.entries()].map(([userId, displayName]) => ({ userId, displayName })));
+    this.shareCandidates.set(
+      [...seen.entries()].map(([userId, displayName]) => ({ userId, displayName })),
+    );
     this.shareBusy.set(false);
   }
 
@@ -1180,7 +1234,9 @@ export class ProfileTab {
     if (!backgroundId) return;
 
     const ok = await this.backgrounds.shareBackground(backgroundId, userId);
-    this.shareMessage.set(ok ? this.i18n.t('profile.msg.shared') : this.i18n.t('profile.msg.shareFailed'));
+    this.shareMessage.set(
+      ok ? this.i18n.t('profile.msg.shared') : this.i18n.t('profile.msg.shareFailed'),
+    );
     if (ok) setTimeout(() => this.shareMessage.set(''), 2000);
   }
 
@@ -1209,7 +1265,9 @@ export class ProfileTab {
   readonly deleteAccountBusy = signal(false);
   readonly deleteAccountError = signal('');
 
-  readonly canConfirmDeleteAccount = computed(() => this.i18n.isDeleteConfirmed(this.deleteAccountConfirmText()));
+  readonly canConfirmDeleteAccount = computed(() =>
+    this.i18n.isDeleteConfirmed(this.deleteAccountConfirmText()),
+  );
 
   openDeleteAccountConfirm(): void {
     this.showDeleteAccountConfirm.set(true);

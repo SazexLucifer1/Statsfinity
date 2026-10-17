@@ -1,0 +1,492 @@
+<div class="collection-view">
+  <div class="view-header">
+    <button type="button" class="glass-button small back" (click)="close()">
+      ‹ {{ i18n.t('collection.back') }}
+    </button>
+    <h2>
+      {{
+        ownerName()
+          ? i18n.t('collection.ofPlayer', { name: ownerName() ?? '' })
+          : i18n.t('collection.title')
+      }}
+    </h2>
+  </div>
+
+  <section class="glass-card head">
+    <div class="totals">
+      <div>
+        <strong>{{ totalCards() }}</strong>
+        <span>{{ i18n.t('collection.cards') }}</span>
+      </div>
+      <div>
+        <strong>{{ distinctCards() }}</strong>
+        <span>{{ i18n.t('collection.distinct') }}</span>
+      </div>
+      <div>
+        <strong>{{ totalValue() | number: '1.2-2' }} €</strong>
+        <span>{{ i18n.t('collection.value') }}</span>
+      </div>
+    </div>
+    @if (priceProgress(); as p) {
+      <p class="hint">{{ i18n.t('collection.loadingPrices', { done: p.done, total: p.total }) }}</p>
+    }
+    @if (editable()) {
+      <div class="chip-row actions">
+        <button type="button" class="glass-button small" (click)="openAdd()">
+          <app-icon name="plus" /> {{ i18n.t('collection.add') }}
+        </button>
+        @if (canScan) {
+          <button type="button" class="glass-button small primary" (click)="scannerOpen.set(true)">
+            <app-icon name="camera" /> {{ i18n.t('collection.scan') }}
+          </button>
+        }
+      </div>
+    }
+  </section>
+
+  @if (!loaded()) {
+    <p class="hint">{{ i18n.t('collection.loading') }}</p>
+  } @else if (entries().length === 0) {
+    <section class="glass-card">
+      <p class="hint">{{ i18n.t('collection.empty') }}</p>
+    </section>
+  } @else {
+    <section class="glass-card toolbar">
+      <input
+        class="glass-input"
+        type="search"
+        [placeholder]="i18n.t('collection.searchPlaceholder')"
+        [ngModel]="search()"
+        (ngModelChange)="search.set($event)"
+      />
+      <div class="toolbar-row">
+        <div class="segmented">
+          <button type="button" [class.active]="mode() === 'grid'" (click)="mode.set('grid')">
+            {{ i18n.t('collection.viewGrid') }}
+          </button>
+          <button type="button" [class.active]="mode() === 'list'" (click)="mode.set('list')">
+            {{ i18n.t('collection.viewList') }}
+          </button>
+        </div>
+        <button
+          type="button"
+          class="glass-chip small"
+          [class.active]="filtersOpen() || filterCount() > 0"
+          [attr.aria-expanded]="filtersOpen()"
+          (click)="filtersOpen.set(!filtersOpen())"
+        >
+          {{ i18n.t('collection.filters') }}
+          @if (filterCount() > 0) {
+            ({{ filterCount() }})
+          }
+        </button>
+      </div>
+      <div class="toolbar-row">
+        <select
+          class="glass-input small"
+          [ngModel]="sort()"
+          (ngModelChange)="sort.set($event)"
+          [attr.aria-label]="i18n.t('collection.sort')"
+        >
+          <option ngValue="added">{{ i18n.t('collection.sortAdded') }}</option>
+          <option ngValue="name">{{ i18n.t('collection.sortName') }}</option>
+          <option ngValue="set">{{ i18n.t('collection.sortSet') }}</option>
+          <option ngValue="cmc">{{ i18n.t('collection.sortCmc') }}</option>
+          <option ngValue="price">{{ i18n.t('collection.sortPrice') }}</option>
+        </select>
+        <select
+          class="glass-input small"
+          [ngModel]="group()"
+          (ngModelChange)="group.set($event)"
+          [attr.aria-label]="i18n.t('collection.group')"
+        >
+          <option ngValue="none">{{ i18n.t('collection.groupNone') }}</option>
+          <option ngValue="set">{{ i18n.t('collection.groupSet') }}</option>
+          <option ngValue="color">{{ i18n.t('collection.groupColor') }}</option>
+          <option ngValue="type">{{ i18n.t('collection.groupType') }}</option>
+          <option ngValue="rarity">{{ i18n.t('collection.groupRarity') }}</option>
+        </select>
+        <button
+          type="button"
+          class="glass-chip small"
+          [class.active]="merge()"
+          (click)="merge.set(!merge())"
+        >
+          {{ i18n.t('collection.mergePrints') }}
+        </button>
+      </div>
+
+      @if (filtersOpen()) {
+        <div class="filters">
+          @if (languages().length > 1) {
+            <div class="filter-block">
+              <span class="filter-label">{{ i18n.t('collection.languages') }}</span>
+              <div class="chip-row">
+                @for (l of languages(); track l.code) {
+                  <button
+                    type="button"
+                    class="glass-chip small"
+                    [class.active]="langs().has(l.code)"
+                    (click)="toggleLang(l.code)"
+                  >
+                    {{ l.code.toUpperCase() }} ({{ l.count }})
+                  </button>
+                }
+              </div>
+            </div>
+          }
+          <div class="filter-block">
+            <span class="filter-label">{{ i18n.t('collection.foil') }}</span>
+            <div class="segmented">
+              <button type="button" [class.active]="foil() === 'all'" (click)="foil.set('all')">
+                {{ i18n.t('collection.all') }}
+              </button>
+              <button type="button" [class.active]="foil() === 'foil'" (click)="foil.set('foil')">
+                ★ {{ i18n.t('collection.onlyFoil') }}
+              </button>
+              <button
+                type="button"
+                [class.active]="foil() === 'nonfoil'"
+                (click)="foil.set('nonfoil')"
+              >
+                {{ i18n.t('collection.noFoil') }}
+              </button>
+            </div>
+          </div>
+          <div class="filter-block">
+            <span class="filter-label">{{ i18n.t('collection.set') }}</span>
+            <app-multi-select
+              [(value)]="setFilter"
+              [options]="setOptions()"
+              [allLabel]="i18n.t('collection.allSets')"
+              [label]="i18n.t('collection.set')"
+            />
+          </div>
+          <div class="filter-block">
+            <span class="filter-label">{{ i18n.t('collection.rarityLabel') }}</span>
+            <div class="chip-row">
+              @for (r of rarities; track r) {
+                <button
+                  type="button"
+                  class="glass-chip small"
+                  [class.active]="rarityFilter().has(r)"
+                  (click)="toggleRarity(r)"
+                >
+                  {{ i18n.t('collection.rarity.' + r) }}
+                </button>
+              }
+            </div>
+          </div>
+          <div class="filter-block">
+            <span class="filter-label">{{ i18n.t('collection.manaValue') }}</span>
+            <app-cmc-filter [(value)]="cmc" />
+          </div>
+          <div class="filter-block">
+            <span class="filter-label">{{ i18n.t('collection.color') }}</span>
+            <app-color-filter [(value)]="colors" />
+          </div>
+          <div class="filter-block selects">
+            <select class="glass-input small" [ngModel]="type()" (ngModelChange)="type.set($event)">
+              <option ngValue="all">{{ i18n.t('deckView.typeAll') }}</option>
+              @for (t of typeSections; track t) {
+                <option [ngValue]="t">{{ sectionLabelFor(t) }}</option>
+              }
+            </select>
+            <select
+              class="glass-input small"
+              [ngModel]="effect()"
+              (ngModelChange)="setEffect($event)"
+            >
+              <option ngValue="all">{{ i18n.t('deckView.effectAll') }}</option>
+              @for (f of effects.effectFilters; track f.value) {
+                <option [ngValue]="f.value">{{ effects.effectFilterLabel(f.value) }}</option>
+              }
+            </select>
+            <select
+              class="glass-input small"
+              [ngModel]="keyword()"
+              (ngModelChange)="keyword.set($event)"
+            >
+              <option ngValue="all">{{ i18n.t('deckView.abilityAll') }}</option>
+              @for (k of effects.keywordFilters; track k.value) {
+                <option [ngValue]="k.value">{{ effects.keywordFilterLabel(k.value) }}</option>
+              }
+            </select>
+          </div>
+          @if (editable()) {
+            <div class="filter-block">
+              <span class="filter-label">{{ i18n.t('collection.usage') }}</span>
+              <div class="segmented">
+                <button type="button" [class.active]="usage() === 'all'" (click)="usage.set('all')">
+                  {{ i18n.t('collection.all') }}
+                </button>
+                <button
+                  type="button"
+                  [class.active]="usage() === 'used'"
+                  (click)="usage.set('used')"
+                >
+                  {{ i18n.t('collection.usageUsed') }}
+                </button>
+                <button
+                  type="button"
+                  [class.active]="usage() === 'free'"
+                  (click)="usage.set('free')"
+                >
+                  {{ i18n.t('collection.usageFree') }}
+                </button>
+              </div>
+            </div>
+          }
+          @if (filterCount() > 0) {
+            <button type="button" class="glass-chip small" (click)="resetFilters()">
+              {{ i18n.t('deckView.resetFilters') }}
+            </button>
+          }
+        </div>
+      }
+    </section>
+
+    <p class="result-line">
+      {{
+        i18n.t('collection.resultLine', {
+          cards: filteredCards(),
+          value: (filteredValue() | number: '1.2-2') ?? '',
+        })
+      }}
+    </p>
+
+    @for (section of visibleSections(); track section.key) {
+      @if (group() !== 'none') {
+        <h4 class="section-title">
+          <span>{{ sectionLabel(section) }}</span>
+          <span class="section-meta">
+            {{ section.cards }}
+            @if (setProgress(section); as progress) {
+              · {{ progress }}
+            }
+            · {{ sectionValue(section) | number: '1.2-2' }} €
+          </span>
+        </h4>
+      }
+      @if (mode() === 'grid') {
+        <div class="grid">
+          @for (item of section.items; track item.entry.scryfallId + item.entry.foil) {
+            <div class="tile" [class.foil]="item.entry.foil">
+              <button
+                type="button"
+                class="tile-image"
+                (click)="openPreview(item.entry)"
+                [attr.aria-label]="item.entry.cardName"
+              >
+                <img [src]="image(item.entry)" [alt]="item.entry.cardName" loading="lazy" />
+                <span class="badge qty">×{{ item.entry.quantity }}</span>
+                <span class="badge lang"
+                  >{{ item.entry.lang.toUpperCase() }}
+                  @if (item.entry.foil) {
+                    ★
+                  }
+                </span>
+              </button>
+              <div class="tile-meta">
+                @if (item.price !== null) {
+                  <span>{{ item.price | number: '1.2-2' }} €</span>
+                }
+                @if (item.inDecks > 0) {
+                  <span
+                    class="in-decks"
+                    [title]="i18n.t('collection.inDecks', { count: item.inDecks })"
+                    >⧉ {{ item.inDecks }}</span
+                  >
+                }
+              </div>
+              @if (editable() && !merge()) {
+                <div class="qty">
+                  <button
+                    type="button"
+                    class="icon-button"
+                    (click)="change(item, -1)"
+                    [attr.aria-label]="i18n.t('collection.less')"
+                  >
+                    −
+                  </button>
+                  <button
+                    type="button"
+                    class="icon-button"
+                    (click)="change(item, 1)"
+                    [attr.aria-label]="i18n.t('collection.more')"
+                  >
+                    +
+                  </button>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      } @else {
+        <ul class="list">
+          @for (item of section.items; track item.entry.scryfallId + item.entry.foil) {
+            <li>
+              <button
+                type="button"
+                class="thumb"
+                (click)="openPreview(item.entry)"
+                [attr.aria-label]="item.entry.cardName"
+              >
+                <img [src]="image(item.entry)" alt="" loading="lazy" />
+              </button>
+              <div class="info">
+                <span class="name">{{ item.entry.cardName }}</span>
+                <span class="meta">
+                  {{ item.entry.setCode.toUpperCase() }} #{{ item.entry.collectorNumber }} ·
+                  {{ item.entry.lang.toUpperCase() }}
+                  @if (item.entry.foil) {
+                    · <span class="foil-mark">★</span>
+                  }
+                  @if (item.price !== null) {
+                    · {{ item.price | number: '1.2-2' }} €
+                  }
+                  @if (item.inDecks > 0) {
+                    · ⧉ {{ item.inDecks }}
+                  }
+                </span>
+              </div>
+              @if (editable() && !merge()) {
+                <div class="qty">
+                  <button
+                    type="button"
+                    class="icon-button"
+                    (click)="change(item, -1)"
+                    [attr.aria-label]="i18n.t('collection.less')"
+                  >
+                    −
+                  </button>
+                  <span>{{ item.entry.quantity }}</span>
+                  <button
+                    type="button"
+                    class="icon-button"
+                    (click)="change(item, 1)"
+                    [attr.aria-label]="i18n.t('collection.more')"
+                  >
+                    +
+                  </button>
+                </div>
+              } @else {
+                <span class="qty readonly">×{{ item.entry.quantity }}</span>
+              }
+            </li>
+          }
+        </ul>
+      }
+    } @empty {
+      <p class="hint">{{ i18n.t('collection.noMatch') }}</p>
+    }
+    @if (hiddenCount() > 0) {
+      <button type="button" class="glass-button more" (click)="showMore()">
+        {{ i18n.t('collection.showMore', { count: hiddenCount() }) }}
+      </button>
+    }
+  }
+</div>
+
+@if (addOpen()) {
+  <div class="options-menu-overlay" (click)="closeAdd()">
+    <div class="options-menu-sheet wide add-sheet" (click)="$event.stopPropagation()">
+      @if (!addCardName()) {
+        <h3>{{ i18n.t('collection.addTitle') }}</h3>
+        <input
+          class="glass-input"
+          type="search"
+          [placeholder]="i18n.t('collection.addPlaceholder')"
+          [ngModel]="addQuery()"
+          (ngModelChange)="onAddQuery($event)"
+        />
+        <ul class="suggestions">
+          @for (name of suggestions(); track name) {
+            <li>
+              <button type="button" class="glass-button" (click)="pickCard(name)">
+                {{ name }}
+              </button>
+            </li>
+          }
+        </ul>
+      } @else {
+        <div class="section-header-row">
+          <button type="button" class="glass-button small" (click)="backToSearch()">
+            ‹ {{ i18n.t('collection.back') }}
+          </button>
+          <label class="foil-toggle">
+            <input type="checkbox" [ngModel]="addFoil()" (ngModelChange)="addFoil.set($event)" />
+            ★ {{ i18n.t('collection.foil') }}
+          </label>
+        </div>
+        <h3>{{ addCardName() }}</h3>
+        @if (printLanguages().length > 1) {
+          <div class="chip-row langs">
+            <button
+              type="button"
+              class="glass-chip small"
+              [class.active]="!addLangFilter()"
+              (click)="addLangFilter.set(null)"
+            >
+              {{ i18n.t('collection.allLanguages') }}
+            </button>
+            @for (l of printLanguages(); track l) {
+              <button
+                type="button"
+                class="glass-chip small"
+                [class.active]="addLangFilter() === l"
+                (click)="addLangFilter.set(l)"
+              >
+                {{ l.toUpperCase() }}
+              </button>
+            }
+          </div>
+        }
+        @if (printsBusy()) {
+          <p class="hint">{{ i18n.t('collection.loadingPrints') }}</p>
+        } @else {
+          <p class="hint">{{ i18n.t('collection.tapToAdd') }}</p>
+          <div class="print-grid">
+            @for (p of shownPrints(); track p.scryfallId) {
+              <div class="print" [class.owned]="ownedOf(p) > 0" [class.unavailable]="!canFoil(p)">
+                <button
+                  type="button"
+                  class="print-image"
+                  (click)="addPrint(p, 1)"
+                  [disabled]="!canFoil(p)"
+                >
+                  <img [src]="p.imageUrl" [alt]="p.printedName || p.cardName" loading="lazy" />
+                  @if (ownedOf(p) > 0) {
+                    <span class="badge qty">×{{ ownedOf(p) }}</span>
+                  }
+                </button>
+                <span class="print-meta"
+                  >{{ p.setCode.toUpperCase() }} · {{ p.lang.toUpperCase() }}</span
+                >
+                @if (ownedOf(p) > 0) {
+                  <button
+                    type="button"
+                    class="icon-button minus"
+                    (click)="addPrint(p, -1)"
+                    [attr.aria-label]="i18n.t('collection.less')"
+                  >
+                    −
+                  </button>
+                }
+              </div>
+            } @empty {
+              <p class="hint">{{ i18n.t('collection.noPrints') }}</p>
+            }
+          </div>
+        }
+      }
+      <button type="button" class="glass-button" (click)="closeAdd()">
+        {{ i18n.t('common.close') }}
+      </button>
+    </div>
+  </div>
+}
+
+@if (scannerOpen()) {
+  <app-card-scanner (closed)="scannerOpen.set(false)" />
+}

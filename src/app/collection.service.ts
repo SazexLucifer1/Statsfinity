@@ -19,6 +19,15 @@ import {
  * sich alles beim ersten 42P01/PGRST205 still ab (`available`).
  */
 
+/** Was Scryfall je Druck zusätzlich weiß (siehe printInfo()). */
+export interface PrintInfo {
+  illustrationId: string | null;
+  rarity: string | null;
+  setName: string | null;
+  eur: number | null;
+  eurFoil: number | null;
+}
+
 const SELECT =
   'scryfall_id, foil, card_name, lang, set_code, collector_number, illustration_id, quantity, added_at';
 const API = 'https://api.scryfall.com';
@@ -71,6 +80,21 @@ export class CollectionService {
 
   private loadedFor: string | null = null;
 
+  /**
+   * Offene Vollbild-Ansicht der Sammlung (collection-view/): null = zu, `userId` null = die eigene.
+   * Wie die Deck-Ansicht eine eigene Seite statt eines Reiters im Profil (Wunsch des Users,
+   * 18.10.2026: die Sammlung braucht mehr Platz).
+   */
+  readonly view = signal<{ userId: string | null; name: string | null } | null>(null);
+
+  openView(userId: string | null = null, name: string | null = null): void {
+    this.view.set({ userId, name });
+  }
+
+  closeView(): void {
+    this.view.set(null);
+  }
+
   /** Besitz je Kartenname (normalisierte Vorderseite). */
   readonly ownedByName = computed(() => {
     const map = new Map<string, CollectionEntry[]>();
@@ -95,6 +119,7 @@ export class CollectionService {
         this.entries.set(null);
         this.deckUsage.set(null);
         this.loadedFor = null;
+        this.view.set(null);
       }
     });
   }
@@ -276,11 +301,19 @@ export class CollectionService {
     return prints;
   }
 
-  /** illustration_id je Scryfall-ID (für die strenge Artwork-Prüfung), gebündelt zu je 75. */
-  private readonly illustrationCache = new Map<string, string | null>();
-  async illustrationsOf(ids: string[]): Promise<Map<string, string | null>> {
-    const open = [...new Set(ids)].filter((id) => !this.illustrationCache.has(id));
+  /**
+   * Angaben je Druck, die nur Scryfall kennt (Seltenheit, Setname, Preise, illustration_id) -
+   * gebündelt zu je 75 über /cards/collection, im Sitzungs-Cache. Bewusst nicht in der Datenbank:
+   * Preise ändern sich täglich, und die Sammlungs-Tabelle soll klein bleiben.
+   */
+  private readonly printInfoCache = new Map<string, PrintInfo | null>();
+  async printInfo(
+    ids: string[],
+    onProgress?: (done: number, total: number) => void,
+  ): Promise<Map<string, PrintInfo | null>> {
+    const open = [...new Set(ids)].filter((id) => !this.printInfoCache.has(id));
     for (let i = 0; i < open.length; i += 75) {
+      onProgress?.(i, open.length);
       const chunk = open.slice(i, i + 75);
       const res = await this.scryfall.fetchWithRetry(`${API}/cards/collection`, 1, {
         method: 'POST',
@@ -290,14 +323,25 @@ export class CollectionService {
       if (!res?.ok) continue;
       const data = await res.json();
       for (const c of (data.data as any[]) ?? []) {
-        this.illustrationCache.set(
-          c.id,
-          c.illustration_id ?? c.card_faces?.[0]?.illustration_id ?? null,
-        );
+        const eur = parseFloat(c.prices?.eur);
+        const eurFoil = parseFloat(c.prices?.eur_foil);
+        this.printInfoCache.set(c.id, {
+          illustrationId: c.illustration_id ?? c.card_faces?.[0]?.illustration_id ?? null,
+          rarity: c.rarity ?? null,
+          setName: c.set_name ?? null,
+          eur: Number.isNaN(eur) ? null : eur,
+          eurFoil: Number.isNaN(eurFoil) ? null : eurFoil,
+        });
       }
-      for (const id of chunk)
-        if (!this.illustrationCache.has(id)) this.illustrationCache.set(id, null);
+      for (const id of chunk) if (!this.printInfoCache.has(id)) this.printInfoCache.set(id, null);
     }
-    return new Map(ids.map((id) => [id, this.illustrationCache.get(id) ?? null]));
+    onProgress?.(open.length, open.length);
+    return new Map(ids.map((id) => [id, this.printInfoCache.get(id) ?? null]));
+  }
+
+  /** illustration_id je Scryfall-ID (für die strenge Artwork-Prüfung). */
+  async illustrationsOf(ids: string[]): Promise<Map<string, string | null>> {
+    const info = await this.printInfo(ids);
+    return new Map(ids.map((id) => [id, info.get(id)?.illustrationId ?? null]));
   }
 }

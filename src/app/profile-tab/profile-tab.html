@@ -72,7 +72,7 @@
        bleibt die Liste leer und der Abschnitt verschwindet. -->
   @if (profileService.viewingUserId(); as collectionUserId) {
     @if (profileService.profile()) {
-      <app-collection-panel [userId]="collectionUserId" />
+      <app-collection-panel [userId]="collectionUserId" [name]="profileService.viewingProfile()?.displayName ?? null" />
     }
   }
 
@@ -694,17 +694,13 @@
         {{ i18n.t('profile.viewTabDecks') }}
       </button>
       @if (!devFullView()) {
-        <button [class.active]="profileViewTab() === 'collection'" (click)="setProfileViewTab('collection')">
+        <!-- Die Sammlung ist eine eigene Seite wie die Deck-Ansicht (collection-view/) - der Reiter
+             öffnet sie direkt, statt sie hier eng einzubetten. -->
+        <button (click)="collection.openView()">
           {{ i18n.t('collection.title') }}
         </button>
       }
     </div>
-  }
-
-  <!-- Sammlung (sql/sammlung-2026-10-17.sql): nur die eigene; die eines Freundes steht in der
-       Fremdansicht oben. -->
-  @if (profileViewTab() === 'collection' && !devFullView()) {
-    <app-collection-panel />
   }
 
   @if (profileViewTab() === 'stats') {
