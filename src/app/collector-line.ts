@@ -142,3 +142,240 @@ export function foilFromWords(words: readonly OcrWord[]): boolean | null {
 function clean(text: string): string {
   return text.toUpperCase().replace(/[^A-Z0-9]/g, '');
 }
+
+/**
+ * Häufige Wörter je Sprache - für Karten, deren Sammlerzeile nicht lesbar ist (auf dem iPhone
+ * der Normalfall: gut 1 mm hoch und meist unscharf). Name, Typzeile und Regeltext sind dagegen
+ * groß genug für die Texterkennung, und an ihren Wörtern ist die Sprache gut zu erkennen. Ohne
+ * Akzente, weil die englische Texterkennung sie ohnehin nicht liefert ("Legendäre" -> "legendare").
+ * Bewusst eine Wortliste statt Scryfalls übersetzter Typzeile: die fehlt bei neuen Sets oft.
+ * Nur Sprachen in lateinischer Schrift - Japanisch & Co. liest die englische Erkennung nicht.
+ */
+const LANG_WORDS: Record<string, readonly string[]> = {
+  en: [
+    'the',
+    'you',
+    'your',
+    'of',
+    'to',
+    'and',
+    'creature',
+    'card',
+    'target',
+    'each',
+    'control',
+    'when',
+    'this',
+    'that',
+    'with',
+    'from',
+    'player',
+    'until',
+    'end',
+    'turn',
+    'may',
+    'its',
+    'legendary',
+    'instant',
+    'sorcery',
+    'enchantment',
+    'artifact',
+    'another',
+    'gets',
+    'gain',
+    'whenever',
+  ],
+  de: [
+    'der',
+    'die',
+    'das',
+    'du',
+    'deine',
+    'deiner',
+    'deinen',
+    'deinem',
+    'eine',
+    'einer',
+    'ein',
+    'einen',
+    'und',
+    'oder',
+    'kreatur',
+    'karte',
+    'wenn',
+    'bis',
+    'zum',
+    'ende',
+    'zuges',
+    'kontrolle',
+    'kontrollierst',
+    'jede',
+    'jeder',
+    'ziel',
+    'legendare',
+    'spontanzauber',
+    'hexerei',
+    'verzauberung',
+    'artefakt',
+    'auf',
+    'mit',
+    'von',
+    'nicht',
+    'andere',
+    'erhaltst',
+    'immer',
+    'wahl',
+  ],
+  fr: [
+    'le',
+    'la',
+    'les',
+    'des',
+    'du',
+    'une',
+    'un',
+    'vous',
+    'votre',
+    'vos',
+    'et',
+    'ou',
+    'creature',
+    'carte',
+    'quand',
+    'jusqu',
+    'fin',
+    'tour',
+    'chaque',
+    'cible',
+    'controle',
+    'controlez',
+    'legendaire',
+    'ephemere',
+    'rituel',
+    'enchantement',
+    'artefact',
+    'est',
+    'autre',
+    'gagnez',
+    'chaque',
+  ],
+  es: [
+    'el',
+    'los',
+    'las',
+    'del',
+    'una',
+    'tu',
+    'tus',
+    'criatura',
+    'carta',
+    'cuando',
+    'hasta',
+    'final',
+    'turno',
+    'cada',
+    'objetivo',
+    'controlas',
+    'legendaria',
+    'instantaneo',
+    'conjuro',
+    'encantamiento',
+    'artefacto',
+    'otra',
+    'ganas',
+    'que',
+  ],
+  it: [
+    'il',
+    'della',
+    'del',
+    'di',
+    'una',
+    'tua',
+    'tuo',
+    'creatura',
+    'carta',
+    'quando',
+    'fino',
+    'fine',
+    'turno',
+    'ogni',
+    'bersaglio',
+    'controlli',
+    'leggendaria',
+    'istantaneo',
+    'stregoneria',
+    'incantesimo',
+    'artefatto',
+    'altra',
+    'guadagni',
+    'che',
+  ],
+  pt: [
+    'os',
+    'do',
+    'da',
+    'uma',
+    'um',
+    'voce',
+    'sua',
+    'seu',
+    'ou',
+    'criatura',
+    'carta',
+    'quando',
+    'ate',
+    'final',
+    'turno',
+    'cada',
+    'alvo',
+    'controla',
+    'lendaria',
+    'instantanea',
+    'feitico',
+    'encantamento',
+    'artefato',
+    'outra',
+    'ganha',
+    'que',
+  ],
+};
+
+function words(text: string): string[] {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .split(/[^a-z]+/)
+    .filter((w) => w.length >= 2);
+}
+
+/**
+ * Sprache aus gelesenem Kartentext (Name, Typzeile, Regeltext), nur unter den Sprachen, in denen
+ * es diesen Druck gibt. Zählt Treffer aus `LANG_WORDS` und - dreifach - Wörter aus dem gedruckten
+ * Namen, die NICHT in allen Sprachen gleich sind ("die" in "Liliana, die Makellose", nicht
+ * "Liliana"). null, wenn keine Sprache klar vorn liegt.
+ */
+export function languageFromText(
+  text: string,
+  candidates: readonly { lang: string; name: string | null }[],
+): string | null {
+  const read = words(text);
+  const nameWords = candidates.map((c) => new Set(words(c.name ?? '')));
+  const common = new Set(
+    [...(nameWords[0] ?? [])].filter((w) => nameWords.every((set) => set.has(w))),
+  );
+  const scores = candidates.map((c, i) => {
+    const list = new Set(LANG_WORDS[c.lang] ?? []);
+    let score = 0;
+    for (const w of read) {
+      if (list.has(w)) score++;
+      if (nameWords[i].has(w) && !common.has(w)) score += 3;
+    }
+    return { lang: c.lang, score };
+  });
+  scores.sort((a, b) => b.score - a.score);
+  const [best, second] = scores;
+  if (!best || best.score < 3) return null;
+  return !second || best.score - second.score >= 2 ? best.lang : null;
+}

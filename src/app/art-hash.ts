@@ -127,18 +127,7 @@ export function cardArtQueries(
   channels: number,
   card: ArtBox = [0, 0, 1, 1],
 ): ArtHash[] {
-  const w = card[2] - card[0];
-  const h = card[3] - card[1];
-  const shifted: ArtBox[] = [];
-  for (const dx of ART_JITTER) {
-    for (const dy of ART_JITTER) {
-      shifted.push([card[0] + dx * w, card[1] + dy * h, card[2] + dx * w, card[3] + dy * h]);
-    }
-  }
-  for (const sc of ART_JITTER) {
-    if (sc) shifted.push([card[0] - sc * w, card[1] - sc * h, card[2] + sc * w, card[3] + sc * h]);
-  }
-  return shifted.flatMap((box) => {
+  return cardArtBoxes(card).flatMap((box) => {
     const bw = box[2] - box[0];
     const bh = box[3] - box[1];
     return CARD_ART_BOXES.map((art) =>
@@ -152,6 +141,26 @@ export function cardArtQueries(
       ),
     );
   });
+}
+
+/**
+ * Die verschobenen Kartenlagen, die `cardArtQueries` durchrechnet, in derselben Reihenfolge -
+ * Fingerabdruck i gehört zu Lage `Math.floor(i / CARD_ART_BOXES.length)`. Damit lässt sich aus
+ * dem besten Treffer ablesen, wo die Karte genau liegt.
+ */
+export function cardArtBoxes(card: ArtBox): ArtBox[] {
+  const w = card[2] - card[0];
+  const h = card[3] - card[1];
+  const shifted: ArtBox[] = [];
+  for (const dx of ART_JITTER) {
+    for (const dy of ART_JITTER) {
+      shifted.push([card[0] + dx * w, card[1] + dy * h, card[2] + dx * w, card[3] + dy * h]);
+    }
+  }
+  for (const sc of ART_JITTER) {
+    if (sc) shifted.push([card[0] - sc * w, card[1] - sc * h, card[2] + sc * w, card[3] + sc * h]);
+  }
+  return shifted;
 }
 
 /** DCT-pHash aus einem 32x32-Graustufenraster. */
@@ -257,30 +266,39 @@ export interface ArtMatch {
   distance: number;
   /** Abstand zum nächstbesten ANDEREN Eintrag - klein heißt "verwechselbar". */
   runnerUp: number;
+  /** Index des Fingerabdrucks in `queries`, der am besten passte. */
+  query: number;
 }
 
 /** Bester Eintrag über mehrere Fingerabdrücke derselben Aufnahme (je Artwork-Lage einer). */
 export function nearestArt(index: ArtHashIndex, queries: readonly ArtHash[]): ArtMatch | null {
   let best = -1;
   let bestD = 65;
+  let bestQ = 0;
   let second = 65;
   const h = index.hashes;
   for (let i = 0; i < index.count; i++) {
     const hi = h[i * 2];
     const lo = h[i * 2 + 1];
     let d = 65;
-    for (const q of queries) {
+    let dQ = 0;
+    for (let k = 0; k < queries.length; k++) {
+      const q = queries[k];
       const dq = popcount((hi ^ q.hi) >>> 0) + popcount((lo ^ q.lo) >>> 0);
-      if (dq < d) d = dq;
+      if (dq < d) {
+        d = dq;
+        dQ = k;
+      }
     }
     if (d < bestD) {
       second = bestD;
       bestD = d;
       best = i;
+      bestQ = dQ;
     } else if (d < second) {
       second = d;
     }
   }
   if (best < 0) return null;
-  return { id: artHashId(index, best), distance: bestD, runnerUp: second };
+  return { id: artHashId(index, best), distance: bestD, runnerUp: second, query: bestQ };
 }
