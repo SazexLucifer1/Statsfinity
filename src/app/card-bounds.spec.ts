@@ -30,3 +30,23 @@ describe('findCardBounds', () => {
     expect(findCardBounds(new Uint8Array(200 * 280).fill(180), 200, 280)).toBeNull();
   });
 });
+
+describe('findCardBounds bei schlampig angelegter Karte', () => {
+  it('findet eine kleine Karte, die nicht mittig liegt', () => {
+    // Suchbereich 260x364, Karte nur gut halb so hoch und nach rechts unten verschoben.
+    const bounds = findCardBounds(scene(260, 364, [110, 150, 250, 345]), 260, 364);
+    expect(bounds).not.toBeNull();
+    const [l, t, r, b] = bounds!;
+    expect(l * 260).toBeCloseTo(110, -1);
+    expect(t * 364).toBeCloseTo(150, -1);
+    expect(r * 260).toBeCloseTo(250, -1);
+    expect(b * 364).toBeCloseTo(345, -1);
+  });
+
+  it('nimmt die Außenkante, nicht den inneren Rand', () => {
+    // Die Szene hat ein helleres "Artwork" innen - dessen Kante darf nicht gewinnen.
+    const bounds = findCardBounds(scene(200, 280, [20, 20, 180, 243]), 200, 280);
+    expect(bounds![0] * 200).toBeLessThan(24);
+    expect(bounds![2] * 200).toBeGreaterThan(176);
+  });
+});

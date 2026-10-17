@@ -43,6 +43,27 @@ export const CARD_ART_BOXES: readonly ArtBox[] = [
 /** Bis zu dieser Distanz gilt ein Treffer als sicher (von 64 Bit). */
 export const ART_MATCH_MAX_DISTANCE = 10;
 
+/**
+ * Sicherer Treffer? Seit der Scanner viele leicht verschobene Ausschnitte vergleicht
+ * (`cardArtQueries`), erreichen auch Bilder OHNE echte Übereinstimmung gegen ~40.000 Artworks
+ * gelegentlich Distanz 10 - in 122 Gegenproben immer genau 10 und mit höchstens 2 Bit Vorsprung
+ * vor dem nächstbesten Artwork, nie 8 oder weniger. Echte Treffer: meist 4-6, mit Vorsprung 4+;
+ * ein unscharfes iPhone-Foto kam auf 8 mit Vorsprung 2. Daher abgestuft.
+ */
+export function isConfidentArtMatch(match: ArtMatch): boolean {
+  const margin = match.runnerUp - match.distance;
+  if (match.distance <= 8) return margin >= 2;
+  return match.distance <= ART_MATCH_MAX_DISTANCE && margin >= 4;
+}
+
+/**
+ * Verschiebungen (Anteile der Kartenbreite/-höhe), mit denen jede Artwork-Lage zusätzlich
+ * gerechnet wird. Der Fingerabdruck verträgt nur ein, zwei Prozent Versatz; die im Kamerabild
+ * gefundene Karte (card-bounds.ts) liegt oft drei Prozent daneben. Gemessen an 150 schief und
+ * versetzt gelegten Karten: ohne Verschiebung 58 erkannt, mit diesen 136.
+ */
+const ART_JITTER = [-0.03, -0.02, -0.01, 0, 0.01, 0.02, 0.03];
+
 const N = 32;
 const COS: Float64Array[] = [];
 for (let u = 0; u < 8; u++) {
@@ -93,6 +114,44 @@ export function grayGrid(
     }
   }
   return out;
+}
+
+/**
+ * Alle Fingerabdrücke einer Aufnahme: jede Artwork-Lage aus `CARD_ART_BOXES` innerhalb der Karte
+ * `card` (Anteile des Bildes), je verschoben und leicht vergrößert/verkleinert.
+ */
+export function cardArtQueries(
+  pixels: ArrayLike<number>,
+  width: number,
+  height: number,
+  channels: number,
+  card: ArtBox = [0, 0, 1, 1],
+): ArtHash[] {
+  const w = card[2] - card[0];
+  const h = card[3] - card[1];
+  const shifted: ArtBox[] = [];
+  for (const dx of ART_JITTER) {
+    for (const dy of ART_JITTER) {
+      shifted.push([card[0] + dx * w, card[1] + dy * h, card[2] + dx * w, card[3] + dy * h]);
+    }
+  }
+  for (const sc of ART_JITTER) {
+    if (sc) shifted.push([card[0] - sc * w, card[1] - sc * h, card[2] + sc * w, card[3] + sc * h]);
+  }
+  return shifted.flatMap((box) => {
+    const bw = box[2] - box[0];
+    const bh = box[3] - box[1];
+    return CARD_ART_BOXES.map((art) =>
+      phash(
+        grayGrid(pixels, width, height, channels, [
+          box[0] + art[0] * bw,
+          box[1] + art[1] * bh,
+          box[0] + art[2] * bw,
+          box[1] + art[3] * bh,
+        ]),
+      ),
+    );
+  });
 }
 
 /** DCT-pHash aus einem 32x32-Graustufenraster. */
