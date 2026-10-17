@@ -66,6 +66,8 @@ export interface ScryfallSet {
   name: string;
   released_at?: string;
   set_type?: string;
+  /** Karten im Set - für den Fortschritt "12 / 281" in der Sammlung. */
+  card_count?: number;
 }
 
 /** Welche der 5 Partner-Commander-Mechaniken eine Karte trägt - siehe ScryfallService.partnerProfile(). */
