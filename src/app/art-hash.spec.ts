@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CARD_ART_BOXES,
+  cardArtQueries,
   decodeArtHashes,
   encodeArtHashes,
   grayGrid,
   hammingDistance,
+  isConfidentArtMatch,
   nearestArt,
   phash,
 } from './art-hash';
@@ -45,5 +48,35 @@ describe('art-hash', () => {
 
   it('erkennt eine fremde Datei nicht als Fingerabdrücke', () => {
     expect(decodeArtHashes(new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8])).count).toBe(0);
+  });
+});
+
+describe('cardArtQueries', () => {
+  it('findet ein Artwork auch, wenn die Karte ein Stück verschoben liegt', () => {
+    const w = 300;
+    const h = 420;
+    const px = image(w, h, 5);
+    const art = CARD_ART_BOXES[0];
+    const reference = phash(grayGrid(px, w, h, 4, art));
+    // Dieselbe Karte, angenommen 2 % weiter rechts:
+    const shifted = [art[0] + 0.02, art[1], art[2] + 0.02, art[3]] as const;
+    const unshifted = hammingDistance(phash(grayGrid(px, w, h, 4, shifted)), reference);
+    const queries = cardArtQueries(px, w, h, 4, [0.02, 0, 1.02, 1]);
+    const best = Math.min(...queries.map((q) => hammingDistance(q, reference)));
+    expect(best).toBeLessThan(unshifted);
+  });
+});
+
+describe('isConfidentArtMatch', () => {
+  const match = (distance: number, runnerUp: number) => ({ id: 'x', distance, runnerUp });
+
+  it('nimmt klare Treffer und verwirft Zufallstreffer', () => {
+    expect(isConfidentArtMatch(match(4, 14))).toBe(true);
+    // Unscharfes iPhone-Foto:
+    expect(isConfidentArtMatch(match(8, 10))).toBe(true);
+    // So sahen alle Zufallstreffer in den Gegenproben aus:
+    expect(isConfidentArtMatch(match(10, 12))).toBe(false);
+    expect(isConfidentArtMatch(match(10, 10))).toBe(false);
+    expect(isConfidentArtMatch(match(12, 20))).toBe(false);
   });
 });

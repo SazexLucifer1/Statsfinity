@@ -29,6 +29,8 @@ interface RecentScan extends ScanHit {
 const MOTION = 22;
 /** Abstand zum Bild des letzten Treffers, ab dem eine andere Karte (oder keine) im Rahmen liegt. */
 const CHANGED = 25;
+/** Suchbereich um den Rahmen herum, je Seite in Anteilen der Rahmengröße. */
+const SEARCH_MARGIN = 0.15;
 /** Frühestens so oft ein neuer Versuch, solange die Karte nicht erkannt wird. */
 const RETRY_MS = 600;
 /** Unter dieser Streuung liegt keine Karte im Rahmen, nur Tisch. */
@@ -210,13 +212,28 @@ export class CardScanner implements OnInit, OnDestroy {
     this.lastAttempt = Date.now();
     this.status.set('reading');
     try {
-      const card = document.createElement('canvas');
-      card.width = Math.round(Math.min(rect.w, 1400));
-      card.height = Math.round((card.width * 88) / 63);
-      card
+      // Gesucht wird nicht nur im Rahmen, sondern mit einem Rand ringsum: Die Karte muss nur
+      // ungefähr drinliegen und darf überstehen (Wunsch des Users, 18.10.2026). Wo genau sie
+      // liegt, findet card-bounds.ts.
+      const mx = rect.w * SEARCH_MARGIN;
+      const my = rect.h * SEARCH_MARGIN;
+      const x0 = Math.max(0, rect.x - mx);
+      const y0 = Math.max(0, rect.y - my);
+      const x1 = Math.min(video.videoWidth, rect.x + rect.w + mx);
+      const y1 = Math.min(video.videoHeight, rect.y + rect.h + my);
+      const frame = document.createElement('canvas');
+      frame.width = Math.round(Math.min(x1 - x0, 1800));
+      frame.height = Math.round((frame.width * (y1 - y0)) / (x1 - x0));
+      frame
         .getContext('2d')
-        ?.drawImage(video, rect.x, rect.y, rect.w, rect.h, 0, 0, card.width, card.height);
-      const hit = await this.scan.identify(card, this.fallbackLang());
+        ?.drawImage(video, x0, y0, x1 - x0, y1 - y0, 0, 0, frame.width, frame.height);
+      const guide = [
+        (rect.x - x0) / (x1 - x0),
+        (rect.y - y0) / (y1 - y0),
+        (rect.x + rect.w - x0) / (x1 - x0),
+        (rect.y + rect.h - y0) / (y1 - y0),
+      ] as const;
+      const hit = await this.scan.identify(frame, guide, this.fallbackLang());
       if (!hit) {
         this.status.set('notFound');
         return;
