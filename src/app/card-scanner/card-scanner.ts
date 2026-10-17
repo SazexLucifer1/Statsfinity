@@ -20,10 +20,17 @@ interface RecentScan extends ScanHit {
   key: number;
 }
 
-/** Bewegung im Rahmen (mittlere Helligkeitsänderung je Pixel, 0-255): darüber "Karte wird gewechselt". */
-const MOTION = 14;
-/** Darunter gilt das Bild als ruhig. */
-const STILL = 5;
+/**
+ * Mittlere Helligkeitsänderung je Pixel (0-255) zum vorigen Bild, über der gerade eine Karte
+ * gewechselt wird. Eine Hand, die das Handy hält, zittert immer: gemessen 5-15 zwischen zwei
+ * Bildern. Die erste Fassung wartete auf unter 5 in zwei Bildern hintereinander - das kam in der
+ * Hand praktisch nie vor, und der Scanner löste auf dem iPhone überhaupt nicht aus.
+ */
+const MOTION = 22;
+/** Abstand zum Bild des letzten Treffers, ab dem eine andere Karte (oder keine) im Rahmen liegt. */
+const CHANGED = 25;
+/** Frühestens so oft ein neuer Versuch, solange die Karte nicht erkannt wird. */
+const RETRY_MS = 600;
 /** Unter dieser Streuung liegt keine Karte im Rahmen, nur Tisch. */
 const MIN_CONTRAST = 14;
 const LANG_KEY = 'statsfinity.scanLang';
@@ -31,9 +38,10 @@ const LANG_KEY = 'statsfinity.scanLang';
 /**
  * Kartenscanner der Sammlung: Kamera an, Karte in den Rahmen, sie wird erkannt und sofort
  * gespeichert - ohne Knopf zwischen zwei Karten (Wunsch des Users, 17.10.2026). Ausgelöst wird
- * ein Scan, sobald das Bild im Rahmen nach einer Bewegung wieder ruhig steht; danach muss sich
- * erst wieder etwas bewegen, damit dieselbe Karte nicht doppelt zählt (vier gleiche Länder
- * hintereinander gehen trotzdem: Karte weg, nächste hin, das ist Bewegung).
+ * ein Scan, sobald eine Karte im Rahmen liegt und nicht gerade bewegt wird; ohne Treffer wird es
+ * laufend wieder versucht. Nach einem Treffer muss sich das Bild im Rahmen erst deutlich von
+ * diesem Treffer unterscheiden, damit dieselbe Karte nicht doppelt zählt (vier gleiche Länder
+ * hintereinander gehen trotzdem: Karte weg, nächste hin).
  * Die Erkennung selbst steht in card-scan.service.ts.
  */
 @Component({
@@ -65,9 +73,17 @@ export class CardScanner implements OnInit, OnDestroy {
   private stream: MediaStream | null = null;
   private timer: ReturnType<typeof setInterval> | null = null;
   private busy = false;
-  private phase: 'awaitChange' | 'awaitStill' = 'awaitStill';
-  private stillFrames = 0;
   private previous: Float32Array | null = null;
+  /** Kleines Bild des letzten Treffers; solange der Rahmen ihm gleicht, wird nicht gescannt. */
+  private lastHit: Float32Array | null = null;
+  private lastAttempt = 0;
+  /**
+   * Gegen Doppelzählung bei starkem Zittern: derselbe Druck zählt kurz nach dem letzten Treffer
+   * nur, wenn der Rahmen dazwischen leer war (Karte weggenommen).
+   */
+  private lastHitKey: string | null = null;
+  private lastHitAt = 0;
+  private sawEmpty = false;
   private readonly small = document.createElement('canvas');
   private scanCounter = 0;
 
@@ -170,25 +186,25 @@ export class CardScanner implements OnInit, OnDestroy {
     mean /= gray.length;
     let spread = 0;
     let diff = 0;
+    let sinceHit = 0;
     for (let i = 0; i < gray.length; i++) {
       spread += Math.abs(gray[i] - mean);
       if (this.previous) diff += Math.abs(gray[i] - this.previous[i]);
+      if (this.lastHit) sinceHit += Math.abs(gray[i] - this.lastHit[i]);
     }
     spread /= gray.length;
     diff = this.previous ? diff / gray.length : 255;
+    sinceHit = this.lastHit ? sinceHit / gray.length : 255;
     this.previous = gray;
 
-    if (diff > MOTION) {
-      this.phase = 'awaitStill';
-      this.stillFrames = 0;
-      return;
-    }
-    if (this.phase === 'awaitChange' || spread < MIN_CONTRAST) return;
-    if (diff < STILL) this.stillFrames++;
-    if (this.stillFrames < 2) return;
+    // Karte weg oder eine andere im Rahmen: der letzte Treffer sperrt nicht mehr.
+    if (spread < MIN_CONTRAST) this.sawEmpty = true;
+    if (this.lastHit && (sinceHit > CHANGED || spread < MIN_CONTRAST)) this.lastHit = null;
+    if (this.lastHit || spread < MIN_CONTRAST || diff > MOTION) return;
+    if (Date.now() - this.lastAttempt < RETRY_MS) return;
 
     this.busy = true;
-    this.phase = 'awaitChange';
+    this.lastAttempt = Date.now();
     this.status.set('reading');
     try {
       const card = document.createElement('canvas');
@@ -202,12 +218,22 @@ export class CardScanner implements OnInit, OnDestroy {
         this.status.set('notFound');
         return;
       }
+      const key = `${hit.print.scryfallId}|${hit.foil}`;
+      if (key === this.lastHitKey && !this.sawEmpty && Date.now() - this.lastHitAt < 4000) {
+        this.lastHit = gray;
+        this.status.set('saved');
+        return;
+      }
       const ok = await this.collection.add(hit.print, hit.foil, 1);
       if (!ok) {
         this.status.set('error');
         this.error.set(this.i18n.t('collection.saveFailed'));
         return;
       }
+      this.lastHit = gray;
+      this.lastHitKey = key;
+      this.lastHitAt = Date.now();
+      this.sawEmpty = false;
       this.recent.update((list) => [{ ...hit, key: ++this.scanCounter }, ...list].slice(0, 8));
       this.status.set('saved');
       this.flash.set(true);

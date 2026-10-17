@@ -7,9 +7,15 @@
           <button type="button" class="glass-button small" (click)="openAdd()">
             <app-icon name="plus" /> {{ i18n.t('collection.add') }}
           </button>
-          <button type="button" class="glass-button small primary" (click)="scannerOpen.set(true)">
-            <app-icon name="camera" /> {{ i18n.t('collection.scan') }}
-          </button>
+          @if (canScan) {
+            <button
+              type="button"
+              class="glass-button small primary"
+              (click)="scannerOpen.set(true)"
+            >
+              <app-icon name="camera" /> {{ i18n.t('collection.scan') }}
+            </button>
+          }
         </div>
       }
     </div>

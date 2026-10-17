@@ -46,6 +46,15 @@ export class CollectionPanel {
   readonly page = signal(0);
 
   readonly scannerOpen = signal(false);
+  /**
+   * Scanner nur auf Handy/Tablet (Wunsch des Users, 17.10.2026): Am Desktop gibt es keine
+   * Rückkamera, unter die man eine Karte legen könnte. Erkannt an der Touch-Bedienung als
+   * Haupteingabe, nicht an der Fensterbreite - ein schmales Desktop-Fenster bleibt ein Desktop.
+   */
+  readonly canScan =
+    typeof window !== 'undefined' &&
+    window.matchMedia('(pointer: coarse)').matches &&
+    !!navigator.mediaDevices?.getUserMedia;
 
   // Hinzufügen per Suche
   readonly addOpen = signal(false);
