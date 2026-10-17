@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { foilFromWords, parseCollectorLine } from './collector-line';
+import { foilFromWords, languageFromText, parseCollectorLine } from './collector-line';
 
 describe('parseCollectorLine', () => {
   it('liest die heutige zweizeilige Sammlerzeile', () => {
@@ -97,5 +97,44 @@ describe('parseCollectorLine mit unscharfer Kamera', () => {
       setCode: 'neo',
       lang: 'ja',
     });
+  });
+});
+
+describe('languageFromText', () => {
+  // Gedruckte Namen von Liliana, die Makellose (FRA #293) in den Sprachen, die es gibt.
+  const candidates = [
+    { lang: 'en', name: 'Liliana the Faultless' },
+    { lang: 'de', name: 'Liliana, die Makellose' },
+    { lang: 'es', name: 'Liliana, la Impecable' },
+    { lang: 'fr', name: 'Liliana la vertueuse' },
+    { lang: 'it', name: "Liliana l'Impeccabile" },
+    { lang: 'ja', name: '過ち無き者、リリアナ' },
+  ];
+
+  it('erkennt die Sprache an Name und Typzeile', () => {
+    // Echte Lesungen: iPhone-Foto (unscharf) und Scryfall-Bilder.
+    expect(
+      languageFromText('Liliana, die Bay em\nLegenditre Kreatur — Mensch, Kieriher', candidates),
+    ).toBe('de');
+    expect(
+      languageFromText(
+        'Liliana the faultless Legendary Creature — Human Cleric Whenever another creature',
+        candidates,
+      ),
+    ).toBe('en');
+    expect(
+      languageFromText('Liliana la vertueuse Créature légendaire : humain et clerc', candidates),
+    ).toBe('fr');
+    expect(
+      languageFromText(
+        'Liliana, la Impecable Criatura legendaria — Clérigo humano Siempre que otra criatura',
+        candidates,
+      ),
+    ).toBe('es');
+  });
+
+  it('rät nicht, wenn nichts Lesbares dasteht', () => {
+    expect(languageFromText('g $80 wy ) 5 BomEE. YUP CR', candidates)).toBeNull();
+    expect(languageFromText('Liliana', candidates)).toBeNull();
   });
 });

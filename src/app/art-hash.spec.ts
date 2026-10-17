@@ -68,7 +68,7 @@ describe('cardArtQueries', () => {
 });
 
 describe('isConfidentArtMatch', () => {
-  const match = (distance: number, runnerUp: number) => ({ id: 'x', distance, runnerUp });
+  const match = (distance: number, runnerUp: number) => ({ id: 'x', distance, runnerUp, query: 0 });
 
   it('nimmt klare Treffer und verwirft Zufallstreffer', () => {
     expect(isConfidentArtMatch(match(4, 14))).toBe(true);

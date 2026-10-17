@@ -7,12 +7,20 @@ import {
   ArtBox,
   ArtHashIndex,
   ArtMatch,
+  cardArtBoxes,
   cardArtQueries,
+  CARD_ART_BOXES,
   decodeArtHashes,
   isConfidentArtMatch,
   nearestArt,
 } from './art-hash';
-import { CollectorLine, OcrWord, foilFromWords, parseCollectorLine } from './collector-line';
+import {
+  CollectorLine,
+  OcrWord,
+  foilFromWords,
+  languageFromText,
+  parseCollectorLine,
+} from './collector-line';
 import { findCardCandidates } from './card-bounds';
 import { CollectionPrint } from './collection-coverage';
 import { toCollectionPrint } from './collection.service';
@@ -38,6 +46,8 @@ export interface ScanHit {
 }
 
 const API = 'https://api.scryfall.com';
+
+const COLLECTOR_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/•*★ ';
 
 /** Bereich der Sammlerzeile auf der Karte (Anteile), großzügig wegen ungenauem Anlegen. */
 const COLLECTOR_BOX = [0.0, 0.875, 0.56, 0.99] as const;
@@ -82,7 +92,7 @@ export class CardScanService {
   private loadWorker(): Promise<OcrWorker | null> {
     this.workerPromise ??= (async () => {
       try {
-        const { createWorker, PSM } = await import('tesseract.js');
+        const { createWorker } = await import('tesseract.js');
         const base = new URL('tesseract/', document.baseURI).href;
         const worker = await createWorker('eng', 1, {
           workerPath: `${base}worker.min.js`,
@@ -91,10 +101,6 @@ export class CardScanService {
           gzip: true,
           // Ein Worker aus einer blob:-Adresse bräuchte eine Ausnahme in der CSP.
           workerBlobURL: false,
-        });
-        await worker.setParameters({
-          tessedit_pageseg_mode: PSM.SINGLE_BLOCK,
-          tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/•*★ ',
         });
         this.worker = worker;
         return worker;
@@ -131,7 +137,7 @@ export class CardScanService {
     const boxes: ArtBox[] = [...found, guide];
 
     const art = this.matchArt(frame, boxes);
-    const artId = art?.id ?? null;
+    const artId = art?.match.id ?? null;
 
     // Die ergiebigere Lesung gewinnt: Set + Nummer zählen doppelt (eindeutiger Druck), die
     // Sprache einfach (reicht zusammen mit dem Artwork für die richtige Fassung).
@@ -149,6 +155,12 @@ export class CardScanService {
       if (score(line) === 3) break;
     }
     const detectedFoil = foilFromWords(words);
+
+    // Die Sammlerzeile ist gut 1 mm hoch und auf dem iPhone fast nie lesbar - dann die Sprache aus
+    // Name, Typzeile und Regeltext der per Artwork erkannten Karte (languageFromText()).
+    if (!line.lang && art) {
+      line = { ...line, lang: await this.languageFromCard(frame, art.cardBox, art.match.id) };
+    }
 
     let print: CollectionPrint | null = null;
     let via: ScanHit['via'] = 'text';
@@ -194,7 +206,10 @@ export class CardScanService {
    * höchstens 900 px Breite - die Vorlagen (art_crop) sind ohnehin nur ~600 px breit, und in voller
    * Kameraauflösung kosteten die ~170 Fingerabdrücke je Versuch auf dem Handy spürbar Zeit.
    */
-  private matchArt(frame: HTMLCanvasElement, boxes: ArtBox[]): ArtMatch | null {
+  private matchArt(
+    frame: HTMLCanvasElement,
+    boxes: ArtBox[],
+  ): { match: ArtMatch; cardBox: ArtBox } | null {
     if (!this.index || this.index.count === 0) return null;
     const small = frame.width > 900 ? scaled(frame, 900) : frame;
     const ctx = small.getContext('2d', { willReadFrequently: true });
@@ -202,7 +217,79 @@ export class CardScanService {
     const { data, width, height } = ctx.getImageData(0, 0, small.width, small.height);
     const queries = boxes.flatMap((box) => cardArtQueries(data, width, height, 4, box));
     const match = nearestArt(this.index, queries);
-    return match && isConfidentArtMatch(match) ? match : null;
+    if (!match || !isConfidentArtMatch(match)) return null;
+    // Die Lage, deren Fingerabdruck am besten passte, ist die genaueste Angabe, wo die Karte liegt.
+    const cardBox = boxes.flatMap((box) => cardArtBoxes(box))[
+      Math.floor(match.query / CARD_ART_BOXES.length)
+    ];
+    return { match, cardBox };
+  }
+
+  /**
+   * Sprache der Karte aus ihrem lesbaren Text, unter den Sprachen, in denen es genau dieses
+   * Artwork gibt. null, wenn es nur eine gibt (dann ist die Frage entschieden) oder keine klar
+   * vorn liegt.
+   */
+  private async languageFromCard(
+    frame: HTMLCanvasElement,
+    cardBox: ArtBox,
+    artId: string,
+  ): Promise<string | null> {
+    const candidates = await this.languagesOf(artId);
+    if (candidates.length < 2) return candidates[0]?.lang ?? null;
+    const worker = await this.loadWorker();
+    if (!worker) return null;
+    const { PSM } = await import('tesseract.js');
+    await worker.setParameters({
+      tessedit_pageseg_mode: PSM.SINGLE_BLOCK,
+      tessedit_char_whitelist: '',
+    });
+    const card = crop(frame, cardBox);
+    let text = '';
+    // Name oben, Typzeile und Regeltext unten - das Artwork dazwischen liefert nur Rauschen.
+    for (const [t, b] of [
+      [0, 0.16],
+      [0.5, 0.92],
+    ]) {
+      const band = document.createElement('canvas');
+      band.width = 900;
+      band.height = Math.round(((b - t) * card.height * 900) / card.width);
+      const ctx = band.getContext('2d');
+      if (!ctx) continue;
+      ctx.filter = 'grayscale(1) contrast(1.3)';
+      ctx.drawImage(
+        card,
+        0,
+        t * card.height,
+        card.width,
+        (b - t) * card.height,
+        0,
+        0,
+        band.width,
+        band.height,
+      );
+      text += (await worker.recognize(band)).data.text + '\n';
+    }
+    return languageFromText(text, candidates);
+  }
+
+  /** Sprachen (mit gedrucktem Namen), in denen es das Artwork dieses Drucks gibt. */
+  private async languagesOf(artId: string): Promise<{ lang: string; name: string }[]> {
+    const base = await this.cardBy(`${API}/cards/${artId}`);
+    if (!base?.oracle_id) return [];
+    const illustration = toCollectionPrint(base).illustrationId;
+    const q = encodeURIComponent(`oracleid:${base.oracle_id} -is:digital include:extras`);
+    const list = await this.cardBy(
+      `${API}/cards/search?q=${q}&unique=prints&include_multilingual=true`,
+    );
+    const seen = new Map<string, string>();
+    for (const c of (list?.data as any[]) ?? []) {
+      const print = toCollectionPrint(c);
+      if (print.illustrationId === illustration && !seen.has(print.lang)) {
+        seen.set(print.lang, print.printedName ?? print.cardName);
+      }
+    }
+    return [...seen].map(([lang, name]) => ({ lang, name }));
   }
 
   /** Texterkennung auf der Sammlerzeile, vergrößert und in Graustufen. */
@@ -212,6 +299,12 @@ export class CardScanService {
     const none = { text: '', words: [] };
     const worker = await this.loadWorker();
     if (!worker) return none;
+    // Jedes Mal setzen: languageFromCard() liest dazwischen Fließtext mit anderen Einstellungen.
+    const { PSM } = await import('tesseract.js');
+    await worker.setParameters({
+      tessedit_pageseg_mode: PSM.SINGLE_BLOCK,
+      tessedit_char_whitelist: COLLECTOR_CHARS,
+    });
     const [l, t, r, b] = COLLECTOR_BOX;
     const sx = l * card.width;
     const sy = t * card.height;
