@@ -1,0 +1,79 @@
+<div class="scanner" role="dialog" [attr.aria-label]="i18n.t('collection.scanner.title')">
+  <video #video class="feed" playsinline muted autoplay></video>
+  <div #guide class="guide" [class.hit]="flash()" [class.reading]="status() === 'reading'"></div>
+
+  <div class="top">
+    <button
+      type="button"
+      class="icon-button close"
+      (click)="close()"
+      [attr.aria-label]="i18n.t('common.close')"
+    >
+      ✕
+    </button>
+    <label class="lang">
+      <span>{{ i18n.t('collection.scanner.fallbackLang') }}</span>
+      <select
+        class="glass-input"
+        [ngModel]="fallbackLang()"
+        (ngModelChange)="setFallbackLang($event)"
+      >
+        @for (l of languages; track l.code) {
+          <option [ngValue]="l.code">{{ l.label }}</option>
+        }
+      </select>
+    </label>
+  </div>
+
+  <div class="bottom">
+    <p class="status" aria-live="polite">
+      @switch (status()) {
+        @case ('starting') {
+          {{ i18n.t('collection.scanner.starting') }}
+        }
+        @case ('ready') {
+          {{ i18n.t('collection.scanner.ready') }}
+        }
+        @case ('reading') {
+          {{ i18n.t('collection.scanner.reading') }}
+        }
+        @case ('notFound') {
+          {{ i18n.t('collection.scanner.notFound') }}
+        }
+        @case ('saved') {
+          {{ i18n.t('collection.scanner.saved') }}
+        }
+        @case ('error') {
+          {{ error() }}
+        }
+      }
+    </p>
+    @if (status() !== 'starting' && !scan.artIndexAvailable()) {
+      <p class="note">{{ i18n.t('collection.scanner.textOnly') }}</p>
+    }
+    @if (recent().length > 0) {
+      <ul class="recent">
+        @for (r of recent(); track r.key) {
+          <li>
+            <img [src]="r.print.imageUrl" alt="" />
+            <span class="name">{{ r.print.printedName || r.print.cardName }}</span>
+            <span class="meta"
+              >{{ r.print.setCode.toUpperCase() }} · {{ langLabel(r.print.lang) }}
+              @if (r.foil) {
+                · ★
+              }
+            </span>
+            <button
+              type="button"
+              class="icon-button undo"
+              (click)="undo(r)"
+              [attr.aria-label]="i18n.t('collection.scanner.undo')"
+            >
+              <app-icon name="trash" />
+            </button>
+          </li>
+        }
+      </ul>
+    }
+  </div>
+</div>

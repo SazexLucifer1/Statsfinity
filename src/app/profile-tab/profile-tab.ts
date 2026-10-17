@@ -1,4 +1,5 @@
 import { RankedBadges } from '../ranked-badges/ranked-badges';
+import { CollectionPanel } from '../collection-panel/collection-panel';
 import { Component, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DatePipe, DecimalPipe, NgTemplateOutlet } from '@angular/common';
@@ -50,7 +51,7 @@ import { FriendStatus } from '../friend-status/friend-status';
 
 @Component({
   selector: 'app-profile-tab',
-  imports: [FormsModule, DatePipe, DecimalPipe, NgTemplateOutlet, DeckList, CardImage, CommanderStatList, FavoriteCommanderEditor, BarChart, RadarChart, Meter, ManaSymbol, Podium, PlayerMatchHistory, Icon, CommentInbox, ProfileRank, FriendsPanel, FriendStatus, RankedBadges, CardThumb],
+  imports: [FormsModule, DatePipe, DecimalPipe, NgTemplateOutlet, DeckList, CardImage, CommanderStatList, FavoriteCommanderEditor, BarChart, RadarChart, Meter, ManaSymbol, Podium, PlayerMatchHistory, Icon, CommentInbox, ProfileRank, FriendsPanel, FriendStatus, RankedBadges, CardThumb, CollectionPanel],
   templateUrl: './profile-tab.html',
   styleUrl: './profile-tab.scss',
 })
@@ -447,7 +448,7 @@ export class ProfileTab {
   readonly crossGroupStats = signal<CrossGroupPersonalStats | null>(null);
 
   /** Umschalter Statistik/Decks im eigenen Profil, Start auf den Decks (dort wird gearbeitet). */
-  readonly profileViewTab = signal<'stats' | 'decks'>('decks');
+  readonly profileViewTab = signal<'stats' | 'decks' | 'collection'>('decks');
 
   // --- Zeitraum-Filter der Profil-Statistiken ---
 
@@ -468,7 +469,7 @@ export class ProfileTab {
     this.statsYear.set(year);
   }
 
-  setProfileViewTab(tab: 'stats' | 'decks'): void {
+  setProfileViewTab(tab: 'stats' | 'decks' | 'collection'): void {
     this.profileViewTab.set(tab);
   }
 

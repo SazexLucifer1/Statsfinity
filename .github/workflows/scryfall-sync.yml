@@ -49,3 +49,13 @@ jobs:
         env:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/sync-scryfall-bulk.js ${{ inputs.force && '--force' || '' }}
+
+      # Teil 4: Artwork-Fingerabdrücke für den Kartenscanner (eine Datei im Storage-Bucket
+      # card-art-hashes, siehe sql/sammlung-2026-10-17.sql). Inkrementell - nach den ersten paar
+      # Nächten nur noch die neuen Artworks. Ein Fehler hier soll die Kartendaten oben nicht
+      # als gescheitert markieren, deshalb eigener Schritt mit continue-on-error.
+      - name: Sync card art hashes
+        continue-on-error: true
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node --experimental-strip-types scripts/sync-card-art-hashes.mjs

@@ -55,10 +55,25 @@
                 "glob": "mana.woff2",
                 "input": "node_modules/mana-font/fonts",
                 "output": "fonts"
+              },
+              {
+                "glob": "worker.min.js",
+                "input": "node_modules/tesseract.js/dist",
+                "output": "tesseract"
+              },
+              {
+                "glob": "tesseract-core*-lstm.wasm.js",
+                "input": "node_modules/tesseract.js-core",
+                "output": "tesseract"
+              },
+              {
+                "glob": "eng.traineddata.gz",
+                "input": "node_modules/@tesseract.js-data/eng/4.0.0_best_int",
+                "output": "tesseract"
               }
             ],
             "styles": ["src/styles.scss"],
-            "allowedCommonJsDependencies": ["qrcode", "jszip"]
+            "allowedCommonJsDependencies": ["qrcode", "jszip", "tesseract.js", "regenerator-runtime/runtime"]
           },
           "configurations": {
             "production": {

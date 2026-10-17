@@ -1,0 +1,108 @@
+@if (visible()) {
+  @let cov = coverage();
+  <div class="deck-collection">
+    <app-info-toggle [label]="i18n.t('deckView.collection.infoAria')">
+      <button
+        info-title
+        type="button"
+        class="stat-disclosure"
+        [attr.aria-expanded]="expanded()"
+        (click)="expanded.set(!expanded())"
+      >
+        <span class="stat-disclosure-chevron" aria-hidden="true"></span>
+        <span class="stat-disclosure-title">{{
+          i18n.t('deckView.collection.title', { owned: cov.ownedTotal, total: cov.neededTotal })
+        }}</span>
+        @if (cov.missing.length === 0 && cov.shared.length === 0 && cov.neededTotal > 0) {
+          <span class="complete">✓</span>
+        }
+      </button>
+      <p class="hint">{{ i18n.t('deckView.collection.info') }}</p>
+    </app-info-toggle>
+
+    @if (expanded()) {
+      @if (collection.entries()?.length === 0) {
+        <p class="hint">{{ i18n.t('deckView.collection.empty') }}</p>
+      }
+      <div class="segmented block">
+        <button type="button" [class.active]="!strictArt()" (click)="setStrict(false)">
+          {{ i18n.t('deckView.collection.anyArt') }}
+        </button>
+        <button type="button" [class.active]="strictArt()" (click)="setStrict(true)">
+          {{ i18n.t('deckView.collection.exactArt') }}
+        </button>
+      </div>
+      @if (canEdit()) {
+        <button
+          type="button"
+          class="glass-button small pick"
+          [disabled]="picking()"
+          (click)="pickFromCollection()"
+        >
+          {{
+            picking() ? i18n.t('deckView.collection.picking') : i18n.t('deckView.collection.pick')
+          }}
+        </button>
+        @if (pickMessage()) {
+          <p class="hint">{{ pickMessage() }}</p>
+        }
+      }
+
+      @if (cov.missing.length > 0) {
+        <h4 class="stat-list-title">
+          {{ i18n.t('deckView.collection.missingTitle', { count: cov.missing.length }) }}
+        </h4>
+        <ul class="stat-list">
+          @for (c of cov.missing; track c.cardName) {
+            <li class="stat-list-row">
+              <app-card-thumb [name]="c.cardName" />
+              <div class="stat-list-main">
+                <span class="stat-list-name">{{ c.cardName }}</span>
+                <span class="stat-list-meta">
+                  {{
+                    i18n.t('deckView.collection.missingOf', {
+                      missing: c.missing,
+                      needed: c.needed,
+                    })
+                  }}
+                  @if (c.ownedAnyArt > c.owned) {
+                    · {{ i18n.t('deckView.collection.otherArt', { count: c.ownedAnyArt }) }}
+                  }
+                </span>
+              </div>
+            </li>
+          }
+        </ul>
+      }
+
+      @if (cov.shared.length > 0) {
+        <h4 class="stat-list-title">
+          {{ i18n.t('deckView.collection.sharedTitle', { count: cov.shared.length }) }}
+        </h4>
+        <ul class="stat-list">
+          @for (c of cov.shared; track c.cardName) {
+            <li class="stat-list-row">
+              <app-card-thumb [name]="c.cardName" />
+              <div class="stat-list-main">
+                <span class="stat-list-name">{{ c.cardName }}</span>
+                <span class="stat-list-meta">
+                  {{
+                    i18n.t('deckView.collection.sharedOf', {
+                      owned: c.ownedAnyArt,
+                      needed: c.neededAllDecks,
+                    })
+                  }}
+                  · {{ otherDecksText(c) }}
+                </span>
+              </div>
+            </li>
+          }
+        </ul>
+      }
+
+      @if (cov.missing.length === 0 && cov.shared.length === 0 && cov.neededTotal > 0) {
+        <p class="hint">{{ i18n.t('deckView.collection.allOwned') }}</p>
+      }
+    }
+  </div>
+}
