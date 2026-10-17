@@ -1,0 +1,228 @@
+@if (collection.available() && (editable() || entries().length > 0)) {
+  <section class="glass-card span-full collection">
+    <div class="section-header-row">
+      <h2>{{ i18n.t('collection.title') }}</h2>
+      @if (editable()) {
+        <div class="chip-row">
+          <button type="button" class="glass-button small" (click)="openAdd()">
+            <app-icon name="plus" /> {{ i18n.t('collection.add') }}
+          </button>
+          <button type="button" class="glass-button small primary" (click)="scannerOpen.set(true)">
+            <app-icon name="camera" /> {{ i18n.t('collection.scan') }}
+          </button>
+        </div>
+      }
+    </div>
+
+    @if (!loaded()) {
+      <p class="hint">{{ i18n.t('collection.loading') }}</p>
+    } @else if (entries().length === 0) {
+      <p class="hint">{{ i18n.t('collection.empty') }}</p>
+    } @else {
+      <p class="summary">
+        {{ i18n.t('collection.summary', { cards: totalCards(), distinct: distinctCards() }) }}
+      </p>
+
+      @if (languages().length > 1) {
+        <div class="chip-row langs" role="group" [attr.aria-label]="i18n.t('collection.languages')">
+          <button
+            type="button"
+            class="glass-chip small"
+            [class.active]="langFilter().size === 0"
+            (click)="clearLangs()"
+          >
+            {{ i18n.t('collection.allLanguages') }}
+          </button>
+          @for (l of languages(); track l.code) {
+            <button
+              type="button"
+              class="glass-chip small"
+              [class.active]="langFilter().has(l.code)"
+              (click)="toggleLang(l.code)"
+            >
+              {{ l.code.toUpperCase() }} ({{ l.count }})
+            </button>
+          }
+        </div>
+      }
+
+      <div class="filters">
+        <input
+          class="glass-input"
+          type="search"
+          [placeholder]="i18n.t('collection.searchPlaceholder')"
+          [ngModel]="search()"
+          (ngModelChange)="setSearch($event)"
+        />
+        <select
+          class="glass-input"
+          [ngModel]="sort()"
+          (ngModelChange)="sort.set($event)"
+          [attr.aria-label]="i18n.t('collection.sort')"
+        >
+          <option ngValue="added">{{ i18n.t('collection.sortAdded') }}</option>
+          <option ngValue="name">{{ i18n.t('collection.sortName') }}</option>
+          <option ngValue="set">{{ i18n.t('collection.sortSet') }}</option>
+        </select>
+      </div>
+
+      <ul class="entries">
+        @for (e of visible(); track e.scryfallId + e.foil) {
+          <li>
+            <button
+              type="button"
+              class="thumb"
+              (click)="openPreview(e)"
+              [attr.aria-label]="e.cardName"
+            >
+              <img [src]="image(e)" alt="" loading="lazy" />
+            </button>
+            <div class="info">
+              <span class="name">{{ e.cardName }}</span>
+              <span class="meta">
+                {{ e.setCode.toUpperCase() }} #{{ e.collectorNumber }} · {{ e.lang.toUpperCase() }}
+                @if (e.foil) {
+                  · <span class="foil">★ {{ i18n.t('collection.foil') }}</span>
+                }
+              </span>
+            </div>
+            @if (editable()) {
+              <div class="qty">
+                <button
+                  type="button"
+                  class="icon-button"
+                  (click)="change(e, -1)"
+                  [attr.aria-label]="i18n.t('collection.less')"
+                >
+                  −
+                </button>
+                <span>{{ e.quantity }}</span>
+                <button
+                  type="button"
+                  class="icon-button"
+                  (click)="change(e, 1)"
+                  [attr.aria-label]="i18n.t('collection.more')"
+                >
+                  +
+                </button>
+              </div>
+            } @else {
+              <span class="qty readonly">×{{ e.quantity }}</span>
+            }
+          </li>
+        } @empty {
+          <li class="hint">{{ i18n.t('collection.noMatch') }}</li>
+        }
+      </ul>
+      <app-pager
+        [page]="page()"
+        [totalItems]="filtered().length"
+        [pageSize]="PAGE_SIZE"
+        (pageChange)="page.set($event)"
+      />
+    }
+  </section>
+}
+
+@if (addOpen()) {
+  <div class="options-menu-overlay" (click)="closeAdd()">
+    <div class="options-menu-sheet wide add-sheet" (click)="$event.stopPropagation()">
+      @if (!addCardName()) {
+        <h3>{{ i18n.t('collection.addTitle') }}</h3>
+        <input
+          class="glass-input"
+          type="search"
+          [placeholder]="i18n.t('collection.addPlaceholder')"
+          [ngModel]="addQuery()"
+          (ngModelChange)="onAddQuery($event)"
+        />
+        <ul class="suggestions">
+          @for (name of suggestions(); track name) {
+            <li>
+              <button type="button" class="glass-button" (click)="pickCard(name)">
+                {{ name }}
+              </button>
+            </li>
+          }
+        </ul>
+      } @else {
+        <div class="section-header-row">
+          <button type="button" class="glass-button small" (click)="backToSearch()">
+            ‹ {{ i18n.t('collection.back') }}
+          </button>
+          <label class="foil-toggle">
+            <input type="checkbox" [ngModel]="addFoil()" (ngModelChange)="addFoil.set($event)" />
+            ★ {{ i18n.t('collection.foil') }}
+          </label>
+        </div>
+        <h3>{{ addCardName() }}</h3>
+        @if (printLanguages().length > 1) {
+          <div class="chip-row langs">
+            <button
+              type="button"
+              class="glass-chip small"
+              [class.active]="!addLangFilter()"
+              (click)="addLangFilter.set(null)"
+            >
+              {{ i18n.t('collection.allLanguages') }}
+            </button>
+            @for (l of printLanguages(); track l) {
+              <button
+                type="button"
+                class="glass-chip small"
+                [class.active]="addLangFilter() === l"
+                (click)="addLangFilter.set(l)"
+              >
+                {{ l.toUpperCase() }}
+              </button>
+            }
+          </div>
+        }
+        @if (printsBusy()) {
+          <p class="hint">{{ i18n.t('collection.loadingPrints') }}</p>
+        } @else {
+          <p class="hint">{{ i18n.t('collection.tapToAdd') }}</p>
+          <div class="print-grid">
+            @for (p of shownPrints(); track p.scryfallId) {
+              <div class="print" [class.owned]="ownedOf(p) > 0" [class.unavailable]="!canFoil(p)">
+                <button
+                  type="button"
+                  class="print-image"
+                  (click)="addPrint(p, 1)"
+                  [disabled]="!canFoil(p)"
+                >
+                  <img [src]="p.imageUrl" [alt]="p.printedName || p.cardName" loading="lazy" />
+                  @if (ownedOf(p) > 0) {
+                    <span class="badge">×{{ ownedOf(p) }}</span>
+                  }
+                </button>
+                <span class="print-meta"
+                  >{{ p.setCode.toUpperCase() }} · {{ p.lang.toUpperCase() }}</span
+                >
+                @if (ownedOf(p) > 0) {
+                  <button
+                    type="button"
+                    class="icon-button minus"
+                    (click)="addPrint(p, -1)"
+                    [attr.aria-label]="i18n.t('collection.less')"
+                  >
+                    −
+                  </button>
+                }
+              </div>
+            } @empty {
+              <p class="hint">{{ i18n.t('collection.noPrints') }}</p>
+            }
+          </div>
+        }
+      }
+      <button type="button" class="glass-button" (click)="closeAdd()">
+        {{ i18n.t('common.close') }}
+      </button>
+    </div>
+  </div>
+}
+
+@if (scannerOpen()) {
+  <app-card-scanner (closed)="scannerOpen.set(false)" />
+}

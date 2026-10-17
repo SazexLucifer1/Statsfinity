@@ -47,6 +47,13 @@
 
 .profile-view-toggle {
   margin: 4px 0 12px;
+  // Drei Reiter (Statistiken, Decks, Sammlung): .block bricht ab 130px je Spalte um, auf dem
+  // Handy also nach dem zweiten - hier fest drei Spalten.
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+
+  button {
+    padding-inline: var(--sp-2);
+  }
 }
 
 .pager {

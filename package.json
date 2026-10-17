@@ -23,11 +23,13 @@
     "@angular/forms": "^21.2.0",
     "@angular/platform-browser": "^21.2.0",
     "@supabase/supabase-js": "^2.110.5",
+    "@tesseract.js-data/eng": "^1.0.0",
     "jspdf": "^4.2.1",
     "jszip": "^3.10.1",
     "mana-font": "^1.18.0",
     "qrcode": "^1.5.4",
     "rxjs": "~7.8.0",
+    "tesseract.js": "^7.0.0",
     "tslib": "^2.3.0"
   },
   "devDependencies": {
@@ -35,6 +37,7 @@
     "@angular/cli": "^21.2.18",
     "@angular/compiler-cli": "^21.2.0",
     "@types/qrcode": "^1.5.6",
+    "jpeg-js": "^0.4.4",
     "jsdom": "^30.0.1",
     "prettier": "^3.8.1",
     "typescript": "~5.9.2",

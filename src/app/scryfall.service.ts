@@ -142,7 +142,7 @@ export class ScryfallService {
    * Fetch mit Wiederholung und wachsender Pause bei JEDEM Fehler: Scryfalls 429 kommt ohne
    * CORS-Header und ist im Browser nicht von anderen Fehlern zu unterscheiden.
    */
-  private async fetchWithRetry(url: string, retries = 2, init?: RequestInit): Promise<Response | null> {
+  async fetchWithRetry(url: string, retries = 2, init?: RequestInit): Promise<Response | null> {
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
         const res = await fetch(url, { ...init, headers: { ...this.buildHeaders(), ...init?.headers } });

@@ -1,0 +1,189 @@
+.summary {
+  margin: 0 0 var(--sp-2);
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+.chip-row .glass-button app-icon {
+  margin-right: 4px;
+}
+
+.langs {
+  flex-wrap: wrap;
+  margin-bottom: var(--sp-2);
+}
+
+.filters {
+  display: flex;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
+
+  input {
+    flex: 1;
+    min-width: 0;
+  }
+
+  select {
+    flex: 0 0 auto;
+    width: auto;
+    max-width: 45%;
+  }
+}
+
+// Im Sheet sind Knöpfe sonst volle Breite (styles.scss) - hier steht der Foil-Schalter daneben.
+.add-sheet .section-header-row .glass-button {
+  width: auto;
+}
+
+.entries {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+
+  li {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+}
+
+.thumb {
+  padding: 0;
+  border: 0;
+  background: none;
+
+  img {
+    display: block;
+    width: 40px;
+    border-radius: 3px;
+  }
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+.foil {
+  color: #ffd34d;
+}
+
+.qty {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-variant-numeric: tabular-nums;
+
+  .icon-button {
+    color: inherit;
+    width: 30px;
+    height: 30px;
+  }
+
+  &.readonly {
+    opacity: 0.8;
+  }
+}
+
+.add-sheet {
+  max-width: 560px;
+
+  h3 {
+    margin: 0;
+  }
+}
+
+.suggestions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.foil-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+}
+
+.print-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: var(--sp-2);
+}
+
+.print {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+
+  &.unavailable {
+    opacity: 0.35;
+  }
+
+  &.owned .print-image img {
+    outline: 2px solid #4ade80;
+  }
+}
+
+.print-image {
+  position: relative;
+  padding: 0;
+  border: 0;
+  background: none;
+
+  img {
+    display: block;
+    width: 100%;
+    border-radius: 4px;
+  }
+}
+
+.badge {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: #4ade80;
+  color: #000;
+  font-weight: 700;
+  font-size: 0.75rem;
+}
+
+.print-meta {
+  font-size: 0.7rem;
+  opacity: 0.75;
+}
+
+.minus {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 26px;
+  height: 26px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.6);
+}

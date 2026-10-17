@@ -489,6 +489,8 @@
              Decks" - beide zugeklappt eine Zeile, die Partien lädt deck-performance einmal. -->
         <app-deck-performance [deckId]="deck.id" [deckName]="deck.name" />
       }
+      <!-- Abgleich mit der eigenen Sammlung (fehlende Karten, Karten für mehrere Decks). -->
+      <app-deck-collection [deckId]="deck.id" [canEdit]="viewer.state.canEditViewingDeck()" />
 
       <!-- Vorher standen hier bis zu sieben gleich aussehende Chips in einer Reihe. Bilder/Text ist
            ein Ansichtswechsel und gehört in einen segmentierten Umschalter; Bearbeiten ist die

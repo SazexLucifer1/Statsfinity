@@ -1,0 +1,26 @@
+:host {
+  display: block;
+}
+
+.deck-collection {
+  margin-top: var(--sp-2);
+}
+
+.complete {
+  margin-left: var(--sp-2);
+  color: #4ade80;
+}
+
+.segmented {
+  margin: var(--sp-2) 0;
+}
+
+.pick {
+  margin-bottom: var(--sp-2);
+}
+
+.stat-list-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}

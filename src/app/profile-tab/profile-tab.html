@@ -68,6 +68,14 @@
     <app-ranked-badges [userId]="badgeUserId" />
   }
 
+  <!-- Sammlung eines Freundes, nur lesen. RLS gibt sie nur Freunden heraus - für alle anderen
+       bleibt die Liste leer und der Abschnitt verschwindet. -->
+  @if (profileService.viewingUserId(); as collectionUserId) {
+    @if (profileService.profile()) {
+      <app-collection-panel [userId]="collectionUserId" />
+    }
+  }
+
   <!-- Die reduzierte Fremdansicht. In der Developer-Vollansicht tritt an ihre Stelle der
        vollständige Block aus dem eigenen Profil (ng-template #profileBody am Dateiende). -->
   @if (!devFullView()) {
@@ -685,7 +693,18 @@
       <button [class.active]="profileViewTab() === 'decks'" (click)="setProfileViewTab('decks')">
         {{ i18n.t('profile.viewTabDecks') }}
       </button>
+      @if (!devFullView()) {
+        <button [class.active]="profileViewTab() === 'collection'" (click)="setProfileViewTab('collection')">
+          {{ i18n.t('collection.title') }}
+        </button>
+      }
     </div>
+  }
+
+  <!-- Sammlung (sql/sammlung-2026-10-17.sql): nur die eigene; die eines Freundes steht in der
+       Fremdansicht oben. -->
+  @if (profileViewTab() === 'collection' && !devFullView()) {
+    <app-collection-panel />
   }
 
   @if (profileViewTab() === 'stats') {
