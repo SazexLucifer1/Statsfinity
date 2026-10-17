@@ -64,18 +64,24 @@ export function parseCollectorLine(text: string): CollectorLine {
         .filter(Boolean),
     );
 
+  // Zwei Durchgänge: erst genau ("DE"), dann tolerant - eine unscharfe Handykamera liest aus
+  // "• DE" schon mal "DEW" (so geschehen auf dem iPhone). Tolerant heißt: drei Zeichen, die mit
+  // einem Sprachcode anfangen, direkt hinter etwas, das wie ein Set-Kürzel aussieht.
   let setLine = -1;
-  lines.forEach((tokens, index) => {
-    if (setLine >= 0) return;
-    for (let i = 1; i < tokens.length; i++) {
-      if (PRINTED_LANG[tokens[i]] && isSetCode(tokens[i - 1])) {
-        result.lang = PRINTED_LANG[tokens[i]];
-        result.setCode = tokens[i - 1].toLowerCase();
-        setLine = index;
-        return;
+  for (const tolerant of [false, true]) {
+    lines.forEach((tokens, index) => {
+      if (setLine >= 0) return;
+      for (let i = 1; i < tokens.length; i++) {
+        const code = tolerant && tokens[i].length === 3 ? tokens[i].slice(0, 2) : tokens[i];
+        if (PRINTED_LANG[code] && isSetCode(tokens[i - 1])) {
+          result.lang = PRINTED_LANG[code];
+          result.setCode = tokens[i - 1].toLowerCase();
+          setLine = index;
+          return;
+        }
       }
-    }
-  });
+    });
+  }
 
   // Die Nummer steht in der Zeile über Set und Sprache (bzw. auf alten Karten davor in derselben).
   // Erst dort suchen - darüber liest die Texterkennung oft Bruchstücke des Regeltextkastens, und

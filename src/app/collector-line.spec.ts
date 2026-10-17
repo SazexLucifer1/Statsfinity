@@ -85,3 +85,17 @@ describe('foilFromWords', () => {
     expect(foilFromWords([word('ILLUS', 0, 0, 50, 20)])).toBeNull();
   });
 });
+
+describe('parseCollectorLine mit unscharfer Kamera', () => {
+  it('liest die Sprache auch aus einem angehängten Lesefehler', () => {
+    // Echte Ausgabe eines iPhone-Bilds von "R 0293 / FRA • DE".
+    expect(parseCollectorLine('2\nR Q23 LF J\nRRA DEW ARAAN BRI\n')).toMatchObject({ lang: 'de' });
+  });
+
+  it('bevorzugt einen genauen Sprachcode', () => {
+    expect(parseCollectorLine('C 0012\nNEO • JP ENX')).toMatchObject({
+      setCode: 'neo',
+      lang: 'ja',
+    });
+  });
+});

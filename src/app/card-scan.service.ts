@@ -12,7 +12,8 @@ import {
   nearestArt,
   phash,
 } from './art-hash';
-import { OcrWord, foilFromWords, parseCollectorLine } from './collector-line';
+import { CollectorLine, OcrWord, foilFromWords, parseCollectorLine } from './collector-line';
+import { findCardBounds } from './card-bounds';
 import { CollectionPrint } from './collection-coverage';
 import { toCollectionPrint } from './collection.service';
 
@@ -117,22 +118,38 @@ export class CardScanService {
    * Erkennt die Karte auf `card` (Ausschnitt genau um die Karte, hochkant). `fallbackLang` gilt,
    * wenn keine Sammlerzeile lesbar ist.
    */
-  async identify(card: HTMLCanvasElement, fallbackLang: string): Promise<ScanHit | null> {
-    const ctx = card.getContext('2d', { willReadFrequently: true });
-    if (!ctx) return null;
-    const { data, width, height } = ctx.getImageData(0, 0, card.width, card.height);
+  async identify(frame: HTMLCanvasElement, fallbackLang: string): Promise<ScanHit | null> {
+    // Zwei Ausschnitte: die im Rahmen gefundene Karte und der Rahmen selbst. Die Kantensuche
+    // irrt, wenn sich der Kartenrand kaum vom Untergrund abhebt (dann nimmt sie eine innere
+    // Kante und schneidet die Sammlerzeile ab) - mit dem Rahmen als zweitem Versuch kann sie
+    // nichts verschlechtern, nur verbessern.
+    const card = this.cropToCard(frame);
+    const crops = card === frame ? [frame] : [card, frame];
 
+    const queries = crops.flatMap((crop) => {
+      const ctx = crop.getContext('2d', { willReadFrequently: true });
+      if (!ctx) return [];
+      const { data, width, height } = ctx.getImageData(0, 0, crop.width, crop.height);
+      return CARD_ART_BOXES.map((box) => phash(grayGrid(data, width, height, 4, box)));
+    });
     const art =
-      this.index && this.index.count > 0
-        ? nearestArt(
-            this.index,
-            CARD_ART_BOXES.map((box) => phash(grayGrid(data, width, height, 4, box))),
-          )
-        : null;
+      this.index && this.index.count > 0 && queries.length ? nearestArt(this.index, queries) : null;
     const artId = art && art.distance <= ART_MATCH_MAX_DISTANCE ? art.id : null;
 
-    const { text, words } = await this.readCollectorLine(card);
-    const line = parseCollectorLine(text);
+    // Die ergiebigere Lesung gewinnt: Set + Nummer zählen doppelt (eindeutiger Druck), die
+    // Sprache einfach (reicht zusammen mit dem Artwork für die richtige Fassung).
+    const score = (l: CollectorLine) => (l.setCode && l.collectorNumber ? 2 : 0) + (l.lang ? 1 : 0);
+    let line = parseCollectorLine('');
+    let words: OcrWord[] = [];
+    for (const crop of crops) {
+      const read = await this.readCollectorLine(crop);
+      const parsed = parseCollectorLine(read.text);
+      if (score(parsed) > score(line)) {
+        line = parsed;
+        words = read.words;
+      }
+      if (score(line) === 3) break;
+    }
     const detectedFoil = foilFromWords(words);
 
     let print: CollectionPrint | null = null;
@@ -159,6 +176,36 @@ export class CardScanService {
     const canFoil = print.finishes.some((f) => f !== 'nonfoil');
     const foil = !canNonfoil ? true : !canFoil ? false : (detectedFoil ?? false);
     return { print, foil, via };
+  }
+
+  /**
+   * Schneidet den Rahmen-Ausschnitt auf die Karte zu, die darin liegt (card-bounds.ts). Alle
+   * Lagen - Sammlerzeile, Artwork - sind Anteile der KARTE; in der Hand liegt sie fast nie genau
+   * im Rahmen. Findet sich keine Karte, bleibt es beim Rahmen.
+   */
+  private cropToCard(frame: HTMLCanvasElement): HTMLCanvasElement {
+    const probe = document.createElement('canvas');
+    probe.width = 200;
+    probe.height = Math.round((frame.height * 200) / frame.width);
+    const pctx = probe.getContext('2d', { willReadFrequently: true });
+    if (!pctx) return frame;
+    pctx.drawImage(frame, 0, 0, probe.width, probe.height);
+    const rgba = pctx.getImageData(0, 0, probe.width, probe.height).data;
+    const gray = new Uint8Array(probe.width * probe.height);
+    for (let i = 0; i < gray.length; i++) {
+      gray[i] = 0.299 * rgba[i * 4] + 0.587 * rgba[i * 4 + 1] + 0.114 * rgba[i * 4 + 2];
+    }
+    const bounds = findCardBounds(gray, probe.width, probe.height);
+    if (!bounds) return frame;
+    const sx = bounds[0] * frame.width;
+    const sy = bounds[1] * frame.height;
+    const sw = (bounds[2] - bounds[0]) * frame.width;
+    const sh = (bounds[3] - bounds[1]) * frame.height;
+    const out = document.createElement('canvas');
+    out.width = Math.round(sw);
+    out.height = Math.round(sh);
+    out.getContext('2d')?.drawImage(frame, sx, sy, sw, sh, 0, 0, out.width, out.height);
+    return out;
   }
 
   /** Texterkennung auf der Sammlerzeile, vergrößert und in Graustufen. */
