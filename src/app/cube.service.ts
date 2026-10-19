@@ -1,6 +1,7 @@
 import { Injectable, effect, inject, signal } from '@angular/core';
 import { supabase } from './supabase.client';
 import { AuthService } from './auth.service';
+import { DeckFormat } from './models';
 
 /**
  * Cube-Builder: eigene Cubes mit Kartenliste (Wunsch des Users, 17.10.2026, Vorbild CubeCobra).
@@ -16,6 +17,8 @@ export interface CubeSummary {
   name: string;
   description: string;
   collectionOnly: boolean;
+  /** Format des Cubes; null = freier Modus (sql/cube-format-2026-10-19.sql). */
+  format: DeckFormat | null;
   cardCount: number;
   updatedAt: string;
 }
@@ -39,6 +42,7 @@ function toSummary(row: any): CubeSummary {
     name: row.name,
     description: row.description ?? '',
     collectionOnly: !!row.collection_only,
+    format: (row.format as DeckFormat | null) ?? null,
     cardCount: cards.reduce((sum, c) => sum + (c.quantity ?? 1), 0),
     updatedAt: row.updated_at,
   };
@@ -80,14 +84,25 @@ export class CubeService {
     this.view.set(this.view()?.cubeId ? { cubeId: null } : null);
   }
 
+  /** false, solange sql/cube-format-2026-10-19.sql fehlt - dann gibt es keine Formatwahl. */
+  readonly formatAvailable = signal(true);
+
+  private columns(): string {
+    return `id, name, description, collection_only, updated_at${this.formatAvailable() ? ', format' : ''}`;
+  }
+
   async loadCubes(): Promise<CubeSummary[]> {
     const uid = this.auth.currentUser()?.id;
     if (!uid || !this.available()) return [];
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('cube_lists')
-      .select('id, name, description, collection_only, updated_at, cube_list_cards(quantity)')
+      .select(`${this.columns()}, cube_list_cards(quantity)`)
       .eq('user_id', uid)
       .order('updated_at', { ascending: false });
+    if (error?.code === '42703' && this.formatAvailable()) {
+      this.formatAvailable.set(false);
+      return this.loadCubes();
+    }
     if (error) {
       if (isMissingMigration(error)) this.available.set(false);
       else console.error('Konnte Cubes nicht laden:', error);
@@ -98,13 +113,15 @@ export class CubeService {
     return list;
   }
 
-  async create(name: string): Promise<CubeSummary | null> {
+  async create(name: string, format: DeckFormat | null = null): Promise<CubeSummary | null> {
     const trimmed = name.trim().slice(0, 80);
     if (!trimmed || !this.auth.currentUser()) return null;
+    const row: Record<string, unknown> = { name: trimmed };
+    if (this.formatAvailable()) row['format'] = format;
     const { data, error } = await supabase
       .from('cube_lists')
-      .insert({ name: trimmed })
-      .select('id, name, description, collection_only, updated_at')
+      .insert(row)
+      .select(this.columns())
       .single();
     if (error) {
       if (isMissingMigration(error)) this.available.set(false);
@@ -118,12 +135,13 @@ export class CubeService {
 
   async update(
     id: string,
-    patch: Partial<Pick<CubeSummary, 'name' | 'description' | 'collectionOnly'>>,
+    patch: Partial<Pick<CubeSummary, 'name' | 'description' | 'collectionOnly' | 'format'>>,
   ): Promise<boolean> {
     const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (patch.name !== undefined) row['name'] = patch.name.trim().slice(0, 80);
     if (patch.description !== undefined) row['description'] = patch.description.slice(0, 2000);
     if (patch.collectionOnly !== undefined) row['collection_only'] = patch.collectionOnly;
+    if (patch.format !== undefined && this.formatAvailable()) row['format'] = patch.format;
     const { error } = await supabase.from('cube_lists').update(row).eq('id', id);
     if (error) {
       console.error('Konnte Cube nicht speichern:', error);

@@ -32,6 +32,20 @@
           (ngModelChange)="newName.set($event)"
           name="newName"
         />
+        @if (cubes.formatAvailable()) {
+          <select
+            class="glass-input"
+            name="newFormat"
+            [attr.aria-label]="i18n.t('cube.format')"
+            [ngModel]="newFormat()"
+            (ngModelChange)="newFormat.set($event)"
+          >
+            <option [ngValue]="null">{{ i18n.t('cube.formatFree') }}</option>
+            @for (f of formats; track f) {
+              <option [ngValue]="f">{{ f }}</option>
+            }
+          </select>
+        }
         <button
           type="submit"
           class="glass-button primary"
@@ -52,7 +66,8 @@
               <button type="button" class="glass-card cube-row" (click)="cubes.openCube(cube.id)">
                 <strong>{{ cube.name }}</strong>
                 <span class="meta">
-                  {{ i18n.t('cube.cardCount', { count: cube.cardCount }) }}
+                  {{ i18n.t('cube.cardCount', { count: cube.cardCount }) }} ·
+                  {{ cube.format ?? i18n.t('cube.formatFree') }}
                   @if (cube.collectionOnly) {
                     · {{ i18n.t('cube.modeCollection') }}
                   }
@@ -68,6 +83,9 @@
   } @else if (current(); as cube) {
     <!-- Kopf des Cubes -->
     <section class="glass-card head">
+      <p class="format-line">
+        {{ i18n.t('cube.format') }}: <strong>{{ cube.format ?? i18n.t('cube.formatFree') }}</strong>
+      </p>
       @if (cube.description) {
         <p class="description">{{ cube.description }}</p>
       }
@@ -106,41 +124,17 @@
         <p class="hint warn">{{ i18n.t('cube.emptyCollection') }}</p>
       }
 
-      <!-- Hinzufügen -->
-      <div class="add">
-        <input
-          class="glass-input"
-          type="search"
-          [placeholder]="
-            cube.collectionOnly ? i18n.t('cube.addFromCollection') : i18n.t('cube.addPlaceholder')
-          "
-          [ngModel]="addQuery()"
-          (ngModelChange)="onAddQuery($event)"
-          (keydown.enter)="suggestions().length && addCard(suggestions()[0])"
-        />
-        @if (suggestions().length) {
-          <ul class="suggestions">
-            @for (name of suggestions(); track name) {
-              <li>
-                <button type="button" class="glass-button small" (click)="addCard(name)">
-                  <app-icon name="plus" /> {{ name }}
-                </button>
-              </li>
-            }
-          </ul>
-        }
-        <button type="button" class="glass-button small bulk-toggle" (click)="bulkOpen.set(true)">
-          {{ i18n.t('cube.bulk') }}
-        </button>
-        @if (addMessage(); as message) {
-          <p class="hint">{{ message }}</p>
-        }
-      </div>
+      @if (addMessage(); as message) {
+        <p class="hint">{{ message }}</p>
+      }
     </section>
 
     <div class="segmented block tabs">
       <button [class.active]="tab() === 'cards'" (click)="tab.set('cards')">
         {{ i18n.t('cube.tabCards') }}
+      </button>
+      <button [class.active]="tab() === 'add'" (click)="tab.set('add')">
+        {{ i18n.t('cube.tabAdd') }}
       </button>
       <button [class.active]="tab() === 'analysis'" (click)="tab.set('analysis')">
         {{ i18n.t('cube.tabAnalysis') }}
@@ -155,6 +149,18 @@
 
     @if (cards() === null) {
       <p class="hint">{{ i18n.t('cube.loading') }}</p>
+    } @else if (tab() === 'add') {
+      <!-- Kartenauswahl wie das Karten-Hinzufügen im Deck-Editor: alle passenden Karten als
+           Bilder, Filter verkleinern die Liste, Plus legt eine Karte in den Cube. -->
+      <button type="button" class="glass-button small bulk-toggle" (click)="bulkOpen.set(true)">
+        {{ i18n.t('cube.bulk') }}
+      </button>
+      <app-cube-card-picker
+        [collectionOnly]="cube.collectionOnly"
+        [format]="cube.format"
+        [inCube]="inCube()"
+        (add)="addCard($event)"
+      />
     } @else if (items().length === 0) {
       <section class="glass-card">
         <p class="hint">{{ i18n.t('cube.empty') }}</p>
@@ -394,6 +400,20 @@
         [ngModel]="editDescription()"
         (ngModelChange)="editDescription.set($event)"
       ></textarea>
+      @if (cubes.formatAvailable()) {
+        <label class="hint" for="cube-edit-format">{{ i18n.t('cube.format') }}</label>
+        <select
+          id="cube-edit-format"
+          class="glass-input"
+          [ngModel]="editFormat()"
+          (ngModelChange)="editFormat.set($event)"
+        >
+          <option [ngValue]="null">{{ i18n.t('cube.formatFree') }}</option>
+          @for (f of formats; track f) {
+            <option [ngValue]="f">{{ f }}</option>
+          }
+        </select>
+      }
       <div class="chip-row">
         <button type="button" class="glass-button" (click)="editOpen.set(false)">
           {{ i18n.t('dialog.cancel') }}

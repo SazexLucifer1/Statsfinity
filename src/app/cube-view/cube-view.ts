@@ -23,6 +23,8 @@ import { BarChart, BarChartDatum } from '../ui/bar-chart/bar-chart';
 import { manaCurveChartData, typeChartData } from '../ui/bar-chart/deck-chart-data';
 import { Icon } from '../ui/icon/icon';
 import { OverflowMenu } from '../ui/overflow-menu/overflow-menu';
+import { CubeCardPicker, PickerCard } from '../cube-card-picker/cube-card-picker';
+import { DECK_FORMATS, DeckFormat } from '../models';
 
 /** Eine Karte im Cube samt Kartendaten und Besitz. */
 interface CubeItem extends CubeCardData {
@@ -37,8 +39,10 @@ const PACK_SIZE = 15;
 
 /**
  * Cube-Builder als eigene Seite wie die Sammlung (Wunsch des Users, 17.10.2026, Vorbild
- * CubeCobra). Ohne gewählten Cube die Übersicht der eigenen Cubes, sonst der Cube mit drei
- * Reitern: Karten (Tabelle nach Farbspalten, Bilder, Liste), Analyse, Probe-Booster.
+ * CubeCobra). Ohne gewählten Cube die Übersicht der eigenen Cubes, sonst der Cube mit vier
+ * Reitern: Karten (Tabelle nach Farbspalten, Bilder, Liste), Hinzufügen (Bilder-Raster mit Filtern,
+ * cube-card-picker/), Analyse, Probe-Booster. Das Format des Cubes (null = frei) bestimmt, welche
+ * Karten die Auswahl anbietet.
  *
  * "Nur Karten aus meiner Sammlung" ist eine Einstellung je Cube (cube_lists.collection_only):
  * an, schlägt das Hinzufügen nur Karten aus der Sammlung vor, nimmt höchstens so viele Exemplare,
@@ -50,7 +54,7 @@ const PACK_SIZE = 15;
  */
 @Component({
   selector: 'app-cube-view',
-  imports: [FormsModule, BarChart, Icon, OverflowMenu],
+  imports: [FormsModule, BarChart, Icon, OverflowMenu, CubeCardPicker],
   templateUrl: './cube-view.html',
   styleUrl: './cube-view.scss',
 })
@@ -70,31 +74,31 @@ export class CubeView {
 
   // --- Übersicht ---
   readonly newName = signal('');
+  readonly newFormat = signal<DeckFormat | null>(null);
   readonly creating = signal(false);
+  readonly formats = DECK_FORMATS;
 
   // --- Geöffneter Cube ---
   readonly cards = signal<CubeCard[] | null>(null);
   private readonly details = signal<ReadonlyMap<string, ScryfallCard>>(new Map());
   private readonly requested = new Set<string>();
 
-  readonly tab = signal<'cards' | 'analysis' | 'pack'>('cards');
+  readonly tab = signal<'cards' | 'add' | 'analysis' | 'pack'>('cards');
   readonly display = signal<'table' | 'spoiler' | 'list'>('table');
   readonly search = signal('');
   readonly pack = signal<CubeItem[]>([]);
 
   // Hinzufügen
-  readonly addQuery = signal('');
-  readonly suggestions = signal<string[]>([]);
   readonly addMessage = signal<string | null>(null);
   readonly bulkOpen = signal(false);
   readonly bulkText = signal('');
   readonly bulkBusy = signal(false);
-  private suggestTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Bearbeiten
   readonly editOpen = signal(false);
   readonly editName = signal('');
   readonly editDescription = signal('');
+  readonly editFormat = signal<DeckFormat | null>(null);
 
   readonly collectionOnly = computed(() => this.current()?.collectionOnly ?? false);
 
@@ -120,6 +124,11 @@ export class CubeView {
       };
     });
   });
+
+  /** Exemplare je Kartenname im Cube - für die Kennzeichnung in der Kartenauswahl. */
+  readonly inCube = computed(
+    () => new Map((this.cards() ?? []).map((c) => [c.cardName.toLowerCase(), c.quantity])),
+  );
 
   readonly totalCards = computed(() => this.items().reduce((sum, i) => sum + i.quantity, 0));
 
@@ -183,8 +192,6 @@ export class CubeView {
         this.pack.set([]);
         this.tab.set('cards');
         this.search.set('');
-        this.addQuery.set('');
-        this.suggestions.set([]);
         this.addMessage.set(null);
       });
       if (id) void this.loadCards(id);
@@ -205,7 +212,10 @@ export class CubeView {
 
   private async loadCards(id: string): Promise<void> {
     const cards = await this.cubes.loadCards(id);
-    if (this.cubeId() === id) this.cards.set(cards);
+    if (this.cubeId() !== id) return;
+    this.cards.set(cards);
+    // Ein leerer Cube startet gleich in der Kartenauswahl.
+    if (cards.length === 0) this.tab.set('add');
   }
 
   // --- Übersicht ---------------------------------------------------------------------------
@@ -213,7 +223,7 @@ export class CubeView {
   async create(): Promise<void> {
     if (!this.newName().trim() || this.creating()) return;
     this.creating.set(true);
-    const cube = await this.cubes.create(this.newName());
+    const cube = await this.cubes.create(this.newName(), this.newFormat());
     this.creating.set(false);
     if (cube) {
       this.newName.set('');
@@ -227,7 +237,6 @@ export class CubeView {
     const cube = this.current();
     if (!cube || cube.collectionOnly === value) return;
     await this.cubes.update(cube.id, { collectionOnly: value });
-    this.suggestions.set([]);
     this.addMessage.set(null);
   }
 
@@ -236,6 +245,7 @@ export class CubeView {
     if (!cube) return;
     this.editName.set(cube.name);
     this.editDescription.set(cube.description);
+    this.editFormat.set(cube.format);
     this.editOpen.set(true);
   }
 
@@ -245,6 +255,7 @@ export class CubeView {
     await this.cubes.update(cube.id, {
       name: this.editName(),
       description: this.editDescription(),
+      format: this.editFormat(),
     });
     this.editOpen.set(false);
   }
@@ -273,40 +284,14 @@ export class CubeView {
 
   // --- Hinzufügen -------------------------------------------------------------------------
 
-  onAddQuery(value: string): void {
-    this.addQuery.set(value);
-    this.addMessage.set(null);
-    if (this.suggestTimer) clearTimeout(this.suggestTimer);
-    const q = value.trim();
-    if (q.length < 2) {
-      this.suggestions.set([]);
-      return;
-    }
-    if (this.collectionOnly()) {
-      // Aus der Sammlung: sofort, ohne Anfrage.
-      const lower = q.toLowerCase();
-      const names = new Set<string>();
-      for (const e of this.collection.entries() ?? []) {
-        if (e.cardName.toLowerCase().includes(lower)) names.add(e.cardName);
-      }
-      this.suggestions.set([...names].sort((a, b) => a.localeCompare(b)).slice(0, 12));
-      return;
-    }
-    this.suggestTimer = setTimeout(async () => {
-      const names = await this.collection.suggestNames(q);
-      if (this.addQuery().trim() === q) this.suggestions.set(names);
-    }, 250);
-  }
-
-  async addCard(name: string): Promise<void> {
-    const result = this.withAdded([{ name, quantity: 1 }]);
-    this.addQuery.set('');
-    this.suggestions.set([]);
+  /** Plus in der Kartenauswahl: ein Exemplar dazu, im Sammlungs-Modus mit dem eigenen Druck. */
+  async addCard(card: PickerCard): Promise<void> {
+    const result = this.withAdded([{ name: card.name, quantity: 1, scryfallId: card.scryfallId }]);
     if (result.changed.length === 0) {
-      this.addMessage.set(this.i18n.t('cube.notEnoughOwned', { name }));
+      this.addMessage.set(this.i18n.t('cube.notEnoughOwned', { name: card.name }));
       return;
     }
-    this.addMessage.set(this.i18n.t('cube.added', { name }));
+    this.addMessage.set(this.i18n.t('cube.added', { name: card.name }));
     await this.persist(result.changed);
   }
 
@@ -341,7 +326,7 @@ export class CubeView {
    * Rechnet Zugänge auf die Kartenliste und setzt sie sofort (beim Fehler lädt persist() neu).
    * Bei "nur Sammlung" höchstens so viele Exemplare, wie man besitzt.
    */
-  private withAdded(adds: { name: string; quantity: number }[]): {
+  private withAdded(adds: { name: string; quantity: number; scryfallId?: string | null }[]): {
     changed: CubeCard[];
     added: number;
     notOwned: number;
@@ -368,7 +353,9 @@ export class CubeView {
         : {
             cardName: add.name,
             // Aus der Sammlung: das eigene Artwork zeigen.
-            scryfallId: this.collectionOnly() ? (ownedEntries[0]?.scryfallId ?? null) : null,
+            scryfallId:
+              add.scryfallId ??
+              (this.collectionOnly() ? (ownedEntries[0]?.scryfallId ?? null) : null),
             quantity: Math.min(99, quantity),
             addedAt: new Date().toISOString(),
           };
