@@ -1,0 +1,168 @@
+<section class="glass-card settings">
+  <h3>{{ i18n.t('cube.packSettings') }}</h3>
+  <label class="size-row">
+    {{ i18n.t('cube.packSize') }}
+    <input
+      class="glass-input small"
+      type="number"
+      min="1"
+      max="60"
+      inputmode="numeric"
+      [disabled]="!editable()"
+      [ngModel]="settings().size"
+      (ngModelChange)="setSize($event)"
+    />
+  </label>
+  <p class="hint">
+    {{ i18n.t('cube.packPossible', { packs: possiblePacks(), cards: totalCards() }) }}
+  </p>
+
+  <h4>{{ i18n.t('cube.packRules') }}</h4>
+  @if (settings().rules.length === 0) {
+    <p class="hint">{{ i18n.t('cube.packNoRules') }}</p>
+  }
+  <ul class="rules">
+    @for (rule of settings().rules; track $index; let i = $index) {
+      <li>
+        <span class="min-label">{{ i18n.t('cube.packMin') }}</span>
+        <input
+          class="glass-input small min"
+          type="number"
+          min="0"
+          max="60"
+          inputmode="numeric"
+          [disabled]="!editable()"
+          [ngModel]="rule.min"
+          (ngModelChange)="setRuleMin(i, $event)"
+        />
+        <select
+          class="glass-input small"
+          [disabled]="!editable()"
+          [ngModel]="ruleValue(rule)"
+          (ngModelChange)="setRuleTarget(i, $event)"
+        >
+          @for (o of ruleOptions; track o.value) {
+            <option [ngValue]="o.value">{{ i18n.t(o.label) }}</option>
+          }
+        </select>
+        @if (editable()) {
+          <button
+            type="button"
+            class="icon-button"
+            [attr.aria-label]="i18n.t('cube.packRemoveRule')"
+            (click)="removeRule(i)"
+          >
+            <app-icon name="trash" />
+          </button>
+        }
+      </li>
+    }
+  </ul>
+  @if (minSum() > settings().size) {
+    <p class="hint warn">{{ i18n.t('cube.packRulesTooMany', { sum: minSum() }) }}</p>
+  }
+  @if (editable()) {
+    <div class="chip-row">
+      <button type="button" class="glass-button small" (click)="addRule()">
+        <app-icon name="plus" /> {{ i18n.t('cube.packAddRule') }}
+      </button>
+      <button type="button" class="glass-button small" (click)="addColorRules()">
+        {{ i18n.t('cube.packEachColor') }}
+      </button>
+    </div>
+  }
+  @if (!cubes.packsAvailable()) {
+    <p class="hint">{{ i18n.t('cube.packNotSaved') }}</p>
+  }
+</section>
+
+<section class="glass-card">
+  <div class="head-row">
+    <h3>{{ i18n.t('cube.packSample') }}</h3>
+    <button type="button" class="glass-button small primary" (click)="newSample()">
+      {{ i18n.t('cube.newPack') }}
+    </button>
+  </div>
+  @if (sample(); as s) {
+    @if (s.shortfalls.length) {
+      <p class="hint warn">
+        {{ i18n.t('cube.packShort', { rules: shortfallText(s.shortfalls) }) }}
+      </p>
+    }
+    <div class="grid">
+      @for (card of s.pack; track $index) {
+        <button type="button" class="tile" (click)="openPreview(card)">
+          @if (card.image) {
+            <img [src]="card.image" [alt]="card.name" />
+          } @else {
+            <span class="no-image">{{ card.name }}</span>
+          }
+        </button>
+      }
+    </div>
+  }
+</section>
+
+<section class="glass-card">
+  <div class="head-row">
+    <h3>{{ i18n.t('cube.packSplit') }}</h3>
+    @if (editable()) {
+      <button
+        type="button"
+        class="glass-button small primary"
+        [disabled]="possiblePacks() === 0"
+        (click)="splitCube()"
+      >
+        {{ split() ? i18n.t('cube.packSplitAgain') : i18n.t('cube.packSplitButton') }}
+      </button>
+    }
+  </div>
+  <p class="hint">{{ i18n.t('cube.packSplitHint') }}</p>
+  @if (split(); as sp) {
+    <div class="head-row">
+      <p class="hint">
+        {{
+          i18n.t('cube.packSplitSummary', {
+            packs: sp.packs.length,
+            leftover: sp.leftover.length,
+          })
+        }}
+      </p>
+      <button type="button" class="glass-button small" (click)="copySplit()">
+        {{ copied() ? i18n.t('cube.copied') : i18n.t('cube.packCopy') }}
+      </button>
+    </div>
+    @for (pack of sp.packs; track $index; let i = $index) {
+      <details class="pack">
+        <summary>
+          {{ i18n.t('cube.packTitle', { n: i + 1 }) }}
+          <span class="meta">({{ pack.cards.length }})</span>
+          @if (pack.shortfalls.length) {
+            <span class="warn">· {{ shortfallText(pack.shortfalls) }}</span>
+          }
+        </summary>
+        <div class="grid small">
+          @for (card of pack.cards; track $index) {
+            <button type="button" class="tile" (click)="openPreview(card)">
+              @if (card.image) {
+                <img [src]="card.image" [alt]="card.name" loading="lazy" />
+              } @else {
+                <span class="no-image">{{ card.name }}</span>
+              }
+            </button>
+          }
+        </div>
+      </details>
+    }
+    @if (sp.leftover.length) {
+      <details class="pack">
+        <summary>{{ i18n.t('cube.packLeftover', { count: sp.leftover.length }) }}</summary>
+        <ul class="leftover">
+          @for (card of sp.leftover; track $index) {
+            <li>{{ card.name }}</li>
+          }
+        </ul>
+      </details>
+    }
+  }
+</section>

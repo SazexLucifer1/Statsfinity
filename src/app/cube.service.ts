@@ -164,6 +164,40 @@ export class CubeService {
     return true;
   }
 
+  /** false, solange sql/cube-packs-2026-10-19.sql fehlt - dann gelten Einstellungen nur bis zum Neuladen. */
+  readonly packsAvailable = signal(true);
+
+  /** Booster-Einstellungen und gespeicherte Aufteilung eines Cubes (roh, siehe cube-packs.ts). */
+  async loadPackData(cubeId: string): Promise<{ settings: unknown; split: unknown } | null> {
+    if (!this.packsAvailable()) return null;
+    const { data, error } = await supabase
+      .from('cube_lists')
+      .select('pack_settings, pack_split')
+      .eq('id', cubeId)
+      .single();
+    if (error) {
+      if (error.code === '42703') this.packsAvailable.set(false);
+      else console.error('Konnte Booster-Einstellungen nicht laden:', error);
+      return null;
+    }
+    return { settings: data.pack_settings, split: data.pack_split };
+  }
+
+  async savePackData(
+    cubeId: string,
+    patch: { settings?: unknown; split?: unknown },
+  ): Promise<void> {
+    if (!this.packsAvailable()) return;
+    const row: Record<string, unknown> = {};
+    if (patch.settings !== undefined) row['pack_settings'] = patch.settings;
+    if (patch.split !== undefined) row['pack_split'] = patch.split;
+    const { error } = await supabase.from('cube_lists').update(row).eq('id', cubeId);
+    if (error) {
+      if (error.code === '42703' || error.code === 'PGRST204') this.packsAvailable.set(false);
+      else console.error('Konnte Booster-Einstellungen nicht speichern:', error);
+    }
+  }
+
   /** false, solange sql/cube-farbkategorie-2026-10-19.sql fehlt. */
   readonly categoryAvailable = signal(true);
 
