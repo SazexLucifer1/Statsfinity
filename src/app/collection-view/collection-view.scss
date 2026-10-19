@@ -341,3 +341,28 @@
   color: #fff;
   background: rgba(0, 0, 0, 0.6);
 }
+
+// Verteilung einer Karte über die eigenen Drucke
+.detail-sheet {
+  max-width: 640px;
+
+  h3 {
+    margin: 0;
+  }
+
+  .hint {
+    margin: 0;
+  }
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--sp-3);
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.merge-toggle button {
+  padding-inline: var(--sp-3);
+}

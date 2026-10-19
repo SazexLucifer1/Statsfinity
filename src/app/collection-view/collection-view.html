@@ -106,14 +106,16 @@
           <option ngValue="type">{{ i18n.t('collection.groupType') }}</option>
           <option ngValue="rarity">{{ i18n.t('collection.groupRarity') }}</option>
         </select>
-        <button
-          type="button"
-          class="glass-chip small"
-          [class.active]="merge()"
-          (click)="merge.set(!merge())"
-        >
-          {{ i18n.t('collection.mergePrints') }}
-        </button>
+        <!-- Jeder Druck einzeln oder eine Kachel je Karte; zusammengefasst zeigt ein Tipp die
+             Verteilung der Drucke (Wunsch des Users, 19.10.2026). -->
+        <div class="segmented merge-toggle">
+          <button [class.active]="!merge()" (click)="merge.set(false)">
+            {{ i18n.t('collection.viewEach') }}
+          </button>
+          <button [class.active]="merge()" (click)="merge.set(true)">
+            {{ i18n.t('collection.mergePrints') }}
+          </button>
+        </div>
       </div>
 
       @if (filtersOpen()) {
@@ -275,28 +277,37 @@
               <button
                 type="button"
                 class="tile-image"
-                (click)="openPreview(item.entry)"
+                (click)="open(item)"
                 [attr.aria-label]="item.entry.cardName"
               >
                 <img [src]="image(item.entry)" [alt]="item.entry.cardName" loading="lazy" />
                 <span class="badge qty">×{{ item.entry.quantity }}</span>
-                <span class="badge lang"
-                  >{{ item.entry.lang.toUpperCase() }}
-                  @if (item.entry.foil) {
-                    ★
+                @if (merge()) {
+                  @if ((item.printCount ?? 1) > 1) {
+                    <span class="badge lang">{{
+                      i18n.t('collection.printCount', { count: item.printCount ?? 1 })
+                    }}</span>
                   }
-                </span>
+                } @else {
+                  <span class="badge lang"
+                    >{{ item.entry.lang.toUpperCase() }}
+                    @if (item.entry.foil) {
+                      ★
+                    }
+                  </span>
+                }
               </button>
               <div class="tile-meta">
                 @if (item.price !== null) {
-                  <span>{{ item.price | number: '1.2-2' }} €</span>
+                  <span [title]="item.priceFromEnglish ? i18n.t('collection.priceEnglish') : ''"
+                    >{{ item.priceFromEnglish ? '≈ ' : ''
+                    }}{{ item.price | number: '1.2-2' }} €</span
+                  >
                 }
                 @if (item.inDecks > 0) {
-                  <span
-                    class="in-decks"
-                    [title]="i18n.t('collection.inDecks', { count: item.inDecks })"
-                    >⧉ {{ item.inDecks }}</span
-                  >
+                  <span class="in-decks">{{
+                    i18n.t('collection.inDecksShort', { count: item.inDecks })
+                  }}</span>
                 }
               </div>
               @if (editable() && !merge()) {
@@ -329,7 +340,7 @@
               <button
                 type="button"
                 class="thumb"
-                (click)="openPreview(item.entry)"
+                (click)="open(item)"
                 [attr.aria-label]="item.entry.cardName"
               >
                 <img [src]="image(item.entry)" alt="" loading="lazy" />
@@ -343,10 +354,10 @@
                     · <span class="foil-mark">★</span>
                   }
                   @if (item.price !== null) {
-                    · {{ item.price | number: '1.2-2' }} €
+                    · {{ item.priceFromEnglish ? '≈ ' : '' }}{{ item.price | number: '1.2-2' }} €
                   }
                   @if (item.inDecks > 0) {
-                    · ⧉ {{ item.inDecks }}
+                    · {{ i18n.t('collection.inDecksShort', { count: item.inDecks }) }}
                   }
                 </span>
               </div>
@@ -489,4 +500,69 @@
 
 @if (scannerOpen()) {
   <app-card-scanner (closed)="scannerOpen.set(false)" />
+}
+
+@if (detailName(); as name) {
+  <!-- Verteilung einer Karte über die eigenen Drucke (zusammengefasste Ansicht). -->
+  <div class="options-menu-overlay" (click)="detailName.set(null)">
+    <div class="options-menu-sheet wide detail-sheet" (click)="$event.stopPropagation()">
+      <h3>{{ name }}</h3>
+      <p class="hint">
+        {{
+          i18n.t('collection.detailSummary', {
+            cards: detailCards(),
+            prints: detailItems().length,
+          })
+        }}
+        · {{ detailValue() | number: '1.2-2' }} €
+      </p>
+      <div class="detail-grid">
+        @for (item of detailItems(); track item.entry.scryfallId + item.entry.foil) {
+          <div class="tile" [class.foil]="item.entry.foil">
+            <button type="button" class="tile-image" (click)="openPreview(item.entry)">
+              <img [src]="image(item.entry)" [alt]="item.entry.cardName" loading="lazy" />
+              <span class="badge qty">×{{ item.entry.quantity }}</span>
+              <span class="badge lang"
+                >{{ item.entry.lang.toUpperCase() }}
+                @if (item.entry.foil) {
+                  ★
+                }
+              </span>
+            </button>
+            <div class="tile-meta">
+              <span>{{ item.entry.setCode.toUpperCase() }} #{{ item.entry.collectorNumber }}</span>
+              @if (item.price !== null) {
+                <span
+                  >{{ item.priceFromEnglish ? '≈ ' : '' }}{{ item.price | number: '1.2-2' }} €</span
+                >
+              }
+            </div>
+            @if (editable()) {
+              <div class="qty">
+                <button
+                  type="button"
+                  class="icon-button"
+                  (click)="changePrint(item, -1)"
+                  [attr.aria-label]="i18n.t('collection.less')"
+                >
+                  −
+                </button>
+                <button
+                  type="button"
+                  class="icon-button"
+                  (click)="changePrint(item, 1)"
+                  [attr.aria-label]="i18n.t('collection.more')"
+                >
+                  +
+                </button>
+              </div>
+            }
+          </div>
+        }
+      </div>
+      <button type="button" class="glass-button" (click)="detailName.set(null)">
+        {{ i18n.t('common.close') }}
+      </button>
+    </div>
+  </div>
 }

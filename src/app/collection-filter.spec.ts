@@ -132,6 +132,7 @@ describe('Sortieren, Zusammenfassen, Gruppieren, Wert', () => {
     const merged = mergePrints(items);
     const sol = merged.find((i) => i.entry.cardName === 'Sol Ring')!;
     expect(sol.entry.quantity).toBe(3);
+    expect(sol.printCount).toBe(2);
     expect(collectionValue(merged)).toBeCloseTo(collectionValue(items));
   });
 
