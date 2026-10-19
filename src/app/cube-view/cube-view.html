@@ -83,9 +83,24 @@
   } @else if (current(); as cube) {
     <!-- Kopf des Cubes -->
     <section class="glass-card head">
-      <p class="format-line">
-        {{ i18n.t('cube.format') }}: <strong>{{ cube.format ?? i18n.t('cube.formatFree') }}</strong>
-      </p>
+      <!-- Format direkt hier umstellbar (Wunsch des Users, 19.10.2026), nicht nur im ⋮-Menü. -->
+      @if (cubes.formatAvailable()) {
+        <label class="format-line">
+          {{ i18n.t('cube.format') }}
+          <select
+            class="glass-input small"
+            [ngModel]="cube.format"
+            (ngModelChange)="setFormat($event)"
+          >
+            <option [ngValue]="null">{{ i18n.t('cube.formatFree') }}</option>
+            @for (f of formats; track f) {
+              <option [ngValue]="f">{{ f }}</option>
+            }
+          </select>
+        </label>
+      } @else {
+        <p class="hint">{{ i18n.t('cube.formatMissing') }}</p>
+      }
       @if (cube.description) {
         <p class="description">{{ cube.description }}</p>
       }
@@ -144,10 +159,7 @@
       <button [class.active]="tab() === 'analysis'" (click)="tab.set('analysis')">
         {{ i18n.t('cube.tabAnalysis') }}
       </button>
-      <button
-        [class.active]="tab() === 'pack'"
-        (click)="tab.set('pack'); pack().length || newPack()"
-      >
+      <button [class.active]="tab() === 'pack'" (click)="tab.set('pack')">
         {{ i18n.t('cube.tabPack') }}
       </button>
     </div>
@@ -210,7 +222,7 @@
                       class="cell"
                       [class.cmc-break]="cmcBreak(group, i)"
                       [class.missing]="collectionOnly() && missingNames().has(item.name)"
-                      (click)="openPreview(item)"
+                      (click)="select(item)"
                     >
                       @if (item.quantity > 1) {
                         <span class="qty">{{ item.quantity }}×</span>
@@ -235,7 +247,7 @@
                   type="button"
                   class="tile"
                   [class.missing]="collectionOnly() && missingNames().has(item.name)"
-                  (click)="openPreview(item)"
+                  (click)="select(item)"
                 >
                   @if (item.image) {
                     <img [src]="item.image" [alt]="item.name" loading="lazy" />
@@ -254,7 +266,7 @@
         <ul class="list">
           @for (item of listItems(); track item.name) {
             <li [class.missing]="collectionOnly() && missingNames().has(item.name)">
-              <button type="button" class="thumb" (click)="openPreview(item)">
+              <button type="button" class="thumb" (click)="select(item)">
                 @if (item.image) {
                   <img [src]="item.image" [alt]="item.name" loading="lazy" />
                 }
@@ -331,25 +343,7 @@
         }
       </section>
     } @else {
-      <section class="glass-card pack">
-        <div class="pack-head">
-          <p class="hint">{{ i18n.t('cube.packHint', { size: pack().length }) }}</p>
-          <button type="button" class="glass-button small primary" (click)="newPack()">
-            {{ i18n.t('cube.newPack') }}
-          </button>
-        </div>
-        <div class="grid">
-          @for (item of pack(); track $index) {
-            <button type="button" class="tile" (click)="openPreview(item)">
-              @if (item.image) {
-                <img [src]="item.image" [alt]="item.name" />
-              } @else {
-                <span class="no-image">{{ item.name }}</span>
-              }
-            </button>
-          }
-        </div>
-      </section>
+      <app-cube-packs-panel [cubeId]="cube.id" [items]="items()" />
     }
   } @else {
     <p class="hint">{{ i18n.t('cube.loading') }}</p>
@@ -441,6 +435,92 @@
           {{ i18n.t('cube.save') }}
         </button>
       </div>
+    </div>
+  </div>
+}
+
+@if (selected(); as item) {
+  <!-- Karte bearbeiten - aus Tabelle, Bildern und Liste gleich (Wunsch des Users, 19.10.2026). -->
+  <div class="options-menu-overlay" (click)="closeSelected()">
+    <div class="options-menu-sheet wide card-sheet" (click)="$event.stopPropagation()">
+      <div class="card-sheet-head">
+        <button type="button" class="card-sheet-image" (click)="openPreview(item)">
+          @if (item.image) {
+            <img [src]="item.image" [alt]="item.name" />
+          }
+        </button>
+        <div class="card-sheet-info">
+          <h3>{{ item.name }}</h3>
+          <span class="meta">{{ item.typeLine }}</span>
+          <span class="meta">{{ i18n.t('cube.owned', { count: item.owned }) }}</span>
+          <div class="qty-controls">
+            <button
+              type="button"
+              class="icon-button"
+              [attr.aria-label]="i18n.t('cube.less')"
+              (click)="setQuantity(item, item.quantity - 1)"
+            >
+              @if (item.quantity > 1) {
+                −
+              } @else {
+                <app-icon name="trash" />
+              }
+            </button>
+            <span>{{ item.quantity }}</span>
+            <button
+              type="button"
+              class="icon-button"
+              [attr.aria-label]="i18n.t('cube.more')"
+              [disabled]="collectionOnly() && item.quantity >= item.owned"
+              (click)="setQuantity(item, item.quantity + 1)"
+            >
+              +
+            </button>
+          </div>
+        </div>
+      </div>
+      @if (cubes.categoryAvailable()) {
+        <label class="sheet-field">
+          {{ i18n.t('cube.cardColumn') }}
+          <select
+            class="glass-input small"
+            [ngModel]="item.card.colorCategory"
+            (ngModelChange)="setCategory(item, $event)"
+          >
+            <option [ngValue]="null">
+              {{ i18n.t('cube.cardColumnAuto', { column: columnLabel(autoCategoryOf(item)) }) }}
+            </option>
+            @for (c of columns; track c) {
+              <option [ngValue]="c">{{ columnLabel(c) }}</option>
+            }
+          </select>
+        </label>
+      }
+      <div class="chip-row">
+        <button type="button" class="glass-button small" (click)="loadPrints(item)">
+          {{ i18n.t('cube.cardChangePrint') }}
+        </button>
+        <button type="button" class="glass-button small danger" (click)="setQuantity(item, 0)">
+          <app-icon name="trash" /> {{ i18n.t('cube.cardRemove') }}
+        </button>
+      </div>
+      @if (printsBusy()) {
+        <p class="hint">{{ i18n.t('cube.loading') }}</p>
+      } @else if (prints().length) {
+        <div class="print-grid">
+          @for (p of prints(); track p.scryfallId) {
+            <button
+              type="button"
+              class="print"
+              [class.current]="p.scryfallId === item.card.scryfallId"
+              (click)="setPrint(item, p.scryfallId)"
+            >
+              <img [src]="p.imageUrl" [alt]="p.cardName" loading="lazy" />
+              <span class="meta">{{ p.setCode.toUpperCase() }} · {{ p.lang }}</span>
+            </button>
+          }
+        </div>
+      }
     </div>
   </div>
 }

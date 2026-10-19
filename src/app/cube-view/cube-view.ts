@@ -9,7 +9,10 @@ import { DeckService } from '../deck.service';
 import { DialogService } from '../dialog.service';
 import { ScryfallCard, ScryfallService } from '../scryfall.service';
 import { collectionKey, printImageUrl } from '../collection-coverage';
+import { CollectionPrint } from '../collection-coverage';
+import { CubePacksPanel } from '../cube-packs-panel/cube-packs-panel';
 import {
+  CUBE_COLUMNS,
   CubeCardData,
   CubeColumnKey,
   CubeTypeGroup,
@@ -18,7 +21,6 @@ import {
   colorCategory,
   columnCounts,
   cubeTable,
-  samplePack,
 } from '../cube-layout';
 import { colorComboLabel, colorComboName } from '../color-combo-names';
 import { manaCurve, translateSectionLabel, typeBreakdown } from '../deck-analyse';
@@ -57,7 +59,7 @@ const PACK_SIZE = 15;
  */
 @Component({
   selector: 'app-cube-view',
-  imports: [FormsModule, BarChart, Icon, OverflowMenu, CubeCardPicker],
+  imports: [FormsModule, BarChart, Icon, OverflowMenu, CubeCardPicker, CubePacksPanel],
   templateUrl: './cube-view.html',
   styleUrl: './cube-view.scss',
 })
@@ -90,7 +92,16 @@ export class CubeView {
   readonly tab = signal<'cards' | 'add' | 'analysis' | 'pack'>('cards');
   readonly display = signal<'table' | 'spoiler' | 'list'>('table');
   readonly search = signal('');
-  readonly pack = signal<CubeItem[]>([]);
+  readonly columns = CUBE_COLUMNS;
+
+  // Karte bearbeiten (Tabelle, Bilder, Liste)
+  private readonly selectedName = signal<string | null>(null);
+  /** Aus der aktuellen Liste nachgeschlagen, damit Anzahl & Co. nach dem Speichern stimmen. */
+  readonly selected = computed(
+    () => this.items().find((i) => i.name === this.selectedName()) ?? null,
+  );
+  readonly prints = signal<CollectionPrint[]>([]);
+  readonly printsBusy = signal(false);
 
   // Hinzufügen
   readonly addMessage = signal<string | null>(null);
@@ -198,7 +209,7 @@ export class CubeView {
       const id = this.cubeId();
       untracked(() => {
         this.cards.set(null);
-        this.pack.set([]);
+        this.selectedName.set(null);
         this.tab.set('cards');
         this.search.set('');
         this.addMessage.set(null);
@@ -329,9 +340,14 @@ export class CubeView {
       rows = csv.map((r) => {
         const print = prints.get(`${r.set}/${r.collectorNumber}`.toLowerCase());
         // Nur übernehmen, wenn der Druck auch diese Karte ist - eine verrutschte Nummer soll
-        // nicht den Namen austauschen. Doppelkarten stehen im Export oft nur mit der Vorderseite.
+        // nicht den Namen austauschen. Doppelkarten stehen im Export oft nur mit der Vorderseite,
+        // Secret-Lair- und Universes-Beyond-Drucke unter ihrem Alternativnamen ("Thunderjaw" ist
+        // Meteor Golem) - dann gilt der echte Kartenname, das Bild bleibt der Druck.
+        const key = collectionKey(r.name);
         const same =
-          print && collectionKey(print.name) === collectionKey(r.name) ? print : undefined;
+          print && [print.name, ...print.aliases].some((n) => collectionKey(n) === key)
+            ? print
+            : undefined;
         return {
           name: same?.name ?? r.name,
           quantity: r.quantity,
@@ -340,14 +356,12 @@ export class CubeView {
         };
       });
     } else {
-      rows = this.deckService
-        .parseDecklistText(text)
-        .map((p) => ({
-          name: p.name,
-          quantity: p.quantity,
-          scryfallId: null,
-          colorCategory: null,
-        }));
+      rows = this.deckService.parseDecklistText(text).map((p) => ({
+        name: p.name,
+        quantity: p.quantity,
+        scryfallId: null,
+        colorCategory: null,
+      }));
     }
     if (rows.length === 0) {
       this.bulkBusy.set(false);
@@ -358,10 +372,22 @@ export class CubeView {
     const found = await this.cardData.findCardsBulk(rows.map((r) => r.name));
     const known: typeof rows = [];
     const unknown: string[] = [];
+    const missing: typeof rows = [];
     for (const r of rows) {
       const card = found.get(r.name.toLowerCase());
       if (card) known.push({ ...r, name: card.name });
       else if (r.scryfallId) known.push(r);
+      else missing.push(r);
+    }
+    // Rückfall für Alternativnamen ("Thunderjaw" = Meteor Golem): Scryfalls exakte Namenssuche
+    // kennt sie, der Nacht-Cache nicht. Einzeln und nacheinander - es sind nur wenige.
+    for (const r of missing) {
+      const res = await this.scryfall.fetchWithRetry(
+        `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(r.name)}`,
+        1,
+      );
+      const card = res?.ok ? await res.json() : null;
+      if (card?.name) known.push({ ...r, name: card.name, scryfallId: r.scryfallId ?? card.id });
       else unknown.push(r.name);
     }
     const result = this.withAdded(known, this.bulkReplace());
@@ -470,11 +496,58 @@ export class CubeView {
 
   // --- Booster ----------------------------------------------------------------------------
 
-  newPack(): void {
-    this.pack.set(samplePack(this.items(), PACK_SIZE));
+  // --- Karte bearbeiten -------------------------------------------------------------------
+
+  select(item: CubeItem): void {
+    this.prints.set([]);
+    this.selectedName.set(item.name);
   }
 
-  // --- Anzeige ----------------------------------------------------------------------------
+  closeSelected(): void {
+    this.selectedName.set(null);
+    this.prints.set([]);
+  }
+
+  /** Spalte von Hand setzen (null = aus Typ und Farbe rechnen) - wie CubeCobras Color Category. */
+  async setCategory(item: CubeItem, category: CubeColumnKey | null): Promise<void> {
+    await this.replaceCard({ ...item.card, colorCategory: category });
+  }
+
+  async setPrint(item: CubeItem, scryfallId: string): Promise<void> {
+    await this.replaceCard({ ...item.card, scryfallId });
+  }
+
+  /** Alle Drucke der Karte - im Sammlungs-Modus nur die eigenen. */
+  async loadPrints(item: CubeItem): Promise<void> {
+    this.printsBusy.set(true);
+    let prints = await this.collection.printsOf(item.name);
+    if (this.collectionOnly()) {
+      const own = new Set(
+        (this.collection.ownedByName().get(collectionKey(item.name)) ?? []).map(
+          (e) => e.scryfallId,
+        ),
+      );
+      prints = prints.filter((p) => own.has(p.scryfallId));
+    }
+    this.printsBusy.set(false);
+    this.prints.set(prints);
+  }
+
+  private async replaceCard(card: CubeCard): Promise<void> {
+    this.cards.update(
+      (list) => list?.map((c) => (c.cardName === card.cardName ? card : c)) ?? null,
+    );
+    await this.persist([card]);
+  }
+
+  autoCategoryOf(item: CubeItem): CubeColumnKey {
+    return colorCategory({ ...item, colorCategory: null });
+  }
+
+  async setFormat(format: DeckFormat | null): Promise<void> {
+    const cube = this.current();
+    if (cube) await this.cubes.update(cube.id, { format });
+  }
 
   openPreview(item: CubeItem): void {
     if (item.image) this.preview.open(item.image, item.backImage, item.name);

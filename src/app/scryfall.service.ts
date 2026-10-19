@@ -519,11 +519,13 @@ export class ScryfallService {
   /**
    * Druck-IDs zu Set + Sammlernummer (z. B. aus CubeCobras CSV-Export), gebündelt zu je 75 über
    * /cards/collection. Schlüssel "set/nummer" in Kleinbuchstaben; was Scryfall nicht kennt, fehlt.
+   * `aliases` sind Alternativnamen des Drucks (flavor_name, z. B. "Thunderjaw" für Meteor Golem
+   * aus einem Secret Lair) - unter denen führen Cube-Seiten die Karte oft.
    */
   async printsBySetNumber(
     prints: { set: string; collectorNumber: string }[]
-  ): Promise<Map<string, { id: string; name: string }>> {
-    const result = new Map<string, { id: string; name: string }>();
+  ): Promise<Map<string, { id: string; name: string; aliases: string[] }>> {
+    const result = new Map<string, { id: string; name: string; aliases: string[] }>();
     for (let i = 0; i < prints.length; i += 75) {
       const chunk = prints.slice(i, i + 75);
       const res = await this.fetchWithRetry(`${API}/cards/collection`, 2, {
@@ -536,9 +538,15 @@ export class ScryfallService {
       if (!res?.ok) continue;
       const data = await res.json();
       for (const card of (data.data as any[]) ?? []) {
+        const aliases = [
+          card.flavor_name,
+          card.printed_name,
+          ...((card.card_faces as any[]) ?? []).flatMap((f) => [f.flavor_name, f.printed_name]),
+        ].filter((n): n is string => !!n);
         result.set(`${card.set}/${card.collector_number}`.toLowerCase(), {
           id: card.id as string,
           name: card.name as string,
+          aliases,
         });
       }
     }
