@@ -2,6 +2,7 @@ import { Injectable, effect, inject, signal } from '@angular/core';
 import { supabase } from './supabase.client';
 import { AuthService } from './auth.service';
 import { DeckFormat } from './models';
+import { CubeColumnKey } from './cube-layout';
 
 /**
  * Cube-Builder: eigene Cubes mit Kartenliste (Wunsch des Users, 17.10.2026, Vorbild CubeCobra).
@@ -29,6 +30,8 @@ export interface CubeCard {
   scryfallId: string | null;
   quantity: number;
   addedAt: string;
+  /** Selbst gesetzte Spalte (CubeCobra-Import); null = gerechnet. */
+  colorCategory: CubeColumnKey | null;
 }
 
 function isMissingMigration(error: { code?: string } | null): boolean {
@@ -161,26 +164,36 @@ export class CubeService {
     return true;
   }
 
+  /** false, solange sql/cube-farbkategorie-2026-10-19.sql fehlt. */
+  readonly categoryAvailable = signal(true);
+
   async loadCards(cubeId: string): Promise<CubeCard[]> {
     const all: CubeCard[] = [];
     // In Seiten zu 1000 - so viele liefert PostgREST höchstens auf einmal.
     for (let from = 0; ; from += 1000) {
       const { data, error } = await supabase
         .from('cube_list_cards')
-        .select('card_name, scryfall_id, quantity, added_at')
+        .select(
+          `card_name, scryfall_id, quantity, added_at${this.categoryAvailable() ? ', color_category' : ''}`,
+        )
         .eq('cube_id', cubeId)
         .order('card_name')
         .range(from, from + 999);
+      if (error?.code === '42703' && this.categoryAvailable()) {
+        this.categoryAvailable.set(false);
+        return this.loadCards(cubeId);
+      }
       if (error) {
         console.error('Konnte Cube-Karten nicht laden:', error);
         return all;
       }
       all.push(
-        ...(data ?? []).map((r) => ({
+        ...((data ?? []) as any[]).map((r) => ({
           cardName: r.card_name,
           scryfallId: r.scryfall_id ?? null,
           quantity: r.quantity,
           addedAt: r.added_at,
+          colorCategory: (r.color_category as CubeColumnKey | null) ?? null,
         })),
       );
       if (!data || data.length < 1000) return all;
@@ -190,7 +203,7 @@ export class CubeService {
   /** Schreibt Karten mit ihrer neuen Anzahl (upsert); Anzahl 0 nimmt sie heraus. */
   async saveCards(
     cubeId: string,
-    cards: Pick<CubeCard, 'cardName' | 'scryfallId' | 'quantity'>[],
+    cards: Pick<CubeCard, 'cardName' | 'scryfallId' | 'quantity' | 'colorCategory'>[],
   ): Promise<boolean> {
     const keep = cards.filter((c) => c.quantity > 0);
     const drop = cards.filter((c) => c.quantity <= 0).map((c) => c.cardName);
@@ -201,6 +214,7 @@ export class CubeService {
           card_name: c.cardName,
           scryfall_id: c.scryfallId,
           quantity: Math.min(99, c.quantity),
+          ...(this.categoryAvailable() ? { color_category: c.colorCategory } : {}),
         })),
       );
       if (error) {

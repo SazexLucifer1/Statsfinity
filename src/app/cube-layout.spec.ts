@@ -5,6 +5,7 @@ import {
   colorCategory,
   columnCounts,
   cubeTable,
+  parseCubeCobraCsv,
   samplePack,
 } from './cube-layout';
 
@@ -61,7 +62,7 @@ describe('cubeTable', () => {
 describe('columnCounts', () => {
   it('liefert alle Spalten, auch leere', () => {
     const counts = columnCounts([bolt, helix]);
-    expect(counts).toHaveLength(8);
+    expect(counts).toHaveLength(9);
     expect(counts.find((c) => c.key === 'R')?.count).toBe(1);
     expect(counts.find((c) => c.key === 'W')?.count).toBe(0);
   });
@@ -98,5 +99,72 @@ describe('collectionGaps', () => {
       { name: 'Lightning Bolt', missing: 1 },
       { name: 'Goblin Guide', missing: 1 },
     ]);
+  });
+});
+
+describe('CubeCobra-Sortierung', () => {
+  it('teilt Mehrfarbig und Länder nach Gilden in CubeCobra-Reihenfolge', () => {
+    const rakdos = card('Rakdos Charm', 'Instant', 2, ['B', 'R']);
+    const azorius = card('Azorius Charm', 'Instant', 2, ['W', 'U']);
+    const golgari = card('Golgari Charm', 'Instant', 2, ['B', 'G']);
+    const table = cubeTable([rakdos, golgari, azorius, helix, fountain]);
+    const multi = table.find((c) => c.key === 'M')!;
+    expect(multi.groups.map((g) => g.type)).toEqual(['WU', 'BR', 'BG', 'WR']);
+    expect(multi.groups.every((g) => g.byColors)).toBe(true);
+    expect(table.find((c) => c.key === 'L')!.groups[0].type).toBe('WR');
+  });
+
+  it('nimmt eine gesetzte Farbkategorie vor der gerechneten', () => {
+    expect(colorCategory({ ...helix, colorCategory: 'H' })).toBe('H');
+    expect(colorCategory({ ...ring, colorCategory: 'L' })).toBe('L');
+  });
+});
+
+describe('parseCubeCobraCsv', () => {
+  const header =
+    'name,CMC,Type,Color,Set,Collector Number,Rarity,Color Category,status,Finish,maybeboard,image URL,image Back URL,tags,Notes,MTGO ID';
+
+  it('liest Name, Farbkategorie und Druck, auch mit Kommas in Anführungszeichen', () => {
+    const rows = parseCubeCobraCsv(
+      [
+        header,
+        '"Thalia, Guardian of Thraben",2,"Legendary Creature - Human Soldier",W,isd,24,rare,White,Owned,Non-foil,false,,,,,',
+        '"Lier, Disciple of the Drowned",5,"Legendary Creature - Human Wizard",UR,mid,224,mythic,Multicolored,Owned,Foil,false,,,"a,b",,',
+      ].join('\n'),
+    );
+    expect(rows).toEqual([
+      {
+        name: 'Thalia, Guardian of Thraben',
+        quantity: 1,
+        colorCategory: 'W',
+        set: 'isd',
+        collectorNumber: '24',
+      },
+      {
+        name: 'Lier, Disciple of the Drowned',
+        quantity: 1,
+        colorCategory: 'M',
+        set: 'mid',
+        collectorNumber: '224',
+      },
+    ]);
+  });
+
+  it('lässt das Maybeboard weg und zählt doppelte Zeilen', () => {
+    const rows = parseCubeCobraCsv(
+      [
+        header,
+        'Island,0,Basic Land - Island,,unf,236,common,Lands,Owned,Non-foil,false,,,,,',
+        'Island,0,Basic Land - Island,,unf,236,common,Lands,Owned,Non-foil,false,,,,,',
+        'Sol Ring,1,Artifact,,c21,263,uncommon,Colorless,Owned,Non-foil,true,,,,,',
+      ].join('\r\n'),
+    );
+    expect(rows).toEqual([
+      { name: 'Island', quantity: 2, colorCategory: 'L', set: 'unf', collectorNumber: '236' },
+    ]);
+  });
+
+  it('erkennt eine normale Liste nicht als CSV', () => {
+    expect(parseCubeCobraCsv('1 Sol Ring\n1 Lightning Bolt')).toBeNull();
   });
 });

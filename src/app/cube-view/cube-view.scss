@@ -216,6 +216,18 @@
     opacity: 0.5;
     text-decoration: line-through dotted;
   }
+
+  // Neuer Manawert: dünne Linie darüber, wie bei CubeCobra.
+  &.cmc-break {
+    border-top: 1px solid var(--divider);
+  }
+}
+
+.replace-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
 }
 
 // --- Bilder ---

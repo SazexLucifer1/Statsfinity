@@ -516,6 +516,35 @@ export class ScryfallService {
     return result;
   }
 
+  /**
+   * Druck-IDs zu Set + Sammlernummer (z. B. aus CubeCobras CSV-Export), gebündelt zu je 75 über
+   * /cards/collection. Schlüssel "set/nummer" in Kleinbuchstaben; was Scryfall nicht kennt, fehlt.
+   */
+  async printsBySetNumber(
+    prints: { set: string; collectorNumber: string }[]
+  ): Promise<Map<string, { id: string; name: string }>> {
+    const result = new Map<string, { id: string; name: string }>();
+    for (let i = 0; i < prints.length; i += 75) {
+      const chunk = prints.slice(i, i + 75);
+      const res = await this.fetchWithRetry(`${API}/cards/collection`, 2, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          identifiers: chunk.map((p) => ({ set: p.set, collector_number: p.collectorNumber })),
+        }),
+      });
+      if (!res?.ok) continue;
+      const data = await res.json();
+      for (const card of (data.data as any[]) ?? []) {
+        result.set(`${card.set}/${card.collector_number}`.toLowerCase(), {
+          id: card.id as string,
+          name: card.name as string,
+        });
+      }
+    }
+    return result;
+  }
+
   /** Kartendaten für viele Scryfall-IDs (z. B. Marken aus all_parts), eindeutig statt per Name. */
   async findCardsByIds(ids: string[]): Promise<Map<string, ScryfallCard>> {
     const unique = [...new Set(ids.filter(Boolean))];
