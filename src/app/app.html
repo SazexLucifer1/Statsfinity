@@ -48,6 +48,9 @@
   } @else if (collection.view()) {
   <!-- Die Sammlung ist wie die Deck-Ansicht eine eigene Seite (collection-view/). -->
   <app-collection-view />
+  } @else if (cubeService.view()) {
+  <!-- Cube-Builder, ebenfalls eine eigene Seite (cube-view/). -->
+  <app-cube-view />
   } @else if (tournament.panelExpanded()) {
   <app-tournament-panel />
   } @else {
@@ -79,7 +82,7 @@
 <!-- In der Deck-Detailansicht ausgeblendet: sie ist eine eigene Seite, verlassen wird sie über
      "Zurück" bzw. die Zurück-Geste - die Leiste würde dort nur Platz kosten und über den Inhalt
      ragen. Der Tutorial-Schritt zur Leiste steckt im Intro-Rundgang, der ohne offenes Deck läuft. -->
-@if (!deckViewer.state.viewingDeck() && !collection.view()) {
+@if (!deckViewer.state.viewingDeck() && !collection.view() && !cubeService.view()) {
 <nav class="tab-bar" data-tutorial="tab-bar">
   @for (tab of tabs; track tab.id) {
   <button
