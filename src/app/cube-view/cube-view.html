@@ -127,6 +127,11 @@
       @if (addMessage(); as message) {
         <p class="hint">{{ message }}</p>
       }
+      @if (importUnknown().length) {
+        <p class="hint warn">
+          {{ i18n.t('cube.importUnknownList', { names: importUnknown().join(', ') }) }}
+        </p>
+      }
     </section>
 
     <div class="segmented block tabs">
@@ -198,11 +203,12 @@
                   {{ columnLabel(column.key) }} <span>{{ column.count }}</span>
                 </h3>
                 @for (group of column.groups; track group.type) {
-                  <h4 class="group-head">{{ typeLabel(group.type) }} ({{ group.count }})</h4>
-                  @for (item of group.cards; track item.name) {
+                  <h4 class="group-head">{{ groupLabel(group) }} ({{ group.count }})</h4>
+                  @for (item of group.cards; track item.name; let i = $index) {
                     <button
                       type="button"
                       class="cell"
+                      [class.cmc-break]="cmcBreak(group, i)"
                       [class.missing]="collectionOnly() && missingNames().has(item.name)"
                       (click)="openPreview(item)"
                     >
@@ -364,6 +370,14 @@
         [ngModel]="bulkText()"
         (ngModelChange)="bulkText.set($event)"
       ></textarea>
+      <label class="replace-toggle">
+        <input
+          type="checkbox"
+          [ngModel]="bulkReplace()"
+          (ngModelChange)="bulkReplace.set($event)"
+        />
+        {{ i18n.t('cube.bulkReplace') }}
+      </label>
       <div class="chip-row">
         <button type="button" class="glass-button" (click)="bulkOpen.set(false)">
           {{ i18n.t('dialog.cancel') }}

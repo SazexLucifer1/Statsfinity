@@ -7,17 +7,20 @@ import { CardDataService } from '../card-data.service';
 import { CardPreviewService } from '../card-preview.service';
 import { DeckService } from '../deck.service';
 import { DialogService } from '../dialog.service';
-import { ScryfallCard } from '../scryfall.service';
+import { ScryfallCard, ScryfallService } from '../scryfall.service';
 import { collectionKey, printImageUrl } from '../collection-coverage';
 import {
   CubeCardData,
   CubeColumnKey,
+  CubeTypeGroup,
   collectionGaps,
+  parseCubeCobraCsv,
   colorCategory,
   columnCounts,
   cubeTable,
   samplePack,
 } from '../cube-layout';
+import { colorComboLabel, colorComboName } from '../color-combo-names';
 import { manaCurve, translateSectionLabel, typeBreakdown } from '../deck-analyse';
 import { BarChart, BarChartDatum } from '../ui/bar-chart/bar-chart';
 import { manaCurveChartData, typeChartData } from '../ui/bar-chart/deck-chart-data';
@@ -66,6 +69,7 @@ export class CubeView {
   private readonly preview = inject(CardPreviewService);
   private readonly deckService = inject(DeckService);
   private readonly dialog = inject(DialogService);
+  private readonly scryfall = inject(ScryfallService);
 
   readonly cubeId = computed(() => this.cubes.view()?.cubeId ?? null);
   readonly current = computed(
@@ -93,6 +97,10 @@ export class CubeView {
   readonly bulkOpen = signal(false);
   readonly bulkText = signal('');
   readonly bulkBusy = signal(false);
+  /** Massen-Import ersetzt die bisherige Kartenliste, statt sie zu ergänzen. */
+  readonly bulkReplace = signal(false);
+  /** Namen, die der letzte Import nicht gefunden hat. */
+  readonly importUnknown = signal<string[]>([]);
 
   // Bearbeiten
   readonly editOpen = signal(false);
@@ -118,6 +126,7 @@ export class CubeView {
         typeLine: d?.typeLine ?? null,
         cmc: d?.cmc ?? null,
         colorIdentity: d?.colorIdentity ?? [],
+        colorCategory: card.colorCategory,
         image: card.scryfallId ? printImageUrl(card.scryfallId) : (d?.imageUrl ?? null),
         backImage: card.scryfallId ? null : (d?.backImageUrl ?? null),
         owned: ownedCount,
@@ -295,28 +304,76 @@ export class CubeView {
     await this.persist(result.changed);
   }
 
+  /**
+   * Massen-Import: eine normale Liste ("1 Sol Ring") oder CubeCobras CSV-Export. Aus dem CSV
+   * kommen zusätzlich die selbst gesetzte Farbkategorie und der Druck (Set + Nummer), damit der
+   * Cube so sortiert ist und so aussieht wie das Original.
+   */
   async importBulk(): Promise<void> {
-    const parsed = this.deckService.parseDecklistText(this.bulkText());
-    if (parsed.length === 0 || this.bulkBusy()) return;
+    if (this.bulkBusy()) return;
+    const text = this.bulkText();
+    const csv = parseCubeCobraCsv(text);
+    let rows: {
+      name: string;
+      quantity: number;
+      scryfallId: string | null;
+      colorCategory: CubeColumnKey | null;
+    }[];
     this.bulkBusy.set(true);
-    // Namen über den Nacht-Cache auflösen: richtige Schreibweise, Unbekanntes fällt heraus.
-    const found = await this.cardData.findCardsBulk(parsed.map((p) => p.name));
-    const known: { name: string; quantity: number }[] = [];
-    let unknown = 0;
-    for (const p of parsed) {
-      const card = found.get(p.name.toLowerCase());
-      if (card) known.push({ name: card.name, quantity: p.quantity });
-      else unknown++;
+    if (csv) {
+      const prints = await this.scryfall.printsBySetNumber(
+        csv
+          .filter((r) => r.set && r.collectorNumber)
+          .map((r) => ({ set: r.set!, collectorNumber: r.collectorNumber! })),
+      );
+      rows = csv.map((r) => {
+        const print = prints.get(`${r.set}/${r.collectorNumber}`.toLowerCase());
+        // Nur übernehmen, wenn der Druck auch diese Karte ist - eine verrutschte Nummer soll
+        // nicht den Namen austauschen. Doppelkarten stehen im Export oft nur mit der Vorderseite.
+        const same =
+          print && collectionKey(print.name) === collectionKey(r.name) ? print : undefined;
+        return {
+          name: same?.name ?? r.name,
+          quantity: r.quantity,
+          scryfallId: same?.id ?? null,
+          colorCategory: r.colorCategory,
+        };
+      });
+    } else {
+      rows = this.deckService
+        .parseDecklistText(text)
+        .map((p) => ({
+          name: p.name,
+          quantity: p.quantity,
+          scryfallId: null,
+          colorCategory: null,
+        }));
     }
-    const result = this.withAdded(known);
+    if (rows.length === 0) {
+      this.bulkBusy.set(false);
+      return;
+    }
+    // Namen über den Nacht-Cache (mit Scryfall-Rückfall) auflösen: richtige Schreibweise,
+    // Unbekanntes fällt heraus und wird mit Namen gemeldet.
+    const found = await this.cardData.findCardsBulk(rows.map((r) => r.name));
+    const known: typeof rows = [];
+    const unknown: string[] = [];
+    for (const r of rows) {
+      const card = found.get(r.name.toLowerCase());
+      if (card) known.push({ ...r, name: card.name });
+      else if (r.scryfallId) known.push(r);
+      else unknown.push(r.name);
+    }
+    const result = this.withAdded(known, this.bulkReplace());
     if (result.changed.length) await this.persist(result.changed);
     this.bulkBusy.set(false);
     this.bulkOpen.set(false);
     this.bulkText.set('');
+    this.importUnknown.set(unknown);
     this.addMessage.set(
       this.i18n.t('cube.importResult', {
         added: result.added,
-        unknown,
+        unknown: unknown.length,
         notOwned: result.notOwned,
       }),
     );
@@ -326,13 +383,26 @@ export class CubeView {
    * Rechnet Zugänge auf die Kartenliste und setzt sie sofort (beim Fehler lädt persist() neu).
    * Bei "nur Sammlung" höchstens so viele Exemplare, wie man besitzt.
    */
-  private withAdded(adds: { name: string; quantity: number; scryfallId?: string | null }[]): {
+  private withAdded(
+    adds: {
+      name: string;
+      quantity: number;
+      scryfallId?: string | null;
+      colorCategory?: CubeColumnKey | null;
+    }[],
+    replace = false,
+  ): {
     changed: CubeCard[];
     added: number;
     notOwned: number;
   } {
-    const cards = new Map((this.cards() ?? []).map((c) => [c.cardName.toLowerCase(), { ...c }]));
+    const before = this.cards() ?? [];
+    const cards = new Map((replace ? [] : before).map((c) => [c.cardName.toLowerCase(), { ...c }]));
     const changed = new Map<string, CubeCard>();
+    // Ersetzen: alles Bisherige zuerst als "Anzahl 0" vormerken - was im Import wieder
+    // auftaucht, überschreibt den Eintrag unten.
+    if (replace)
+      for (const c of before) changed.set(c.cardName.toLowerCase(), { ...c, quantity: 0 });
     const owned = this.collection.ownedByName();
     let added = 0;
     let notOwned = 0;
@@ -349,7 +419,12 @@ export class CubeView {
       }
       if (quantity <= 0) continue;
       const card: CubeCard = existing
-        ? { ...existing, quantity: Math.min(99, existing.quantity + quantity) }
+        ? {
+            ...existing,
+            quantity: Math.min(99, existing.quantity + quantity),
+            scryfallId: add.scryfallId ?? existing.scryfallId,
+            colorCategory: add.colorCategory ?? existing.colorCategory,
+          }
         : {
             cardName: add.name,
             // Aus der Sammlung: das eigene Artwork zeigen.
@@ -358,12 +433,13 @@ export class CubeView {
               (this.collectionOnly() ? (ownedEntries[0]?.scryfallId ?? null) : null),
             quantity: Math.min(99, quantity),
             addedAt: new Date().toISOString(),
+            colorCategory: add.colorCategory ?? null,
           };
       cards.set(key, card);
       changed.set(key, card);
       added += quantity;
     }
-    if (changed.size) this.cards.set([...cards.values()]);
+    if (changed.size || replace) this.cards.set([...cards.values()]);
     return { changed: [...changed.values()], added, notOwned };
   }
 
@@ -411,12 +487,25 @@ export class CubeView {
   columnColor(key: CubeColumnKey): string {
     if ('WUBRG'.includes(key)) return `var(--pip-${key.toLowerCase()})`;
     if (key === 'M') return '#d4af37';
+    if (key === 'H') return '#b98bd6';
     if (key === 'L') return '#a07850';
     return 'var(--pip-c)';
   }
 
   typeLabel(type: string): string {
     return translateSectionLabel(this.i18n, type);
+  }
+
+  /** Abschnittsname: Kartentyp oder - in Mehrfarbig/Hybrid/Ländern - die Farbkombination. */
+  groupLabel(group: CubeTypeGroup<CubeItem>): string {
+    if (!group.byColors) return this.typeLabel(group.type);
+    if (group.type === '') return this.i18n.t('cube.column.C');
+    return colorComboName(group.type.split('')) ?? colorComboLabel(this.i18n, group.type.split(''));
+  }
+
+  /** Trennlinie in der Tabelle, wo der Manawert wechselt (wie bei CubeCobra). */
+  cmcBreak(group: CubeTypeGroup<CubeItem>, index: number): boolean {
+    return index > 0 && group.cards[index - 1].cmc !== group.cards[index].cmc;
   }
 
   categoryOf(item: CubeItem): CubeColumnKey {
