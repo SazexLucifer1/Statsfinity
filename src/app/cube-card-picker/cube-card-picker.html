@@ -1,0 +1,102 @@
+<section class="glass-card filters">
+  <input
+    class="glass-input"
+    type="search"
+    [placeholder]="i18n.t('cube.pickerSearch')"
+    [ngModel]="query()"
+    (ngModelChange)="query.set($event)"
+  />
+  <div class="chip-row filter-row">
+    <select class="glass-input small" [ngModel]="type()" (ngModelChange)="type.set($event)">
+      <option [ngValue]="'all'">{{ i18n.t('deckView.typeAll') }}</option>
+      @for (t of typeOptions; track t) {
+        <option [ngValue]="t">{{ typeLabel(t) }}</option>
+      }
+    </select>
+    <select class="glass-input small" [ngModel]="effect()" (ngModelChange)="effect.set($event)">
+      <option [ngValue]="'all'">{{ i18n.t('deckView.effectAll') }}</option>
+      @for (f of effectOptions(); track f.value) {
+        <option [ngValue]="f.value">{{ effectsService.effectFilterLabel(f.value) }}</option>
+      }
+    </select>
+    <select class="glass-input small" [ngModel]="keyword()" (ngModelChange)="keyword.set($event)">
+      <option [ngValue]="'all'">{{ i18n.t('deckView.abilityAll') }}</option>
+      @for (k of effectsService.keywordFilters; track k.value) {
+        <option [ngValue]="k.value">{{ effectsService.keywordFilterLabel(k.value) }}</option>
+      }
+    </select>
+  </div>
+  <app-cmc-filter [value]="cmc()" (valueChange)="cmc.set($event)" />
+  <app-color-filter [value]="colors()" (valueChange)="colors.set($event)" />
+  <div class="chip-row sort-row">
+    <button
+      class="glass-chip small"
+      [class.active]="order() === 'name'"
+      (click)="order.set('name')"
+    >
+      {{ i18n.t('deckView.sortByName') }}
+    </button>
+    <button class="glass-chip small" [class.active]="order() === 'cmc'" (click)="order.set('cmc')">
+      {{ i18n.t('deckView.sortByCmc') }}
+    </button>
+    <button class="glass-chip small" (click)="resetFilters()">
+      {{ i18n.t('cube.pickerReset') }}
+    </button>
+  </div>
+</section>
+
+<p class="hint result-line">
+  @if (busy() && results().length === 0) {
+    {{ i18n.t('cube.loading') }}
+  } @else {
+    {{ i18n.t('cube.pickerCount', { count: total() }) }}
+    @if (format(); as f) {
+      · {{ i18n.t('cube.pickerLegalIn', { format: f }) }}
+    }
+    @if (checkingLegality()) {
+      · {{ i18n.t('cube.pickerCheckingLegality') }}
+    }
+  }
+</p>
+
+@if (!busy() && results().length === 0) {
+  <p class="hint">
+    {{ collectionOnly() ? i18n.t('cube.pickerNoneCollection') : i18n.t('cube.pickerNone') }}
+  </p>
+}
+
+<div class="pick-grid">
+  @for (card of visible(); track card.name) {
+    <div class="pick-tile">
+      <button type="button" class="pick-image" (click)="openPreview(card)">
+        @if (card.image) {
+          <img [src]="card.image" [alt]="card.name" loading="lazy" />
+        } @else {
+          <span class="no-image">{{ card.name }}</span>
+        }
+      </button>
+      @if (countInCube(card) > 0) {
+        <span class="in-cube">{{ countInCube(card) }}×</span>
+      }
+      @if (card.owned !== null) {
+        <span class="owned">{{ card.owned }}</span>
+      }
+      <button
+        type="button"
+        class="add-button"
+        [class.done]="!canAdd(card)"
+        [disabled]="!canAdd(card)"
+        [attr.aria-label]="i18n.t('cube.pickerAdd', { name: card.name })"
+        (click)="add.emit(card)"
+      >
+        <app-icon [name]="canAdd(card) ? 'plus' : 'check'" />
+      </button>
+    </div>
+  }
+</div>
+
+@if (canShowMore()) {
+  <button type="button" class="glass-button more" [disabled]="busy()" (click)="showMore()">
+    {{ busy() ? i18n.t('cube.loading') : i18n.t('cube.pickerMore') }}
+  </button>
+}

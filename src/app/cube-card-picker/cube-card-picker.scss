@@ -1,0 +1,113 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.filters {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+// Zwei Auswahlfelder je Zeile - zu dritt wurden "Typ: alle" & Co. auf dem Handy abgeschnitten.
+.filter-row select {
+  flex: 1 1 calc(50% - var(--sp-2));
+  width: auto;
+  min-width: 0;
+}
+
+.result-line {
+  margin: 0;
+}
+
+// Wie das Karten-Hinzufügen im Deck-Editor: drei Spalten auf dem Handy, mehr auf breiteren Schirmen.
+.pick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: var(--sp-2);
+}
+
+.pick-tile {
+  position: relative;
+}
+
+.pick-image {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+
+  img,
+  .no-image {
+    display: block;
+    width: 100%;
+    aspect-ratio: 63 / 88;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .no-image {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px;
+    font-size: 0.75rem;
+  }
+}
+
+.add-button {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  font-size: 1.1rem;
+  cursor: pointer;
+
+  &.done {
+    background: #2f855a;
+    cursor: default;
+  }
+}
+
+.in-cube,
+.owned {
+  position: absolute;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+// Schon im Cube: grün oben links.
+.in-cube {
+  left: 4px;
+  top: 4px;
+  background: #4ade80;
+  color: #000;
+}
+
+// Exemplare in der Sammlung: oben rechts.
+.owned {
+  right: 4px;
+  top: 4px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+}
+
+.more {
+  align-self: center;
+  width: auto;
+}

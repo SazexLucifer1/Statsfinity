@@ -542,6 +542,74 @@ export class ScryfallService {
     return result;
   }
 
+  /** Suchglieder für searchCards() und browseCards() - eine Fassung der Filter-Übersetzung. */
+  private searchParts(
+    trimmed: string,
+    creatureType: string | undefined,
+    druckTeile: string[],
+    filters: CardSearchFilters
+  ): string[] {
+    const parts: string[] = [];
+    if (filters.format !== undefined) {
+      if (filters.format) parts.push(`legal:${SCRYFALL_FORMAT[filters.format]}`);
+    } else if (filters.commanderOnly !== false) {
+      parts.push('legal:commander');
+    }
+    // Name gegen englischen UND gedruckten deutschen Namen in einer Anfrage. Das lang:en ist nötig:
+    // sobald ein lang: im Query steht, sucht Scryfall mehrsprachig und fände sonst auch
+    // italienische/französische Drucke.
+    if (trimmed) {
+      const safeName = trimmed.replace(/"/g, '');
+      parts.push(`(lang:en name:"${safeName}" or lang:de name:"${safeName}")`);
+    }
+    if (filters.type) parts.push(`type:"${filters.type}"`);
+    if (creatureType) parts.push(`type:"${creatureType.replace(/"/g, '')}"`);
+    if (filters.cmc != null) parts.push(filters.cmc >= 7 ? 'cmc>=7' : `cmc:${filters.cmc}`);
+    if (filters.colors?.colors.length) {
+      // id= bzw. id>= statt des mehrdeutigen id: (Teilmenge).
+      const { colors, mode } = filters.colors;
+      const operator = mode === 'atLeast' ? '>=' : '=';
+      parts.push(colors.includes('C') ? 'id:c' : `id${operator}${colors.join('')}`);
+    }
+    if (filters.effectQuery) parts.push(filters.effectQuery);
+    if (filters.keyword) parts.push(`keyword:"${filters.keyword.replace(/"/g, '')}"`);
+    if (filters.colorIdentitySubset) {
+      parts.push(filters.colorIdentitySubset.length > 0 ? `id<=${filters.colorIdentitySubset.join('')}` : 'id:c');
+    }
+    parts.push(...druckTeile);
+    return parts;
+  }
+
+  /**
+   * Blättern durch ALLE Karten (Cube-Builder, cube-view/): wie searchCards(), aber auch ohne jeden
+   * Filter (dann alle Papierkarten) und seitenweise - Scryfall liefert 175 je Seite.
+   */
+  async browseCards(
+    query: string,
+    filters: CardSearchFilters,
+    page = 1
+  ): Promise<{ cards: ScryfallCard[]; total: number; hasMore: boolean }> {
+    const parts = this.searchParts(
+      query.trim(),
+      filters.creatureType?.trim(),
+      printSearchQuery(filters.print),
+      filters
+    );
+    if (parts.every((p) => p.startsWith('legal:'))) parts.push('game:paper');
+    const q = encodeURIComponent(parts.join(' '));
+    const res = await this.fetchWithRetry(
+      `${API}/cards/search?q=${q}&unique=cards&order=${filters.order ?? 'name'}&page=${page}`
+    );
+    if (!res?.ok) return { cards: [], total: 0, hasMore: false };
+    const data = await res.json();
+    const rohdaten = (data.data as any[]) ?? [];
+    const cards = await this.inKartensprache(
+      rohdaten.map((c) => this.toCard(c)),
+      rohdaten.map((c) => c.lang as string | undefined)
+    );
+    return { cards, total: data.total_cards ?? cards.length, hasMore: !!data.has_more };
+  }
+
   /**
    * Kartensuche zum Hinzufügen: nur im Deck-Format legale Karten (legal:<format>), optional in der
    * Farbidentität (id<=, leer = nur farblos).
@@ -588,34 +656,7 @@ export class ScryfallService {
       return [];
     }
 
-    const parts: string[] = [];
-    if (filters.format !== undefined) {
-      if (filters.format) parts.push(`legal:${SCRYFALL_FORMAT[filters.format]}`);
-    } else if (filters.commanderOnly !== false) {
-      parts.push('legal:commander');
-    }
-    // Name gegen englischen UND gedruckten deutschen Namen in einer Anfrage. Das lang:en ist nötig:
-    // sobald ein lang: im Query steht, sucht Scryfall mehrsprachig und fände sonst auch
-    // italienische/französische Drucke.
-    if (trimmed) {
-      const safeName = trimmed.replace(/"/g, '');
-      parts.push(`(lang:en name:"${safeName}" or lang:de name:"${safeName}")`);
-    }
-    if (filters.type) parts.push(`type:"${filters.type}"`);
-    if (creatureType) parts.push(`type:"${creatureType.replace(/"/g, '')}"`);
-    if (filters.cmc != null) parts.push(filters.cmc >= 7 ? 'cmc>=7' : `cmc:${filters.cmc}`);
-    if (filters.colors?.colors.length) {
-      // id= bzw. id>= statt des mehrdeutigen id: (Teilmenge).
-      const { colors, mode } = filters.colors;
-      const operator = mode === 'atLeast' ? '>=' : '=';
-      parts.push(colors.includes('C') ? 'id:c' : `id${operator}${colors.join('')}`);
-    }
-    if (filters.effectQuery) parts.push(filters.effectQuery);
-    if (filters.keyword) parts.push(`keyword:"${filters.keyword.replace(/"/g, '')}"`);
-    if (filters.colorIdentitySubset) {
-      parts.push(filters.colorIdentitySubset.length > 0 ? `id<=${filters.colorIdentitySubset.join('')}` : 'id:c');
-    }
-    parts.push(...druckTeile);
+    const parts = this.searchParts(trimmed, creatureType, druckTeile, filters);
 
     // Künstler, Artwork, Flavortext und Lore hängen am Druck, nicht an der Karte: dann jedes
     // Artwork einzeln (unique=art) statt eines beliebigen Drucks je Karte - der stammte oft gar
@@ -1030,3 +1071,6 @@ export class ScryfallService {
     };
   }
 }
+
+/** Filter der Kartensuche (searchCards(), browseCards()). */
+export type CardSearchFilters = Parameters<ScryfallService['searchCards']>[1];

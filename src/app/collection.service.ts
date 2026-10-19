@@ -26,6 +26,8 @@ export interface PrintInfo {
   setName: string | null;
   eur: number | null;
   eurFoil: number | null;
+  /** Scryfalls Legalitäten der Karte je Format-Schlüssel ("commander" -> "legal"). */
+  legalities: Record<string, string>;
 }
 
 const SELECT =
@@ -331,6 +333,7 @@ export class CollectionService {
           setName: c.set_name ?? null,
           eur: Number.isNaN(eur) ? null : eur,
           eurFoil: Number.isNaN(eurFoil) ? null : eurFoil,
+          legalities: c.legalities ?? {},
         });
       }
       for (const id of chunk) if (!this.printInfoCache.has(id)) this.printInfoCache.set(id, null);
