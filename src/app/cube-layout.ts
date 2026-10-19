@@ -223,11 +223,26 @@ export function parseCubeCobraCsv(text: string): CubeCobraRow[] | null {
   const setIdx = col('set');
   const numberIdx = col('collector number');
   const maybeIdx = col('maybeboard');
+  const boardIdx = col('board');
   const byName = new Map<string, CubeCobraRow>();
-  for (const r of rows.slice(1)) {
-    const name = (r[nameIdx] ?? '').trim();
+  for (const raw of rows.slice(1)) {
+    // CubeCobra setzt den Namen NICHT in Anführungszeichen ("Anhelo, the Painter,3,...") - jedes
+    // Komma darin ergibt ein Feld zu viel. Alle anderen Textfelder sind gequotet, also gehören
+    // die überzähligen Felder zum Namen.
+    const extra = Math.max(0, raw.length - header.length);
+    const r =
+      extra > 0
+        ? [
+            ...raw.slice(0, nameIdx),
+            raw.slice(nameIdx, nameIdx + extra + 1).join(','),
+            ...raw.slice(nameIdx + extra + 1),
+          ]
+        : raw;
+    const name = repairEncoding((r[nameIdx] ?? '').trim());
     if (!name) continue;
     if (maybeIdx >= 0 && (r[maybeIdx] ?? '').trim().toLowerCase() === 'true') continue;
+    const board = boardIdx >= 0 ? (r[boardIdx] ?? '').trim().toLowerCase() : '';
+    if (board && board !== 'mainboard') continue;
     const key = name.toLowerCase();
     const prev = byName.get(key);
     if (prev) {
@@ -243,6 +258,21 @@ export function parseCubeCobraCsv(text: string): CubeCobraRow[] | null {
     });
   }
   return [...byName.values()];
+}
+
+/**
+ * Repariert UTF-8, das als Latin-1 gelesen wurde ("BartolomÃ©" -> "Bartolomé") - so kommt der
+ * CubeCobra-Export heraus, wenn ihn ein Programm mit falscher Zeichensatz-Annahme öffnet. Nur
+ * wenn die typischen Zeichen vorkommen und die Rückwandlung gültiges UTF-8 ergibt.
+ */
+export function repairEncoding(text: string): string {
+  if (!/[ÃÂÄÅÇÉ][\u0080-\u00ff]/.test(text) || /[^\u0000-\u00ff]/.test(text)) return text;
+  try {
+    const bytes = Uint8Array.from(text, (ch) => ch.charCodeAt(0));
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch {
+    return text;
+  }
 }
 
 /** Kartenzahl je Farbspalte, alle Spalten (auch leere) in fester Reihenfolge. */

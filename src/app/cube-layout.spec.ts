@@ -164,6 +164,55 @@ describe('parseCubeCobraCsv', () => {
     ]);
   });
 
+  it('liest den echten Export: Namen mit Komma ohne Anführungszeichen, board-Spalte, Zeichensalat', () => {
+    const cobra = [
+      'name,CMC,Type,Color,Set,Collector Number,Rarity,Color Category,status,Finish,board,maybeboard,image URL,image Back URL,tags,Notes,MTGO ID,Custom,Voucher,Artist',
+      'Anhelo, the Painter,3,"Legendary Creature - Vampire Assassin",BRU,"ncc","1",mythic,Hybrid,Not Owned,Non-foil,mainboard,false,,,"","",-1,false,false,"Aurore Folny"',
+      'Aragorn and Arwen, Wed,6,"Legendary Creature - Human Elf Noble",GW,"ltr","394",mythic,Hybrid,Not Owned,Non-foil,mainboard,false,,,"","",111526,false,false,"Magali Villeneuve"',
+      'BartolomÃ© del Presidio,2,"Legendary Creature - Vampire Knight",BW,"lci","224",uncommon,Hybrid,Not Owned,Non-foil,mainboard,false,,,"","",118284,false,false,"Randy Gallegos"',
+      'Elas il-Kor, Sadistic Pilgrim,2,"Legendary Creature - Phyrexian Kor Cleric",BW,"plst","DMU-198",uncommon,Hybrid,Not Owned,Non-foil,mainboard,false,,,"","",-1,false,false,"G-host Lee"',
+      'Hallowed Fountain,0,"Land - Plains Island",,"ecl","265",rare,null,Not Owned,Non-foil,mainboard,false,,,"","",146923,false,false,"Adam Paquette"',
+      'Sol Ring,1,"Artifact",,"c21","263",uncommon,null,Not Owned,Non-foil,maybeboard,false,,,"","",-1,false,false,"Mike Bierek"',
+    ].join('\n');
+    expect(parseCubeCobraCsv(cobra)).toEqual([
+      {
+        name: 'Anhelo, the Painter',
+        quantity: 1,
+        colorCategory: 'H',
+        set: 'ncc',
+        collectorNumber: '1',
+      },
+      {
+        name: 'Aragorn and Arwen, Wed',
+        quantity: 1,
+        colorCategory: 'H',
+        set: 'ltr',
+        collectorNumber: '394',
+      },
+      {
+        name: 'Bartolomé del Presidio',
+        quantity: 1,
+        colorCategory: 'H',
+        set: 'lci',
+        collectorNumber: '224',
+      },
+      {
+        name: 'Elas il-Kor, Sadistic Pilgrim',
+        quantity: 1,
+        colorCategory: 'H',
+        set: 'plst',
+        collectorNumber: 'DMU-198',
+      },
+      {
+        name: 'Hallowed Fountain',
+        quantity: 1,
+        colorCategory: null,
+        set: 'ecl',
+        collectorNumber: '265',
+      },
+    ]);
+  });
+
   it('erkennt eine normale Liste nicht als CSV', () => {
     expect(parseCubeCobraCsv('1 Sol Ring\n1 Lightning Bolt')).toBeNull();
   });
