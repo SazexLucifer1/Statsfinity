@@ -79,4 +79,9 @@ describe('isConfidentArtMatch', () => {
     expect(isConfidentArtMatch(match(10, 10))).toBe(false);
     expect(isConfidentArtMatch(match(12, 20))).toBe(false);
   });
+
+  it('nimmt fast deckungsgleiche Bilder auch ohne Vorsprung (dasselbe Artwork zweimal)', () => {
+    expect(isConfidentArtMatch(match(2, 2))).toBe(true);
+    expect(isConfidentArtMatch(match(6, 6))).toBe(false);
+  });
 });

@@ -40,6 +40,19 @@ export const CARD_ART_BOXES: readonly ArtBox[] = [
   [0.05, 0.05, 0.95, 0.93],
 ];
 
+/**
+ * Lagen für Marken (Tokens), gegen eine eigene, kleine Datei (`TOKEN_ART_HASH_FILE`): normaler
+ * Rahmen (Monarch & Co.), Vollbild ohne Regeltext und Marken MIT Regeltext - dort reicht das Bild
+ * bis knapp über den Textkasten, gemessen an 24 Marken von 2007 bis 2027 (20.10.2026); keine der
+ * Kartenlagen kam dort unter Abstand 14. Eigene Datei statt einer vierten Lage für alles: Gegen
+ * alle ~40.000 Artworks hätte die zusätzliche Lage 2 von 122 Gegenproben fälschlich "erkannt".
+ */
+export const TOKEN_ART_BOXES: readonly ArtBox[] = [
+  [0.08, 0.11, 0.92, 0.555],
+  [0.08, 0.12, 0.92, 0.8],
+  [0.07, 0.12, 0.93, 0.66],
+];
+
 /** Bis zu dieser Distanz gilt ein Treffer als sicher (von 64 Bit). */
 export const ART_MATCH_MAX_DISTANCE = 10;
 
@@ -51,6 +64,9 @@ export const ART_MATCH_MAX_DISTANCE = 10;
  * ein unscharfes iPhone-Foto kam auf 8 mit Vorsprung 2. Daher abgestuft.
  */
 export function isConfidentArtMatch(match: ArtMatch): boolean {
+  // Fast deckungsgleich: dann ist auch ein gleich naher Zweiter dasselbe Bild in einem anderen
+  // Druck (bei Marken häufig) - Zufallstreffer lagen nie unter 8.
+  if (match.distance <= 3) return true;
   const margin = match.runnerUp - match.distance;
   if (match.distance <= 8) return margin >= 2;
   return match.distance <= ART_MATCH_MAX_DISTANCE && margin >= 4;
@@ -126,11 +142,12 @@ export function cardArtQueries(
   height: number,
   channels: number,
   card: ArtBox = [0, 0, 1, 1],
+  artBoxes: readonly ArtBox[] = CARD_ART_BOXES,
 ): ArtHash[] {
   return cardArtBoxes(card).flatMap((box) => {
     const bw = box[2] - box[0];
     const bh = box[3] - box[1];
-    return CARD_ART_BOXES.map((art) =>
+    return artBoxes.map((art) =>
       phash(
         grayGrid(pixels, width, height, channels, [
           box[0] + art[0] * bw,
@@ -213,6 +230,8 @@ export function hammingDistance(a: ArtHash, b: ArtHash): number {
 // ---------------------------------------------------------------------------------------------
 
 export const ART_HASH_FILE = 'art-hashes.bin';
+/** Dasselbe Format, nur Marken (siehe `TOKEN_ART_BOXES`). */
+export const TOKEN_ART_HASH_FILE = 'token-art-hashes.bin';
 const MAGIC = 0x31484153; // "SAH1" little endian
 const ENTRY = 24;
 
