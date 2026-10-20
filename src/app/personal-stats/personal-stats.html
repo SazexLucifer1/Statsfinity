@@ -1,0 +1,201 @@
+<section class="glass-card person-head">
+  <div class="person-row">
+    @if (showBack()) {
+      <button
+        type="button"
+        class="icon-button back"
+        (click)="back.emit()"
+        [attr.aria-label]="i18n.t('stats.personal.back')"
+      >
+        ‹
+      </button>
+    }
+    <app-player-avatar [url]="person().avatarUrl" />
+    <h2>{{ person().name }}</h2>
+  </div>
+
+  @if (canChooseScope()) {
+    <div class="segmented">
+      <button [class.active]="effectiveScope() === 'all'" (click)="scope.set('all')">
+        {{ i18n.t('stats.personal.allGroups') }}
+      </button>
+      <button [class.active]="effectiveScope() === 'group'" (click)="scope.set('group')">
+        {{ i18n.t('stats.personal.activeGroup') }}
+      </button>
+    </div>
+  }
+
+  <div class="filters">
+    <select
+      class="glass-input"
+      [attr.aria-label]="i18n.t('stats.allTime')"
+      [ngModel]="year()"
+      (ngModelChange)="year.set($event)"
+    >
+      <option [ngValue]="'Alle'">{{ i18n.t('stats.allTime') }}</option>
+      @for (y of availableYears(); track y) {
+        <option [ngValue]="y">{{ y }}</option>
+      }
+    </select>
+    <select
+      class="glass-input"
+      [attr.aria-label]="i18n.t('stats.allFormats')"
+      [ngModel]="format()"
+      (ngModelChange)="format.set($event)"
+    >
+      <option [ngValue]="'Alle'">{{ i18n.t('stats.allFormats') }}</option>
+      @for (f of deckFormats; track f) {
+        <option [ngValue]="f">{{ f }}</option>
+      }
+    </select>
+  </div>
+  @if (effectiveScope() === 'all' && loading()) {
+    <p class="hint">{{ i18n.t('stats.personal.loading') }}</p>
+  }
+</section>
+
+@if (headToHead(); as h) {
+  <section class="glass-card">
+    <h2>{{ i18n.t('stats.personal.versusTitle', { name: person().name }) }}</h2>
+    @if (h.games === 0) {
+      <p class="hint">{{ i18n.t('stats.personal.versusNone') }}</p>
+    } @else {
+      <p class="hint">{{ i18n.t('stats.personal.versusGames', { count: h.games }) }}</p>
+      <app-split-bar [segments]="headToHeadSegments()" />
+    }
+  </section>
+}
+
+<app-performance-stats [matches]="personMatches()" [player]="person().name" />
+
+@if (modeStats().length > 1) {
+  <section class="glass-card">
+    <h2>{{ i18n.t('stats.byGameMode') }}</h2>
+    <ul class="stat-list">
+      @for (m of modeStats(); track m.mode) {
+        <li class="stat-list-row">
+          <div class="stat-list-main">
+            <span class="stat-list-name">{{ m.mode }}</span>
+            <span class="stat-list-meta"
+              >{{ m.wins }} / {{ m.games }} {{ i18n.t('stats.wins') }}</span
+            >
+            <app-meter [value]="m.winRate" />
+          </div>
+          <span class="stat-list-value">{{ m.winRate | number: '1.0-0' }}%</span>
+        </li>
+      }
+    </ul>
+  </section>
+}
+
+@if (commanders().length > 0) {
+  <section class="glass-card">
+    <h2>{{ i18n.t('stats.personal.commanders') }}</h2>
+    <ul class="stat-list">
+      @for (c of commanders(); track c.commander) {
+        <li class="stat-list-row">
+          <app-card-thumb [name]="c.commander.split(' + ')[0]" size="large" />
+          <div class="stat-list-main">
+            <span class="stat-list-name">{{ c.commander }}</span>
+            <span class="stat-list-meta"
+              >{{ c.wins }} / {{ c.games }} {{ i18n.t('stats.wins') }}</span
+            >
+          </div>
+          <span class="stat-list-value">{{ c.winRate | number: '1.0-0' }}%</span>
+        </li>
+      }
+    </ul>
+  </section>
+}
+
+@if (placementChart().length > 0) {
+  <section class="glass-card">
+    <h2>{{ i18n.t('profile.placementDistribution') }}</h2>
+    <p class="hint">{{ i18n.t('profile.placementDistributionHint') }}</p>
+    <app-bar-chart [data]="placementChart()" orientation="vertical" />
+  </section>
+}
+
+@if (cardAndColorStats(); as stats) {
+  @if (stats.mostUsedCards.length > 0 || stats.colorComboRanking.length > 0) {
+    <div class="segmented weight-toggle">
+      <button [class.active]="weightMode() === 'games'" (click)="weightMode.set('games')">
+        {{ i18n.t('profile.statsWeightByGames') }}
+      </button>
+      <button [class.active]="weightMode() === 'decks'" (click)="weightMode.set('decks')">
+        {{ i18n.t('profile.statsWeightByDecks') }}
+      </button>
+    </div>
+  }
+
+  @if (stats.mostUsedCards.length > 0) {
+    <section class="glass-card">
+      <h2>{{ i18n.t('profile.mostUsedCardsTitle') }}</h2>
+      <p class="hint">{{ i18n.t('profile.mostUsedCardsHint') }}</p>
+      <app-podium [entries]="cardsPodium()" (entrySelect)="openPodiumCard($event)" />
+      <ul class="stat-list">
+        @for (card of cardsRest(); track card.cardName; let i = $index) {
+          <li class="stat-list-row">
+            <app-card-thumb [name]="card.cardName" [imageUrl]="card.imageUrl" />
+            <div class="stat-list-main">
+              <span class="stat-list-name">{{ podiumSize + i + 1 }}. {{ card.cardName }}</span>
+              <app-meter [value]="countFor(card)" [max]="maxCardCount()" />
+            </div>
+            <span class="stat-list-value">{{ countFor(card) }}×</span>
+          </li>
+        }
+      </ul>
+    </section>
+  }
+
+  @if (stats.colorRanking.length > 0) {
+    <section class="glass-card">
+      <h2>{{ i18n.t('profile.colorRankingTitle') }}</h2>
+      <p class="hint">{{ i18n.t('profile.colorRankingHint') }}</p>
+      <app-radar-chart [data]="colorRadarChart()" />
+    </section>
+  }
+
+  @if (stats.colorComboRanking.length > 0) {
+    <section class="glass-card">
+      <h2>{{ i18n.t('profile.colorComboRankingTitle') }}</h2>
+      <p class="hint">{{ i18n.t('profile.colorComboRankingHint') }}</p>
+      <app-podium [entries]="combosPodium()" shape="symbols" [interactive]="false" />
+      <ul class="stat-list">
+        @for (combo of combosRest(); track combo.colors.join('')) {
+          <li class="stat-list-row">
+            <div class="stat-list-main">
+              <span class="stat-list-name combo-name">
+                @if (combo.colors.length === 0) {
+                  <app-mana-symbol symbol="C" />
+                } @else {
+                  @for (c of comboColors(combo.colors); track c) {
+                    <app-mana-symbol [symbol]="c" />
+                  }
+                }
+                {{ colorComboLabel(combo.colors) }}
+              </span>
+              <app-meter [value]="countFor(combo)" [max]="maxComboCount()" />
+            </div>
+            <span class="stat-list-value">{{ countFor(combo) }}×</span>
+          </li>
+        }
+      </ul>
+    </section>
+  }
+}
+
+<app-match-insights
+  [matches]="personMatches()"
+  [player]="person().name"
+  [allMatches]="reviewMatches()"
+/>
+
+<section class="glass-card">
+  <h2>{{ i18n.t('profile.matchHistory') }}</h2>
+  @if (historyEntries(); as entries) {
+    <app-player-match-history [playerName]="person().name" [externalMatches]="entries" />
+  } @else {
+    <app-player-match-history [playerName]="person().groupName" [year]="year()" />
+  }
+</section>

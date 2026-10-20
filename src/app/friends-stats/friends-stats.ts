@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { I18nService } from '../i18n.service';
 import { AuthService } from '../auth.service';
@@ -51,6 +51,9 @@ export class FriendsStats {
 
   /** Ab so vielen Partien steht jemand in der Rangliste (wie die Freunde-Rangliste im Profil). */
   readonly MIN_GAMES = 5;
+
+  /** Ganze Statistik einer Person im Statistik-Tab öffnen (personal-stats/). */
+  readonly openPerson = output<Person>();
 
   readonly loading = signal(true);
   private readonly allMatches = signal<Match[]>([]);
@@ -180,6 +183,10 @@ export class FriendsStats {
     );
     this.allMatches.set(mergePeopleMatches(sources, friendGames));
     this.loading.set(false);
+  }
+
+  personByName(name: string): Person | undefined {
+    return this.people().find((p) => p.name === name);
   }
 
   togglePerson(name: string): void {

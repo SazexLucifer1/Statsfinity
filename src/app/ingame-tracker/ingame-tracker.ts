@@ -255,7 +255,32 @@ export class IngameTracker implements AfterViewInit, OnDestroy {
 
   chooseEndGame(): void {
     this.showOptionsMenu.set(false);
+    // Mit dem Zug-Knopf gezählt: der Zug steht schon drin und lässt sich im Dialog noch ändern.
+    if (this.session.winTurn() === null && this.session.turn() > 0) {
+      this.session.setWinTurn(this.session.turn());
+    }
     this.session.showWinnerPanel.set(true);
+  }
+
+  /**
+   * Der Zug-Knopf sitzt beim Startspieler, in der Ecke gegenüber den anderen Knöpfen. Ohne
+   * Startspieler steht er beim ersten Feld und fragt beim Antippen erst, wer angefangen hat.
+   */
+  showsTurnButton(key: string, index: number): boolean {
+    const starter = this.session.startingPlayerKey();
+    return starter ? starter === key : index === 0;
+  }
+
+  turnCorner(index: number): string {
+    return this.iconPairCorner(index) === 'corner-tr' ? 'corner-tl' : 'corner-tr';
+  }
+
+  tapTurn(): void {
+    if (!this.session.startingPlayerKey()) {
+      this.starterPickerOpen.set(true);
+      return;
+    }
+    this.session.nextTurn();
   }
 
   // --- Rückgängig: bleibt im Menü, damit sich mehrere Schritte nacheinander zurücknehmen

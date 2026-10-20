@@ -75,6 +75,8 @@ export interface LiveSessionState {
   /** Ab hier optional: fehlen bei Sessions von vor dem Partie-Verlauf (sql/partie-verlauf-2026-10-04.sql). */
   startedAt?: string | null;
   startingPlayerKey?: string | null;
+  /** Laufender Zug (Runde) aus dem Zug-Knopf; fehlt bei älteren Sessions. */
+  turn?: number;
   lifeLogUnits?: string[];
   lifeLogStart?: number;
   lifeLog?: LifeLogEvent[];
@@ -247,6 +249,7 @@ export class GameSessionService {
     winner: this.winner(),
     startedAt: this.startedAt(),
     startingPlayerKey: this.startingPlayerKey(),
+    turn: this.turn(),
     lifeLogUnits: this.lifeLogUnits(),
     lifeLogStart: this.lifeLogStart(),
     lifeLog: this.lifeLog(),
@@ -274,6 +277,22 @@ export class GameSessionService {
     const second = Math.max(0, Math.round((Date.now() - new Date(startedAt).getTime()) / 1000));
     const event: LifeLogEvent = poison ? [second, unit, delta, 1] : [second, unit, delta];
     this.lifeLog.update((log) => (log.length >= LIFE_LOG_MAX_EVENTS ? log : [...log, event]));
+  }
+
+  /**
+   * Laufender Zug, gezählt in Runden: Der Zug-Knopf sitzt beim Startspieler, ein Tipp heißt
+   * "die Runde ist rum, er ist wieder dran" (Wunsch des Users, 20.10.2026). 0 = nie gedrückt -
+   * dann bleibt der Zug im Sieger-Dialog leer statt "Zug 1" zu behaupten.
+   */
+  readonly turn = signal(0);
+
+  /** Nächster Zug; der erste Tipp zählt Zug 1 als abgeschlossen. */
+  nextTurn(): void {
+    this.turn.update((t) => Math.min(99, Math.max(1, t) + 1));
+  }
+
+  previousTurn(): void {
+    this.turn.update((t) => (t <= 2 ? 0 : t - 1));
   }
 
   /** Startspieler setzen; derselbe Key ein zweites Mal hebt die Auswahl auf. */
@@ -783,6 +802,7 @@ export class GameSessionService {
     this.winner.set(state.winner);
     this.startedAt.set(state.startedAt ?? null);
     this.startingPlayerKey.set(state.startingPlayerKey ?? null);
+    this.turn.set(state.turn ?? 0);
     this.lifeLogUnits.set(state.lifeLogUnits ?? []);
     this.lifeLogStart.set(state.lifeLogStart ?? 0);
     this.lifeLog.set(state.lifeLog ?? []);
@@ -1206,6 +1226,7 @@ export class GameSessionService {
     this.poisonView.set(poisonViews);
     this.startedAt.set(new Date().toISOString());
     this.startingPlayerKey.set(null);
+    this.turn.set(0);
     this.lifeLogUnits.set(Object.keys(totals));
     this.lifeLogStart.set(startLife);
     this.lifeLog.set([]);
@@ -1442,6 +1463,7 @@ export class GameSessionService {
     this.activeTournamentCountsInStats.set(true);
     this.startedAt.set(null);
     this.startingPlayerKey.set(null);
+    this.turn.set(0);
     this.lifeLogUnits.set([]);
     this.lifeLogStart.set(0);
     this.lifeLog.set([]);

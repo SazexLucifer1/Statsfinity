@@ -73,7 +73,7 @@ export const tutorial = {
     // --- Statistik-Tab ---
     'tutorial.stats.intro.title': 'Statistik-Tab',
     'tutorial.stats.intro.text':
-      'Ranglisten und Auswertungen für deine Gruppe. Bist du in mehreren Gruppen, wählst du oben, welche du ansiehst. „Global“ zeigt alle Gruppen, „Freunde“ vergleicht dich mit deinen Freunden über alle Gruppen hinweg.',
+      'Ranglisten und Auswertungen. „Persönlich“ zeigt deine eigene Statistik (alle Gruppen oder nur die aktive), „Gruppe“ deine Gruppe - ein Tipp auf einen Spieler öffnet seine Statistik samt Vergleich mit dir. „Global“ zeigt alle Gruppen, „Freunde“ vergleicht dich mit deinen Freunden über alle Gruppen hinweg.',
     'tutorial.stats.filters.title': 'Zeitraum, Format & Modus',
     'tutorial.stats.filters.text':
       'Wähle ein Jahr (oder alle Zeiten), das Format und die Spielmodi, die in die Auswertung einfließen. Modi, die dir gesperrt wurden, sind markiert.',
@@ -165,7 +165,7 @@ export const tutorial = {
       'Eigene Hintergrundbilder für den Live-Tracker hochladen und mit anderen teilen, oder die App per Link und QR-Code weitergeben.',
     'tutorial.profile.viewToggle.title': 'Decks oder Statistiken',
     'tutorial.profile.viewToggle.text':
-      'Hier wechselst du zwischen deinen Decks und deinen Statistiken: Platzierungen, meistgespielte Karten, Farben und dein kompletter Match-Verlauf.',
+      'Hier geht es zu deinen Decks, deiner Sammlung und deinen Cubes. „Statistik“ springt in den Statistik-Tab zu deiner persönlichen Auswertung.',
     'tutorial.profile.deckImport.title': 'Decks anlegen',
     'tutorial.profile.deckImport.text':
       'Kartenliste einfügen („Deck importieren“), einen offiziellen Precon übernehmen oder ein leeres Deck anlegen und Karte für Karte selbst bauen.',
@@ -379,7 +379,7 @@ export const tutorial = {
     // --- Stats tab ---
     'tutorial.stats.intro.title': 'Stats tab',
     'tutorial.stats.intro.text':
-      "Rankings and analyses for your group. If you're in several groups, choose at the top which one you're looking at. “Global” shows all groups, “Friends” compares you with your friends across all groups.",
+      "Rankings and analyses. “Personal” shows your own stats (all groups or just the active one), “Group” your group - tap a player to see their stats and how you compare. “Global” shows all groups, “Friends” compares you with your friends across all groups.",
     'tutorial.stats.filters.title': 'Period, format & mode',
     'tutorial.stats.filters.text':
       "Pick a year (or all time), the format and the game modes to include. Modes you've been locked out of are marked.",
@@ -469,7 +469,7 @@ export const tutorial = {
       'Upload your own background images for the live tracker and share them with others, or pass the app on via link and QR code.',
     'tutorial.profile.viewToggle.title': 'Decks or stats',
     'tutorial.profile.viewToggle.text':
-      'Switch between your decks and your stats here: placements, most played cards, colours and your full match history.',
+      'Here you get to your decks, your collection and your cubes. “Stats” jumps to your personal analysis in the Stats tab.',
     'tutorial.profile.deckImport.title': 'Creating decks',
     'tutorial.profile.deckImport.text':
       'Paste a card list (“Import deck”), take over an official precon, or create an empty deck and build it card by card.',

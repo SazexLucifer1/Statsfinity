@@ -623,3 +623,30 @@
   text-align: center;
   max-width: 80vw;
 }
+
+// Zug-Knopf beim Startspieler, gegenüber den anderen Knöpfen: Symbol plus laufender Zug.
+.turn-pair {
+  align-items: center;
+  flex-direction: column;
+}
+
+.turn-button {
+  flex-direction: column;
+  gap: 0;
+  width: 52px;
+  height: 52px;
+  border-color: rgba(255, 211, 77, 0.6);
+  font-size: 0.85rem;
+
+  .turn-number {
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+}
+
+.turn-back {
+  width: 34px;
+  height: 34px;
+  font-size: 1.1rem;
+}
