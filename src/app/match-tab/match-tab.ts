@@ -1023,9 +1023,27 @@ export class MatchTab {
     this.cubeEditDraft.set(cubeId);
   }
 
+  /** Wert der Auswahl im Bearbeiten-Panel, verknüpfte Cubes als ihr Builder-Cube. */
+  readonly cubeEditValue = computed(() => {
+    const draft = this.cubeEditDraft();
+    if (!draft || draft.startsWith('list:')) return draft ?? '';
+    const cube = this.mtg.cubes().find((c) => c.id === draft);
+    const listed =
+      cube?.cubeListId && this.mtg.groupCubeLists().some((l) => l.id === cube.cubeListId);
+    return listed ? `list:${cube!.cubeListId}` : draft;
+  });
+
   async saveCube(match: Match): Promise<void> {
-    const cubeId = this.cubeEditDraft();
-    if (!cubeId) return;
+    const draft = this.cubeEditDraft();
+    if (!draft) return;
+    const cubeId = draft.startsWith('list:')
+      ? (await this.mtg.cubeForList(draft.slice(5)))?.id
+      : draft;
+    if (!cubeId) {
+      this.errorMessage.set(this.i18n.t('match.msg.cubeAddFailed'));
+      setTimeout(() => this.errorMessage.set(''), 2500);
+      return;
+    }
     await this.mtg.updateMatchCube(match.id, cubeId);
   }
 
