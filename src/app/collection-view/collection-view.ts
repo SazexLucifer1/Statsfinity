@@ -169,6 +169,7 @@ export class CollectionView {
         rarity: info?.rarity ?? null,
         setName: info?.setName ?? this.sets().get(entry.setCode)?.name ?? null,
         price: (entry.foil ? (info?.eurFoil ?? info?.eur) : (info?.eur ?? info?.eurFoil)) ?? null,
+        priceFromEnglish: info?.priceFromEnglish ?? false,
         inDecks: used.get(key) ?? 0,
       };
     });
@@ -326,6 +327,39 @@ export class CollectionView {
 
   image(entry: CollectionEntry): string {
     return printImageUrl(entry.scryfallId, this.mode() === 'grid' ? 'normal' : 'small');
+  }
+
+  /**
+   * Antippen einer Kachel: einzeln die Vorschau, zusammengefasst die Verteilung aller eigenen
+   * Drucke dieser Karte (Wunsch des Users, 19.10.2026).
+   */
+  open(item: CollectionItem): void {
+    if (this.merge()) this.detailName.set(item.entry.cardName);
+    else this.openPreview(item.entry);
+  }
+
+  /** Karte, deren Drucke gerade im Detailfenster stehen. */
+  readonly detailName = signal<string | null>(null);
+  /** Alle eigenen Drucke der Karte - ungefiltert, meiste Exemplare zuerst. */
+  readonly detailItems = computed(() => {
+    const name = this.detailName();
+    if (!name) return [];
+    const key = collectionKey(name);
+    return this.items()
+      .filter((i) => collectionKey(i.entry.cardName) === key)
+      .sort(
+        (a, b) =>
+          b.entry.quantity - a.entry.quantity || a.entry.setCode.localeCompare(b.entry.setCode),
+      );
+  });
+  readonly detailCards = computed(() =>
+    this.detailItems().reduce((sum, i) => sum + i.entry.quantity, 0),
+  );
+  readonly detailValue = computed(() => collectionValue(this.detailItems()));
+
+  /** Im Detailfenster je Druck ändern - dort ist jeder Eintrag ein einzelner Druck. */
+  changePrint(item: CollectionItem, delta: number): void {
+    void this.collection.setQuantity(item.entry, item.entry.foil, item.entry.quantity + delta);
   }
 
   openPreview(entry: CollectionEntry): void {

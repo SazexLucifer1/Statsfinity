@@ -27,6 +27,10 @@ export interface CollectionItem {
   setName: string | null;
   /** Preis eines Exemplars in EUR (Foil-Preis bei Foil), null = unbekannt. */
   price: number | null;
+  /** true = Preis des englischen Drucks (für fremdsprachige Drucke kennt Scryfall keinen). */
+  priceFromEnglish?: boolean;
+  /** Nur nach mergePrints(): so viele verschiedene Drucke (Set, Sprache, Foil) stecken darin. */
+  printCount?: number;
   /** Exemplare in eigenen Decks (alle Decks zusammen). */
   inDecks: number;
 }
@@ -135,9 +139,11 @@ export function mergePrints(items: readonly CollectionItem[]): CollectionItem[] 
     const key = item.entry.cardName.toLowerCase();
     const prev = byName.get(key);
     if (!prev) {
-      byName.set(key, { ...item, entry: { ...item.entry } });
+      byName.set(key, { ...item, entry: { ...item.entry }, printCount: 1 });
       continue;
     }
+    prev.printCount = (prev.printCount ?? 1) + 1;
+    prev.priceFromEnglish = prev.priceFromEnglish || item.priceFromEnglish;
     const total = prev.entry.quantity + item.entry.quantity;
     const value = itemValue(prev) + itemValue(item);
     prev.entry.quantity = total;

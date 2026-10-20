@@ -28,6 +28,8 @@ export interface PrintInfo {
   eurFoil: number | null;
   /** Scryfalls Legalitäten der Karte je Format-Schlüssel ("commander" -> "legal"). */
   legalities: Record<string, string>;
+  /** true = Preis des englischen Drucks (Scryfall führt für andere Sprachen keine Preise). */
+  priceFromEnglish: boolean;
 }
 
 const SELECT =
@@ -314,6 +316,10 @@ export class CollectionService {
     onProgress?: (done: number, total: number) => void,
   ): Promise<Map<string, PrintInfo | null>> {
     const open = [...new Set(ids)].filter((id) => !this.printInfoCache.has(id));
+    // Drucke in anderen Sprachen haben bei Scryfall keinen Preis (die Preise kommen von
+    // Cardmarket und hängen am englischen Druck) - für die wird danach der englische Druck
+    // desselben Sets mit derselben Nummer nachgeschlagen.
+    const withoutPrice: { id: string; set: string; number: string }[] = [];
     for (let i = 0; i < open.length; i += 75) {
       onProgress?.(i, open.length);
       const chunk = open.slice(i, i + 75);
@@ -334,12 +340,51 @@ export class CollectionService {
           eur: Number.isNaN(eur) ? null : eur,
           eurFoil: Number.isNaN(eurFoil) ? null : eurFoil,
           legalities: c.legalities ?? {},
+          priceFromEnglish: false,
         });
+        if (c.lang !== 'en' && Number.isNaN(eur) && Number.isNaN(eurFoil)) {
+          withoutPrice.push({ id: c.id, set: c.set, number: c.collector_number });
+        }
       }
       for (const id of chunk) if (!this.printInfoCache.has(id)) this.printInfoCache.set(id, null);
     }
+    await this.englishPrices(withoutPrice);
     onProgress?.(open.length, open.length);
     return new Map(ids.map((id) => [id, this.printInfoCache.get(id) ?? null]));
+  }
+
+  /** Preise der englischen Drucke für fremdsprachige (gleiches Set, gleiche Nummer). */
+  private async englishPrices(prints: { id: string; set: string; number: string }[]): Promise<void> {
+    for (let i = 0; i < prints.length; i += 75) {
+      const chunk = prints.slice(i, i + 75);
+      // Set + Nummer ohne Sprache liefert bei Scryfall den englischen Druck.
+      const res = await this.scryfall.fetchWithRetry(`${API}/cards/collection`, 1, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          identifiers: chunk.map((p) => ({ set: p.set, collector_number: p.number })),
+        }),
+      });
+      if (!res?.ok) continue;
+      const data = await res.json();
+      const byKey = new Map<string, any>(
+        ((data.data as any[]) ?? []).map((c) => [`${c.set}/${c.collector_number}`, c]),
+      );
+      for (const p of chunk) {
+        const english = byKey.get(`${p.set}/${p.number}`);
+        const info = this.printInfoCache.get(p.id);
+        if (!english || !info) continue;
+        const eur = parseFloat(english.prices?.eur);
+        const eurFoil = parseFloat(english.prices?.eur_foil);
+        if (Number.isNaN(eur) && Number.isNaN(eurFoil)) continue;
+        this.printInfoCache.set(p.id, {
+          ...info,
+          eur: Number.isNaN(eur) ? null : eur,
+          eurFoil: Number.isNaN(eurFoil) ? null : eurFoil,
+          priceFromEnglish: true,
+        });
+      }
+    }
   }
 
   /** illustration_id je Scryfall-ID (für die strenge Artwork-Prüfung). */
