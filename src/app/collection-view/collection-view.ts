@@ -32,6 +32,7 @@ import { EMPTY_COLOR_SELECTION } from '../color-filter-match';
 import { colorComboLabel } from '../color-combo-names';
 import { TYPE_ORDER, translateSectionLabel } from '../deck-analyse';
 import { Icon } from '../ui/icon/icon';
+import { InfoToggle } from '../ui/info-toggle/info-toggle';
 import { CmcFilter } from '../ui/cmc-filter/cmc-filter';
 import { ColorFilter } from '../ui/color-filter/color-filter';
 import { MultiSelect } from '../ui/multi-select/multi-select';
@@ -56,7 +57,16 @@ const FLAG_EFFECTS: Record<string, keyof SpellbookCardFlags> = {
  */
 @Component({
   selector: 'app-collection-view',
-  imports: [FormsModule, DecimalPipe, Icon, CmcFilter, ColorFilter, MultiSelect, CardScanner],
+  imports: [
+    FormsModule,
+    DecimalPipe,
+    Icon,
+    InfoToggle,
+    CmcFilter,
+    ColorFilter,
+    MultiSelect,
+    CardScanner,
+  ],
   templateUrl: './collection-view.html',
   styleUrl: './collection-view.scss',
 })

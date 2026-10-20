@@ -180,13 +180,82 @@
 
 .tile-meta {
   display: flex;
+  align-items: center;
   justify-content: space-between;
+  gap: 4px;
+  min-height: 1.2em;
   font-size: 0.72rem;
-  opacity: 0.8;
+  white-space: nowrap;
+  opacity: 0.85;
 }
 
 .in-decks {
-  opacity: 0.8;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+// Erklärung hinter dem ⓘ
+.info-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  &.signs li {
+    display: grid;
+    grid-template-columns: 4.5em minmax(0, 1fr);
+    align-items: start;
+    gap: var(--sp-2);
+  }
+
+  &.features {
+    margin-top: var(--sp-3);
+    padding-top: var(--sp-3);
+    border-top: 1px solid var(--divider);
+
+    li {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+  }
+
+  .sample {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+}
+
+.badge-sample {
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+
+  &.qty {
+    background: #4ade80;
+    color: #000;
+  }
+
+  &.lang {
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+  }
+}
+
+.foil-sample {
+  display: inline-block;
+  width: 14px;
+  height: 18px;
+  border-radius: 3px;
+  box-shadow: 0 0 0 2px #ffd34d;
 }
 
 .qty {
