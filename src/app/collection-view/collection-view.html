@@ -13,6 +13,62 @@
   </div>
 
   <section class="glass-card head">
+    <!-- Erklärung aller Zeichen und Funktionen hinter dem ⓘ (Wunsch des Users, 20.10.2026). -->
+    <app-info-toggle [label]="i18n.t('collection.infoAria')">
+      <h3 info-title>{{ i18n.t('collection.infoTitle') }}</h3>
+      <!-- Zeichen auf den Kacheln: Beispiel links, Erklärung rechts. -->
+      <ul class="info-list signs">
+        <li>
+          <span class="sample"><span class="badge-sample qty">×3</span></span>
+          <span>{{ i18n.t('collection.info.qty') }}</span>
+        </li>
+        <li>
+          <span class="sample"><span class="badge-sample lang">DE ★</span></span>
+          <span>{{ i18n.t('collection.info.lang') }}</span>
+        </li>
+        <li>
+          <span class="sample"><span class="foil-sample"></span></span>
+          <span>{{ i18n.t('collection.info.foil') }}</span>
+        </li>
+        <li>
+          <span class="sample">0.12 €</span>
+          <span>{{ i18n.t('collection.info.price') }}</span>
+        </li>
+        <li>
+          <span class="sample">≈0.12 €</span>
+          <span>{{ i18n.t('collection.info.priceEnglish') }}</span>
+        </li>
+        <li>
+          <span class="sample"><app-icon name="deck" />2</span>
+          <span>{{ i18n.t('collection.info.inDecks') }}</span>
+        </li>
+        <li>
+          <span class="sample">− / +</span>
+          <span>{{ i18n.t('collection.info.plusMinus') }}</span>
+        </li>
+      </ul>
+      <!-- Funktionen: Name darüber, Erklärung darunter. -->
+      <ul class="info-list features">
+        <li>
+          <strong
+            >{{ i18n.t('collection.viewEach') }} / {{ i18n.t('collection.mergePrints') }}</strong
+          >
+          <span>{{ i18n.t('collection.info.merge') }}</span>
+        </li>
+        <li>
+          <strong>{{ i18n.t('collection.group') }}</strong>
+          <span>{{ i18n.t('collection.info.group') }}</span>
+        </li>
+        <li>
+          <strong>{{ i18n.t('collection.filters') }}</strong>
+          <span>{{ i18n.t('collection.info.filters') }}</span>
+        </li>
+        <li>
+          <strong><app-icon name="camera" /> {{ i18n.t('collection.scan') }}</strong>
+          <span>{{ i18n.t('collection.info.scan') }}</span>
+        </li>
+      </ul>
+    </app-info-toggle>
     <div class="totals">
       <div>
         <strong>{{ totalCards() }}</strong>
@@ -298,16 +354,19 @@
                 }
               </button>
               <div class="tile-meta">
-                @if (item.price !== null) {
-                  <span [title]="item.priceFromEnglish ? i18n.t('collection.priceEnglish') : ''"
-                    >{{ item.priceFromEnglish ? '≈ ' : ''
-                    }}{{ item.price | number: '1.2-2' }} €</span
-                  >
-                }
+                <!-- Preis links, Deck-Symbol mit Zahl rechts, beides in einer Zeile. Was die
+                     Zeichen bedeuten, erklärt das ⓘ im Kopf. -->
+                <span class="price">
+                  @if (item.price !== null) {
+                    {{ item.priceFromEnglish ? '≈' : '' }}{{ item.price | number: '1.2-2' }} €
+                  }
+                </span>
                 @if (item.inDecks > 0) {
-                  <span class="in-decks">{{
-                    i18n.t('collection.inDecksShort', { count: item.inDecks })
-                  }}</span>
+                  <span
+                    class="in-decks"
+                    [attr.aria-label]="i18n.t('collection.inDecks', { count: item.inDecks })"
+                    ><app-icon name="deck" />{{ item.inDecks }}</span
+                  >
                 }
               </div>
               @if (editable() && !merge()) {
@@ -357,7 +416,12 @@
                     · {{ item.priceFromEnglish ? '≈ ' : '' }}{{ item.price | number: '1.2-2' }} €
                   }
                   @if (item.inDecks > 0) {
-                    · {{ i18n.t('collection.inDecksShort', { count: item.inDecks }) }}
+                    ·
+                    <span
+                      class="in-decks"
+                      [attr.aria-label]="i18n.t('collection.inDecks', { count: item.inDecks })"
+                      ><app-icon name="deck" />{{ item.inDecks }}</span
+                    >
                   }
                 </span>
               </div>
