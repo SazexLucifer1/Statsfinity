@@ -1,5 +1,5 @@
 import { Injectable, computed, effect, signal, inject } from '@angular/core';
-import { Match, MatchPlayer, Cube, GameMode, GAME_MODES, LifeLog } from './models';
+import { Match, MatchPlayer, Cube, GameMode, GAME_MODES, GroupCubeList, LifeLog } from './models';
 import { supabase } from './supabase.client';
 import { GroupService } from './group.service';
 import { AuthService } from './auth.service';
@@ -165,6 +165,10 @@ export class MtgService {
   // ... der Rest bleibt unverändert
   readonly history = signal<Match[]>([]);
   readonly cubes = signal<Cube[]>([]);
+  /** Cubes aus dem Cube-Builder aller Gruppenmitglieder (group_cube_lists()), für den Match-Start. */
+  readonly groupCubeLists = signal<GroupCubeList[]>([]);
+  /** false, solange sql/cube-gruppe-verknuepfen-2026-10-20.sql fehlt - dann nur die alten Gruppen-Cubes. */
+  readonly cubeLinkAvailable = signal(true);
   /** Spielername -> gewählter Hintergrundbild-Pfad. Persistiert dauerhaft, unabhängig vom Match. */
   readonly playerBackgrounds = signal<Record<string, string>>({});
 
@@ -246,6 +250,7 @@ export class MtgService {
     this.playerAvatars.set({});
     this.history.set([]);
     this.cubes.set([]);
+    this.groupCubeLists.set([]);
     this.playerBackgrounds.set({});
     this.statVisibility.set(new Map());
     this.qualificationSettings.set(new Map());
@@ -1516,25 +1521,160 @@ export class MtgService {
   // --- Cubes ---
 
   private async loadCubes(groupId: string): Promise<void> {
-    const { data, error } = await supabase
-      .from('cubes')
-      .select('id, name, is_commander')
-      .eq('group_id', groupId)
-      .order('name', { ascending: true });
+    const query = (withLink: boolean) =>
+      supabase
+        .from('cubes')
+        .select(withLink ? 'id, name, is_commander, cube_list_id' : 'id, name, is_commander')
+        .eq('group_id', groupId)
+        .order('name', { ascending: true });
+    let { data, error } = await query(this.cubeLinkAvailable());
+    if (error?.code === '42703') {
+      this.cubeLinkAvailable.set(false);
+      ({ data, error } = await query(false));
+    }
 
-    if (error) {
+    if (error || !data) {
       console.error('Konnte Cubes nicht laden:', error);
       return;
     }
 
     this.cubes.set(
-      data.map((row) => ({
+      (data as any[]).map((row) => ({
         id: row.id,
         name: row.name,
         isCommander: row.is_commander,
+        cubeListId: row.cube_list_id ?? null,
+      }))
+    );
+    if (this.cubeLinkAvailable()) await this.loadGroupCubeLists(groupId);
+  }
+
+  private async loadGroupCubeLists(groupId: string): Promise<void> {
+    const { data, error } = await supabase.rpc('group_cube_lists', { p_group_id: groupId });
+    if (error) {
+      if (['PGRST202', '42883', '42P01', 'PGRST205'].includes(error.code ?? '')) {
+        this.cubeLinkAvailable.set(false);
+      } else {
+        console.error('Konnte Cubes der Gruppe nicht laden:', error);
+      }
+      return;
+    }
+    if (this.groupService.groupId() !== groupId) return;
+    this.groupCubeLists.set(
+      ((data as any[]) ?? []).map((row) => ({
+        id: row.id,
+        name: row.name,
+        format: row.format ?? null,
+        ownerId: row.owner_id,
+        ownerName: row.owner_name ?? null,
+        cardCount: row.card_count ?? 0,
       }))
     );
   }
+
+  /**
+   * Der Gruppen-Cube zu einem Cube aus dem Cube-Builder - Partien zeigen über matches.cube_id
+   * weiterhin auf public.cubes. Gibt es ihn in dieser Gruppe noch nicht, wird er einmal angelegt.
+   */
+  async cubeForList(listId: string): Promise<Cube | null> {
+    const existing = this.cubes().find((c) => c.cubeListId === listId);
+    if (existing) return existing;
+    const list = this.groupCubeLists().find((l) => l.id === listId);
+    const groupId = this.groupService.groupId();
+    if (!list || !groupId) return null;
+
+    const insert = (name: string) =>
+      supabase
+        .from('cubes')
+        .insert({
+          group_id: groupId,
+          name,
+          is_commander: list.format === 'Commander',
+          cube_list_id: listId,
+        })
+        .select('id, name, is_commander, cube_list_id')
+        .single();
+    let { data, error } = await insert(list.name);
+    // Ein alter Gruppen-Cube trägt schon denselben Namen: mit Besitzer unterscheiden.
+    if (error?.code === '23505' && list.ownerName) {
+      ({ data, error } = await insert(`${list.name} (${list.ownerName})`));
+    }
+    if (error || !data) {
+      console.error('Konnte Cube nicht anlegen:', error);
+      return null;
+    }
+    const cube: Cube = {
+      id: data.id,
+      name: data.name,
+      isCommander: data.is_commander,
+      cubeListId: data.cube_list_id,
+    };
+    this.cubes.update((cs) => [...cs, cube]);
+    return cube;
+  }
+
+  /**
+   * Verknüpft einen älteren Gruppen-Cube (nur ein Name) mit einem Cube aus dem Cube-Builder: Seine
+   * Partien zählen danach für diesen Cube. Gibt es für den Builder-Cube in der Gruppe schon einen
+   * eigenen Eintrag, wandern die Partien dorthin und der alte Eintrag verschwindet.
+   */
+  async linkCube(cubeId: string, listId: string): Promise<boolean> {
+    const groupId = this.groupService.groupId();
+    const list = this.groupCubeLists().find((l) => l.id === listId);
+    if (!groupId || !list) return false;
+    const target = this.cubes().find((c) => c.cubeListId === listId && c.id !== cubeId);
+
+    if (target) {
+      const { error: moveError } = await supabase
+        .from('matches')
+        .update({ cube_id: target.id })
+        .eq('group_id', groupId)
+        .eq('cube_id', cubeId);
+      if (moveError) {
+        console.error('Konnte Partien nicht umhängen:', moveError);
+        return false;
+      }
+      const { error } = await supabase.from('cubes').delete().eq('id', cubeId).eq('group_id', groupId);
+      if (error) console.error('Konnte alten Cube nicht entfernen:', error);
+      this.cubes.update((cs) => cs.filter((c) => c.id !== cubeId));
+      this.history.update((matches) =>
+        matches.map((m) => (m.cube?.id === cubeId ? { ...m, cube: target } : m))
+      );
+      return true;
+    }
+
+    const { error } = await supabase
+      .from('cubes')
+      .update({ cube_list_id: listId, name: list.name })
+      .eq('id', cubeId)
+      .eq('group_id', groupId);
+    // Name schon vergeben (anderer alter Cube heißt so): dann nur verknüpfen.
+    const failed =
+      error?.code === '23505'
+        ? (
+            await supabase
+              .from('cubes')
+              .update({ cube_list_id: listId })
+              .eq('id', cubeId)
+              .eq('group_id', groupId)
+          ).error
+        : error;
+    if (failed) {
+      console.error('Konnte Cube nicht verknüpfen:', failed);
+      return false;
+    }
+    const name = error ? undefined : list.name;
+    this.cubes.update((cs) =>
+      cs.map((c) => (c.id === cubeId ? { ...c, cubeListId: listId, name: name ?? c.name } : c))
+    );
+    this.history.update((matches) =>
+      matches.map((m) =>
+        m.cube?.id === cubeId ? { ...m, cube: { ...m.cube, name: name ?? m.cube.name } } : m
+      )
+    );
+    return true;
+  }
+
   async addCube(name: string, isCommander = false): Promise<Cube | null> {
     const trimmed = name.trim();
     if (!trimmed) return null;

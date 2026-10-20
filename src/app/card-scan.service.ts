@@ -11,9 +11,14 @@ import {
   ArtMatch,
   cardArtBoxes,
   cardArtQueries,
+  cardArtQueriesWithoutGlare,
   CARD_ART_BOXES,
+  ART_VERIFY_MIN,
+  artMatchCertainty,
+  artQueryBox,
+  artSimilarity,
   decodeArtHashes,
-  isConfidentArtMatch,
+  glareShare,
   nearestArt,
 } from './art-hash';
 import {
@@ -51,6 +56,11 @@ const API = 'https://api.scryfall.com';
 
 const COLLECTOR_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/•*★ ';
 
+/** Ab diesem Anteil gespiegelter Pixel im Rahmen wird zusätzlich ohne die Flecken gerechnet. */
+const GLARE_MIN = 0.002;
+/** Ab diesem Anteil zeigt der Scanner den Hinweis, die Karte zu kippen. */
+const GLARE_HINT = 0.01;
+
 /** Bereich der Sammlerzeile auf der Karte (Anteile), großzügig wegen ungenauem Anlegen. */
 const COLLECTOR_BOX = [0.0, 0.875, 0.56, 0.99] as const;
 
@@ -68,6 +78,10 @@ export class CardScanService {
   private worker: OcrWorker | null = null;
   private workerPromise: Promise<OcrWorker | null> | null = null;
   private readonly cardCache = new Map<string, any>();
+  private readonly artCache = new Map<string, ImageData>();
+
+  /** Spiegelt die Karte im Rahmen gerade deutlich (Foil, Hülle, Lampe)? Für den Hinweis im Scanner. */
+  readonly glare = signal(false);
 
   /** Lädt Fingerabdrücke und Texterkennung (beim Öffnen des Scanners, parallel zur Kamera). */
   async prepare(): Promise<void> {
@@ -145,7 +159,7 @@ export class CardScanService {
     const found = this.findCard(frame);
     const boxes: ArtBox[] = [...found, guide];
 
-    const art = this.matchArt(frame, boxes);
+    const art = await this.matchArt(frame, boxes, guide);
     const artId = art?.match.id ?? null;
 
     // Die ergiebigere Lesung gewinnt: Set + Nummer zählen doppelt (eindeutiger Druck), die
@@ -215,15 +229,20 @@ export class CardScanService {
    * höchstens 900 px Breite - die Vorlagen (art_crop) sind ohnehin nur ~600 px breit, und in voller
    * Kameraauflösung kosteten die ~170 Fingerabdrücke je Versuch auf dem Handy spürbar Zeit.
    */
-  private matchArt(
+  private async matchArt(
     frame: HTMLCanvasElement,
     boxes: ArtBox[],
-  ): { match: ArtMatch; cardBox: ArtBox } | null {
+    guide: ArtBox,
+  ): Promise<{ match: ArtMatch; cardBox: ArtBox } | null> {
     if (!this.index || this.index.count === 0) return null;
     const small = frame.width > 900 ? scaled(frame, 900) : frame;
     const ctx = small.getContext('2d', { willReadFrequently: true });
     if (!ctx) return null;
     const { data, width, height } = ctx.getImageData(0, 0, small.width, small.height);
+    // Spiegelt die Karte (Foil, Hülle), zusätzlich ohne die ausgefressenen Flecken rechnen.
+    const glare = glareShare(data, width, height, 4, guide);
+    this.glare.set(glare >= GLARE_HINT);
+    const withoutGlare = glare >= GLARE_MIN;
     // Erst die Karten; nur ohne sicheren Treffer die Marken - mit eigenen Lagen gegen ihre eigene,
     // kleine Datei, damit die zusätzliche Lage keine Zufallstreffer unter echten Karten erzeugt.
     const tries: [ArtHashIndex | null, readonly ArtBox[]][] = [
@@ -233,15 +252,65 @@ export class CardScanService {
     for (const [index, artBoxes] of tries) {
       if (!index || index.count === 0) continue;
       const queries = boxes.flatMap((box) => cardArtQueries(data, width, height, 4, box, artBoxes));
+      const plain = queries.length;
+      if (withoutGlare) {
+        queries.push(
+          ...boxes.flatMap((box) =>
+            cardArtQueriesWithoutGlare(data, width, height, 4, box, artBoxes),
+          ),
+        );
+      }
       const match = nearestArt(index, queries);
-      if (!match || !isConfidentArtMatch(match)) continue;
+      const certainty = match && artMatchCertainty(match);
+      if (!match || !certainty) continue;
+      // Fingerabdruck i gehört zu Kartenlage i / artBoxes.length, in beiden Hälften gleich.
+      const query = match.query % plain;
+      const perBox = plain / boxes.length;
+      const card = boxes[Math.floor(query / perBox)];
+      if (certainty === 'verify') {
+        const ref = await this.artCrop(match.id);
+        const box = artQueryBox(card, query % perBox, artBoxes);
+        if (
+          !ref ||
+          artSimilarity(data, width, height, 4, box, ref.data, ref.width, ref.height, 4) <
+            ART_VERIFY_MIN
+        ) {
+          continue;
+        }
+      }
       // Die Lage, deren Fingerabdruck am besten passte, ist die genaueste Angabe, wo die Karte liegt.
       const cardBox = boxes.flatMap((box) => cardArtBoxes(box))[
-        Math.floor(match.query / artBoxes.length)
+        Math.floor(query / artBoxes.length)
       ];
       return { match, cardBox };
     }
     return null;
+  }
+
+  /** Scryfalls Artwork-Ausschnitt eines Drucks als Pixel, klein gerechnet (für die Nachprüfung). */
+  private async artCrop(id: string): Promise<ImageData | null> {
+    if (this.artCache.has(id)) return this.artCache.get(id)!;
+    const card = await this.cardBy(`${API}/cards/${id}`);
+    const url: string | undefined =
+      card?.image_uris?.art_crop ?? card?.card_faces?.[0]?.image_uris?.art_crop;
+    if (!url) return null;
+    const pixels = await new Promise<ImageData | null>((resolve) => {
+      const img = new Image();
+      // Scryfall erlaubt das; ohne crossOrigin wäre das Canvas danach nicht mehr auslesbar.
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = Math.max(1, Math.round((img.naturalHeight * 256) / img.naturalWidth));
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(ctx?.getImageData(0, 0, canvas.width, canvas.height) ?? null);
+      };
+      img.onerror = () => resolve(null);
+      img.src = url;
+    });
+    if (pixels) this.artCache.set(id, pixels);
+    return pixels;
   }
 
   /**

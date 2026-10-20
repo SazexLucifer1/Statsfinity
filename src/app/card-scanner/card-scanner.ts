@@ -20,6 +20,11 @@ interface RecentScan extends ScanHit {
   key: number;
 }
 
+function canToggleFoil(item: ScanHit): boolean {
+  const finishes = item.print.finishes;
+  return finishes.includes('nonfoil') && finishes.some((f) => f !== 'nonfoil');
+}
+
 /**
  * Mittlere Helligkeitsänderung je Pixel (0-255) zum vorigen Bild, über der gerade eine Karte
  * gewechselt wird. Eine Hand, die das Handy hält, zittert immer: gemessen 5-15 zwischen zwei
@@ -64,13 +69,20 @@ export class CardScanner implements OnInit, OnDestroy {
   private readonly video = viewChild.required<ElementRef<HTMLVideoElement>>('video');
   private readonly guide = viewChild.required<ElementRef<HTMLDivElement>>('guide');
 
-  readonly status = signal<'starting' | 'ready' | 'reading' | 'notFound' | 'saved' | 'error'>(
-    'starting',
-  );
+  readonly status = signal<
+    'starting' | 'ready' | 'reading' | 'notFound' | 'glare' | 'saved' | 'error'
+  >('starting');
   readonly error = signal<string | null>(null);
   readonly recent = signal<RecentScan[]>([]);
   readonly flash = signal(false);
   readonly fallbackLang = signal<string>(this.readLang());
+  /**
+   * Foil-Stapel: jede erkannte Karte zählt als Foil, sofern es sie als Foil gibt. Den Stern in der
+   * Sammlerzeile liest die Kamera auf dem iPhone kaum je (gut 1 mm, und bei Foil spiegelt er), und
+   * am Bild allein ist Foil nicht sicher zu erkennen - wer einen Stapel Foils scannt, sagt es
+   * deshalb einmal vorher (Wunsch des Users, 20.10.2026).
+   */
+  readonly foilMode = signal(false);
 
   private stream: MediaStream | null = null;
   private timer: ReturnType<typeof setInterval> | null = null;
@@ -134,6 +146,21 @@ export class CardScanner implements OnInit, OnDestroy {
     } catch {
       // privater Modus - gilt dann nur für diese Sitzung
     }
+  }
+
+  /** Foil/nicht Foil nachträglich umstellen - nur bei Drucken, die es in beiden Fassungen gibt. */
+  async toggleFoil(item: RecentScan): Promise<void> {
+    if (!canToggleFoil(item)) return;
+    const ok = await this.collection.add(item.print, !item.foil, 1);
+    if (!ok) return;
+    await this.collection.add(item.print, item.foil, -1);
+    this.recent.update((list) =>
+      list.map((r) => (r.key === item.key ? { ...r, foil: !r.foil } : r)),
+    );
+  }
+
+  canToggleFoil(item: RecentScan): boolean {
+    return canToggleFoil(item);
   }
 
   async undo(item: RecentScan): Promise<void> {
@@ -233,11 +260,15 @@ export class CardScanner implements OnInit, OnDestroy {
         (rect.x + rect.w - x0) / (x1 - x0),
         (rect.y + rect.h - y0) / (y1 - y0),
       ] as const;
-      const hit = await this.scan.identify(frame, guide, this.fallbackLang());
-      if (!hit) {
-        this.status.set('notFound');
+      const found = await this.scan.identify(frame, guide, this.fallbackLang());
+      if (!found) {
+        this.status.set(this.scan.glare() ? 'glare' : 'notFound');
         return;
       }
+      const hit =
+        this.foilMode() && found.print.finishes.some((f) => f !== 'nonfoil')
+          ? { ...found, foil: true }
+          : found;
       const key = `${hit.print.scryfallId}|${hit.foil}`;
       if (key === this.lastHitKey && !this.sawEmpty && Date.now() - this.lastHitAt < 4000) {
         this.lastHit = gray;

@@ -22,7 +22,7 @@ import { DeckViewerService } from '../deck-viewer.service';
 import { storedDeckBracket } from '../bracket';
 import { Icon } from '../ui/icon/icon';
 import { LifeChart } from '../ui/life-chart/life-chart';
-import { LifeLog } from '../models';
+import { Cube, GroupCubeList, LifeLog } from '../models';
 import { FriendsService } from '../friends.service';
 import { ProfileService } from '../profile.service';
 
@@ -615,6 +615,77 @@ export class MatchTab {
       setTimeout(() => this.errorMessage.set(''), 2500);
     }
   }
+  /** Gruppen-Cubes ohne Verknüpfung (oder deren Builder-Cube nicht mehr sichtbar ist). */
+  readonly plainCubes = computed(() => {
+    const lists = new Set(this.mtg.groupCubeLists().map((l) => l.id));
+    return this.mtg.cubes().filter((c) => !c.cubeListId || !lists.has(c.cubeListId));
+  });
+
+  /** Wert der Cube-Auswahl: verknüpfte Cubes erscheinen als ihr Builder-Cube ("list:<id>"). */
+  readonly cubeSelectValue = computed(() => {
+    const id = this.session.selectedCubeId();
+    const cube = this.mtg.cubes().find((c) => c.id === id);
+    if (!cube) return '';
+    const listed = cube.cubeListId && this.mtg.groupCubeLists().some((l) => l.id === cube.cubeListId);
+    return listed ? `list:${cube.cubeListId}` : cube.id;
+  });
+
+  cubeListLabel(list: GroupCubeList): string {
+    return this.i18n.t(list.ownerName ? 'match.cubeListBy' : 'match.cubeListCards', {
+      name: list.name,
+      owner: list.ownerName ?? '',
+      count: list.cardCount,
+    });
+  }
+
+  async selectCube(value: string): Promise<void> {
+    if (!value.startsWith('list:')) {
+      this.session.selectedCubeId.set(value || null);
+      return;
+    }
+    const cube = await this.mtg.cubeForList(value.slice(5));
+    if (cube) {
+      this.session.selectedCubeId.set(cube.id);
+    } else {
+      this.errorMessage.set(this.i18n.t('match.msg.cubeAddFailed'));
+      setTimeout(() => this.errorMessage.set(''), 2500);
+    }
+  }
+
+  /** Alten Gruppen-Cube mit einem Builder-Cube verknüpfen - seine Partien zählen dann dafür. */
+  async linkCube(cube: Cube, listId: string): Promise<void> {
+    const list = this.mtg.groupCubeLists().find((l) => l.id === listId);
+    if (!list) return;
+    this.linkDraft.set({ [cube.id]: listId });
+    try {
+      await this.confirmLink(cube, list);
+    } finally {
+      // Auswahlfeld zurück auf den Platzhalter.
+      this.linkDraft.set({});
+    }
+  }
+
+  readonly linkDraft = signal<Partial<Record<string, string>>>({});
+
+  private async confirmLink(cube: Cube, list: GroupCubeList): Promise<void> {
+    const listId = list.id;
+    const count = this.mtg.history().filter((m) => m.cube?.id === cube.id).length;
+    const ok = await this.dialog.confirm(
+      this.i18n.t('match.msg.confirmLinkCube', { old: cube.name, name: list.name, count }),
+    );
+    if (!ok) return;
+    const linked = await this.mtg.linkCube(cube.id, listId);
+    if (linked) {
+      const target = this.mtg.cubes().find((c) => c.cubeListId === listId);
+      if (this.session.selectedCubeId() === cube.id && target) this.session.selectedCubeId.set(target.id);
+      this.successMessage.set(this.i18n.t('match.msg.cubeLinked'));
+      setTimeout(() => this.successMessage.set(''), 2000);
+    } else {
+      this.errorMessage.set(this.i18n.t('match.msg.cubeLinkFailed'));
+      setTimeout(() => this.errorMessage.set(''), 2500);
+    }
+  }
+
   async deleteCube(id: string, name: string): Promise<void> {
     if (await this.dialog.confirm(this.i18n.t('match.msg.confirmDeleteCube', { name }))) {
       if (this.session.selectedCubeId() === id) {

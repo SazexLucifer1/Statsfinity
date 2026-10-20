@@ -206,6 +206,18 @@ export interface Cube {
   id: string;
   name: string;
   isCommander: boolean;
+  /** Verknüpfter Cube aus dem Cube-Builder (cube_lists), sql/cube-gruppe-verknuepfen-2026-10-20.sql. */
+  cubeListId?: string | null;
+}
+
+/** Ein Cube aus dem Cube-Builder eines Gruppenmitglieds, zur Auswahl beim Match-Start. */
+export interface GroupCubeList {
+  id: string;
+  name: string;
+  format: string | null;
+  ownerId: string;
+  ownerName: string | null;
+  cardCount: number;
 }
 
 export interface PlayerStats {

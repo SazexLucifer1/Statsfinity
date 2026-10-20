@@ -72,6 +72,13 @@ export const match = {
     'match.noCubesYet': 'Noch keine Cubes vorhanden. Lege einen neuen Cube an.',
     'match.chooseCubePlaceholder': 'Cube wählen',
     'match.deleteCube': 'Cube löschen',
+    'match.cubeGroupLists': 'Cubes der Gruppe',
+    'match.cubeOldCubes': 'Ältere Cubes (nur Name)',
+    'match.cubeListBy': '{{name}} · von {{owner}} · {{count}} Karten',
+    'match.cubeListCards': '{{name}} · {{count}} Karten',
+    'match.linkCube': 'Verknüpfen mit …',
+    'match.linkCubeHint':
+      'Ältere Cubes sind nur ein Name. Verknüpft mit einem Cube aus dem Cube-Builder zählen ihre bisherigen Partien für diesen Cube.',
     'match.addNewCube': 'Neuen Cube hinzufügen',
     'match.cubeNamePlaceholder': 'Cube-Name',
     'match.commanderCube': 'Commander Cube',
@@ -112,6 +119,10 @@ export const match = {
       'Dieses Deck hat keine als Commander markierte Karte (Export ohne "Commander"-Abschnitt?).',
     'match.msg.noOtherDecksFound': 'Keine Decks von den anderen mitspielenden Personen gefunden.',
     'match.msg.cubeAdded': 'Cube hinzugefügt.',
+    'match.msg.cubeLinked': 'Cube verknüpft.',
+    'match.msg.cubeLinkFailed': 'Cube konnte nicht verknüpft werden.',
+    'match.msg.confirmLinkCube':
+      '{{count}} Partien von „{{old}}" zählen danach für „{{name}}". Der alte Name verschwindet aus der Auswahl. Fortfahren?',
     'match.msg.cubeAddFailed': 'Cube konnte nicht hinzugefügt werden (Name existiert?).',
     'match.msg.confirmDeleteCube':
       'Cube „{{name}}" wirklich löschen? Bereits gespeicherte Matches bleiben erhalten, verlieren aber den Cube-Bezug.',
@@ -218,6 +229,13 @@ export const match = {
     'match.noCubesYet': 'No cubes yet. Create a new cube.',
     'match.chooseCubePlaceholder': 'Choose cube',
     'match.deleteCube': 'Delete cube',
+    'match.cubeGroupLists': 'Group cubes',
+    'match.cubeOldCubes': 'Older cubes (name only)',
+    'match.cubeListBy': '{{name}} · by {{owner}} · {{count}} cards',
+    'match.cubeListCards': '{{name}} · {{count}} cards',
+    'match.linkCube': 'Link to …',
+    'match.linkCubeHint':
+      'Older cubes are just a name. Linked to a cube from the cube builder, their past matches count for that cube.',
     'match.addNewCube': 'Add new cube',
     'match.cubeNamePlaceholder': 'Cube name',
     'match.commanderCube': 'Commander Cube',
@@ -258,6 +276,10 @@ export const match = {
       'This deck has no card marked as commander (export without "Commander" section?).',
     'match.msg.noOtherDecksFound': 'No decks found from the other players in this game.',
     'match.msg.cubeAdded': 'Cube added.',
+    'match.msg.cubeLinked': 'Cube linked.',
+    'match.msg.cubeLinkFailed': 'Could not link the cube.',
+    'match.msg.confirmLinkCube':
+      '{{count}} matches of "{{old}}" will count for "{{name}}". The old name disappears from the list. Continue?',
     'match.msg.cubeAddFailed': 'Cube could not be added (name already exists?).',
     'match.msg.confirmDeleteCube':
       'Really delete cube "{{name}}"? Already saved matches stay, but lose the cube reference.',

@@ -236,28 +236,53 @@
 
   @if (session.mode() === 'Cube') {
     <h3>{{ i18n.t('match.chooseCube') }}</h3>
-    @if (mtg.cubes().length === 0) {
+    @if (mtg.cubes().length === 0 && mtg.groupCubeLists().length === 0) {
       <p class="hint">{{ i18n.t('match.noCubesYet') }}</p>
     } @else {
       <div>
-        <select class="glass-input" [ngModel]="session.selectedCubeId()" (ngModelChange)="session.selectedCubeId.set($event)">
-          @for (c of mtg.cubes(); track c.id) {
-            <option [value]="c.id">{{ c.name }}</option>
+        <select class="glass-input" [ngModel]="cubeSelectValue()" (ngModelChange)="selectCube($event)">
+          <option value="" disabled>{{ i18n.t('match.chooseCubePlaceholder') }}</option>
+          @if (mtg.groupCubeLists().length > 0) {
+            <optgroup [label]="i18n.t('match.cubeGroupLists')">
+              @for (l of mtg.groupCubeLists(); track l.id) {
+                <option [value]="'list:' + l.id">{{ cubeListLabel(l) }}</option>
+              }
+            </optgroup>
+          }
+          @if (plainCubes().length > 0) {
+            <optgroup [label]="mtg.groupCubeLists().length > 0 ? i18n.t('match.cubeOldCubes') : i18n.t('match.chooseCube')">
+              @for (c of plainCubes(); track c.id) {
+                <option [value]="c.id">{{ c.name }}</option>
+              }
+            </optgroup>
           }
         </select>
       </div>
 
-      <ul class="player-list">
-        @for (c of mtg.cubes(); track c.id) {
-          <li>
-            <span class="player-name">{{ c.name }}</span>
-            @if (c.isCommander) {
-              <span class="hint">{{ i18n.t('match.commander') }}</span>
-            }
-            <button class="icon-button" (click)="deleteCube(c.id, c.name)" [attr.aria-label]="i18n.t('match.deleteCube')"><app-icon name="trash" /></button>
-          </li>
+      @if (plainCubes().length > 0) {
+        @if (mtg.groupCubeLists().length > 0) {
+          <p class="hint">{{ i18n.t('match.linkCubeHint') }}</p>
         }
-      </ul>
+        <ul class="player-list">
+          @for (c of plainCubes(); track c.id) {
+            <li>
+              <span class="player-name">{{ c.name }}</span>
+              @if (c.isCommander) {
+                <span class="hint">{{ i18n.t('match.commander') }}</span>
+              }
+              @if (mtg.groupCubeLists().length > 0) {
+                <select class="glass-input link-cube" [ngModel]="linkDraft()[c.id] ?? ''" (ngModelChange)="linkCube(c, $event)" [attr.aria-label]="i18n.t('match.linkCube')">
+                  <option value="" disabled>{{ i18n.t('match.linkCube') }}</option>
+                  @for (l of mtg.groupCubeLists(); track l.id) {
+                    <option [value]="l.id">{{ cubeListLabel(l) }}</option>
+                  }
+                </select>
+              }
+              <button class="icon-button" (click)="deleteCube(c.id, c.name)" [attr.aria-label]="i18n.t('match.deleteCube')"><app-icon name="trash" /></button>
+            </li>
+          }
+        </ul>
+      }
     }
 
     <h4>{{ i18n.t('match.addNewCube') }}</h4>

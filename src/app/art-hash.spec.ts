@@ -6,7 +6,10 @@ import {
   encodeArtHashes,
   grayGrid,
   hammingDistance,
-  isConfidentArtMatch,
+  artMatchCertainty,
+  artSimilarity,
+  ART_VERIFY_MIN,
+  glareShare,
   nearestArt,
   phash,
 } from './art-hash';
@@ -67,21 +70,61 @@ describe('cardArtQueries', () => {
   });
 });
 
-describe('isConfidentArtMatch', () => {
+describe('artMatchCertainty', () => {
   const match = (distance: number, runnerUp: number) => ({ id: 'x', distance, runnerUp, query: 0 });
 
-  it('nimmt klare Treffer und verwirft Zufallstreffer', () => {
-    expect(isConfidentArtMatch(match(4, 14))).toBe(true);
-    // Unscharfes iPhone-Foto:
-    expect(isConfidentArtMatch(match(8, 10))).toBe(true);
-    // So sahen alle Zufallstreffer in den Gegenproben aus:
-    expect(isConfidentArtMatch(match(10, 12))).toBe(false);
-    expect(isConfidentArtMatch(match(10, 10))).toBe(false);
-    expect(isConfidentArtMatch(match(12, 20))).toBe(false);
+  it('nimmt klare Treffer ohne Nachprüfung', () => {
+    expect(artMatchCertainty(match(4, 14))).toBe('sure');
+    expect(artMatchCertainty(match(6, 10))).toBe('sure');
+    // Fast deckungsgleich, auch ohne Vorsprung (dasselbe Artwork in zwei Drucken):
+    expect(artMatchCertainty(match(2, 2))).toBe('sure');
   });
 
-  it('nimmt fast deckungsgleiche Bilder auch ohne Vorsprung (dasselbe Artwork zweimal)', () => {
-    expect(isConfidentArtMatch(match(2, 2))).toBe(true);
-    expect(isConfidentArtMatch(match(6, 6))).toBe(false);
+  it('prüft knappe Treffer nach und verwirft alles über 10', () => {
+    // Unscharfes iPhone-Foto, aber auch typische Verwechslung bei Spiegelung:
+    expect(artMatchCertainty(match(8, 10))).toBe('verify');
+    expect(artMatchCertainty(match(6, 6))).toBe('verify');
+    expect(artMatchCertainty(match(10, 10))).toBe('verify');
+    expect(artMatchCertainty(match(12, 20))).toBeNull();
+  });
+});
+
+describe('Spiegelung', () => {
+  // Weiches Muster mit einem ausgefressenen weißen Fleck in der Mitte.
+  const w = 120;
+  const h = 90;
+  const image = (glare: boolean) => {
+    const px = new Uint8ClampedArray(w * h * 4);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const i = (y * w + x) * 4;
+        const v = 60 + 50 * Math.sin(x / 9) + 40 * Math.cos(y / 7);
+        const spot = glare && (x - 60) ** 2 + (y - 40) ** 2 < 15 ** 2;
+        px[i] = spot ? 255 : v + 30;
+        px[i + 1] = spot ? 255 : v;
+        px[i + 2] = spot ? 255 : 160 - v / 2;
+        px[i + 3] = 255;
+      }
+    }
+    return px;
+  };
+  const whole = [0, 0, 1, 1] as const;
+
+  it('misst den Anteil gespiegelter Pixel', () => {
+    expect(glareShare(image(false), w, h, 4, whole)).toBe(0);
+    expect(glareShare(image(true), w, h, 4, whole)).toBeGreaterThan(0.05);
+  });
+
+  it('erkennt das Original trotz Fleck als ähnlich, ein anderes Bild nicht', () => {
+    const glared = image(true);
+    const same = artSimilarity(glared, w, h, 4, whole, image(false), w, h, 4);
+    const other = new Uint8ClampedArray(w * h * 4);
+    for (let i = 0; i < other.length; i += 4) {
+      const p = i / 4;
+      other[i] = other[i + 1] = other[i + 2] = ((p * 7919) % 251) as number;
+      other[i + 3] = 255;
+    }
+    expect(same).toBeGreaterThan(ART_VERIFY_MIN);
+    expect(artSimilarity(glared, w, h, 4, whole, other, w, h, 4)).toBeLessThan(ART_VERIFY_MIN);
   });
 });
