@@ -187,7 +187,7 @@ Bei diesen Dateien grundsätzlich `grep`/`Glob` vor `Read`; wenn doch gelesen we
 | 1591   | `src/app/mtg.service.ts`                         |
 | 1386   | `src/app/stats-tab/stats-tab.ts`                 |
 | 1537   | `src/app/game-session.service.ts`                |
-| 1058   | `src/app/match-tab/match-tab.ts`                 |
+| 1179   | `src/app/match-tab/match-tab.ts`                 |
 | 1302   | `src/app/profile-tab/profile-tab.ts`             |
 | 1901   | `src/app/deck-detail-view/deck-detail-view.html` |
 | 1030   | `src/app/scryfall.service.ts`                    |
