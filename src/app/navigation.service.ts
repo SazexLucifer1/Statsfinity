@@ -18,8 +18,19 @@ export class NavigationService {
    */
   readonly pendingPublicDeckId = signal<string | null>(null);
 
+  /**
+   * Wunsch, im Statistik-Tab die eigene persönliche Statistik zu zeigen (Knopf im Profil, seit die
+   * Statistik dort ausgezogen ist). Der Statistik-Tab greift es auf und setzt es zurück.
+   */
+  readonly personalStatsRequested = signal(false);
+
   constructor() {
     this.deckLinkLesen();
+  }
+
+  openPersonalStats(): void {
+    this.personalStatsRequested.set(true);
+    this.goToTab('stats');
   }
 
   goToTab(tab: AppTab): void {

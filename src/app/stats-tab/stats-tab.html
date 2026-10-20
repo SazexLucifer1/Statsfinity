@@ -12,6 +12,12 @@
 } @else {
 
 <div class="stats-scope-toggle segmented">
+  <!-- Eigene Statistik, aus dem Profil hierher umgezogen (personal-stats/). Nur mit Login. -->
+  @if (myPerson()) {
+  <button [class.active]="viewScope() === 'personal'" (click)="setViewScope('personal')">
+    {{ i18n.t('stats.viewScopePersonal') }}
+  </button>
+  }
   <button [class.active]="viewScope() === 'group'" (click)="setViewScope('group')">
     {{ i18n.t('stats.viewScopeGroup') }}
   </button>
@@ -26,13 +32,21 @@
   }
 </div>
 
-@if (viewScope() === 'global') {
+@if (personTarget(); as target) {
+
+<app-personal-stats [person]="target" [compareWith]="myPerson()" [showBack]="true" (back)="personTarget.set(null)" />
+
+} @else if (viewScope() === 'personal' && myPerson()) {
+
+<app-personal-stats [person]="myPerson()!" />
+
+} @else if (viewScope() === 'global') {
 
 <app-global-stats />
 
 } @else if (viewScope() === 'friends') {
 
-<app-friends-stats />
+<app-friends-stats (openPerson)="openFriendStats($event)" />
 
 } @else {
 
@@ -384,7 +398,7 @@
     @for (p of pagedPlayerStatsRest(); track p.name; let i = $index) {
     <li>
       <span class="rank">{{ medal(playerRestOffset() + i) }}</span>
-      <span class="name player-name-cell" [class.clickable]="isPlayerLinked(p.name)" (click)="openPlayerProfile(p.name)">
+      <span class="name player-name-cell clickable" (click)="openPlayerProfile(p.name)">
         <app-player-avatar [url]="mtg.playerAvatars()[p.name] ?? null" />
         {{ p.name }}
       </span>
@@ -437,7 +451,7 @@
     @for (e of pagedEloRanking(); track e.name) {
     <li>
       <span class="rank">{{ e.provisional ? '–' : medal(e.place) }}</span>
-      <span class="name player-name-cell" [class.clickable]="isPlayerLinked(e.name)" (click)="openPlayerProfile(e.name)">
+      <span class="name player-name-cell clickable" (click)="openPlayerProfile(e.name)">
         <app-player-avatar [url]="mtg.playerAvatars()[e.name] ?? null" />
         {{ e.name }}
       </span>
@@ -484,7 +498,7 @@
   <ul class="qualification">
     @for (p of pagedPlayersInQualification(); track p.name) {
     <li>
-      <span class="name player-name-cell" [class.clickable]="isPlayerLinked(p.name)" (click)="openPlayerProfile(p.name)">
+      <span class="name player-name-cell clickable" (click)="openPlayerProfile(p.name)">
         <app-player-avatar [url]="mtg.playerAvatars()[p.name] ?? null" />
         {{ p.name }}
       </span>
@@ -644,7 +658,7 @@
         @for (pilot of e.playedBy; track pilot.name; let last = $last) {
           <span
             [class.borrowed-pilot]="pilot.borrowed"
-            [class.clickable]="isPlayerLinked(pilot.name)"
+            class="clickable"
             (click)="openPlayerProfile(pilot.name)"
             >{{ pilot.name }}@if (pilot.borrowed) {&nbsp;<app-icon name="exchange" [label]="i18n.t('profile.commanderListBorrowed')" />}</span
           >@if (!last) {, }

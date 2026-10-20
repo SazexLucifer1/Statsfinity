@@ -1,0 +1,63 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.person-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.person-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+
+  h2 {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.back {
+  color: var(--text);
+  font-size: 1.6rem;
+}
+
+.filters {
+  display: flex;
+  gap: var(--sp-2);
+
+  select {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.weight-toggle {
+  align-self: flex-start;
+
+  button {
+    min-height: 32px;
+    padding: var(--sp-1) var(--sp-4);
+    font-size: 0.82rem;
+  }
+}
+
+.combo-name {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+app-meter {
+  display: block;
+  margin-top: 4px;
+}

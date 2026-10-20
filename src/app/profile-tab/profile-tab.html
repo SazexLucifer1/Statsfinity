@@ -687,9 +687,17 @@
   @if (profileService.profile()) {
     <!-- Reiter sind Navigation, deshalb .segmented und nicht zwei Aktions-Knöpfe mit .active. -->
     <div class="segmented block profile-view-toggle" data-tutorial="profile-view-toggle">
-      <button [class.active]="profileViewTab() === 'stats'" (click)="setProfileViewTab('stats')">
-        {{ i18n.t('profile.viewTabStats') }}
-      </button>
+      <!-- Die eigene Statistik steht seit 20.10.2026 im Statistik-Tab unter "Persönlich"
+           (personal-stats/) - der Reiter springt dorthin. -->
+      @if (!devFullView()) {
+        <button (click)="navigation.openPersonalStats()">
+          {{ i18n.t('profile.viewTabStats') }}
+        </button>
+      } @else {
+        <button [class.active]="profileViewTab() === 'stats'" (click)="setProfileViewTab('stats')">
+          {{ i18n.t('profile.viewTabStats') }}
+        </button>
+      }
       <button [class.active]="profileViewTab() === 'decks'" (click)="setProfileViewTab('decks')">
         {{ i18n.t('profile.viewTabDecks') }}
       </button>

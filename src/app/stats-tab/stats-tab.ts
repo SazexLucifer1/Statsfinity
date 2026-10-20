@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MtgService } from '../mtg.service';
@@ -56,12 +56,13 @@ import { Icon } from '../ui/icon/icon';
 import { MatchInsights } from '../match-insights/match-insights';
 import { PerformanceStats } from '../performance-stats/performance-stats';
 import { FriendsStats } from '../friends-stats/friends-stats';
+import { PersonalStats, StatsPerson } from '../personal-stats/personal-stats';
 import { AuthService } from '../auth.service';
 import { FriendsService } from '../friends.service';
 
 export type StatsViewMode = 'stats' | 'tournaments';
 export type ColorStatsWeightMode = 'games' | 'decks';
-export type StatsScope = 'group' | 'global' | 'friends';
+export type StatsScope = 'personal' | 'group' | 'global' | 'friends';
 
 const PAGE_SIZE = 10;
 
@@ -100,6 +101,7 @@ interface CombinedRankEntry {
 @Component({
   selector: 'app-stats-tab',
   imports: [
+    PersonalStats,
     RankBadge,
     MatchInsights,
     PerformanceStats,
@@ -138,18 +140,56 @@ export class StatsTab {
   /** Umschalter oben im Stats-Tab zwischen normaler Statistik und der Turnier-Historie. */
   readonly viewMode = signal<StatsViewMode>('stats');
 
-  // --- Von einem angezeigten Spielernamen direkt zu dessen Profil springen (nur bei echtem Account) ---
+  // --- Ein angezeigter Spielername öffnet dessen Statistik (personal-stats/) ---
 
-  isPlayerLinked(name: string): boolean {
-    return !!this.mtg.playerUserIds()[name];
+  /**
+   * Ein Spieler aus Rangliste oder Treppchen: seine Statistik samt Vergleich mit mir, hier im
+   * Statistik-Tab (Wunsch des Users, 20.10.2026 - vorher sprang das ins Profil).
+   */
+  openPlayerProfile(name: string): void {
+    const me = this.myPerson();
+    if (me && me.groupName === name) {
+      this.personTarget.set(null);
+      this.setViewScope('personal');
+      return;
+    }
+    this.personTarget.set({
+      userId: this.mtg.playerUserIds()[name] ?? null,
+      name,
+      groupName: name,
+      avatarUrl: this.mtg.playerAvatars()[name] ?? null,
+    });
+    window.scrollTo(0, 0);
   }
 
-  async openPlayerProfile(name: string): Promise<void> {
-    const userId = this.mtg.playerUserIds()[name];
-    if (!userId) return;
-    this.navigation.goToTab('profile');
-    await this.profileService.viewProfile(userId);
+  /** Aus der Freunde-Ansicht: eine Person mit Konto, die in meiner Gruppe evtl. anders heißt. */
+  openFriendStats(person: { userId: string; name: string; avatarUrl: string | null }): void {
+    if (person.userId === this.myPerson()?.userId) {
+      this.setViewScope('personal');
+      return;
+    }
+    const groupName =
+      Object.entries(this.mtg.playerUserIds()).find(([, uid]) => uid === person.userId)?.[0] ?? null;
+    this.personTarget.set({ ...person, groupName });
+    window.scrollTo(0, 0);
   }
+
+  /** Gerade geöffnete fremde Person (null = Liste der gewählten Ansicht). */
+  readonly personTarget = signal<StatsPerson | null>(null);
+
+  /** Ich - für "Persönlich" und als Vergleich bei anderen. */
+  readonly myPerson = computed<StatsPerson | null>(() => {
+    const profile = this.profileService.profile();
+    if (!profile) return null;
+    const groupName =
+      Object.entries(this.mtg.playerUserIds()).find(([, uid]) => uid === profile.id)?.[0] ?? null;
+    return {
+      userId: profile.id,
+      name: profile.displayName,
+      groupName,
+      avatarUrl: profile.avatarUrl ?? null,
+    };
+  });
 
   // --- Kartenbilder (Commander/Erfolgreichste Commander & Decks) ---
 
@@ -172,6 +212,14 @@ export class StatsTab {
   private readonly deckColorIdentities = signal<Map<string, string[]>>(new Map());
 
   constructor() {
+    effect(() => {
+      if (!this.navigation.personalStatsRequested()) return;
+      untracked(() => {
+        this.navigation.personalStatsRequested.set(false);
+        this.setViewScope('personal');
+      });
+    });
+
     effect(() => {
       // Aktive und lokal betrachtete Gruppe zusammen - reiner Bildcache, zu viele IDs schaden
       // nicht.
@@ -992,6 +1040,7 @@ export class StatsTab {
   readonly viewScope = signal<StatsScope>('group');
 
   setViewScope(scope: StatsScope): void {
+    this.personTarget.set(null);
     this.viewScope.set(scope);
   }
 
