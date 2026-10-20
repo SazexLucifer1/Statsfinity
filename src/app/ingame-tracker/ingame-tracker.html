@@ -92,6 +92,30 @@
             </button>
           </div>
 
+          @if (showsTurnButton(p.key, i) && !reorderMode()) {
+          <div class="panel-icon-pair turn-pair" [ngClass]="turnCorner(i)">
+            <button
+              class="panel-icon-button turn-button"
+              (click)="tapTurn()"
+              [attr.aria-label]="i18n.t('ingame.nextTurn')"
+              [title]="i18n.t('ingame.nextTurn')"
+            >
+              <app-icon name="refresh" />
+              <span class="turn-number">{{ session.turn() || 1 }}</span>
+            </button>
+            @if (session.turn() > 0) {
+            <button
+              class="panel-icon-button turn-back"
+              (click)="session.previousTurn()"
+              [attr.aria-label]="i18n.t('ingame.previousTurn')"
+              [title]="i18n.t('ingame.previousTurn')"
+            >
+              −
+            </button>
+            }
+          </div>
+          }
+
           @if (session.isDead(p.key)) {
           <div class="dead-overlay">
             <span class="dead-overlay-text">{{ session.deadMessage(p.key) }}</span>
