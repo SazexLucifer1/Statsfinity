@@ -100,7 +100,7 @@
 
   li {
     display: grid;
-    grid-template-columns: 30px 1fr auto auto;
+    grid-template-columns: 30px 1fr auto auto auto;
     align-items: center;
     gap: var(--sp-2);
     font-size: 0.85rem;
@@ -124,5 +124,40 @@
 
   .undo {
     color: #fff;
+  }
+}
+
+// Foil-Stapel und Foil je Treffer: goldener Stern, aus = blass.
+.foil-toggle,
+.foil-mark {
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.45);
+  color: rgba(255, 255, 255, 0.75);
+  font: inherit;
+
+  &.on {
+    border-color: #f5c542;
+    background: rgba(245, 197, 66, 0.2);
+    color: #f5c542;
+  }
+}
+
+.foil-toggle {
+  padding: 4px 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.foil-mark {
+  min-width: 34px;
+  height: 30px;
+  font-size: 0.95rem;
+
+  &.static {
+    border-color: transparent;
+    background: none;
+    text-align: center;
+    line-height: 30px;
   }
 }

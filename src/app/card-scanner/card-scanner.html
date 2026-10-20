@@ -11,6 +11,15 @@
     >
       ✕
     </button>
+    <button
+      type="button"
+      class="foil-toggle"
+      [class.on]="foilMode()"
+      [attr.aria-pressed]="foilMode()"
+      (click)="foilMode.set(!foilMode())"
+    >
+      ★ {{ i18n.t('collection.scanner.foilMode') }}
+    </button>
     <label class="lang">
       <span>{{ i18n.t('collection.scanner.fallbackLang') }}</span>
       <select
@@ -40,6 +49,9 @@
         @case ('notFound') {
           {{ i18n.t('collection.scanner.notFound') }}
         }
+        @case ('glare') {
+          {{ i18n.t('collection.scanner.glare') }}
+        }
         @case ('saved') {
           {{ i18n.t('collection.scanner.saved') }}
         }
@@ -48,6 +60,9 @@
         }
       }
     </p>
+    @if (foilMode()) {
+      <p class="note">{{ i18n.t('collection.scanner.foilModeHint') }}</p>
+    }
     @if (status() !== 'starting' && !scan.artIndexAvailable()) {
       <p class="note">{{ i18n.t('collection.scanner.textOnly') }}</p>
     }
@@ -58,11 +73,22 @@
             <img [src]="r.print.imageUrl" alt="" />
             <span class="name">{{ r.print.printedName || r.print.cardName }}</span>
             <span class="meta"
-              >{{ r.print.setCode.toUpperCase() }} · {{ langLabel(r.print.lang) }}
-              @if (r.foil) {
-                · ★
-              }
-            </span>
+              >{{ r.print.setCode.toUpperCase() }} · {{ langLabel(r.print.lang) }}</span
+            >
+            @if (canToggleFoil(r)) {
+              <button
+                type="button"
+                class="foil-mark"
+                [class.on]="r.foil"
+                [attr.aria-pressed]="r.foil"
+                [attr.aria-label]="i18n.t('collection.scanner.toggleFoil')"
+                (click)="toggleFoil(r)"
+              >
+                ★
+              </button>
+            } @else {
+              <span class="foil-mark static" [class.on]="r.foil">{{ r.foil ? '★' : '' }}</span>
+            }
             <button
               type="button"
               class="icon-button undo"
