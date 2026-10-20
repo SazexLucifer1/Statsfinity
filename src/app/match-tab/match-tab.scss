@@ -406,3 +406,11 @@
   flex-basis: 100%;
   overflow-wrap: anywhere;
 }
+
+// Älteren Cube mit einem aus dem Cube-Builder verknüpfen (sql/cube-gruppe-verknuepfen-2026-10-20.sql).
+.player-list .link-cube {
+  width: auto;
+  max-width: 45%;
+  padding: 4px 8px;
+  font-size: 0.8rem;
+}
