@@ -7,8 +7,9 @@
  * Quelle ist Scryfalls Bulk-Datei unique_artwork: genau ein Druck je Artwork (illustration_id),
  * rund 55.000 Stück. Für jeden lädt das Skript das art_crop-Bild und rechnet mit
  * src/app/art-hash.ts (DERSELBEN Datei wie der Browser - deshalb strip-types) einen 64-Bit-
- * Fingerabdruck. Ergebnis ist EINE Datei im Storage (Bucket card-art-hashes, ~1,3 MB), keine
- * Tabelle: der Scanner braucht immer alle auf einmal, und die Datenbank bleibt klein (siehe
+ * Fingerabdruck. Ergebnis sind zwei Dateien im Storage (Bucket card-art-hashes), keine Tabelle:
+ * art-hashes.bin (~1,3 MB, alle Karten) und token-art-hashes.bin (Marken, klein, seit 20.10.2026) -
+ * der Scanner braucht immer alle auf einmal, und die Datenbank bleibt klein (siehe
  * sql/sammlung-2026-10-17.sql).
  *
  * Inkrementell: Die vorhandene Datei wird zuerst gelesen, nur neue Drucke werden geladen. Der
@@ -25,6 +26,7 @@ import jpeg from 'jpeg-js';
 import { createClient } from '@supabase/supabase-js';
 import {
   ART_HASH_FILE,
+  TOKEN_ART_HASH_FILE,
   artHashId,
   decodeArtHashes,
   encodeArtHashes,
@@ -47,11 +49,13 @@ const HEADERS = {
   Accept: 'application/json',
   'User-Agent': 'Statsfinity/1.0 (+https://github.com/SazexLucifer1/Statsfinity)',
 };
-// Marken, Embleme und Art-Series-Karten landen nie in einer Sammlung, die der Scanner füllen soll -
-// und ihre Artworks würden echte Karten verdrängen, die sich dasselbe Bild teilen.
+// Embleme und Art-Series-Karten landen nie in einer Sammlung, die der Scanner füllen soll - und
+// ihre Artworks würden echte Karten verdrängen, die sich dasselbe Bild teilen.
+// Marken (Wunsch des Users, 20.10.2026: der Scanner soll auch sie erkennen) kommen in eine eigene,
+// kleine Datei - der Scanner prüft sie mit eigenen Artwork-Lagen nur, wenn keine Karte passt
+// (siehe TOKEN_ART_BOXES in art-hash.ts).
+const TOKEN_LAYOUTS = new Set(['token', 'double_faced_token']);
 const SKIP_LAYOUTS = new Set([
-  'token',
-  'double_faced_token',
   'emblem',
   'art_series',
   'vanguard',
@@ -83,21 +87,23 @@ async function readBulkEntries() {
     if (!card.games?.includes('paper')) continue;
     const art = card.image_uris?.art_crop ?? card.card_faces?.[0]?.image_uris?.art_crop;
     if (!art || card.image_status === 'missing' || card.image_status === 'placeholder') continue;
-    entries.push({ id: card.id, art });
+    entries.push({ id: card.id, art, token: TOKEN_LAYOUTS.has(card.layout) });
   }
   return entries;
 }
 
 async function readExisting() {
-  const { data, error } = await supabase.storage.from(BUCKET).download(ART_HASH_FILE);
-  if (error || !data) {
-    console.log('Noch keine Fingerabdruck-Datei - fange bei null an.');
-    return new Map();
-  }
-  const index = decodeArtHashes(new Uint8Array(await data.arrayBuffer()));
   const map = new Map();
-  for (let i = 0; i < index.count; i++) {
-    map.set(artHashId(index, i), { hi: index.hashes[i * 2], lo: index.hashes[i * 2 + 1] });
+  for (const file of [ART_HASH_FILE, TOKEN_ART_HASH_FILE]) {
+    const { data, error } = await supabase.storage.from(BUCKET).download(file);
+    if (error || !data) {
+      console.log(`Noch keine Datei ${file} - fange dort bei null an.`);
+      continue;
+    }
+    const index = decodeArtHashes(new Uint8Array(await data.arrayBuffer()));
+    for (let i = 0; i < index.count; i++) {
+      map.set(artHashId(index, i), { hi: index.hashes[i * 2], lo: index.hashes[i * 2 + 1] });
+    }
   }
   console.log(`Vorhandene Fingerabdrücke: ${map.size}.`);
   return map;
@@ -126,7 +132,9 @@ async function hashImage(url) {
 }
 
 const entries = await readBulkEntries();
-console.log(`Artworks in der Bulk-Datei (Papier, ohne Marken): ${entries.length}.`);
+console.log(
+  `Artworks in der Bulk-Datei (Papier): ${entries.length}, davon Marken: ${entries.filter((e) => e.token).length}.`,
+);
 const existing = await readExisting();
 const todo = entries.filter((e) => !existing.has(e.id)).slice(0, MAX_NEW);
 console.log(`Neu zu rechnen: ${todo.length}.`);
@@ -146,19 +154,25 @@ await Promise.all(
 );
 
 // Nur behalten, was Scryfall noch als Artwork führt - zurückgezogene Drucke fallen raus.
-const out = [];
-for (const e of entries) {
-  const hash = fresh.get(e.id) ?? existing.get(e.id);
-  if (hash) out.push({ id: e.id, hash });
+for (const [file, token] of [
+  [ART_HASH_FILE, false],
+  [TOKEN_ART_HASH_FILE, true],
+]) {
+  const out = [];
+  for (const e of entries) {
+    if (e.token !== token) continue;
+    const hash = fresh.get(e.id) ?? existing.get(e.id);
+    if (hash) out.push({ id: e.id, hash });
+  }
+  const data = encodeArtHashes(out);
+  const { error } = await supabase.storage.from(BUCKET).upload(file, data, {
+    upsert: true,
+    contentType: 'application/octet-stream',
+    cacheControl: '86400',
+  });
+  if (error) {
+    console.error(`Hochladen von ${file} fehlgeschlagen:`, error);
+    process.exit(1);
+  }
+  console.log(`${file}: ${out.length} Fingerabdrücke, ${(data.byteLength / 1e6).toFixed(2)} MB.`);
 }
-const file = encodeArtHashes(out);
-const { error } = await supabase.storage.from(BUCKET).upload(ART_HASH_FILE, file, {
-  upsert: true,
-  contentType: 'application/octet-stream',
-  cacheControl: '86400',
-});
-if (error) {
-  console.error('Hochladen fehlgeschlagen:', error);
-  process.exit(1);
-}
-console.log(`Geschrieben: ${out.length} Fingerabdrücke, ${(file.byteLength / 1e6).toFixed(2)} MB.`);

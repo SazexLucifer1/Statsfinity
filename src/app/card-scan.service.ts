@@ -4,6 +4,8 @@ import { supabase } from './supabase.client';
 import { ScryfallService } from './scryfall.service';
 import {
   ART_HASH_FILE,
+  TOKEN_ART_BOXES,
+  TOKEN_ART_HASH_FILE,
   ArtBox,
   ArtHashIndex,
   ArtMatch,
@@ -60,6 +62,8 @@ export class CardScanService {
   readonly artIndexAvailable = signal(false);
 
   private index: ArtHashIndex | null = null;
+  /** Marken in eigener Datei (siehe TOKEN_ART_BOXES); null = (noch) nicht vorhanden. */
+  private tokenIndex: ArtHashIndex | null = null;
   private indexPromise: Promise<void> | null = null;
   private worker: OcrWorker | null = null;
   private workerPromise: Promise<OcrWorker | null> | null = null;
@@ -73,9 +77,14 @@ export class CardScanService {
   private loadIndex(): Promise<void> {
     this.indexPromise ??= (async () => {
       try {
-        const url = supabase.storage.from('card-art-hashes').getPublicUrl(ART_HASH_FILE)
-          .data.publicUrl;
-        const res = await fetch(url);
+        const urlOf = (file: string) =>
+          supabase.storage.from('card-art-hashes').getPublicUrl(file).data.publicUrl;
+        // Die Marken-Datei ist klein und optional - fehlt sie, werden eben keine Marken erkannt.
+        void fetch(urlOf(TOKEN_ART_HASH_FILE))
+          .then(async (r) => (r.ok ? decodeArtHashes(await r.arrayBuffer()) : null))
+          .then((index) => (this.tokenIndex = index))
+          .catch(() => undefined);
+        const res = await fetch(urlOf(ART_HASH_FILE));
         if (!res.ok) return;
         this.index = decodeArtHashes(await res.arrayBuffer());
         this.artIndexAvailable.set(this.index.count > 0);
@@ -215,14 +224,24 @@ export class CardScanService {
     const ctx = small.getContext('2d', { willReadFrequently: true });
     if (!ctx) return null;
     const { data, width, height } = ctx.getImageData(0, 0, small.width, small.height);
-    const queries = boxes.flatMap((box) => cardArtQueries(data, width, height, 4, box));
-    const match = nearestArt(this.index, queries);
-    if (!match || !isConfidentArtMatch(match)) return null;
-    // Die Lage, deren Fingerabdruck am besten passte, ist die genaueste Angabe, wo die Karte liegt.
-    const cardBox = boxes.flatMap((box) => cardArtBoxes(box))[
-      Math.floor(match.query / CARD_ART_BOXES.length)
+    // Erst die Karten; nur ohne sicheren Treffer die Marken - mit eigenen Lagen gegen ihre eigene,
+    // kleine Datei, damit die zusätzliche Lage keine Zufallstreffer unter echten Karten erzeugt.
+    const tries: [ArtHashIndex | null, readonly ArtBox[]][] = [
+      [this.index, CARD_ART_BOXES],
+      [this.tokenIndex, TOKEN_ART_BOXES],
     ];
-    return { match, cardBox };
+    for (const [index, artBoxes] of tries) {
+      if (!index || index.count === 0) continue;
+      const queries = boxes.flatMap((box) => cardArtQueries(data, width, height, 4, box, artBoxes));
+      const match = nearestArt(index, queries);
+      if (!match || !isConfidentArtMatch(match)) continue;
+      // Die Lage, deren Fingerabdruck am besten passte, ist die genaueste Angabe, wo die Karte liegt.
+      const cardBox = boxes.flatMap((box) => cardArtBoxes(box))[
+        Math.floor(match.query / artBoxes.length)
+      ];
+      return { match, cardBox };
+    }
+    return null;
   }
 
   /**
