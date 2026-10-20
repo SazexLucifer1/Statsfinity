@@ -659,8 +659,15 @@
 
     @if (match.mode === 'Cube' && groupService.hasPermission('match.editCube')) {
       <p class="hint">{{ i18n.t('match.editCubeTitle') }}</p>
-      <select class="glass-input" [ngModel]="cubeEditDraft()" (ngModelChange)="setCubeEditDraft($event)">
-        @for (c of mtg.cubes(); track c.id) {
+      <select class="glass-input" [ngModel]="cubeEditValue()" (ngModelChange)="setCubeEditDraft($event)">
+        @if (mtg.groupCubeLists().length > 0) {
+          <optgroup [label]="i18n.t('match.cubeGroupLists')">
+            @for (l of mtg.groupCubeLists(); track l.id) {
+              <option [value]="'list:' + l.id">{{ cubeListLabel(l) }}</option>
+            }
+          </optgroup>
+        }
+        @for (c of plainCubes(); track c.id) {
           <option [value]="c.id">{{ c.name }}</option>
         }
       </select>

@@ -885,6 +885,7 @@ export class MtgService {
     if (!rows) return;
 
     this.history.set(rows.map((row: any) => mapMatchRow(row)));
+    this.applyCubeNames();
   }
 
   /**
@@ -1570,6 +1571,26 @@ export class MtgService {
         cardCount: row.card_count ?? 0,
       }))
     );
+    this.applyCubeNames();
+  }
+
+  /**
+   * Verknüpfte Gruppen-Cubes heißen wie ihr Cube aus dem Builder - auch nach einer Umbenennung
+   * dort, und in jeder schon geladenen Partie. Gespeichert bleibt der alte Name in public.cubes.
+   */
+  private applyCubeNames(): void {
+    const listNames = new Map(this.groupCubeLists().map((l) => [l.id, l.name]));
+    if (listNames.size === 0) return;
+    const nameOf = (cube: Cube) => (cube.cubeListId && listNames.get(cube.cubeListId)) || cube.name;
+    const cubes = this.cubes().map((c) => ({ ...c, name: nameOf(c) }));
+    this.cubes.set(cubes);
+    const byId = new Map(cubes.map((c) => [c.id, c]));
+    this.history.update((matches) =>
+      matches.map((m) => {
+        const cube = m.cube && byId.get(m.cube.id);
+        return cube && cube.name !== m.cube!.name ? { ...m, cube } : m;
+      })
+    );
   }
 
   /**
@@ -1625,13 +1646,16 @@ export class MtgService {
     const target = this.cubes().find((c) => c.cubeListId === listId && c.id !== cubeId);
 
     if (target) {
-      const { error: moveError } = await supabase
+      const expected = this.history().filter((m) => m.cube?.id === cubeId).length;
+      const { data: moved, error: moveError } = await supabase
         .from('matches')
         .update({ cube_id: target.id })
         .eq('group_id', groupId)
-        .eq('cube_id', cubeId);
-      if (moveError) {
-        console.error('Konnte Partien nicht umhängen:', moveError);
+        .eq('cube_id', cubeId)
+        .select('id');
+      // Ohne Schreibrecht meldet die Datenbank keinen Fehler, sondern ändert schlicht nichts.
+      if (moveError || (expected > 0 && !moved?.length)) {
+        console.error('Konnte Partien nicht umhängen:', moveError ?? 'keine Zeile geändert');
         return false;
       }
       const { error } = await supabase.from('cubes').delete().eq('id', cubeId).eq('group_id', groupId);
@@ -1643,24 +1667,18 @@ export class MtgService {
       return true;
     }
 
-    const { error } = await supabase
-      .from('cubes')
-      .update({ cube_list_id: listId, name: list.name })
-      .eq('id', cubeId)
-      .eq('group_id', groupId);
+    const update = (patch: Record<string, unknown>) =>
+      supabase.from('cubes').update(patch).eq('id', cubeId).eq('group_id', groupId).select('id');
+    let { data: updated, error } = await update({ cube_list_id: listId, name: list.name });
     // Name schon vergeben (anderer alter Cube heißt so): dann nur verknüpfen.
-    const failed =
-      error?.code === '23505'
-        ? (
-            await supabase
-              .from('cubes')
-              .update({ cube_list_id: listId })
-              .eq('id', cubeId)
-              .eq('group_id', groupId)
-          ).error
-        : error;
-    if (failed) {
-      console.error('Konnte Cube nicht verknüpfen:', failed);
+    if (error?.code === '23505') {
+      const retry = await update({ cube_list_id: listId });
+      updated = retry.data;
+      if (retry.error) error = retry.error;
+    }
+    // Ohne Schreibrecht meldet die Datenbank keinen Fehler, sondern ändert schlicht nichts.
+    if ((error && error.code !== '23505') || !updated?.length) {
+      console.error('Konnte Cube nicht verknüpfen:', error ?? 'keine Zeile geändert');
       return false;
     }
     const name = error ? undefined : list.name;
