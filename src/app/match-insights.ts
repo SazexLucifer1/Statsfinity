@@ -694,6 +694,15 @@ export interface PerformanceSummary {
   winTurnGames: number;
   avgMinutes: number | null;
   durationGames: number;
+  /** Datum der ersten Partie mit diesem Wert ("erfasst seit") - null ohne Werte. */
+  placementSince: string | null;
+  winTurnSince: string | null;
+  durationSince: string | null;
+}
+
+/** Frühestes Datum (ISO) einer Liste, null wenn leer. */
+function earliest(dates: readonly string[]): string | null {
+  return dates.length ? dates.reduce((a, b) => (b < a ? b : a)) : null;
 }
 
 /** Partien, Siege, Siegquote, Ø Platz, Ø Siegzug und Ø Dauer aus Sicht von pick. */
@@ -706,6 +715,7 @@ export function performanceSummary(
   const placements: number[] = [];
   const winTurns: number[] = [];
   const minutes: number[] = [];
+  const since = { placement: [] as string[], winTurn: [] as string[], duration: [] as string[] };
   for (const m of countable(matches)) {
     const self = pick(m);
     if (!self) continue;
@@ -713,12 +723,21 @@ export function performanceSummary(
     const won = didWin(m, self.name);
     if (won) {
       wins++;
-      if (m.winTurn) winTurns.push(m.winTurn);
+      if (m.winTurn) {
+        winTurns.push(m.winTurn);
+        since.winTurn.push(m.date);
+      }
     }
     const place = placementOf(m, self);
-    if (place !== null) placements.push(place);
+    if (place !== null) {
+      placements.push(place);
+      since.placement.push(m.date);
+    }
     const duration = durationMinutes(m);
-    if (duration !== null) minutes.push(duration);
+    if (duration !== null) {
+      minutes.push(duration);
+      since.duration.push(m.date);
+    }
   }
   return {
     games,
@@ -730,6 +749,9 @@ export function performanceSummary(
     winTurnGames: winTurns.length,
     avgMinutes: average(minutes),
     durationGames: minutes.length,
+    placementSince: earliest(since.placement),
+    winTurnSince: earliest(since.winTurn),
+    durationSince: earliest(since.duration),
   };
 }
 
@@ -742,6 +764,8 @@ export interface OverallSummary {
   turnGames: number;
   avgMinutes: number | null;
   durationGames: number;
+  turnSince: string | null;
+  durationSince: string | null;
 }
 
 /** Überblick über alle Partien ohne bestimmten Spieler (eine Siegquote der Gruppe wäre sinnlos). */
@@ -756,6 +780,8 @@ export function overallSummary(matches: readonly Match[]): OverallSummary {
     turnGames: turns.length,
     avgMinutes: average(minutes),
     durationGames: minutes.length,
+    turnSince: earliest(all.filter((m) => !!m.winTurn).map((m) => m.date)),
+    durationSince: earliest(all.filter((m) => durationMinutes(m) !== null).map((m) => m.date)),
   };
 }
 
@@ -929,14 +955,4 @@ export function compareLatestVersions(stats: readonly DeckVersionStat[]): Versio
   const a = newer.summary.winRate ?? 0;
   const b = older.summary.winRate ?? 0;
   return { newer, older, direction: a > b ? 'higher' : a < b ? 'lower' : 'equal' };
-}
-
-/** Orientierung zur Stichprobengröße - keine mathematische Aussage über Verlässlichkeit. */
-export type SampleSize = 'none' | 'veryLow' | 'trend' | 'more';
-
-export function sampleSize(games: number): SampleSize {
-  if (games <= 0) return 'none';
-  if (games < 5) return 'veryLow';
-  if (games < 10) return 'trend';
-  return 'more';
 }

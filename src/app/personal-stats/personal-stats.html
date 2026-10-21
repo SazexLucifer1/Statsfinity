@@ -66,7 +66,7 @@
   </section>
 }
 
-<app-performance-stats [matches]="personMatches()" [player]="person().name" />
+<app-performance-stats [matches]="personMatches()" [player]="person().name" part="summary" />
 
 @if (modeStats().length > 1) {
   <section class="glass-card">
@@ -88,26 +88,6 @@
   </section>
 }
 
-@if (commanders().length > 0) {
-  <section class="glass-card">
-    <h2>{{ i18n.t('stats.personal.commanders') }}</h2>
-    <ul class="stat-list">
-      @for (c of commanders(); track c.commander) {
-        <li class="stat-list-row">
-          <app-card-thumb [name]="c.commander.split(' + ')[0]" size="large" />
-          <div class="stat-list-main">
-            <span class="stat-list-name">{{ c.commander }}</span>
-            <span class="stat-list-meta"
-              >{{ c.wins }} / {{ c.games }} {{ i18n.t('stats.wins') }}</span
-            >
-          </div>
-          <span class="stat-list-value">{{ c.winRate | number: '1.0-0' }}%</span>
-        </li>
-      }
-    </ul>
-  </section>
-}
-
 @if (placementChart().length > 0) {
   <section class="glass-card">
     <h2>{{ i18n.t('profile.placementDistribution') }}</h2>
@@ -115,6 +95,14 @@
     <app-bar-chart [data]="placementChart()" orientation="vertical" />
   </section>
 }
+
+<app-match-insights
+  [matches]="personMatches()"
+  [player]="person().name"
+  [allMatches]="reviewMatches()"
+/>
+
+<app-performance-stats [matches]="personMatches()" [player]="person().name" part="lists" />
 
 @if (cardAndColorStats(); as stats) {
   @if (stats.mostUsedCards.length > 0 || stats.colorComboRanking.length > 0) {
@@ -184,12 +172,6 @@
     </section>
   }
 }
-
-<app-match-insights
-  [matches]="personMatches()"
-  [player]="person().name"
-  [allMatches]="reviewMatches()"
-/>
 
 <section class="glass-card">
   <h2>{{ i18n.t('profile.matchHistory') }}</h2>

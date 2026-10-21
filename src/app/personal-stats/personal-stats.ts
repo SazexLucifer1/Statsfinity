@@ -15,13 +15,7 @@ import { MtgService } from '../mtg.service';
 import { DeckService, CardAndColorStats, DeckOwner } from '../deck.service';
 import { CardPreviewService } from '../card-preview.service';
 import { DECK_FORMATS, GameMode, Match } from '../models';
-import {
-  PersonMatches,
-  commanderRecords,
-  didWin,
-  headToHeadRecord,
-  mergePeopleMatches,
-} from '../match-insights';
+import { PersonMatches, didWin, headToHeadRecord, mergePeopleMatches } from '../match-insights';
 import { isImportLossDuplicate } from '../match-utils';
 import { colorComboLabel, colorRadarData, sortColors } from '../color-combo-names';
 import { splitPodium } from '../rank-sort';
@@ -238,17 +232,6 @@ export class PersonalStats {
         value: count,
       }));
   });
-
-  // --- Commander ---
-
-  readonly commanders = computed(() =>
-    commanderRecords(this.personMatches(), this.person().name)
-      .slice(0, 8)
-      .map((c) => ({ ...c, winRate: (c.wins / c.games) * 100 })),
-  );
-  readonly maxCommanderGames = computed(() =>
-    Math.max(1, ...this.commanders().map((c) => c.games)),
-  );
 
   // --- Direkter Vergleich ---
 

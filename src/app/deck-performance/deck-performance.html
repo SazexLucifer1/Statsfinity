@@ -56,8 +56,7 @@
                         <span>{{ games(v.summary.games) }}</span>
                         @if (placement(v.summary.avgPlacement); as p) {
                           <span>{{ p }}</span>
-                        }
-                        <app-sample-hint [games]="v.summary.games" /> </span
+                        } </span
                     ></span>
                   </div>
                   <span class="stat-list-value">{{ rate(v.summary.winRate) }}</span>

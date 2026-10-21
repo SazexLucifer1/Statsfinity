@@ -12,7 +12,6 @@ import {
 } from '../match-insights';
 import { DeckMatchups } from '../deck-matchups/deck-matchups';
 import { InfoToggle } from '../ui/info-toggle/info-toggle';
-import { SampleHint } from '../ui/sample-hint/sample-hint';
 import {
   PerformanceSummaryView,
   formatAverage,
@@ -28,7 +27,7 @@ import {
  */
 @Component({
   selector: 'app-deck-performance',
-  imports: [DeckMatchups, InfoToggle, SampleHint, PerformanceSummaryView],
+  imports: [DeckMatchups, InfoToggle, PerformanceSummaryView],
   templateUrl: './deck-performance.html',
   styleUrl: './deck-performance.scss',
 })

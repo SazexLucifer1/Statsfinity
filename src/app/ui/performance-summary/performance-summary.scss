@@ -36,14 +36,20 @@
   opacity: 0.65;
 }
 
-.headline-hint {
-  font-size: 0.75rem;
-  opacity: 0.8;
+// --- 2. Schnitte ---
+.facts-info {
+  display: block;
+  margin-top: var(--sp-6);
 }
 
-// --- 2. Schnitte ---
+.since-list {
+  margin: 0;
+  padding-left: 1.1em;
+  font-size: 0.85rem;
+}
+
 .facts {
-  margin: var(--sp-6) 0 0;
+  margin: var(--sp-2) 0 0;
   border-top: 1px solid var(--divider);
 }
 

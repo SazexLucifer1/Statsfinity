@@ -7,7 +7,6 @@ import {
 } from '../../match-insights';
 import { InfoToggle } from '../info-toggle/info-toggle';
 import { Meter } from '../meter/meter';
-import { SampleHint } from '../sample-hint/sample-hint';
 
 /** Platzhalter für einen fehlenden Wert - nie null, NaN oder eine erfundene 0. */
 export const NO_VALUE = '—';
@@ -70,7 +69,7 @@ interface Fact {
  */
 @Component({
   selector: 'app-performance-summary',
-  imports: [InfoToggle, Meter, SampleHint],
+  imports: [InfoToggle, Meter],
   templateUrl: './performance-summary.html',
   styleUrl: './performance-summary.scss',
 })
@@ -120,6 +119,29 @@ export class PerformanceSummaryView {
           formatMinutes(o.avgMinutes, this.i18n),
           o.durationGames,
         ),
+      ];
+    }
+    return [];
+  });
+
+  /** "Ø Platzierung: erfasst seit 17.07.2026" - je Schnitt die erste Partie mit Wert. */
+  readonly since = computed<{ label: string; date: string }[]>(() => {
+    const locale = this.i18n.lang() === 'de' ? 'de-DE' : 'en-US';
+    const entry = (label: string, iso: string | null) =>
+      iso ? [{ label: this.i18n.t(label), date: new Date(iso).toLocaleDateString(locale) }] : [];
+    const s = this.summary();
+    if (s) {
+      return [
+        ...entry('stats.performance.avgPlacement', s.placementSince),
+        ...entry('stats.performance.avgWinTurn', s.winTurnSince),
+        ...entry('stats.performance.avgDuration', s.durationSince),
+      ];
+    }
+    const o = this.overall();
+    if (o) {
+      return [
+        ...entry('stats.performance.avgTurn', o.turnSince),
+        ...entry('stats.performance.avgDuration', o.durationSince),
       ];
     }
     return [];

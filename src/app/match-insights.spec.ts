@@ -25,7 +25,6 @@ import {
   pickDeck,
   pickPlayer,
   placementOf,
-  sampleSize,
   winConditionStats,
 } from './match-insights';
 import { ARCHENEMY_OTHERS, DRAW } from './match-utils';
@@ -289,6 +288,9 @@ describe('match-insights: Performance', () => {
       winTurnGames: 0,
       avgMinutes: null,
       durationGames: 0,
+      placementSince: null,
+      winTurnSince: null,
+      durationSince: null,
     });
     expect(average([])).toBeNull();
     const o = overallSummary([]);
@@ -299,7 +301,6 @@ describe('match-insights: Performance', () => {
     expect(commanderMatchups([], pickPlayer('A'))).toEqual([]);
     expect(deckVersionStats([], 'atraxa')).toEqual([]);
     expect(winConditionStats([]).every((w) => w.count === 0)).toBe(true);
-    expect(sampleSize(0)).toBe('none');
   });
 
   it('rechnet eine einzelne Partie', () => {
@@ -471,14 +472,4 @@ describe('match-insights: Performance', () => {
     expect(deckVersionStats([old], 'atraxa')[0].version).toBeNull();
   });
 
-  it('gibt eine grobe Orientierung zur Stichprobe', () => {
-    expect([1, 4, 5, 9, 10, 100].map(sampleSize)).toEqual([
-      'veryLow',
-      'veryLow',
-      'trend',
-      'trend',
-      'more',
-      'more',
-    ]);
-  });
 });
