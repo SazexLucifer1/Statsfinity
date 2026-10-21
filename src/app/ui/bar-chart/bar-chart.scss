@@ -10,6 +10,12 @@
   // Beschriftung klebt links, der Wert 1300px weiter rechts, und der Balken dazwischen ist nicht
   // mehr mit den Nachbarzeilen vergleichbar. Auf dem Handy greift der Deckel nie.
   max-width: 620px;
+  // Eigene Fläche, damit ein Diagramm als Diagramm erkennbar ist und nicht wie Balken im Text
+  // wirkt (Wunsch des Users, 21.10.2026).
+  padding: var(--sp-4);
+  border: 1px solid var(--divider);
+  border-radius: var(--r-md);
+  background: rgba(0, 0, 0, 0.22);
 }
 
 /* --- waagerecht --- */
@@ -62,16 +68,19 @@
   // auf und die 24px-Balken stehen einzeln in der Landschaft.
   justify-content: flex-start;
   align-items: flex-end;
-  gap: var(--sp-3);
-  height: 120px;
+  // Ohne Lücke zwischen den Spalten, damit Grundlinie und Hilfslinien (.bc-track) durchgehen;
+  // den Abstand zwischen den Säulen gibt der Innenabstand der Spalten.
+  gap: 0;
+  height: 150px;
   // Platz für die Wertebeschriftung über dem höchsten Balken.
-  padding-top: 20px;
+  padding-top: 28px;
 }
 
 .bc-col {
   // Wächst mit, aber nur bis zu einer Breite, in der ein 24px-Balken noch mittig wirkt.
   flex: 1 1 32px;
-  max-width: 52px;
+  max-width: 60px;
+  padding: 0 var(--sp-1);
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -82,10 +91,14 @@
 
 .bc-track {
   flex: 1;
-  width: 100%;
+  width: calc(100% + 2 * var(--sp-1));
+  margin: 0 calc(-1 * var(--sp-1));
   display: flex;
   align-items: flex-end;
   justify-content: center;
+  // Grundlinie und drei Hilfslinien bei 25/50/75 % - über alle Spalten hinweg eine Achse.
+  border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+  background: linear-gradient(to top, rgba(255, 255, 255, 0.08) 1px, transparent 1px) 0 0 / 100% 25%;
 }
 
 .bc-bar {

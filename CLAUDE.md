@@ -66,6 +66,8 @@ wegen des harten Style-Budgets von 12 kB: `deck-detail-view` hat ein zweites Sty
 
 **Regel: bevor ein Diagramm, ein Filter, ein Menü oder eine Blätterfunktion neu gebaut wird, prüfen, ob es das hier schon gibt.**
 
+**Gestaltung (Wunsch des Users, 21.10.2026): Wo man ist, erkennt man am Layout, nicht an knalligen Farben.** Handy: Die Kopfzeile nennt den Tab („Match“, „Suche“ …, `currentTab()` in `app.ts`), die Leiste schwebt unten. Ab `md` steht die Leiste **oben** unter dem Kopf (Reiter mit Unterstrich), ab `lg` hat jeder Tab sein eigenes Raster: Match zwei Spalten (neues Match | Verlauf, dort von selbst aufgeklappt), Suche Filter links | Treffer rechts (`public-card-search`), Statistik Dashboard aus zwei Spalten (Filter, Head-to-Head, Danger Zone und eigene Seiten wie Persönlich volle Breite), Gruppe Gruppen | Spieler, Profil wie gehabt. Kopf, Leiste und Tabs teilen sich `--content-measure` (1280px). **Drei Ebenen, drei Formen:** Hauptleiste = Unterstrich, Unterreiter/Ansichten (`.segmented`) = hell gefülltes Segment, Filter/Auswahl (`.glass-chip.active`) = hellblau gefüllt mit dunkler Schrift; Hauptaktion `.glass-button.primary` gefüllt, sonstige Knöpfe mit kräftigem Rand und Schatten. **Diagramme (`ui/bar-chart`) stehen auf eigener Fläche**, senkrechte mit Grundlinie und Hilfslinien bei 25/50/75 %. Ein neuer Abschnitt soll in diese Raster passen, statt eine Spalte über die volle Breite zu ziehen.
+
 ### Services (alle flach in `src/app/`)
 
 | Domäne                | Dateien                                                                                                                                                                                                                                             |

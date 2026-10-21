@@ -21,7 +21,9 @@
   // Engere Obergrenze für textlastige Tabs (Statistik, Match, Gruppe, Profil, Turnier). Bei den
   // vollen 1600px reißt es dort Listenzeilen auseinander - Name links, Prozentwert 1400px weiter
   // rechts. Karten-Raster dürfen weiterhin die volle Breite nutzen.
-  --content-measure: 1100px;
+  // 1280 statt 1100, seit Match, Suche, Statistik und Gruppe ab Desktop-Breite mehrspaltig sind
+  // (Wunsch des Users, 21.10.2026) - Kopf und Tab-Leiste haben dieselbe Breite (app.scss).
+  --content-measure: 1280px;
 
   // --- Abstände ---
   // Die App benutzte bisher die Literale 4/6/8/10/12/14/16/18/20/24px kreuz und quer. Diese Skala
@@ -175,11 +177,16 @@ h3 {
   padding: 12px 18px;
   min-height: 44px;
   border-radius: 16px;
-  border: 1px solid var(--glass-border);
-  background: rgba(255, 255, 255, 0.12);
+  // Kräftigerer Rand und ein Schatten nach unten (Wunsch des Users, 21.10.2026: Knöpfe sollen
+  // klar als Knöpfe erkennbar sein). Vorher Glas auf Glas - auf einer Karte kaum von ihr zu
+  // unterscheiden.
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  background: rgba(255, 255, 255, 0.16);
   backdrop-filter: blur(14px) saturate(160%);
   -webkit-backdrop-filter: blur(14px) saturate(160%);
-  box-shadow: inset 0 1px 0 var(--glass-highlight);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 var(--glass-highlight);
   color: var(--text);
   font: inherit;
   font-weight: 600;
@@ -192,14 +199,29 @@ h3 {
     background: rgba(255, 255, 255, 0.2);
   }
 
+  @media (hover: hover) {
+    &:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.24);
+    }
+  }
+
   &:disabled {
     opacity: 0.45;
     cursor: default;
   }
 
+  // Hauptaktion: gefüllt statt Glas, dunkle Schrift - die eine Sache, die man auf der Karte tun soll.
   &.primary {
-    background: linear-gradient(135deg, rgba(138, 180, 255, 0.35), rgba(138, 180, 255, 0.15));
-    border-color: rgba(138, 180, 255, 0.5);
+    background: linear-gradient(180deg, #a9c7ff, #7ea7f2);
+    border-color: rgba(255, 255, 255, 0.45);
+    color: #0f0b1e;
+    text-shadow: none;
+
+    @media (hover: hover) {
+      &:hover:not(:disabled) {
+        background: linear-gradient(180deg, #b8d1ff, #8bb1f5);
+      }
+    }
   }
 }
 
@@ -207,7 +229,7 @@ h3 {
   padding: 9px 16px;
   min-height: 40px;
   border-radius: 999px;
-  border: 1px solid var(--glass-border);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(12px) saturate(160%);
   -webkit-backdrop-filter: blur(12px) saturate(160%);
@@ -223,9 +245,13 @@ h3 {
     transform: scale(0.96);
   }
 
+  // Ausgewählt: gefüllt mit dunkler Schrift statt nur etwas blauer - auf einen Blick von den
+  // nicht gewählten zu unterscheiden.
   &.active {
-    background: rgba(138, 180, 255, 0.35);
-    border-color: rgba(138, 180, 255, 0.7);
+    background: rgba(169, 199, 255, 0.92);
+    border-color: #c9dcff;
+    color: #0f0b1e;
+    text-shadow: none;
   }
 
   &.winner.active {
@@ -270,7 +296,7 @@ h3 {
   gap: 3px;
   border-radius: var(--r-md);
   border: 1px solid var(--glass-border);
-  background: rgba(0, 0, 0, 0.22);
+  background: rgba(0, 0, 0, 0.32);
   backdrop-filter: blur(12px) saturate(160%);
   -webkit-backdrop-filter: blur(12px) saturate(160%);
   max-width: 100%;
@@ -290,14 +316,19 @@ h3 {
     cursor: pointer;
     transition: background 0.15s ease, opacity 0.15s ease;
     // Nicht ausgewählte Segmente treten zurück, statt gleichberechtigt zu leuchten.
-    opacity: 0.7;
+    opacity: 0.8;
 
     &:active {
       transform: scale(0.97);
     }
 
+    // Das gewählte Segment hell gefüllt wie bei iOS - vorher ein blasses Blau, das von den anderen
+    // kaum abstach (Wunsch des Users, 21.10.2026).
     &.active {
-      background: rgba(138, 180, 255, 0.32);
+      background: rgba(255, 255, 255, 0.92);
+      color: #14102a;
+      text-shadow: none;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
       opacity: 1;
     }
 

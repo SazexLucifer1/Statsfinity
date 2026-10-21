@@ -56,6 +56,8 @@ export const search = {
     'keywordFilter.defender': 'Verteidiger',
     'publicSearch.placeholder': 'Kartenname eingeben …',
     'publicSearch.noResults': 'Keine Karte gefunden.',
+    'publicSearch.emptyHint':
+      'Gib einen Kartennamen ein oder wähle Filter - passende Karten erscheinen hier.',
     'publicSearch.resetFilters': 'Filter zurücksetzen',
     'publicSearch.artistPlaceholder': 'Künstler',
     'publicSearch.artTagPlaceholder': 'Artwork (dragon …)',
@@ -171,6 +173,7 @@ export const search = {
     'keywordFilter.defender': 'Defender',
     'publicSearch.placeholder': 'Enter card name …',
     'publicSearch.noResults': 'No card found.',
+    'publicSearch.emptyHint': 'Type a card name or pick filters - matching cards appear here.',
     'publicSearch.resetFilters': 'Reset filters',
     'publicSearch.artistPlaceholder': 'Artist',
     'publicSearch.artTagPlaceholder': 'Artwork (dragon …)',

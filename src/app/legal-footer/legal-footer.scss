@@ -1,3 +1,5 @@
+@use '../../styles/breakpoints' as bp;
+
 .legal-footer {
   // Die schwebende Tab-Bar (.tab-bar, app.scss) ist position:fixed und überlappt je nach
   // Scroll-Position alles was im normalen Fluss direkt danach im DOM steht (siehe app.html) -
@@ -15,6 +17,11 @@
   // In der Deck-Detailansicht ist die Tab-Bar ausgeblendet (siehe app.html) - der Puffer oben
   // wäre dort nur eine große Leerfläche am Seitenende.
   :host(.without-tab-bar) & {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--sp-6));
+  }
+
+  // Ab Tablet steht die Leiste oben (app.scss) - unten braucht es keinen Puffer mehr.
+  @include bp.up(md) {
     padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--sp-6));
   }
 

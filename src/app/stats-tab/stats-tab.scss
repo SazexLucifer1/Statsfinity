@@ -453,6 +453,37 @@
   margin: 0 auto;
 }
 
+// Desktop: Dashboard aus zwei Spalten, die Abschnitte füllen die Lücken (dense). Umschalter,
+// Filter und alles, was eine eigene Seite ist (Persönlich, Freunde, Global, Turniere), gehen
+// über die ganze Breite.
+@include bp.up(lg) {
+  :host {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-flow: row dense;
+    // Karten einer Reihe gleich hoch - sonst stünde neben einer kurzen Karte ein Loch.
+    align-items: stretch;
+
+    > * {
+      grid-column: 1 / -1;
+    }
+
+    > section.glass-card,
+    > app-performance-stats,
+    > app-match-insights {
+      grid-column: auto;
+    }
+
+    // Filter, der aufklappbare Head-to-Head (zugeklappt nur eine Zeile, gestreckt wäre er ein leerer
+    // Kasten) und die Danger Zone über die ganze Breite.
+    > section[data-tutorial='stats-filters'],
+    > section[data-tutorial='stats-h2h'],
+    > section.danger-zone {
+      grid-column: 1 / -1;
+    }
+  }
+}
+
 // Ab Tablet passen mehrere Einträge nebeneinander - dasselbe Muster wie die Deck-Liste im Profil
 // (deck-list.scss): Raster statt einer einzelnen, immer breiter werdenden Spalte, Zeilen mit
 // eigenem Rahmen statt Trennlinie. Auf dem Handy bleibt die gewohnte einspaltige Liste.

@@ -276,6 +276,15 @@ a {
   margin: 0 auto;
 }
 
+// Desktop: Gruppen als schmale Spalte links, die Spieler der aktiven Gruppe daneben.
+@include bp.up(lg) {
+  :host {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+    align-items: start;
+  }
+}
+
 // Handy: Spieler mit Rang tragen einen Rahmen in Rangfarbe (.rank-tinted, styles.scss). In der
 // einspaltigen Liste stieß der als eckiger Kasten direkt an Profilbild und Knopf. Deshalb haben
 // alle Zeilen innen etwas Luft (sonst stünden Namen mit und ohne Rang versetzt), und nur die

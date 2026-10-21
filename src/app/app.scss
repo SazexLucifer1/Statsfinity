@@ -1,3 +1,5 @@
+@use '../styles/breakpoints' as bp;
+
 // Spalte über die volle Viewporthöhe, damit der Footer bei wenig Inhalt unten am Bildschirmrand
 // sitzt statt direkt unter dem letzten Element hochzurutschen. Dazwischen wird dann einfach der
 // Hintergrund sichtbar - genau der Punkt, an dem das Bild etwas hermacht. Bei viel Inhalt scrollt
@@ -16,7 +18,7 @@
 // Deckliste nutzen die zusätzliche Breite dann selbst für ein echtes Mehrspalten-Layout (siehe
 // deck-list.scss), statt dass hier nur leerer Rand entsteht.
 .app-header {
-  width: min(96vw, var(--content-max-width));
+  width: min(96vw, var(--content-measure));
   margin: 0 auto;
   // env(safe-area-inset-left/right) zusätzlich zum top-Inset: im Querformat wandert die
   // Notch/Kamera-Aussparung an den linken oder rechten Rand statt oben zu sitzen.
@@ -195,4 +197,99 @@
   // Das Piktogramm richtet sich nach der Schriftgröße; mit den 0.85rem der Nachbarknöpfe säße es
   // als 15px-Fliegendreck in einem 44px-Knopf.
   font-size: 1.15rem;
+}
+
+// --- Wo bin ich? (Wunsch des Users, 21.10.2026: am Layout erkennen, nicht an knalligen Farben) ---
+// Handy: Der Titel oben nennt den Tab ("Match", "Suche" ...) statt des App-Namens - die Leiste
+// unten ist klein und beim Scrollen leicht zu übersehen. Ab Tablet steht die Leiste oben und zeigt
+// den Tab selbst, dort bleibt der App-Name.
+.app-header h1 {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.page-title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-3);
+
+  app-icon {
+    font-size: 1.2rem;
+    opacity: 0.85;
+  }
+}
+
+.app-header h1:has(.page-title) .brand {
+  display: none;
+}
+
+@include bp.up(md) {
+  .app-header h1:has(.page-title) .brand {
+    display: inline;
+  }
+
+  .page-title {
+    display: none;
+  }
+
+  // Leiste oben statt schwebend unten: eine Reihe unter dem Kopf, beim Scrollen oben angeheftet.
+  // Symbol und Name nebeneinander - auf Tablet/Desktop ist dafür Platz, und der aktive Tab ist
+  // als hell gefüllter Reiter klar zu erkennen.
+  // Steht nach der Standalone-Regel oben in der Datei und überschreibt sie damit auch dort.
+  .tab-bar {
+    position: sticky;
+    top: calc(env(safe-area-inset-top, 0px) + var(--sp-3));
+    bottom: auto;
+    left: auto;
+    transform: none;
+    width: min(96vw, var(--content-measure));
+    margin: var(--sp-3) auto var(--sp-2);
+    padding: var(--sp-2);
+    border-radius: var(--r-lg);
+    background: rgba(18, 14, 34, 0.72);
+  }
+
+  .tab-item {
+    flex-direction: row;
+    justify-content: center;
+    gap: var(--sp-3);
+    min-height: 44px;
+    border-radius: var(--r-md);
+
+    .tab-icon {
+      font-size: 1.15rem;
+    }
+
+    .tab-label {
+      font-size: 0.92rem;
+    }
+
+    // Reiter mit Unterstrich statt hell gefüllt - so unterscheidet sich die Hauptleiste von den
+    // Unterreitern darunter (.segmented, hell gefüllt), und man sieht, auf welcher Ebene man ist.
+    position: relative;
+    opacity: 0.75;
+
+    &.active {
+      opacity: 1;
+      background: rgba(255, 255, 255, 0.12);
+      box-shadow: none;
+
+      &::before {
+        content: '';
+        position: absolute;
+        left: 14%;
+        right: 14%;
+        bottom: 2px;
+        height: 3px;
+        border-radius: 3px;
+        background: var(--text);
+      }
+    }
+
+    &.ingame-tab::after {
+      top: 8px;
+      right: 10px;
+    }
+  }
 }
