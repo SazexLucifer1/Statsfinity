@@ -1,20 +1,13 @@
 @use '../../styles/breakpoints' as bp;
 
-.insights-toggle {
-  display: flex;
-  width: 100%;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
+// Die Kästen sind direkt Teil des umgebenden Rasters (Statistik-Dashboard), der Baustein selbst
+// nimmt keinen eigenen Platz ein.
+:host {
+  display: contents;
+}
 
-  h2 {
-    margin: 0;
-  }
+.insight-card h2 {
+  margin-bottom: var(--sp-3);
 }
 
 h3 {

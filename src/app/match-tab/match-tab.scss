@@ -353,15 +353,15 @@
   :host {
     display: grid;
     grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-    align-items: start;
+    // Beide Kästen beginnen oben auf einer Linie und sind gleich hoch (Rückmeldung des Users,
+    // 21.10.2026). Die Höhe gibt das neue Match vor ...
+    align-items: stretch;
   }
 
-  // Der Verlauf scrollt in seiner eigenen Spalte und bleibt oben angeheftet - sonst scrollt das
-  // neue Match links aus dem Bild, und neben den unteren Partien steht nur noch Hintergrund.
+  // ... der Verlauf nimmt sie nur an (contain: size - er selbst zählt für die Reihenhöhe nicht mit)
+  // und scrollt in sich, statt die Seite lang zu machen.
   section[data-tutorial='match-history'] {
-    position: sticky;
-    top: 84px;
-    max-height: calc(100dvh - 100px);
+    contain: size;
     overflow-y: auto;
     overscroll-behavior: contain;
   }

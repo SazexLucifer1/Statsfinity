@@ -36,8 +36,17 @@
 
 // Eine Kachel: Commander-Bild, darunter Precon- und Commander-Name. Knöpfe erben Farbe und
 // Schrift nicht von selbst.
+.precon-grid > li {
+  display: flex;
+}
+
+// Alle Kacheln einer Reihe gleich hoch (Rückmeldung des Users, 21.10.2026): Name und Commander
+// stehen unter dem Bild, die Kachel füllt die ganze Zelle.
 .precon-tile {
   display: grid;
+  grid-template-rows: auto auto 1fr;
+  align-content: start;
+  height: 100%;
   gap: var(--sp-2);
   width: 100%;
   padding: var(--sp-3);

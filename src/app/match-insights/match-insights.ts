@@ -53,7 +53,6 @@ export class MatchInsights {
    */
   readonly groupTotals = input(true);
 
-  readonly expanded = signal(true);
   readonly showYearReview = signal(false);
   readonly OPPONENT_MIN_GAMES = OPPONENT_MIN_GAMES;
 

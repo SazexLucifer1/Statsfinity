@@ -1304,3 +1304,15 @@ h3 {
     inset 0 0 0 1px var(--rank-dark),
     0 0 10px color-mix(in srgb, var(--rank-light) 35%, transparent) !important;
 }
+
+// Statistik-Dashboards (Statistik-Tab, Persönlich): Die Kästen kommen auch aus eingebetteten
+// Bausteinen (match-insights, performance-stats sind display: contents) - deshalb hier global statt
+// in den Komponenten, deren Stilkapselung die fremden Kästen nicht erreicht. Engere Abstände, weil
+// zwei Spalten nebeneinander keine 14px Luft rundum brauchen (Rückmeldung des Users, 21.10.2026).
+@include bp.up(lg) {
+  app-stats-tab section.glass-card,
+  app-personal-stats section.glass-card {
+    margin: var(--sp-3);
+    padding: 14px 16px;
+  }
+}
