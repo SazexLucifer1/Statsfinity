@@ -47,6 +47,11 @@ export class MatchInsights {
    * "Gegner" anklickbar und öffnet sein Profil; Spieler ohne Konto bleiben reiner Text.
    */
   readonly profileIds = input<Readonly<Record<string, string | null>>>({});
+  /**
+   * false = matches enthält nur die Partien dieser einen Person (Persönlich-Ansicht). Dann gibt es
+   * keine "alle Spiele der Gruppe" zum Vergleich - die Säulen zeigen nur die gespielten Partien.
+   */
+  readonly groupTotals = input(true);
 
   readonly expanded = signal(true);
   readonly showYearReview = signal(false);
@@ -114,10 +119,11 @@ export class MatchInsights {
   readonly monthlyPlayed = computed<BarChartDatum[]>(() => {
     const player = this.player();
     if (!player) return [];
+    const withTotals = this.groupTotals();
     return monthlyGames(this.matches(), player).map((m) => ({
       label: this.monthLabel(m.month),
       value: m.games,
-      total: m.total,
+      ...(withTotals ? { total: m.total } : {}),
     }));
   });
 

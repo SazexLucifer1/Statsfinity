@@ -43,7 +43,15 @@
           }
           @if (monthlyPlayed().length > 1) {
             <div>
-              <p class="hint">{{ i18n.t('stats.insights.monthlyGamesHint') }}</p>
+              <p class="hint">
+                {{
+                  i18n.t(
+                    groupTotals()
+                      ? 'stats.insights.monthlyGamesHint'
+                      : 'stats.insights.monthlyGamesHintPlain'
+                  )
+                }}
+              </p>
               <app-bar-chart [data]="monthlyPlayed()" orientation="vertical" />
             </div>
           }
