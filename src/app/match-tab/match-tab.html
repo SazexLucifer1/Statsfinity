@@ -97,22 +97,49 @@
   <h3 data-tutorial="match-players-heading">{{ i18n.t('match.whoPlays') }}</h3>
   @if (mtg.allPlayers().length === 0) {
     <p class="hint">{{ i18n.t('match.noPlayersYet') }}</p>
-  } @else {
-    <div class="chip-row">
-      @for (player of mtg.allPlayers(); track player) {
-        @let tier = rankTierFor(player, session.mode(), session.format());
-        <button
-          class="glass-chip avatar-chip"
-          [class.active]="isSelected(player)"
-          [class.rank-tinted]="!!tier"
-          [style]="rankVars(tier)"
-          (click)="togglePlayer(player)"
-        >
-          <app-player-avatar [url]="mtg.playerAvatars()[player] ?? null" />
-          {{ player }}
-        </button>
-      }
+  }
+  <div class="chip-row">
+    @for (player of mtg.allPlayers(); track player) {
+      @let tier = rankTierFor(player, session.mode(), session.format());
+      <button
+        class="glass-chip avatar-chip"
+        [class.active]="isSelected(player)"
+        [class.rank-tinted]="!!tier"
+        [style]="rankVars(tier)"
+        (click)="togglePlayer(player)"
+      >
+        <app-player-avatar [url]="mtg.playerAvatars()[player] ?? null" />
+        {{ player }}
+      </button>
+    }
+    <!-- Neue Leute direkt hier anlegen, ohne Umweg über den Gruppen-Tab (Wunsch des Users,
+         21.10.2026). Profil verknüpfen und Konto kommen später im Gruppen-Tab. -->
+    @if (!addingPlayer()) {
+      <button class="glass-chip add-player-chip" (click)="addingPlayer.set(true)">
+        <app-icon name="plus" /> {{ i18n.t('match.newPlayer') }}
+      </button>
+    }
+  </div>
+  @if (addingPlayer()) {
+    <div class="guest-name-row">
+      <input
+        class="glass-input"
+        type="text"
+        maxlength="40"
+        [placeholder]="i18n.t('match.newPlayerPlaceholder')"
+        [ngModel]="newPlayerName()"
+        (ngModelChange)="newPlayerName.set($event)"
+        (keyup.enter)="addNewPlayer()"
+        autofocus
+      />
+      <button class="glass-button small primary" [disabled]="!newPlayerName().trim() || addingBusy()" (click)="addNewPlayer()">
+        {{ i18n.t('match.guestAdd') }}
+      </button>
+      <button class="icon-button" (click)="cancelNewPlayer()" [attr.aria-label]="i18n.t('dialog.cancel')">✕</button>
     </div>
+  }
+  @if (newPlayerMessage(); as message) {
+    <p class="hint">{{ message }}</p>
   }
 
   @if (session.requiresCommanderSelection() && session.selectedPlayers().length > 0) {

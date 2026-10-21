@@ -161,6 +161,41 @@ export class MatchTab {
     return this.session.isSelected(name);
   }
 
+  // --- Neuer Spieler direkt im Match-Tab (Wunsch des Users, 21.10.2026) ---
+
+  readonly addingPlayer = signal(false);
+  readonly newPlayerName = signal('');
+  readonly addingBusy = signal(false);
+  readonly newPlayerMessage = signal<string | null>(null);
+
+  /** Legt den Spieler in der Gruppe an (wie im Gruppen-Tab) und wählt ihn gleich für die Runde. */
+  async addNewPlayer(): Promise<void> {
+    const name = this.newPlayerName().trim();
+    if (!name || this.addingBusy()) return;
+    const existing = this.mtg.allPlayers().find((p) => p.toLowerCase() === name.toLowerCase());
+    if (existing) {
+      // Gibt es schon: einfach auswählen statt Fehler.
+      if (!this.isSelected(existing)) this.togglePlayer(existing);
+      this.cancelNewPlayer();
+      return;
+    }
+    this.addingBusy.set(true);
+    const ok = await this.mtg.addPlayer(name);
+    this.addingBusy.set(false);
+    if (!ok) {
+      this.newPlayerMessage.set(this.i18n.t('match.newPlayerFailed'));
+      return;
+    }
+    this.togglePlayer(name);
+    this.cancelNewPlayer();
+    this.newPlayerMessage.set(this.i18n.t('match.newPlayerAdded', { name }));
+  }
+
+  cancelNewPlayer(): void {
+    this.addingPlayer.set(false);
+    this.newPlayerName.set('');
+  }
+
   // --- Gast-Modus: freie Namenseingabe statt Gruppen-Chips (kein Account nötig) ---
 
   readonly guestNameInput = signal('');
