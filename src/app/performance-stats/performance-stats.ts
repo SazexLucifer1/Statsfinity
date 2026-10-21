@@ -11,7 +11,6 @@ import {
 } from '../match-insights';
 import { CardThumb } from '../ui/card-thumb/card-thumb';
 import { InfoToggle } from '../ui/info-toggle/info-toggle';
-import { SampleHint } from '../ui/sample-hint/sample-hint';
 import {
   PerformanceSummaryView,
   formatAverage,
@@ -27,7 +26,7 @@ import {
  */
 @Component({
   selector: 'app-performance-stats',
-  imports: [CardThumb, InfoToggle, SampleHint, PerformanceSummaryView],
+  imports: [CardThumb, InfoToggle, PerformanceSummaryView],
   templateUrl: './performance-stats.html',
   styleUrl: './performance-stats.scss',
 })
@@ -37,6 +36,12 @@ export class PerformanceStats {
   readonly matches = input.required<readonly Match[]>();
   /** Gewählter Spieler aus "Spieler-Details", null = ganze Gruppe. */
   readonly player = input<string | null>(null);
+  /**
+   * Welcher Teil: alles in einer Karte, nur die Kennzahlen oder nur die Listen (Decks, Commander
+   * ohne Deck, Matchups) - die persönliche Statistik zeigt beide an verschiedenen Stellen.
+   */
+  readonly part = input<'all' | 'summary' | 'lists'>('all');
+  readonly showCommanders = signal(false);
 
   readonly PREVIEW = 5;
   readonly expanded = signal(true);
@@ -53,7 +58,13 @@ export class PerformanceStats {
     return winConditionStats(this.matches(), player ? pickPlayer(player) : undefined);
   });
 
-  readonly decks = computed(() => deckPerformance(this.matches(), this.player()));
+  private readonly allDecks = computed(() => deckPerformance(this.matches(), this.player()));
+  /**
+   * Nur echte Decks; Partien ohne verknüpftes Deck stehen getrennt nach Commander und zugeklappt
+   * darunter (Wunsch des Users, 21.10.2026 - wer seine Decks pflegt, sah sonst alles doppelt).
+   */
+  readonly decks = computed(() => this.allDecks().filter((d) => d.deckId !== null));
+  readonly commandersWithoutDeck = computed(() => this.allDecks().filter((d) => d.deckId === null));
   readonly visibleDecks = computed(() =>
     this.showAllDecks() ? this.decks() : this.decks().slice(0, this.PREVIEW),
   );

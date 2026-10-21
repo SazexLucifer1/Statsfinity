@@ -9,8 +9,6 @@
       <div class="headline-item">
         <span class="headline-value">{{ s.games }}</span>
         <span class="headline-label">{{ i18n.t('stats.performance.games') }}</span>
-        <!-- Der Hinweis gehört zur Zahl der Spiele, nicht zur Winrate. -->
-        <app-sample-hint class="headline-hint" [games]="s.games" />
       </div>
       <div class="headline-item">
         <span class="headline-value">{{ s.wins }}</span>
@@ -29,13 +27,28 @@
 
 <!-- 2. Schnitte: Liste mit Grundlage, fehlende Werte als "—" / "Keine Daten". -->
 @if (facts().length > 0) {
+  <!-- Wie viele Partien hinter einem Schnitt stehen, steht nicht mehr darunter (Wunsch des Users,
+       21.10.2026) - das ⓘ sagt, seit wann der Wert überhaupt erfasst wird. -->
+  <app-info-toggle class="facts-info" [label]="i18n.t('stats.performance.infoAria')">
+    <h3 info-title class="stat-list-title">{{ i18n.t('stats.performance.averagesTitle') }}</h3>
+    @if (since().length > 0) {
+      <ul class="since-list">
+        @for (x of since(); track x.label) {
+          <li>{{ i18n.t('stats.performance.trackedSince', { label: x.label, date: x.date }) }}</li>
+        }
+      </ul>
+    }
+    <p class="hint">{{ i18n.t('stats.performance.averagesInfo') }}</p>
+  </app-info-toggle>
   <dl class="facts">
     @for (f of facts(); track f.label) {
       <div class="fact" [class.missing]="f.missing">
         <dt>{{ f.label }}</dt>
         <dd>
           <span class="fact-value">{{ f.value }}</span>
-          <span class="fact-basis">{{ f.basis }}</span>
+          @if (f.missing) {
+            <span class="fact-basis">{{ f.basis }}</span>
+          }
         </dd>
       </div>
     }

@@ -35,8 +35,7 @@
                     @if (owner(o); as name) {
                       <span>{{ i18n.t('deckView.matchups.owner', { name }) }}</span>
                     }
-                    <span>{{ games(o.games) }}</span>
-                    <app-sample-hint [games]="o.games" /> </span
+                    <span>{{ games(o.games) }}</span> </span
                 ></span>
               </span>
               <span class="stat-list-value">{{ rate(o) }}</span>

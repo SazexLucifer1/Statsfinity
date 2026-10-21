@@ -4,7 +4,6 @@ import { DeckSocialService } from '../deck-social.service';
 import { supabase } from '../supabase.client';
 import { DeckOpponent, deckOpponents, winRateOf } from '../match-insights';
 import { Match } from '../models';
-import { SampleHint } from '../ui/sample-hint/sample-hint';
 import { formatRate, gameCount } from '../ui/performance-summary/performance-summary';
 import { CardThumb } from '../ui/card-thumb/card-thumb';
 import { SplitBar, SplitSegment } from '../ui/split-bar/split-bar';
@@ -19,7 +18,7 @@ import { InfoToggle } from '../ui/info-toggle/info-toggle';
  */
 @Component({
   selector: 'app-deck-matchups',
-  imports: [CardThumb, SplitBar, InfoToggle, SampleHint],
+  imports: [CardThumb, SplitBar, InfoToggle],
   templateUrl: './deck-matchups.html',
   styleUrl: './deck-matchups.scss',
 })
