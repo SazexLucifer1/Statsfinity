@@ -475,3 +475,15 @@
     outline: 2px solid #4ade80;
   }
 }
+
+// Fremder Cube: Anzahl statt −/+ in der Liste.
+.qty-readonly {
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+.private-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}

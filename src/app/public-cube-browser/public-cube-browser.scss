@@ -1,0 +1,55 @@
+:host {
+  display: grid;
+  gap: var(--sp-3);
+}
+
+.public-cube-list {
+  display: grid;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+// Eine Zeile je Cube, gleicher Rahmen wie die Neuigkeiten der Freunde. Knöpfe erben Farbe und
+// Schrift nicht von selbst.
+.public-cube-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: var(--sp-3);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-md);
+  background: var(--surface-tile);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cube-icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-sm);
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 1.3rem;
+}
+
+.cube-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.meta {
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+.more {
+  justify-self: center;
+}

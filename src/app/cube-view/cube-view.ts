@@ -74,9 +74,16 @@ export class CubeView {
   private readonly scryfall = inject(ScryfallService);
 
   readonly cubeId = computed(() => this.cubes.view()?.cubeId ?? null);
-  readonly current = computed(
-    () => this.cubes.cubes()?.find((c) => c.id === this.cubeId()) ?? null,
-  );
+  /** Fremder Cube: nur ansehen - keine Karten hinzufügen, nichts speichern (Wunsch des Users, 21.10.2026). */
+  readonly readonly = computed(() => !!this.cubes.view()?.readonly);
+  readonly current = computed(() => {
+    const id = this.cubeId();
+    if (this.readonly()) {
+      const foreign = this.cubes.foreignCube();
+      return foreign?.id === id ? foreign : null;
+    }
+    return this.cubes.cubes()?.find((c) => c.id === id) ?? null;
+  });
 
   // --- Übersicht ---
   readonly newName = signal('');
@@ -118,6 +125,7 @@ export class CubeView {
   readonly editName = signal('');
   readonly editDescription = signal('');
   readonly editFormat = signal<DeckFormat | null>(null);
+  readonly editPrivate = signal(false);
 
   readonly collectionOnly = computed(() => this.current()?.collectionOnly ?? false);
 
@@ -234,8 +242,8 @@ export class CubeView {
     const cards = await this.cubes.loadCards(id);
     if (this.cubeId() !== id) return;
     this.cards.set(cards);
-    // Ein leerer Cube startet gleich in der Kartenauswahl.
-    if (cards.length === 0) this.tab.set('add');
+    // Ein leerer eigener Cube startet gleich in der Kartenauswahl.
+    if (cards.length === 0 && !this.readonly()) this.tab.set('add');
   }
 
   // --- Übersicht ---------------------------------------------------------------------------
@@ -266,6 +274,7 @@ export class CubeView {
     this.editName.set(cube.name);
     this.editDescription.set(cube.description);
     this.editFormat.set(cube.format);
+    this.editPrivate.set(cube.isPrivate);
     this.editOpen.set(true);
   }
 
@@ -276,6 +285,7 @@ export class CubeView {
       name: this.editName(),
       description: this.editDescription(),
       format: this.editFormat(),
+      isPrivate: this.editPrivate(),
     });
     this.editOpen.set(false);
   }
@@ -499,6 +509,11 @@ export class CubeView {
   // --- Karte bearbeiten -------------------------------------------------------------------
 
   select(item: CubeItem): void {
+    // Fremder Cube: statt des Bearbeiten-Blatts die Kartenvorschau.
+    if (this.readonly()) {
+      this.openPreview(item);
+      return;
+    }
     this.prints.set([]);
     this.selectedName.set(item.name);
   }

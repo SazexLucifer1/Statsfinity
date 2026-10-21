@@ -14,6 +14,7 @@ import { DeckFormat, GameMode } from '../models';
 import { PlayerAvatar } from '../player-avatar/player-avatar';
 import { Meter } from '../ui/meter/meter';
 import { Icon } from '../ui/icon/icon';
+import { CubeService } from '../cube.service';
 
 type FriendsTab = 'friends' | 'news' | 'ranking';
 
@@ -34,6 +35,7 @@ export class FriendsPanel {
   private readonly profileService = inject(ProfileService);
   private readonly mtg = inject(MtgService);
   private readonly navigation = inject(NavigationService);
+  private readonly cubes = inject(CubeService);
 
   readonly tab = signal<FriendsTab>('friends');
 
@@ -128,6 +130,11 @@ export class FriendsPanel {
     return a.gameMode
       ? gameModeLabel(a.gameMode as GameMode, (a.gameFormat as DeckFormat) ?? null)
       : '';
+  }
+
+  /** Fremder Cube öffnet sich nur lesend (CubeService.openAny). */
+  openCube(cubeId: string): void {
+    void this.cubes.openAny(cubeId);
   }
 
   /** Derselbe Weg wie ein QR-Code: Suche-Tab, Decks, dieses Deck öffnen. */

@@ -55,8 +55,8 @@ export const tutorial = {
     'tutorial.search.intro.title': 'Suche',
     'tutorial.search.intro.text':
       'Hier stöberst du ohne Gruppe und auch ohne Anmeldung: in allen Magic-Karten, in offiziellen Precons und in den öffentlichen Decks aller Spieler.',
-    'tutorial.search.subtabs.title': 'Karten, Precons, Decks',
-    'tutorial.search.subtabs.text': 'Mit diesen drei Reitern wechselst du, wonach du suchst.',
+    'tutorial.search.subtabs.title': 'Karten, Precons, Decks, Cubes',
+    'tutorial.search.subtabs.text': 'Mit diesen vier Reitern wechselst du, wonach du suchst. Unter „Cubes“ stehen alle öffentlichen Cubes - ein Tipp öffnet sie zum Ansehen.',
     'tutorial.search.cards.title': 'Karten',
     'tutorial.search.cards.text':
       'Suche nach Namen und grenze mit Typ, Kreaturtyp, Manawert, Farbe, Effekt (z.B. Kartenziehen) oder Fähigkeit ein. Ein Tipp auf eine Karte öffnet die große Vorschau.',
@@ -358,8 +358,8 @@ export const tutorial = {
     'tutorial.search.intro.title': 'Search',
     'tutorial.search.intro.text':
       'Browse without a group and even without an account: all Magic cards, official precons and the public decks of every player.',
-    'tutorial.search.subtabs.title': 'Cards, precons, decks',
-    'tutorial.search.subtabs.text': 'These three tabs switch what you are searching for.',
+    'tutorial.search.subtabs.title': 'Cards, precons, decks, cubes',
+    'tutorial.search.subtabs.text': 'These four tabs switch what you are searching for. “Cubes” lists all public cubes - tap one to view it.',
     'tutorial.search.cards.title': 'Cards',
     'tutorial.search.cards.text':
       'Search by name and narrow down by type, creature type, mana value, colour, effect (e.g. card draw) or ability. Tap a card for the large preview.',

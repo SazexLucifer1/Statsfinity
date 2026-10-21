@@ -1,0 +1,48 @@
+@if (!cubes.publicAvailable()) {
+  <p class="hint">{{ i18n.t('cube.publicUnavailable') }}</p>
+} @else {
+  @if (!userId()) {
+    <input
+      class="glass-input"
+      type="search"
+      [placeholder]="i18n.t('cube.publicSearchPlaceholder')"
+      [ngModel]="query()"
+      (ngModelChange)="query.set($event)"
+    />
+  }
+  @if (list().length === 0) {
+    <p class="hint">
+      {{ loading() ? i18n.t('cube.loading') : i18n.t('cube.publicEmpty') }}
+    </p>
+  } @else {
+    <ul class="public-cube-list">
+      @for (cube of list(); track cube.id) {
+        <li>
+          <button type="button" class="public-cube-row" (click)="open(cube)">
+            <span class="cube-icon"><app-icon name="layers" /></span>
+            <span class="cube-text">
+              <strong>{{ cube.name }}</strong>
+              <span class="meta">
+                @if (!userId() && cube.ownerName) {
+                  {{ i18n.t('cube.byOwner', { name: cube.ownerName }) }} ·
+                }
+                {{ i18n.t('cube.cardCount', { count: cube.cardCount }) }} ·
+                {{ cube.format ?? i18n.t('cube.formatFree') }}
+              </span>
+            </span>
+          </button>
+        </li>
+      }
+    </ul>
+    @if (hasMore()) {
+      <button
+        type="button"
+        class="glass-button small more"
+        [disabled]="loading()"
+        (click)="loadMore()"
+      >
+        {{ i18n.t('cube.loadMore') }}
+      </button>
+    }
+  }
+}
