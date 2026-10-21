@@ -1,5 +1,5 @@
 import { Injectable, computed, effect, signal, inject } from '@angular/core';
-import { Match, MatchPlayer, Cube, GameMode, GAME_MODES, GroupCubeList, LifeLog } from './models';
+import { Match, MatchPlayer, Cube, GameMode, GAME_MODES, GroupCubeList, LEGACY_WIN_CONDITIONS, LifeLog } from './models';
 import { supabase } from './supabase.client';
 import { GroupService } from './group.service';
 import { AuthService } from './auth.service';
@@ -1062,6 +1062,10 @@ export class MtgService {
     // Ranked ist Gruppensache; Freundesspiele zählen nie für die Elo einer Gruppe.
     const isRanked = !friendGame && !match.tournamentMatchId && (match.isRanked ?? true);
 
+    // Neue Siegarten (sql/siegarten-erweitert-2026-10-21.sql): Fehlt die Migration, lehnt die
+    // Prüfregel sie ab (23514) - dann lieber "Anderes" speichern als die ganze Partie verlieren.
+    let winCondition = match.winCondition ?? null;
+
     // Schritt 1: Zeile in "matches" anlegen
     const insertMatch = () =>
       supabase
@@ -1086,7 +1090,7 @@ export class MtgService {
             : {}),
           ...(performanceVerfuegbar
             ? {
-                win_condition: match.winCondition ?? null,
+                win_condition: winCondition,
                 win_turn: match.winTurn ?? null,
                 note: match.note?.trim() || null,
               }
@@ -1100,6 +1104,16 @@ export class MtgService {
     if (isMissingPartieVerlaufError(matchError)) ({ data: matchRow, error: matchError } = await insertMatch());
     if (isMissingIsRankedError(matchError)) ({ data: matchRow, error: matchError } = await insertMatch());
     if (isMissingPerformanceError(matchError)) ({ data: matchRow, error: matchError } = await insertMatch());
+    if (
+      matchError?.code === '23514' &&
+      String(matchError.message ?? '').includes('win_condition') &&
+      winCondition &&
+      !LEGACY_WIN_CONDITIONS.includes(winCondition)
+    ) {
+      console.warn('Neue Siegarten noch nicht freigeschaltet (Migration fehlt) - gespeichert als "Anderes".');
+      winCondition = 'other';
+      ({ data: matchRow, error: matchError } = await insertMatch());
+    }
 
     if (matchError || !matchRow) {
       console.error('Konnte Match nicht anlegen:', matchError);

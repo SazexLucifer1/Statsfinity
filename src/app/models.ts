@@ -139,9 +139,38 @@ export interface MatchPlayer {
  * Wie eine Partie gewonnen wurde (matches.win_condition, sql/partie-ergebnis-deck-version-2026-10-06.sql).
  * Optional im Sieger-Dialog gewählt - fehlt der Wert, ist die Siegart unbekannt und wird nie geraten.
  */
-export type WinCondition = 'combat' | 'combo' | 'commander_damage' | 'mill' | 'other';
+export type WinCondition =
+  | 'combat'
+  | 'commander_damage'
+  | 'effect_damage'
+  | 'poison'
+  | 'combo'
+  | 'alt_win'
+  | 'mill'
+  | 'control'
+  | 'concede'
+  | 'other';
 
-export const WIN_CONDITIONS: readonly WinCondition[] = ['combat', 'combo', 'commander_damage', 'mill', 'other'];
+/**
+ * Reihenfolge der Auswahl im Sieger-Dialog. Erweitert am 21.10.2026 (Wunsch des Users: fast jede
+ * Partie landete unter "Anderes"); Effekt-Schaden fasst Direktschaden und Drain zusammen.
+ * sql/siegarten-erweitert-2026-10-21.sql lässt die neuen Werte in der Datenbank zu.
+ */
+export const WIN_CONDITIONS: readonly WinCondition[] = [
+  'combat',
+  'commander_damage',
+  'effect_damage',
+  'poison',
+  'combo',
+  'alt_win',
+  'mill',
+  'control',
+  'concede',
+  'other',
+];
+
+/** Die Siegarten der ersten Fassung - die einzigen, die die Datenbank ohne neue Migration annimmt. */
+export const LEGACY_WIN_CONDITIONS: readonly WinCondition[] = ['combat', 'combo', 'commander_damage', 'mill', 'other'];
 
 export interface LifeLog {
   v: 1;
