@@ -373,7 +373,7 @@ describe('match-insights: Performance', () => {
     expect(placementOf(matches[3], matches[3].players[0])).toBeNull();
   });
 
-  it('verteilt Siegarten und zählt fehlende als unbekannt', () => {
+  it('verteilt Siegarten und zählt fehlende unter Anderes', () => {
     const matches = [
       match('A', [p('A'), p('B')], { winCondition: 'combat' }),
       match('A', [p('A'), p('B')], { winCondition: 'combo' }),
@@ -389,13 +389,12 @@ describe('match-insights: Performance', () => {
       mill: 0,
       control: 0,
       concede: 0,
-      other: 0,
     };
-    expect(all).toEqual({ ...none, combat: 1, combo: 1, commander_damage: 1, unknown: 1 });
+    expect(all).toEqual({ ...none, combat: 1, combo: 1, commander_damage: 1, other: 1 });
     const a = Object.fromEntries(
       winConditionStats(matches, pickPlayer('A')).map((w) => [w.condition, w.count]),
     );
-    expect(a).toEqual({ ...none, combat: 1, combo: 1, commander_damage: 0, unknown: 1 });
+    expect(a).toEqual({ ...none, combat: 1, combo: 1, commander_damage: 0, other: 1 });
   });
 
   it('trennt Deck-Versionen und hält Partien ohne Version getrennt', () => {
@@ -468,7 +467,7 @@ describe('match-insights: Performance', () => {
       null,
       null,
     ]);
-    expect(winConditionStats([old]).find((w) => w.condition === 'unknown')?.count).toBe(1);
+    expect(winConditionStats([old]).find((w) => w.condition === 'other')?.count).toBe(1);
     expect(deckVersionStats([old], 'atraxa')[0].version).toBeNull();
   });
 

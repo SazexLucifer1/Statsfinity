@@ -53,7 +53,7 @@
   } @else {
     <ul class="conditions">
       @for (w of conditions(); track w.condition) {
-        <li [class.unknown]="w.condition === 'unknown'">
+        <li [class.unknown]="w.condition === 'other'">
           <span class="condition-label">{{ i18n.t('stats.winCondition.' + w.condition) }}</span>
           <span class="condition-count">{{ w.count }}</span>
           <app-meter

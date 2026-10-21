@@ -805,7 +805,8 @@ export function deckPerformance(
     );
 }
 
-export type WinConditionKey = WinCondition | 'unknown';
+/** Ohne Eintrag zählt ein Sieg unter "Anderes" (Wunsch des Users, 21.10.2026). */
+export type WinConditionKey = WinCondition;
 
 export interface WinConditionCount {
   condition: WinConditionKey;
@@ -814,7 +815,7 @@ export interface WinConditionCount {
 
 /**
  * Wie gewonnen wurde: mit pick nur die Siege dieses Spielers/Decks, ohne pick alle Partien mit
- * Sieger. Ohne Eintrag zählt die Partie als "unknown" - geraten wird nichts. Immer alle Siegarten
+ * Sieger. Ohne Eintrag zählt die Partie unter "Anderes" - geraten wird nichts. Immer alle Siegarten
  * in fester Reihenfolge, auch mit 0.
  */
 export function winConditionStats(
@@ -822,7 +823,7 @@ export function winConditionStats(
   pick?: SelfPicker,
 ): WinConditionCount[] {
   const counts = new Map<WinConditionKey, number>(
-    [...WIN_CONDITIONS, 'unknown' as const].map((c) => [c, 0]),
+    WIN_CONDITIONS.map((c) => [c, 0]),
   );
   for (const m of countable(matches)) {
     if (m.winner === DRAW) continue;
@@ -831,7 +832,7 @@ export function winConditionStats(
       if (!self || !didWin(m, self.name)) continue;
     }
     const key: WinConditionKey =
-      m.winCondition && WIN_CONDITIONS.includes(m.winCondition) ? m.winCondition : 'unknown';
+      m.winCondition && WIN_CONDITIONS.includes(m.winCondition) ? m.winCondition : 'other';
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
   return [...counts.entries()].map(([condition, count]) => ({ condition, count }));
