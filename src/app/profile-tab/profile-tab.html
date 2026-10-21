@@ -102,29 +102,7 @@
       </section>
     }
 
-    @if (!othersStatsHidden() && viewingCommanderStatsWithoutDeck().length > 0) {
-      <section class="glass-card span-full">
-        <h2>{{ i18n.t('profile.commanderStats') }}</h2>
-        <p class="hint">
-          {{ i18n.t('profile.commanderStatsHint') }}
-        </p>
 
-        <app-commander-stat-list
-          #viewingCommanderListRef
-          [stats]="viewingCommanderStatsWithoutDeck()"
-          [commanderImage]="commanderImage"
-          [commanderBackImage]="commanderBackImage"
-        />
-      </section>
-    }
-
-    @if (!othersStatsHidden() && placementDistribution().length > 0) {
-      <section class="glass-card">
-        <h2>{{ i18n.t('profile.placementDistribution') }}</h2>
-        <p class="hint">{{ i18n.t('profile.placementDistributionHint') }}</p>
-        <app-bar-chart [data]="placementChart()" orientation="vertical" />
-      </section>
-    }
 
     @if (!othersStatsHidden()) {
       <section class="glass-card span-full">
@@ -220,29 +198,7 @@
     </section>
   }
 
-  @if (!othersStatsHidden() && viewingNpcCommanderStatsWithoutDeck().length > 0) {
-    <section class="glass-card span-full">
-      <h2>{{ i18n.t('profile.commanderStats') }}</h2>
-      <p class="hint">
-        {{ i18n.t('profile.commanderStatsHint') }}
-      </p>
 
-      <app-commander-stat-list
-        #viewingNpcCommanderListRef
-        [stats]="viewingNpcCommanderStatsWithoutDeck()"
-        [commanderImage]="commanderImage"
-        [commanderBackImage]="commanderBackImage"
-      />
-    </section>
-  }
-
-  @if (!othersStatsHidden() && placementDistribution().length > 0) {
-    <section class="glass-card">
-      <h2>{{ i18n.t('profile.placementDistribution') }}</h2>
-      <p class="hint">{{ i18n.t('profile.placementDistributionHint') }}</p>
-      <app-bar-chart [data]="placementChart()" orientation="vertical" />
-    </section>
-  }
 
   @if (!othersStatsHidden()) {
     <section class="glass-card span-full">
