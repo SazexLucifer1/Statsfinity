@@ -11,12 +11,19 @@
   <button [class.active]="subView() === 'decks'" (click)="subView.set('decks')">
     {{ i18n.t('search.decksTab') }}
   </button>
+  <button [class.active]="subView() === 'cubes'" (click)="subView.set('cubes')">
+    {{ i18n.t('search.cubesTab') }}
+  </button>
 </div>
 
 @if (subView() === 'cards') {
   <app-public-card-search />
 } @else if (subView() === 'precons') {
   <app-precon-browser />
+} @else if (subView() === 'cubes') {
+  <section class="glass-card">
+    <app-public-cube-browser />
+  </section>
 } @else {
   <app-public-deck-browser />
 }

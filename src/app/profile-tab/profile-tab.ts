@@ -37,6 +37,7 @@ import { FeedbackService } from '../feedback.service';
 import { DialogService } from '../dialog.service';
 import { CardImage } from '../card-image/card-image';
 import { CommanderStatList } from '../commander-stat-list/commander-stat-list';
+import { PublicCubeBrowser } from '../public-cube-browser/public-cube-browser';
 import { FavoriteCommanderEditor } from '../favorite-commander-editor/favorite-commander-editor';
 import { BarChart, BarChartDatum } from '../ui/bar-chart/bar-chart';
 import { RadarChart, RadarChartDatum } from '../ui/radar-chart/radar-chart';
@@ -62,6 +63,7 @@ import { FriendStatus } from '../friend-status/friend-status';
   selector: 'app-profile-tab',
   imports: [
     FormsModule,
+    PublicCubeBrowser,
     DatePipe,
     DecimalPipe,
     NgTemplateOutlet,
@@ -484,6 +486,8 @@ export class ProfileTab {
   readonly crossGroupStats = signal<CrossGroupPersonalStats | null>(null);
 
   /** Umschalter Statistik/Decks im eigenen Profil, Start auf den Decks (dort wird gearbeitet). */
+  /** Fremdes Profil: Decks oder Cubes des Besitzers (Wunsch des Users, 21.10.2026). */
+  readonly foreignListTab = signal<'decks' | 'cubes'>('decks');
   readonly profileViewTab = signal<'stats' | 'decks'>('decks');
 
   // --- Zeitraum-Filter der Profil-Statistiken ---
@@ -631,6 +635,12 @@ export class ProfileTab {
   }
 
   constructor() {
+    // Anderes Profil: wieder mit den Decks beginnen.
+    effect(() => {
+      this.profileService.viewingUserId();
+      this.foreignListTab.set('decks');
+    });
+
     // Rang aus einer anderen als der aktiven Gruppe: deren Partien und den Spielernamen des
     // Accounts dort nachladen (mtg.history() kennt nur die aktive Gruppe).
     effect(() => {

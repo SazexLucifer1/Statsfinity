@@ -22,6 +22,12 @@ export interface CubeSummary {
   format: DeckFormat | null;
   cardCount: number;
   updatedAt: string;
+  /** Besitzer; fremde Cubes öffnet die Cube-Seite nur lesend. */
+  ownerId: string | null;
+  /** Nur bei öffentlichen Listen (public_cubes()) gefüllt. */
+  ownerName?: string | null;
+  /** true = nur der Besitzer sieht ihn (sql/cubes-oeffentlich-2026-10-21.sql). */
+  isPrivate: boolean;
 }
 
 export interface CubeCard {
@@ -48,6 +54,8 @@ function toSummary(row: any): CubeSummary {
     format: (row.format as DeckFormat | null) ?? null,
     cardCount: cards.reduce((sum, c) => sum + (c.quantity ?? 1), 0),
     updatedAt: row.updated_at,
+    ownerId: row.user_id ?? null,
+    isPrivate: !!row.is_private,
   };
 }
 
@@ -59,8 +67,13 @@ export class CubeService {
   /** Eigene Cubes; null = noch nicht geladen. */
   readonly cubes = signal<CubeSummary[] | null>(null);
 
-  /** Offene Seite: null = zu, `cubeId` null = die Übersicht der eigenen Cubes. */
-  readonly view = signal<{ cubeId: string | null } | null>(null);
+  /**
+   * Offene Seite: null = zu, `cubeId` null = die Übersicht der eigenen Cubes. `readonly` = ein
+   * fremder Cube (Profil, Suche, Neuigkeiten) - nur ansehen, "Zurück" schließt die Seite ganz.
+   */
+  readonly view = signal<{ cubeId: string | null; readonly?: boolean } | null>(null);
+  /** Der gerade angesehene fremde Cube (steht nicht in `cubes`). */
+  readonly foreignCube = signal<CubeSummary | null>(null);
 
   constructor() {
     // Bei Kontowechsel die Cubes des vorigen Kontos sofort vergessen.
@@ -82,16 +95,96 @@ export class CubeService {
     this.view.set({ cubeId });
   }
 
-  /** Aus einem Cube zurück zur Übersicht, aus der Übersicht ganz zu. */
+  /**
+   * Öffnet einen beliebigen Cube: den eigenen zum Bearbeiten, einen fremden nur lesend. Mit
+   * `known` (aus einer öffentlichen Liste) ohne weitere Anfrage.
+   */
+  async openAny(cubeId: string, known?: CubeSummary): Promise<void> {
+    const me = this.auth.currentUser()?.id ?? null;
+    let cube = known ?? null;
+    if (!cube) {
+      const { data, error } = await supabase
+        .from('cube_lists')
+        .select(`${this.columns()}, cube_list_cards(quantity)`)
+        .eq('id', cubeId)
+        .maybeSingle();
+      if (error?.code === '42703' && this.dropNewestColumn()) return this.openAny(cubeId);
+      if (error) console.error('Konnte Cube nicht laden:', error);
+      if (!data) return;
+      cube = toSummary(data);
+    }
+    if (me && cube.ownerId === me) {
+      this.foreignCube.set(null);
+      this.view.set({ cubeId });
+      return;
+    }
+    this.foreignCube.set(cube);
+    this.view.set({ cubeId, readonly: true });
+  }
+
+  /** Aus einem Cube zurück zur Übersicht, aus der Übersicht ganz zu - ein fremder Cube ganz zu. */
   back(): void {
-    this.view.set(this.view()?.cubeId ? { cubeId: null } : null);
+    const view = this.view();
+    if (view?.readonly) {
+      this.view.set(null);
+      this.foreignCube.set(null);
+      return;
+    }
+    this.view.set(view?.cubeId ? { cubeId: null } : null);
+  }
+
+  /** false, solange sql/cubes-oeffentlich-2026-10-21.sql fehlt - dann gibt es keine öffentlichen Cubes. */
+  readonly publicAvailable = signal(true);
+
+  /** Öffentliche Cubes (Suche-Tab) bzw. die eines Besitzers (fremdes Profil), neueste zuerst. */
+  async publicCubes(opts: {
+    userId?: string;
+    query?: string;
+    offset?: number;
+    limit?: number;
+  }): Promise<CubeSummary[]> {
+    if (!this.publicAvailable()) return [];
+    const { data, error } = await supabase.rpc('public_cubes', {
+      p_user_id: opts.userId ?? null,
+      p_query: opts.query ?? null,
+      p_limit: opts.limit ?? 30,
+      p_offset: opts.offset ?? 0,
+    });
+    if (error) {
+      if (['PGRST202', '42883'].includes(error.code ?? '')) this.publicAvailable.set(false);
+      else console.error('Konnte öffentliche Cubes nicht laden:', error);
+      return [];
+    }
+    return ((data ?? []) as any[]).map((r) => ({
+      id: r.id,
+      name: r.name,
+      description: r.description ?? '',
+      collectionOnly: false,
+      format: (r.format as DeckFormat | null) ?? null,
+      cardCount: r.card_count ?? 0,
+      updatedAt: r.updated_at,
+      ownerId: r.owner_id ?? null,
+      ownerName: r.owner_name ?? null,
+      isPrivate: false,
+    }));
   }
 
   /** false, solange sql/cube-format-2026-10-19.sql fehlt - dann gibt es keine Formatwahl. */
   readonly formatAvailable = signal(true);
 
+  /** false, solange sql/cubes-oeffentlich-2026-10-21.sql fehlt - dann kein Privat-Schalter. */
+  readonly privacyAvailable = signal(true);
+
+  /** Bei 42703 die jüngste noch abgefragte Spalte abschalten; false = keine mehr übrig. */
+  private dropNewestColumn(): boolean {
+    if (this.privacyAvailable()) this.privacyAvailable.set(false);
+    else if (this.formatAvailable()) this.formatAvailable.set(false);
+    else return false;
+    return true;
+  }
+
   private columns(): string {
-    return `id, name, description, collection_only, updated_at${this.formatAvailable() ? ', format' : ''}`;
+    return `id, user_id, name, description, collection_only, updated_at${this.formatAvailable() ? ', format' : ''}${this.privacyAvailable() ? ', is_private' : ''}`;
   }
 
   async loadCubes(): Promise<CubeSummary[]> {
@@ -102,10 +195,7 @@ export class CubeService {
       .select(`${this.columns()}, cube_list_cards(quantity)`)
       .eq('user_id', uid)
       .order('updated_at', { ascending: false });
-    if (error?.code === '42703' && this.formatAvailable()) {
-      this.formatAvailable.set(false);
-      return this.loadCubes();
-    }
+    if (error?.code === '42703' && this.dropNewestColumn()) return this.loadCubes();
     if (error) {
       if (isMissingMigration(error)) this.available.set(false);
       else console.error('Konnte Cubes nicht laden:', error);
@@ -138,13 +228,17 @@ export class CubeService {
 
   async update(
     id: string,
-    patch: Partial<Pick<CubeSummary, 'name' | 'description' | 'collectionOnly' | 'format'>>,
+    patch: Partial<
+      Pick<CubeSummary, 'name' | 'description' | 'collectionOnly' | 'format' | 'isPrivate'>
+    >,
   ): Promise<boolean> {
     const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (patch.name !== undefined) row['name'] = patch.name.trim().slice(0, 80);
     if (patch.description !== undefined) row['description'] = patch.description.slice(0, 2000);
     if (patch.collectionOnly !== undefined) row['collection_only'] = patch.collectionOnly;
     if (patch.format !== undefined && this.formatAvailable()) row['format'] = patch.format;
+    if (patch.isPrivate !== undefined && this.privacyAvailable())
+      row['is_private'] = patch.isPrivate;
     const { error } = await supabase.from('cube_lists').update(row).eq('id', id);
     if (error) {
       console.error('Konnte Cube nicht speichern:', error);

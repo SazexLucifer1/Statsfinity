@@ -1,16 +1,20 @@
 <div class="cube-view">
   <div class="view-header">
     <button type="button" class="glass-button small back" (click)="cubes.back()">
-      ‹ {{ cubeId() ? i18n.t('cube.backToList') : i18n.t('cube.back') }}
+      ‹ {{ cubeId() && !readonly() ? i18n.t('cube.backToList') : i18n.t('cube.back') }}
     </button>
     <h2>{{ cubeId() ? (current()?.name ?? '') : i18n.t('cube.title') }}</h2>
     @if (current(); as cube) {
       <app-overflow-menu [label]="i18n.t('cube.actions')" [heading]="cube.name">
-        <button class="glass-button" (click)="openEdit()">{{ i18n.t('cube.edit') }}</button>
+        @if (!readonly()) {
+          <button class="glass-button" (click)="openEdit()">{{ i18n.t('cube.edit') }}</button>
+        }
         <button class="glass-button" (click)="copyList()">{{ i18n.t('cube.copyList') }}</button>
-        <button class="glass-button danger" (click)="deleteCube()">
-          {{ i18n.t('cube.delete') }}
-        </button>
+        @if (!readonly()) {
+          <button class="glass-button danger" (click)="deleteCube()">
+            {{ i18n.t('cube.delete') }}
+          </button>
+        }
       </app-overflow-menu>
     }
   </div>
@@ -64,7 +68,12 @@
           @for (cube of list; track cube.id) {
             <li>
               <button type="button" class="glass-card cube-row" (click)="cubes.openCube(cube.id)">
-                <strong>{{ cube.name }}</strong>
+                <strong
+                  >{{ cube.name }}
+                  @if (cube.isPrivate) {
+                    <app-icon name="lock" [label]="i18n.t('cube.private')" />
+                  }
+                </strong>
                 <span class="meta">
                   {{ i18n.t('cube.cardCount', { count: cube.cardCount }) }} ·
                   {{ cube.format ?? i18n.t('cube.formatFree') }}
@@ -83,8 +92,16 @@
   } @else if (current(); as cube) {
     <!-- Kopf des Cubes -->
     <section class="glass-card head">
-      <!-- Format direkt hier umstellbar (Wunsch des Users, 19.10.2026), nicht nur im ⋮-Menü. -->
-      @if (cubes.formatAvailable()) {
+      @if (readonly()) {
+        <!-- Fremder Cube: Besitzer und Format nur zum Lesen. -->
+        <p class="hint">
+          @if (cube.ownerName) {
+            {{ i18n.t('cube.byOwner', { name: cube.ownerName }) }} ·
+          }
+          {{ cube.format ?? i18n.t('cube.formatFree') }}
+        </p>
+      } @else if (cubes.formatAvailable()) {
+        <!-- Format direkt hier umstellbar (Wunsch des Users, 19.10.2026), nicht nur im ⋮-Menü. -->
         <label class="format-line">
           {{ i18n.t('cube.format') }}
           <select
@@ -100,6 +117,9 @@
         </label>
       } @else {
         <p class="hint">{{ i18n.t('cube.formatMissing') }}</p>
+      }
+      @if (cube.isPrivate && !readonly()) {
+        <p class="hint"><app-icon name="lock" /> {{ i18n.t('cube.privateHint') }}</p>
       }
       @if (cube.description) {
         <p class="description">{{ cube.description }}</p>
@@ -119,24 +139,26 @@
         </div>
       </div>
 
-      <!-- Quelle der Karten: alle existierenden oder nur die eigene Sammlung. -->
-      <div
-        class="segmented block source-toggle"
-        role="radiogroup"
-        [attr.aria-label]="i18n.t('cube.source')"
-      >
-        <button [class.active]="!cube.collectionOnly" (click)="setCollectionOnly(false)">
-          {{ i18n.t('cube.modeAll') }}
-        </button>
-        <button [class.active]="cube.collectionOnly" (click)="setCollectionOnly(true)">
-          {{ i18n.t('cube.modeCollection') }}
-        </button>
-      </div>
-      @if (cube.collectionOnly && missingCopies() > 0) {
-        <p class="hint warn">{{ i18n.t('cube.missingHint', { count: missingCopies() }) }}</p>
-      }
-      @if (cube.collectionOnly && collection.totalCards() === 0) {
-        <p class="hint warn">{{ i18n.t('cube.emptyCollection') }}</p>
+      @if (!readonly()) {
+        <!-- Quelle der Karten: alle existierenden oder nur die eigene Sammlung. -->
+        <div
+          class="segmented block source-toggle"
+          role="radiogroup"
+          [attr.aria-label]="i18n.t('cube.source')"
+        >
+          <button [class.active]="!cube.collectionOnly" (click)="setCollectionOnly(false)">
+            {{ i18n.t('cube.modeAll') }}
+          </button>
+          <button [class.active]="cube.collectionOnly" (click)="setCollectionOnly(true)">
+            {{ i18n.t('cube.modeCollection') }}
+          </button>
+        </div>
+        @if (cube.collectionOnly && missingCopies() > 0) {
+          <p class="hint warn">{{ i18n.t('cube.missingHint', { count: missingCopies() }) }}</p>
+        }
+        @if (cube.collectionOnly && collection.totalCards() === 0) {
+          <p class="hint warn">{{ i18n.t('cube.emptyCollection') }}</p>
+        }
       }
 
       @if (addMessage(); as message) {
@@ -153,15 +175,19 @@
       <button [class.active]="tab() === 'cards'" (click)="tab.set('cards')">
         {{ i18n.t('cube.tabCards') }}
       </button>
-      <button [class.active]="tab() === 'add'" (click)="tab.set('add')">
-        {{ i18n.t('cube.tabAdd') }}
-      </button>
+      @if (!readonly()) {
+        <button [class.active]="tab() === 'add'" (click)="tab.set('add')">
+          {{ i18n.t('cube.tabAdd') }}
+        </button>
+      }
       <button [class.active]="tab() === 'analysis'" (click)="tab.set('analysis')">
         {{ i18n.t('cube.tabAnalysis') }}
       </button>
-      <button [class.active]="tab() === 'pack'" (click)="tab.set('pack')">
-        {{ i18n.t('cube.tabPack') }}
-      </button>
+      @if (!readonly()) {
+        <button [class.active]="tab() === 'pack'" (click)="tab.set('pack')">
+          {{ i18n.t('cube.tabPack') }}
+        </button>
+      }
     </div>
 
     @if (cards() === null) {
@@ -281,30 +307,34 @@
                   · {{ i18n.t('cube.owned', { count: item.owned }) }}
                 </span>
               </div>
-              <div class="qty-controls">
-                <button
-                  type="button"
-                  class="icon-button"
-                  [attr.aria-label]="i18n.t('cube.less')"
-                  (click)="setQuantity(item, item.quantity - 1)"
-                >
-                  @if (item.quantity > 1) {
-                    −
-                  } @else {
-                    <app-icon name="trash" />
-                  }
-                </button>
-                <span>{{ item.quantity }}</span>
-                <button
-                  type="button"
-                  class="icon-button"
-                  [attr.aria-label]="i18n.t('cube.more')"
-                  [disabled]="collectionOnly() && item.quantity >= item.owned"
-                  (click)="setQuantity(item, item.quantity + 1)"
-                >
-                  +
-                </button>
-              </div>
+              @if (readonly()) {
+                <span class="qty-readonly">{{ item.quantity }}×</span>
+              } @else {
+                <div class="qty-controls">
+                  <button
+                    type="button"
+                    class="icon-button"
+                    [attr.aria-label]="i18n.t('cube.less')"
+                    (click)="setQuantity(item, item.quantity - 1)"
+                  >
+                    @if (item.quantity > 1) {
+                      −
+                    } @else {
+                      <app-icon name="trash" />
+                    }
+                  </button>
+                  <span>{{ item.quantity }}</span>
+                  <button
+                    type="button"
+                    class="icon-button"
+                    [attr.aria-label]="i18n.t('cube.more')"
+                    [disabled]="collectionOnly() && item.quantity >= item.owned"
+                    (click)="setQuantity(item, item.quantity + 1)"
+                  >
+                    +
+                  </button>
+                </div>
+              }
             </li>
           }
         </ul>
@@ -421,6 +451,16 @@
             <option [ngValue]="f">{{ f }}</option>
           }
         </select>
+      }
+      @if (cubes.privacyAvailable()) {
+        <label class="private-toggle">
+          <input
+            type="checkbox"
+            [ngModel]="editPrivate()"
+            (ngModelChange)="editPrivate.set($event)"
+          />
+          {{ i18n.t('cube.privateLabel') }}
+        </label>
       }
       <div class="chip-row">
         <button type="button" class="glass-button" (click)="editOpen.set(false)">

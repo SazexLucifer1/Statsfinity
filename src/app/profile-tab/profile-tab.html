@@ -81,6 +81,18 @@
   @if (!devFullView()) {
     @if (profileService.viewingUserId(); as userId) {
       <section class="glass-card span-full">
+        <!-- Decks | Cubes umschaltbar wie im eigenen Profil (Wunsch des Users, 21.10.2026). -->
+        <div class="segmented block foreign-list-toggle">
+          <button [class.active]="foreignListTab() === 'decks'" (click)="foreignListTab.set('decks')">
+            {{ i18n.t('profile.decks') }}
+          </button>
+          <button [class.active]="foreignListTab() === 'cubes'" (click)="foreignListTab.set('cubes')">
+            {{ i18n.t('cube.title') }}
+          </button>
+        </div>
+        @if (foreignListTab() === 'cubes') {
+          <app-public-cube-browser [userId]="userId" />
+        } @else {
         <div class="section-header-row">
           <h2>{{ i18n.t('profile.decks') }}</h2>
           @if (groupService.hasPermission('deck.editOthers')) {
@@ -92,6 +104,7 @@
         </div>
         @if (viewingDeckOwner(); as owner) {
           <app-deck-list [owner]="owner" [readonlyMode]="!groupService.hasPermission('deck.editOthers')" [hideStats]="othersStatsHidden()" />
+        }
         }
       </section>
     }

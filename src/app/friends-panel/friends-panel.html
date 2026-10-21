@@ -167,7 +167,7 @@
                     @case ('cube') {
                       <span
                         >{{ i18n.t('profile.friends.newsCube') }}
-                        <strong>{{ a.deckName }}</strong>
+                        <button class="link" (click)="openCube(a.deckId!)">{{ a.deckName }}</button>
                         <span class="hint">
                           ·
                           {{
