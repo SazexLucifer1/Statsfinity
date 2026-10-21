@@ -155,6 +155,7 @@
                 <div class="news-body">
                   <div class="news-head">
                     <button class="link" (click)="openProfile(a.friendId)">
+                      <app-player-avatar [url]="avatarOf(a.friendId)" />
                       {{ a.friendName }}
                     </button>
                     <span class="news-date">{{ a.happenedAt | date: 'dd.MM., HH:mm' }}</span>

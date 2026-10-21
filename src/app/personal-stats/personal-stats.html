@@ -146,7 +146,7 @@
   }
 
   @if (stats.colorComboRanking.length > 0) {
-    <section class="glass-card">
+    <section class="glass-card combo-card">
       <h2>{{ i18n.t('profile.colorComboRankingTitle') }}</h2>
       <p class="hint">{{ i18n.t('profile.colorComboRankingHint') }}</p>
       <app-podium [entries]="combosPodium()" shape="symbols" [interactive]="false" />

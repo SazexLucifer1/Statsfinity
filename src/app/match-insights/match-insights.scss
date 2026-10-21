@@ -10,6 +10,11 @@
   margin-bottom: var(--sp-3);
 }
 
+// Mehrere Analysen in einem Kasten: Abstand vor jeder weiteren Überschrift.
+.insight-card app-info-toggle ~ app-info-toggle {
+  margin-top: var(--sp-7);
+}
+
 h3 {
   margin: var(--sp-7) 0 var(--sp-3);
 }

@@ -46,7 +46,9 @@
 }
 
 .profile-view-toggle {
-  margin: 4px 0 12px;
+  // Seitlich so weit eingerückt wie die Kästen im Profil-Raster (.profile-grid, 14px).
+  margin: 4px 14px 12px;
+  width: auto;
   // Bis zu vier Reiter (Statistiken, Decks, Sammlung, Cubes) immer in EINER Zeile (Wunsch des
   // Users, 19.10.2026): .block bricht ab 130px je Spalte um - hier eine Spalte je Reiter.
   grid-template-columns: none;

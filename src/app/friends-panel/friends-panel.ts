@@ -132,6 +132,15 @@ export class FriendsPanel {
       : '';
   }
 
+  /** Profilbild eines Freundes für die Neuigkeiten - aus der ohnehin geladenen Freundesliste. */
+  private readonly avatars = computed(
+    () => new Map(this.friends.friends().map((f) => [f.otherId, f.avatarUrl])),
+  );
+
+  avatarOf(userId: string): string | null {
+    return this.avatars().get(userId) ?? null;
+  }
+
   /** Fremder Cube öffnet sich nur lesend (CubeService.openAny). */
   openCube(cubeId: string): void {
     void this.cubes.openAny(cubeId);

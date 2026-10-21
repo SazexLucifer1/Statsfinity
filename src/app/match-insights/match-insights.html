@@ -1,6 +1,6 @@
-<!-- Jede Analyse ein eigener Kasten (Rückmeldung des Users, 21.10.2026): Als ein einziger langer
-     Kasten stand er im Statistik-Raster neben viel leerer Fläche. Der Baustein selbst ist
-     display: contents - die Kästen sind damit direkt Teil des Rasters, in dem er steht. -->
+<!-- Analysen in eigenen Kästen statt einem langen Kasten neben leerer Fläche (Rückmeldung des Users,
+     21.10.2026); Spieldauer, Zugreihenfolge und Rauswürfe teilen sich einen, jeder für sich ist zu
+     kurz. Der Baustein selbst ist display: contents - die Kästen sind direkt Teil des Rasters. -->
 @if (player()) {
   <section class="glass-card insight-card">
     <!-- Form: die letzten zehn Ergebnisse, neueste links -->
@@ -171,9 +171,7 @@
   } @else {
     <p class="hint">{{ i18n.t('stats.insights.durationEmpty') }}</p>
   }
-</section>
 
-<section class="glass-card insight-card">
   <!-- Zugreihenfolge -->
   <app-info-toggle [label]="i18n.t('stats.insights.infoAria')">
     <h2 info-title>{{ i18n.t('stats.insights.turnOrderTitle') }}</h2>
@@ -185,9 +183,7 @@
     <p class="hint">{{ i18n.t('stats.insights.turnOrderCount', { games: seatGames() }) }}</p>
     <app-bar-chart [data]="seatChart()" scale="percent" valueSuffix="%" />
   }
-</section>
 
-<section class="glass-card insight-card">
   <!-- Rauswürfe: wer wen aus der Partie geworfen hat -->
   <app-info-toggle [label]="i18n.t('stats.insights.infoAria')">
     <h2 info-title>{{ i18n.t('stats.insights.knockoutsTitle') }}</h2>
