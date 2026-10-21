@@ -1,5 +1,5 @@
 import { Match, MatchPlayer, WIN_CONDITIONS, WinCondition } from './models';
-import { DRAW, isImportLossDuplicate, isPlayerWinner } from './match-utils';
+import { DRAW, countsForPlayers, isImportLossDuplicate, isPlayerWinner } from './match-utils';
 
 /**
  * Auswertungen über Partien, die es vor dem Partie-Verlauf (sql/partie-verlauf-2026-10-04.sql)
@@ -9,9 +9,20 @@ import { DRAW, isImportLossDuplicate, isPlayerWinner } from './match-utils';
  * match-insights reicht nur die schon gefilterten Partien des Statistik-Tabs herein.
  */
 
-/** Partien, die als echte Partie zählen (ohne Import-Duplikate). */
+/**
+ * Partien, die als eigene Partie zählen (ohne Verlierer-Datensätze des Imports) - für alles, was
+ * Partien zählt oder Gegner in derselben Partie braucht.
+ */
 function countable(matches: readonly Match[]): Match[] {
   return matches.filter((m) => !isImportLossDuplicate(m));
+}
+
+/**
+ * Datensätze, die für die Bilanz einer Person, eines Decks oder Commanders zählen - MIT den
+ * Import-Niederlagen (siehe countsForPlayers()).
+ */
+function personal(matches: readonly Match[]): Match[] {
+  return matches.filter(countsForPlayers);
 }
 
 export function winnersOf(match: Match): MatchPlayer[] {
@@ -217,7 +228,7 @@ export function recentForm(
   player: string,
   count = 10,
 ): { match: Match; result: FormResult }[] {
-  return countable(matches)
+  return personal(matches)
     .filter((m) => m.players.some((p) => p.name === player))
     .sort((a, b) => b.date.localeCompare(a.date))
     .slice(0, count)
@@ -242,7 +253,7 @@ export function monthlyWinRate(
   months = 12,
 ): MonthStat[] {
   const byMonth = new Map<string, { games: number; wins: number }>();
-  for (const match of countable(matches)) {
+  for (const match of personal(matches)) {
     if (!match.players.some((p) => p.name === player)) continue;
     const month = match.date.slice(0, 7);
     const entry = byMonth.get(month) ?? { games: 0, wins: 0 };
@@ -272,10 +283,11 @@ export interface MonthGames {
  */
 export function monthlyGames(matches: readonly Match[], player: string, months = 12): MonthGames[] {
   const byMonth = new Map<string, { games: number; total: number }>();
-  for (const match of countable(matches)) {
+  for (const match of personal(matches)) {
     const month = match.date.slice(0, 7);
     const entry = byMonth.get(month) ?? { games: 0, total: 0 };
-    entry.total++;
+    // Partien der Gruppe ohne Import-Verlierer-Datensätze, die Partien des Spielers mit.
+    if (!isImportLossDuplicate(match)) entry.total++;
     if (match.players.some((p) => p.name === player)) entry.games++;
     byMonth.set(month, entry);
   }
@@ -309,7 +321,7 @@ export function yearReview(
   player: string,
   year: number,
 ): YearReview | null {
-  const own = countable(matches)
+  const own = personal(matches)
     .filter(
       (m) => new Date(m.date).getFullYear() === year && m.players.some((p) => p.name === player),
     )
@@ -437,7 +449,7 @@ export function peopleRecords(matches: readonly Match[], names: readonly string[
   return names.map((name) => {
     let games = 0;
     let wins = 0;
-    for (const m of countable(matches)) {
+    for (const m of personal(matches)) {
       if (m.countsInGeneralStats === false) continue;
       if (!m.players.some((p) => p.name === name)) continue;
       games++;
@@ -475,7 +487,7 @@ export interface CommanderRecord {
 /** Commander einer Person, meistgespielte zuerst. */
 export function commanderRecords(matches: readonly Match[], name: string): CommanderRecord[] {
   const map = new Map<string, CommanderRecord>();
-  for (const m of countable(matches)) {
+  for (const m of personal(matches)) {
     const p = m.players.find((x) => x.name === name);
     if (!p?.commander) continue;
     const label = p.partnerCommander ? `${p.commander} + ${p.partnerCommander}` : p.commander;
@@ -700,7 +712,7 @@ export function performanceSummary(
   const winTurns: number[] = [];
   const minutes: number[] = [];
   const since = { placement: [] as string[], winTurn: [] as string[], duration: [] as string[] };
-  for (const m of countable(matches)) {
+  for (const m of personal(matches)) {
     const self = pick(m);
     if (!self) continue;
     games++;
@@ -790,7 +802,7 @@ export function deckPerformance(
     string,
     { label: string; deckId: string | null; commander: string | null }
   >();
-  for (const m of countable(matches)) {
+  for (const m of personal(matches)) {
     for (const p of m.players) {
       if (player && p.name !== player) continue;
       const key = deckKey(p);
@@ -910,7 +922,7 @@ export interface DeckVersionStat {
 /** Performance je Deck-Version, neueste zuerst, Partien ohne Version am Ende. */
 export function deckVersionStats(matches: readonly Match[], deckId: string): DeckVersionStat[] {
   const versions = new Set<number | null>();
-  for (const m of countable(matches)) {
+  for (const m of personal(matches)) {
     const self = m.players.find((p) => p.deckId === deckId);
     if (self) versions.add(self.deckVersion ?? null);
   }
