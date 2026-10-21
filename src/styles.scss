@@ -54,6 +54,9 @@
 
   // --- Statusfarben ---
   --danger: #ff8f8f;
+  // Kräftiges Rot für Flächen (Säulen); --danger ist als Schrift auf dunklem Grund gedacht und
+  // wirkt als Fläche rosa.
+  --danger-strong: #e5484d;
   --success: #7dff9b;
   --live: #5ee88f;
 
