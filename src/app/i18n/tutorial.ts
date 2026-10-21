@@ -34,7 +34,7 @@ export const tutorial = {
       'Hier erstellst du ein Turnier für deine Gruppe oder öffnest das laufende - mit Paarungen, Zeitlimit und Tabelle.',
     'tutorial.match.players.title': 'Mitspieler auswählen',
     'tutorial.match.players.text':
-      'Tippe die Namen aller Mitspieler an. Neue Spieler legst du im Gruppen-Tab an. Ohne Anmeldung trägst du die Namen hier einfach selbst ein - gespeichert wird die Partie dann aber nicht. Spielen andere aus der Gruppe gerade, kannst du ihrer laufenden Partie beitreten.',
+      'Tippe die Namen aller Mitspieler an. Wer neu dabei ist, kommt über „Neuer Spieler“ direkt dazu - Profil und Konto verknüpfst du später im Gruppen-Tab. Ohne Anmeldung trägst du die Namen hier einfach selbst ein - gespeichert wird die Partie dann aber nicht. Spielen andere aus der Gruppe gerade, kannst du ihrer laufenden Partie beitreten.',
     'tutorial.match.commanders.title': 'Commander & Decks',
     'tutorial.match.commanders.text':
       'Sobald Spieler ausgewählt sind, bekommt jeder sein Deck: aus den eigenen Decks, von jemand anderem geliehen oder per Commander-Suche, wenn es kein Deck in der App gibt.',
@@ -337,7 +337,7 @@ export const tutorial = {
       'Create a tournament for your group here or open the running one - with pairings, time limit and standings.',
     'tutorial.match.players.title': 'Pick players',
     'tutorial.match.players.text':
-      "Tap the names of everyone playing. You add new players in the Group tab. Without an account you simply type the names in here - the game won't be saved then, though. If others in your group are playing right now, you can join their live game.",
+      "Tap the names of everyone playing. Someone new joins right here via “New player” - link their profile and account later in the Group tab. Without an account you simply type the names in here - the game won't be saved then, though. If others in your group are playing right now, you can join their live game.",
     'tutorial.match.commanders.title': 'Commanders & decks',
     'tutorial.match.commanders.text':
       "Once players are selected, each one gets their deck: from their own decks, borrowed from someone else, or via commander search if the deck isn't in the app.",
