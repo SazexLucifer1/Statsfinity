@@ -17,7 +17,11 @@ import { CardPreviewService } from '../../card-preview.service';
   imports: [CardImage],
   templateUrl: './card-thumb.html',
   styleUrl: './card-thumb.scss',
-  host: { '[class.large]': "size() === 'large'", '[class.hidden]': 'missing()' },
+  host: {
+    '[class.large]': "size() === 'large'",
+    '[class.cover]': "size() === 'cover'",
+    '[class.hidden]': 'missing()',
+  },
 })
 export class CardThumb {
   private readonly lookup = inject(CardImageLookupService);
@@ -25,8 +29,11 @@ export class CardThumb {
 
   readonly name = input.required<string | null | undefined>();
   readonly imageUrl = input<string | null | undefined>(null);
-  /** 'small' für Textzeilen und Listen, 'large' für Ranglisten-Zeilen. */
-  readonly size = input<'small' | 'large'>('small');
+  /**
+   * 'small' für Textzeilen und Listen, 'large' für Ranglisten-Zeilen, 'cover' füllt die Breite
+   * einer Kachel - dort öffnet ein Tipp die Kachel selbst, nicht die Kartenvorschau.
+   */
+  readonly size = input<'small' | 'large' | 'cover'>('small');
 
   /** Erster Name bei Partnern ("A + B") - Kartenname für Suche und Vorschau. */
   readonly cardName = computed(() => (this.name() ?? '').split(' + ')[0].trim());
@@ -50,6 +57,7 @@ export class CardThumb {
   }
 
   open(event: Event): void {
+    if (this.size() === 'cover') return;
     event.stopPropagation();
     const img = this.image();
     if (img) this.preview.open(img, this.backImage(), this.cardName());

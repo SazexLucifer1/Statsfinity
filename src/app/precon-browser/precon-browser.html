@@ -9,12 +9,16 @@
         [ngModel]="nameFilter()"
         (ngModelChange)="nameFilter.set($event)"
       />
-      <input
+      <select
         class="glass-input small precon-year-input"
-        type="number"
+        [attr.aria-label]="i18n.t('precons.year')"
         [ngModel]="year()"
         (ngModelChange)="setYear($event)"
-      />
+      >
+        @for (y of years(); track y) {
+          <option [ngValue]="y">{{ y }}</option>
+        }
+      </select>
     </div>
 
     @if (busy()) {
@@ -22,9 +26,23 @@
     } @else if (filteredPrecons().length === 0) {
       <p class="hint">{{ i18n.t('precons.noResults') }}</p>
     } @else {
-      <ul class="precon-list">
+      <!-- Kacheln wie im Deck-Stöbern: Bild des Commanders, darunter der Name des Precons
+           (Wunsch des Users, 21.10.2026). -->
+      <ul class="precon-grid">
         @for (p of filteredPrecons(); track p.fileName) {
-          <li (click)="openPrecon(p)">{{ p.name }}</li>
+          <li>
+            <button type="button" class="precon-tile" (click)="openPrecon(p)">
+              @if (commanderOf(p); as commander) {
+                <app-card-thumb [name]="commander" size="cover" />
+              } @else {
+                <span class="precon-tile-placeholder"></span>
+              }
+              <span class="precon-tile-name">{{ p.name }}</span>
+              @if (commanderOf(p); as commander) {
+                <span class="precon-tile-commander">{{ commander }}</span>
+              }
+            </button>
+          </li>
         }
       </ul>
     }

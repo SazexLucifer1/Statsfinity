@@ -355,6 +355,16 @@
     grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
     align-items: start;
   }
+
+  // Der Verlauf scrollt in seiner eigenen Spalte und bleibt oben angeheftet - sonst scrollt das
+  // neue Match links aus dem Bild, und neben den unteren Partien steht nur noch Hintergrund.
+  section[data-tutorial='match-history'] {
+    position: sticky;
+    top: 84px;
+    max-height: calc(100dvh - 100px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
 }
 
 // Ranked/Frei unter Modus und Format beim Match-Start.

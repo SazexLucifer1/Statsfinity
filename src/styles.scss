@@ -803,8 +803,22 @@ h3 {
   // auf dem Desktop bis 260px, damit dort Name, Commander und Deckname hineinpassen, statt dass
   // nur die Spaltenzahl steigt und jede Kachel gleich schmal bleibt. min(100%, ...) ist die
   // Bremse: ohne sie würde eine Spur breiter als ihr Behälter und das Raster liefe über.
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, clamp(132px, 20vw, 260px)), 1fr));
+  // Seit 21.10.2026 (Wunsch des Users): immer zwei nebeneinander statt einer Spalte je Spieler -
+  // ein 4er-Pod sind dann zwei Zeilen statt vier. Gemessen an der Breite der Spielkachel selbst
+  // (Container-Abfrage), nicht am Fenster: in der schmalen Verlauf-Spalte des Desktops bleiben es
+  // zwei, auf einer breiten Kachel werden es vier.
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--sp-2);
+}
+
+.match-log-card {
+  container-type: inline-size;
+}
+
+@container (min-width: 620px) {
+  .match-log-players {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
 .match-log-player {

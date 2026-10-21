@@ -9,6 +9,11 @@
   width: clamp(40px, 3vw + 22px, 64px);
 }
 
+:host(.cover) {
+  display: block;
+  width: 100%;
+}
+
 :host(.hidden) {
   display: none;
 }

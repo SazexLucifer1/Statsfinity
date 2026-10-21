@@ -138,7 +138,11 @@
             @for (a of activity(); track a.kind + (a.matchId ?? a.deckId) + a.friendId) {
               <li class="news-item">
                 <span class="news-visual" [class.news-win]="a.kind === 'match'">
-                  @if (a.kind === 'match') {
+                  @if (a.kind === 'match' && a.commander) {
+                    <!-- Sieg mit bekanntem Commander: sein Bild, der Pokal klein darauf. -->
+                    <app-card-thumb [name]="a.commander" size="large" />
+                    <span class="news-trophy"><app-icon name="trophy" /></span>
+                  } @else if (a.kind === 'match') {
                     <app-icon name="trophy" />
                   } @else if (a.kind === 'cube') {
                     <app-icon name="layers" />
@@ -157,12 +161,22 @@
                   </div>
                   @switch (a.kind) {
                     @case ('match') {
-                      <span>{{
-                        i18n.t('profile.friends.newsWon', {
-                          mode: activityModeLabel(a),
-                          count: a.playerCount ?? 0,
-                        })
-                      }}</span>
+                      <span
+                        >{{
+                          i18n.t('profile.friends.newsWon', {
+                            mode: activityModeLabel(a),
+                            count: a.playerCount ?? 0,
+                          })
+                        }}
+                        @if (a.commander) {
+                          <span class="hint">
+                            ·
+                            {{
+                              i18n.t('profile.friends.newsWonWith', { commander: a.commander })
+                            }}</span
+                          >
+                        }
+                      </span>
                     }
                     @case ('cube') {
                       <span

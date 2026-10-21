@@ -102,6 +102,7 @@ export const search = {
 
     // --- Precon-Suche, Suche-Tab ---
     'precons.namePlaceholder': 'Precon-Name eingeben …',
+    'precons.year': 'Erscheinungsjahr',
     'precons.noResults': 'Keine Precons gefunden.',
     'precons.back': '← Zurück',
     'precons.loadFailed': 'Precon konnte nicht geladen werden.',
@@ -218,6 +219,7 @@ export const search = {
 
     // --- Precon browser, Search tab ---
     'precons.namePlaceholder': 'Enter precon name …',
+    'precons.year': 'Release year',
     'precons.noResults': 'No precons found.',
     'precons.back': '← Back',
     'precons.loadFailed': 'Could not load this precon.',

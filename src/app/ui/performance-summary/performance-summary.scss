@@ -6,17 +6,24 @@
 // Linksbündig nebeneinander statt drei Kacheln; die Winrate ist die eine Zahl, die etwas größer
 // sein darf, alles andere tritt einen Schritt zurück.
 .headline {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--sp-5);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
   padding-top: var(--sp-2);
 }
 
+// Jede Kennzahl in einem kleinen Kasten, links ausgerichtet - vorher standen die drei Zahlen über
+// die ganze Kartenbreite verteilt und wirkten wie verloren (Rückmeldung des Users, 21.10.2026).
 .headline-item {
   display: flex;
+  flex: 0 1 auto;
   flex-direction: column;
   gap: 2px;
-  min-width: 0;
+  min-width: 92px;
+  padding: var(--sp-3) var(--sp-5);
+  border: 1px solid var(--divider);
+  border-radius: var(--r-md);
+  background: var(--surface-tile);
 }
 
 .headline-value {

@@ -461,11 +461,19 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-auto-flow: row dense;
+    // Engere Abstände im Raster: zwei Spalten nebeneinander brauchen keine 14px Luft rundum, und
+    // jede gesparte Zeile zeigt mehr Statistik je Bildschirm (Rückmeldung des Users, 21.10.2026).
+    --dash-gap: var(--sp-3);
     // Karten einer Reihe gleich hoch - sonst stünde neben einer kurzen Karte ein Loch.
     align-items: stretch;
 
     > * {
       grid-column: 1 / -1;
+    }
+
+    > section.glass-card {
+      margin: var(--dash-gap);
+      padding: 14px 16px;
     }
 
     > section.glass-card,

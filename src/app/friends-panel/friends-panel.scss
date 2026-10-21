@@ -145,6 +145,25 @@ h3 {
   }
 }
 
+// Pokal unten rechts auf dem Commander-Bild eines Siegs.
+.news-visual {
+  position: relative;
+}
+
+.news-trophy {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--surface-sheet);
+  color: var(--gold);
+  font-size: 0.85rem;
+}
+
 .news-body {
   display: grid;
   gap: 2px;
