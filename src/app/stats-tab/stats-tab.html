@@ -228,7 +228,26 @@
     </li>
     }
   </ul>
-  } @if (!deckComparisonAvailable()) {
+  } }
+</section>
+
+
+<!-- Gewählter Spieler: erst das Allgemeine (Kennzahlen, Spiel-Analysen), dann Decks und Commander. -->
+@if (selectedPlayer() && playerTotalGames() > 0) {
+<app-performance-stats
+  [matches]="filteredMatches()"
+  [player]="selectedPlayer()"
+  part="summary"
+/>
+<app-match-insights
+  [matches]="filteredMatches()"
+  [player]="selectedPlayer()"
+  [allMatches]="reviewMatches()"
+  [profileIds]="mtg.playerUserIds()"
+/>
+<section class="glass-card">
+  <h2>{{ i18n.t('stats.decksAndCommanders') }}</h2>
+  @if (!deckComparisonAvailable()) {
   <p class="hint">{{ i18n.t('stats.chooseFormatForDecksHint') }}</p>
   } @if (deckComparisonAvailable() && playerDeckStats().length > 0) {
   <button class="glass-chip" (click)="togglePlayerDecks()">
@@ -341,23 +360,14 @@
     }
   </ul>
   }
-  } }
+  }
 </section>
-
-<!-- Performance: Gesamt, Decks, Siegarten, Gegner-Commander - nur aus gespeicherten Partien. -->
 <app-performance-stats
-  [matches]="selectedPlayer() ? filteredMatches() : viewedFilteredMatches()"
+  [matches]="filteredMatches()"
   [player]="selectedPlayer()"
+  part="lists"
 />
-
-<!-- Zugreihenfolge, Dauer, Gegner, Deck gegen Deck, Form - mit gewähltem Spieler für ihn, sonst
-     für die betrachtete Gruppe. -->
-<app-match-insights
-  [matches]="selectedPlayer() ? filteredMatches() : viewedFilteredMatches()"
-  [player]="selectedPlayer()"
-  [allMatches]="reviewMatches()"
-  [profileIds]="mtg.playerUserIds()"
-/>
+}
 
 @if (totalGames() === 0) { @if (!selectedPlayer()) {
 <section class="glass-card">
@@ -609,6 +619,25 @@
   }
   }
 </section>
+
+
+<!-- Gruppe: Kennzahlen und Spiel-Analysen vor den Deck- und Commander-Listen. -->
+<app-performance-stats
+  [matches]="viewedFilteredMatches()"
+  [player]="selectedPlayer()"
+  part="summary"
+/>
+<app-match-insights
+  [matches]="viewedFilteredMatches()"
+  [player]="selectedPlayer()"
+  [allMatches]="reviewMatches()"
+  [profileIds]="mtg.playerUserIds()"
+/>
+<app-performance-stats
+  [matches]="viewedFilteredMatches()"
+  [player]="selectedPlayer()"
+  part="lists"
+/>
 
 @if (!deckComparisonAvailable()) {
 <section class="glass-card" data-tutorial="stats-decks-commanders">

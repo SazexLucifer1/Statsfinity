@@ -135,6 +135,23 @@
     @if (knockouts().length === 0) {
       <p class="hint">{{ i18n.t('stats.insights.knockoutsEmpty') }}</p>
     } @else {
+      @if (!player()) {
+        <!-- Gruppe: wie oft jemand andere rausgeworfen hat, die Einzelheiten zugeklappt darunter. -->
+        @if (knockoutChart().length > 0) {
+          <app-bar-chart [data]="knockoutChart()" orientation="vertical" />
+        }
+        <button
+          type="button"
+          class="stat-disclosure"
+          [attr.aria-expanded]="showKnockoutDetails()"
+          (click)="showKnockoutDetails.set(!showKnockoutDetails())"
+        >
+          <span class="stat-list-title">{{ i18n.t('stats.insights.knockoutsDetails') }}</span>
+          <span class="stat-disclosure-chevron" aria-hidden="true"></span>
+        </button>
+      }
+    }
+    @if (knockouts().length > 0 && (player() || showKnockoutDetails())) {
       <ul class="rows">
         @for (k of knockouts(); track k.name) {
           <li>
@@ -228,20 +245,6 @@
               <span class="row-detail"
                 >{{ formatMinutes(c.avgMinutes) }} ·
                 {{ i18n.t('stats.insights.timedGames', { games: c.games }) }}</span
-              >
-            </li>
-          }
-        </ul>
-      }
-      @if (d.byDeck.length > 0) {
-        <p class="hint">{{ i18n.t('stats.insights.durationByDeck') }}</p>
-        <ul class="rows">
-          @for (deck of d.byDeck.slice(0, 6); track deck.label) {
-            <li>
-              <span class="row-name">{{ deck.label }}</span>
-              <span class="row-detail"
-                >{{ formatMinutes(deck.avgMinutes) }} ·
-                {{ i18n.t('stats.insights.timedGames', { games: deck.games }) }}</span
               >
             </li>
           }

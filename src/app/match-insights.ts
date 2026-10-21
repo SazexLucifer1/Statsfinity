@@ -88,7 +88,6 @@ export interface DurationStats {
   avgMinutes: number;
   longest: { match: Match; minutes: number };
   shortest: { match: Match; minutes: number };
-  byDeck: DurationGroup[];
   byPlayerCount: DurationGroup[];
 }
 
@@ -111,19 +110,8 @@ export function durationStats(
     .filter((e): e is { match: Match; minutes: number } => e.minutes !== null);
   if (timed.length === 0) return null;
 
-  const decks = new Map<string, { label: string; total: number; games: number }>();
   const counts = new Map<number, { total: number; games: number }>();
   for (const { match, minutes } of timed) {
-    for (const p of match.players) {
-      if (player && p.name !== player) continue;
-      const key = deckKey(p);
-      const label = deckLabel(p);
-      if (!key || !label) continue;
-      const entry = decks.get(key) ?? { label, total: 0, games: 0 };
-      entry.total += minutes;
-      entry.games++;
-      decks.set(key, entry);
-    }
     const n = match.players.length;
     const c = counts.get(n) ?? { total: 0, games: 0 };
     c.total += minutes;
@@ -137,10 +125,6 @@ export function durationStats(
     avgMinutes: Math.round(timed.reduce((s, e) => s + e.minutes, 0) / timed.length),
     shortest: sorted[0],
     longest: sorted[sorted.length - 1],
-    byDeck: [...decks.values()]
-      .filter((d) => d.games >= 2)
-      .map((d) => ({ label: d.label, games: d.games, avgMinutes: Math.round(d.total / d.games) }))
-      .sort((a, b) => b.avgMinutes - a.avgMinutes),
     byPlayerCount: [...counts.entries()]
       .sort(([a], [b]) => a - b)
       .map(([n, c]) => ({

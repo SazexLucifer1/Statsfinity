@@ -82,6 +82,14 @@ export class MatchInsights {
     const player = this.player();
     return player ? all.filter((k) => k.name === player) : all;
   });
+  /** Säulen der Gruppe: Rauswürfe je Spieler, rot wie ein Totenkopf im Tracker. */
+  readonly knockoutChart = computed<BarChartDatum[]>(() =>
+    this.knockouts()
+      .filter((k) => k.kills > 0)
+      .sort((a, b) => b.kills - a.kills)
+      .map((k) => ({ label: k.name, value: k.kills, color: 'var(--danger-strong)' })),
+  );
+  readonly showKnockoutDetails = signal(false);
   /** Aufgeklappte Zeile der Rangliste; mit gewähltem Spieler ist seine immer offen. */
   readonly knockoutOpen = signal<string | null>(null);
 

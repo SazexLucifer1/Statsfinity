@@ -85,7 +85,6 @@ describe('match-insights', () => {
     expect(stats.games).toBe(2);
     expect(stats.avgMinutes).toBe(45);
     expect(stats.longest.minutes).toBe(60);
-    expect(stats.byDeck).toEqual([{ label: 'Atraxa', games: 2, avgMinutes: 45 }]);
   });
 
   it('findet Nemesis und Lieblingsopfer erst ab drei gemeinsamen Partien', () => {
