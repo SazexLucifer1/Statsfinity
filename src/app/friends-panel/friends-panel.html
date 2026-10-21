@@ -136,36 +136,57 @@
         } @else {
           <ul class="news">
             @for (a of activity(); track a.kind + (a.matchId ?? a.deckId) + a.friendId) {
-              <li>
-                <span class="news-date">{{ a.happenedAt | date: 'dd.MM., HH:mm' }}</span>
-                @if (a.kind === 'match') {
-                  <span>
+              <li class="news-item">
+                <span class="news-visual" [class.news-win]="a.kind === 'match'">
+                  @if (a.kind === 'match') {
+                    <app-icon name="trophy" />
+                  } @else if (a.kind === 'cube') {
+                    <app-icon name="layers" />
+                  } @else if (a.commander) {
+                    <app-card-thumb [name]="a.commander" size="large" />
+                  } @else {
+                    <app-icon name="deck" />
+                  }
+                </span>
+                <div class="news-body">
+                  <div class="news-head">
                     <button class="link" (click)="openProfile(a.friendId)">
                       {{ a.friendName }}
                     </button>
-                    {{
-                      i18n.t(a.won ? 'profile.friends.newsWon' : 'profile.friends.newsPlayed', {
-                        mode: activityModeLabel(a),
-                        count: a.playerCount ?? 0,
-                      })
-                    }}
-                    @if (a.won) {
-                      <app-icon name="trophy" />
+                    <span class="news-date">{{ a.happenedAt | date: 'dd.MM., HH:mm' }}</span>
+                  </div>
+                  @switch (a.kind) {
+                    @case ('match') {
+                      <span>{{
+                        i18n.t('profile.friends.newsWon', {
+                          mode: activityModeLabel(a),
+                          count: a.playerCount ?? 0,
+                        })
+                      }}</span>
                     }
-                  </span>
-                } @else {
-                  <span>
-                    <button class="link" (click)="openProfile(a.friendId)">
-                      {{ a.friendName }}
-                    </button>
-                    {{ i18n.t('profile.friends.newsDeck') }}
-                    <app-card-thumb [name]="a.commander" />
-                    <button class="link" (click)="openDeck(a.deckId!)">{{ a.deckName }}</button>
-                    @if (a.commander) {
-                      <span class="hint"> · {{ a.commander }}</span>
+                    @case ('cube') {
+                      <span
+                        >{{ i18n.t('profile.friends.newsCube') }}
+                        <strong>{{ a.deckName }}</strong>
+                        <span class="hint">
+                          ·
+                          {{
+                            i18n.t('profile.friends.newsCubeCards', { count: a.playerCount ?? 0 })
+                          }}</span
+                        ></span
+                      >
                     }
-                  </span>
-                }
+                    @default {
+                      <span
+                        >{{ i18n.t('profile.friends.newsDeck') }}
+                        <button class="link" (click)="openDeck(a.deckId!)">{{ a.deckName }}</button>
+                        @if (a.commander) {
+                          <span class="hint"> · {{ a.commander }}</span>
+                        }
+                      </span>
+                    }
+                  }
+                </div>
               </li>
             }
           </ul>

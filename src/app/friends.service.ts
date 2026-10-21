@@ -26,7 +26,8 @@ export interface ProfileHit {
 }
 
 export interface FriendActivity {
-  kind: 'match' | 'deck';
+  /** 'match' nur für Siege, 'cube' trägt Cube-ID/-Name in deckId/deckName, Kartenzahl in playerCount. */
+  kind: 'match' | 'deck' | 'cube';
   happenedAt: string;
   friendId: string;
   friendName: string;
@@ -182,7 +183,10 @@ export class FriendsService {
       if (!this.fehlt(error)) console.error('Konnte Neuigkeiten nicht laden:', error);
       return [];
     }
-    return ((data ?? []) as any[]).map((r) => ({
+    // Nur Siege, neue Decks und Cubes (Wunsch des Users, 21.10.2026). Ohne
+    // sql/freunde-neuigkeiten-2026-10-21.sql liefert der Server noch jede Partie - dann hier filtern.
+    const rows = ((data ?? []) as any[]).filter((r) => r.kind !== 'match' || r.won);
+    return rows.map((r) => ({
       kind: r.kind,
       happenedAt: r.happened_at,
       friendId: r.friend_id,
