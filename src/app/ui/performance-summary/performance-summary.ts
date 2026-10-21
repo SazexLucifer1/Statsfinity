@@ -6,7 +6,7 @@ import {
   WinConditionCount,
 } from '../../match-insights';
 import { InfoToggle } from '../info-toggle/info-toggle';
-import { Meter } from '../meter/meter';
+import { BarChart, BarChartDatum } from '../bar-chart/bar-chart';
 
 /** Platzhalter für einen fehlenden Wert - nie null, NaN oder eine erfundene 0. */
 export const NO_VALUE = '—';
@@ -69,7 +69,7 @@ interface Fact {
  */
 @Component({
   selector: 'app-performance-summary',
-  imports: [InfoToggle, Meter],
+  imports: [InfoToggle, BarChart],
   templateUrl: './performance-summary.html',
   styleUrl: './performance-summary.scss',
 })
@@ -149,5 +149,12 @@ export class PerformanceSummaryView {
 
   /** Nur Siegarten mit Treffern, "Unbekannt" zuletzt - Nullzeilen wären reines Rauschen. */
   readonly conditions = computed(() => (this.winConditions() ?? []).filter((w) => w.count > 0));
-  readonly conditionMax = computed(() => Math.max(0, ...this.conditions().map((w) => w.count)));
+  /** Siegarten als Balkendiagramm - "Anderes" (ohne Angabe) leiser, es ist eine Lücke, kein Ergebnis. */
+  readonly conditionChart = computed<BarChartDatum[]>(() =>
+    this.conditions().map((w) => ({
+      label: this.i18n.t('stats.winCondition.' + w.condition),
+      value: w.count,
+      ...(w.condition === 'other' ? { color: 'var(--series-neutral)' } : {}),
+    })),
+  );
 }

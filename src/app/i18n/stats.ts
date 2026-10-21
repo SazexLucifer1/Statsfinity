@@ -182,13 +182,15 @@ export const stats = {
     'stats.distinctCommandersCount': '{{count}} verschiedene Commander',
     'stats.ranking': 'Spieler-Rangliste',
     'stats.notEnoughGamesForRanking':
-      'Noch niemand hat genug Spiele für die Rangliste – siehe Qualifikation unten.',
+      'Noch niemand hat genug Spiele für die Rangliste – ab wann man drin ist, steht im ⓘ.',
     'stats.notEnoughGamesForRankingDecks':
-      'Noch nichts hat genug Spiele für die Rangliste – siehe Qualifikation unten.',
+      'Noch nichts hat genug Spiele für die Rangliste – ab wann man drin ist, steht im ⓘ.',
     'stats.previousPage': 'Vorherige Seite',
     'stats.nextPage': 'Nächste Seite',
     'stats.of': 'von',
     'stats.gamesUntilQualification': 'Spiele bis zur Qualifikation',
+    'stats.qualificationInfoAria': 'Ab wann man in der Rangliste steht',
+    'stats.deckQualificationHint': 'Ab {{threshold}} Spielen (in diesem Zeitraum/Modus) erscheinen Decks und Commander in der Rangliste.',
     'stats.qualificationHint':
       'Ab {{threshold}} Spielen (in diesem Zeitraum/Modus) erscheinen Spieler in der Rangliste.',
     'stats.stillNeeded': 'noch {{count}}',
@@ -456,13 +458,15 @@ export const stats = {
     'stats.distinctCommandersCount': '{{count}} distinct commanders',
     'stats.ranking': 'Player ranking',
     'stats.notEnoughGamesForRanking':
-      'No one has enough games for the ranking yet – see qualification below.',
+      'No one has enough games for the ranking yet – the ⓘ says from when you appear.',
     'stats.notEnoughGamesForRankingDecks':
-      'Nothing has enough games for the ranking yet – see qualification below.',
+      'Nothing has enough games for the ranking yet – the ⓘ says from when it appears.',
     'stats.previousPage': 'Previous page',
     'stats.nextPage': 'Next page',
     'stats.of': 'of',
     'stats.gamesUntilQualification': 'Games until qualification',
+    'stats.qualificationInfoAria': 'When you appear in the ranking',
+    'stats.deckQualificationHint': 'From {{threshold}} games (in this period/mode) decks and commanders appear in the ranking.',
     'stats.qualificationHint':
       'From {{threshold}} games (in this period/mode) players appear in the ranking.',
     'stats.stillNeeded': '{{count}} more',

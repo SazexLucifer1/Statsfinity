@@ -153,8 +153,10 @@
   <section class="glass-card performance">
     <h2>{{ i18n.t('stats.performance.decksTitle') }}</h2>
     @if (decks().length > 0) {
-      <ul class="stat-list">
-        @for (d of visibleDecks(); track d.key) {
+      <!-- Alle Decks in einem scrollbaren Bereich statt "Alle anzeigen" mit endloser Liste
+           (Rückmeldung des Users, 21.10.2026) - der Kasten bleibt so hoch wie sein Nachbar. -->
+      <ul class="stat-list stat-list-scroll">
+        @for (d of decks(); track d.key) {
           <li class="stat-list-row">
             <app-card-thumb [name]="d.commander" size="large" />
             <div class="stat-list-main">
@@ -172,15 +174,6 @@
           </li>
         }
       </ul>
-      @if (decks().length > PREVIEW) {
-        <button class="glass-chip small stat-list-more" (click)="showAllDecks.set(!showAllDecks())">
-          {{
-            showAllDecks()
-              ? i18n.t('stats.insights.showLess')
-              : i18n.t('stats.insights.showAll', { count: decks().length })
-          }}
-        </button>
-      }
     }
 
     @if (commandersWithoutDeck().length > 0) {
@@ -229,8 +222,8 @@
       <h2 info-title>{{ i18n.t('stats.performance.matchupsTitle') }}</h2>
       <p class="hint">{{ i18n.t('stats.performance.matchupsInfo') }}</p>
     </app-info-toggle>
-    <ul class="stat-list">
-      @for (m of visibleMatchups(); track m.label) {
+    <ul class="stat-list stat-list-scroll">
+      @for (m of matchups(); track m.label) {
         <li class="stat-list-row">
           <app-card-thumb [name]="m.commander ?? m.label" size="large" />
           <div class="stat-list-main">
@@ -245,17 +238,5 @@
         </li>
       }
     </ul>
-    @if (matchups().length > PREVIEW) {
-      <button
-        class="glass-chip small stat-list-more"
-        (click)="showAllMatchups.set(!showAllMatchups())"
-      >
-        {{
-          showAllMatchups()
-            ? i18n.t('stats.insights.showLess')
-            : i18n.t('stats.insights.showAll', { count: matchups().length })
-        }}
-      </button>
-    }
   </section>
 }

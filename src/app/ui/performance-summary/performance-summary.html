@@ -40,19 +40,19 @@
     }
     <p class="hint">{{ i18n.t('stats.performance.averagesInfo') }}</p>
   </app-info-toggle>
-  <dl class="facts">
+  <!-- Dieselben Kacheln wie die Kennzahlen oben (Rückmeldung des Users, 21.10.2026: vorher eine
+       Liste in einer Schriftgröße, die wie hingeklatscht wirkte). -->
+  <div class="headline facts">
     @for (f of facts(); track f.label) {
-      <div class="fact" [class.missing]="f.missing">
-        <dt>{{ f.label }}</dt>
-        <dd>
-          <span class="fact-value">{{ f.value }}</span>
-          @if (f.missing) {
-            <span class="fact-basis">{{ f.basis }}</span>
-          }
-        </dd>
+      <div class="headline-item" [class.missing]="f.missing">
+        <span class="headline-value">{{ f.value }}</span>
+        <span class="headline-label">{{ f.label }}</span>
+        @if (f.missing) {
+          <span class="fact-basis">{{ f.basis }}</span>
+        }
       </div>
     }
-  </dl>
+  </div>
 }
 
 <!-- 3. Siegarten: schlichte Liste mit dünnem Balken. -->
@@ -64,19 +64,6 @@
   @if (conditions().length === 0) {
     <p class="empty">{{ i18n.t('stats.performance.noData') }}</p>
   } @else {
-    <ul class="conditions">
-      @for (w of conditions(); track w.condition) {
-        <li [class.unknown]="w.condition === 'other'">
-          <span class="condition-label">{{ i18n.t('stats.winCondition.' + w.condition) }}</span>
-          <span class="condition-count">{{ w.count }}</span>
-          <app-meter
-            class="condition-bar"
-            [value]="w.count"
-            [max]="conditionMax()"
-            color="color-mix(in srgb, var(--accent) 60%, transparent)"
-          />
-        </li>
-      }
-    </ul>
+    <app-bar-chart [data]="conditionChart()" labelWidth="130px" />
   }
 }

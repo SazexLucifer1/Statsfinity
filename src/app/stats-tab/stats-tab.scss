@@ -342,50 +342,6 @@
     opacity: 0.75;
   }
 }
-.qualification {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-
-  li {
-    // Grid statt Flex: Name, Zähler und "noch X nötig" in der ersten Zeile, der Fortschrittsbalken
-    // darunter über die volle Breite. Als Flex-Zeile waren die beiden rechten Spalten
-    // white-space: nowrap und flex: 0 0 auto, konnten also nicht schrumpfen - auf schmalen Handys
-    // drückten sie den Namen zusammen.
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
-    align-items: center;
-    gap: var(--sp-2) var(--sp-3);
-    padding: var(--sp-4) 0;
-    border-bottom: 1px solid var(--divider);
-
-    &:last-child {
-      border-bottom: none;
-    }
-  }
-
-  app-meter {
-    grid-column: 1 / -1;
-  }
-
-  .name {
-    font-weight: 600;
-    min-width: 0;
-  }
-
-  .detail {
-    font-size: 0.82rem;
-    opacity: 0.75;
-    white-space: nowrap;
-  }
-
-  .needed {
-    font-weight: 700;
-    color: var(--gold);
-    font-size: 0.85rem;
-    white-space: nowrap;
-  }
-}
 
 // Gruppenweite Farbkombinationen: mehrspaltiges Zeilenraster wie im Profil-Tab (dort .combo-grid,
 // siehe profile-tab.scss) - Angular kapselt Komponenten-Styles, eine gemeinsame Datei für dieses
@@ -498,5 +454,15 @@
       background: rgba(255, 255, 255, 0.05);
       border: 1px solid var(--glass-border);
     }
+  }
+}
+
+// Lieblingsfarben (Radar) links, Farbkombinationen rechts - ab Desktop nebeneinander.
+@include bp.up(lg) {
+  .colors-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+    gap: var(--sp-7);
+    align-items: start;
   }
 }
