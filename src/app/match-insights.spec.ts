@@ -27,7 +27,7 @@ import {
   placementOf,
   winConditionStats,
 } from './match-insights';
-import { ARCHENEMY_OTHERS, DRAW } from './match-utils';
+import { ARCHENEMY_OTHERS, DRAW, IMPORT_LOSS_PLACEHOLDER } from './match-utils';
 import { GameMode, Match, MatchPlayer } from './models';
 
 let id = 0;
@@ -69,7 +69,7 @@ describe('match-insights', () => {
     ]);
   });
 
-  it('verwirft unplausible Spieldauern und rechnet den Schnitt je Deck ab zwei Partien', () => {
+  it('verwirft unplausible Spieldauern', () => {
     expect(
       durationMinutes({ date: '2026-08-01T20:01:00Z', startedAt: '2026-08-01T20:00:00Z' }),
     ).toBeNull();
@@ -471,4 +471,50 @@ describe('match-insights: Performance', () => {
     expect(deckVersionStats([old], 'atraxa')[0].version).toBeNull();
   });
 
+  describe('Excel-Import: je Partie ein Datensatz je Spieler', () => {
+    // Wie die Rionya-Partien vom Cube-Abend: 1 Sieg, 5 Niederlagen, jeder Datensatz mit genau einem
+    // Spieler. Die Sieger der fünf verlorenen Partien haben je einen eigenen Sieg-Datensatz.
+    const rionya = (extra: Partial<MatchPlayer> = {}) =>
+      p('Fabian', { commander: 'Rionya, Fire Dancer', deckId: 'rionya', ...extra });
+    const imported = { date: '2026-01-01T00:00:00Z' };
+    const importMatches = () => [
+      match('Fabian', [rionya()], imported),
+      ...Array.from({ length: 5 }, () => match(IMPORT_LOSS_PLACEHOLDER, [rionya()], imported)),
+      ...Array.from({ length: 5 }, () => match('Theodor', [p('Theodor')], imported)),
+    ];
+
+    it('zählt Import-Niederlagen für Person, Deck und Commander', () => {
+      const matches = importMatches();
+      const summary = performanceSummary(matches, pickPlayer('Fabian'));
+      expect([summary.games, summary.wins]).toEqual([6, 1]);
+      const deck = deckPerformance(matches, 'Fabian').find((d) => d.deckId === 'rionya')!;
+      expect([deck.summary.games, deck.summary.wins]).toEqual([6, 1]);
+      expect(commanderRecords(matches, 'Fabian')).toEqual([
+        { commander: 'Rionya, Fire Dancer', games: 6, wins: 1 },
+      ]);
+      expect(peopleRecords(matches, ['Fabian'])[0]).toMatchObject({ games: 6, wins: 1 });
+      expect(recentForm(matches, 'Fabian').filter((f) => f.result === 'L')).toHaveLength(5);
+      expect(monthlyWinRate(matches, 'Fabian')[0]).toMatchObject({ games: 6, wins: 1 });
+      expect(yearReview(matches, 'Fabian', 2026)).toMatchObject({ games: 6, wins: 1 });
+      expect(deckVersionStats(matches, 'rionya')[0].summary.games).toBe(6);
+    });
+
+    it('zählt Import-Niederlagen nicht als eigene Partie der Gruppe', () => {
+      const matches = importMatches();
+      // 6 echte Partien: Fabians Sieg und die fünf Siege von Theodor.
+      expect(overallSummary(matches).games).toBe(6);
+      expect(monthlyGames(matches, 'Fabian')[0]).toEqual({ month: '2026-01', games: 6, total: 6 });
+      const counted = winConditionStats(matches).reduce((sum, w) => sum + w.count, 0);
+      expect(counted).toBe(6);
+    });
+
+    it('lässt einen Verlierer-Datensatz mit mehreren Spielern als Duplikat weg', () => {
+      const matches = [
+        match('Fabian', [rionya(), p('Theodor')]),
+        match(IMPORT_LOSS_PLACEHOLDER, [rionya(), p('Theodor')]),
+      ];
+      const summary = performanceSummary(matches, pickPlayer('Fabian'));
+      expect([summary.games, summary.wins]).toEqual([1, 1]);
+    });
+  });
 });

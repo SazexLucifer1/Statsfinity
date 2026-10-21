@@ -16,7 +16,7 @@ import { DeckService, CardAndColorStats, DeckOwner } from '../deck.service';
 import { CardPreviewService } from '../card-preview.service';
 import { DECK_FORMATS, GameMode, Match } from '../models';
 import { PersonMatches, didWin, headToHeadRecord, mergePeopleMatches } from '../match-insights';
-import { isImportLossDuplicate } from '../match-utils';
+import { countsForPlayers } from '../match-utils';
 import { colorComboLabel, colorRadarData, sortColors } from '../color-combo-names';
 import { splitPodium } from '../rank-sort';
 import { PerformanceStats } from '../performance-stats/performance-stats';
@@ -205,7 +205,7 @@ export class PersonalStats {
     const name = this.person().name;
     const stats = new Map<GameMode, { games: number; wins: number }>();
     for (const m of this.personMatches()) {
-      if (isImportLossDuplicate(m) && m.players.length > 1) continue;
+      if (!countsForPlayers(m)) continue;
       const entry = stats.get(m.mode) ?? { games: 0, wins: 0 };
       entry.games++;
       if (didWin(m, name)) entry.wins++;

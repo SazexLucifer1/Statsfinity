@@ -13,9 +13,25 @@ export const DRAW = '__DRAW__';
 export const IMPORT_LOSS_PLACEHOLDER = 'Unbekannt (Import)';
 export const IMPORT_ARCHENEMY_LOSS_PLACEHOLDER = 'Archenemy (Import)';
 
-/** true = Verlierer-Duplikat eines Excel-Imports (keine eigenständige Partie). */
+/**
+ * true = Verlierer-Datensatz eines Excel-Imports. Für das ZÄHLEN VON PARTIEN keine eigene Partie
+ * (die Partie steht schon über den Datensatz des Siegers da) - für die Bilanz einer Person aber
+ * sehr wohl, siehe countsForPlayers().
+ */
 export function isImportLossDuplicate(match: Pick<Match, 'winner'>): boolean {
   return match.winner === IMPORT_LOSS_PLACEHOLDER || match.winner === IMPORT_ARCHENEMY_LOSS_PLACEHOLDER;
+}
+
+/**
+ * true = zählt für die Bilanz der Spieler darin (Person, Deck, Commander). Der Excel-Import hat
+ * jede Partie in Datensätze mit je EINEM Spieler zerlegt: einen für den Sieger, einen je Verlierer.
+ * Ein Verlierer-Datensatz ist damit die einzige Spur dieser Niederlage - ohne ihn stünde jeder
+ * Import-Spieler nur mit seinen Siegen da (geprüft 21.10.2026: Winraten von 60-80 % statt 20-35 %).
+ * Nur wo Partien gezählt werden ("Spiele gesamt", Siegarten der Gruppe), bleibt er draußen.
+ * Ein Verlierer-Datensatz mit mehreren Spielern wäre ein echtes Duplikat und zählt nicht.
+ */
+export function countsForPlayers(match: Pick<Match, 'winner' | 'players'>): boolean {
+  return !isImportLossDuplicate(match) || match.players.length === 1;
 }
 
 /**
