@@ -1,3 +1,5 @@
+@use '../../styles/breakpoints' as bp;
+
 :host {
   display: flex;
   flex-direction: column;
@@ -60,4 +62,34 @@
 app-meter {
   display: block;
   margin-top: 4px;
+}
+
+// Desktop: Dashboard aus zwei Spalten wie die Gruppenstatistik (Rückmeldung des Users, 21.10.2026:
+// jede Statistik über die volle Breite verschenkt Platz). Kopf, Umschalter und Match-Verlauf
+// gehen über die ganze Breite, alles andere teilt sich die Spalten.
+@include bp.up(lg) {
+  :host {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-flow: row dense;
+    // Kästen einer Reihe gleich hoch, ausgerichtet am höchsten (Rückmeldung des Users, 21.10.2026).
+    align-items: stretch;
+    gap: 0;
+
+    > .combo-card,
+    > .person-head,
+    > .weight-toggle,
+    > section:last-child {
+      grid-column: 1 / -1;
+    }
+  }
+}
+
+// Farbkombinationen über die ganze Breite, die Liste unter dem Podest zweispaltig.
+@include bp.up(lg) {
+  .combo-card .stat-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--sp-7);
+  }
 }

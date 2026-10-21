@@ -174,7 +174,8 @@ export class CardDataService {
    * gefüllte Analysen, wenn Scryfall mit 429 still Chunks verschluckt. Schlüssel: voller Name klein
    * (wie dort), nachgeschlagen über den normalisierten Vorderseiten-Namen.
    */
-  async findCardsBulk(cardNames: string[]): Promise<Map<string, ScryfallCard>> {
+  /** `failed` sammelt Namen, deren Scryfall-Abfrage scheiterte (z. B. gedrosselt) - nicht "gibt es nicht". */
+  async findCardsBulk(cardNames: string[], failed?: Set<string>): Promise<Map<string, ScryfallCard>> {
     const result = new Map<string, ScryfallCard>();
     const unique = [...new Set(cardNames.map((n) => n.trim()).filter(Boolean))];
     if (unique.length === 0) return result;
@@ -194,7 +195,7 @@ export class CardDataService {
           'Kartendaten konnten nicht geladen werden, Rückfall auf Scryfall:',
           error.message,
         );
-        return this.scryfall.findCardsBulk(unique);
+        return this.scryfall.findCardsBulk(unique, failed);
       }
 
       for (const row of (data ?? []) as unknown as Record<string, unknown>[]) {
@@ -206,7 +207,9 @@ export class CardDataService {
     // Was der nächtliche Abgleich noch nicht kennt (frische Spoiler), kommt weiterhin live dazu.
     const fehlend = unique.filter((name) => !result.has(name.toLowerCase()));
     if (fehlend.length > 0) {
-      for (const [key, card] of await this.scryfall.findCardsBulk(fehlend)) result.set(key, card);
+      for (const [key, card] of await this.scryfall.findCardsBulk(fehlend, failed)) {
+        result.set(key, card);
+      }
     }
 
     // Die Tabelle kennt nur englische Bilder; bei anderer Artwork-Sprache gebündelt tauschen.

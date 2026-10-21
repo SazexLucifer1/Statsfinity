@@ -105,6 +105,21 @@ export class App {
   readonly appVersion = APP_VERSION;
   readonly appCommit = APP_COMMIT;
 
+  /**
+   * Der gerade sichtbare Tab für den Seitentitel auf dem Handy (app.html) - null, solange eine
+   * eigene Seite (Deck, Sammlung, Cube, Turnier) darüber liegt; dann steht dort "Statsfinity".
+   */
+  readonly currentTab = computed(() => {
+    if (
+      this.deckViewer.state.viewingDeck() ||
+      this.collection.view() ||
+      this.cubeService.view() ||
+      this.tournament.panelExpanded()
+    )
+      return null;
+    return this.tabs.find((t) => t.id === this.navigation.activeTab()) ?? null;
+  });
+
   readonly tabs: { id: AppTab; labelKey: string; icon: IconName }[] = [
     { id: 'match', labelKey: 'nav.match', icon: 'swords' },
     { id: 'search', labelKey: 'nav.search', icon: 'search' },

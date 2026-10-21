@@ -3,7 +3,16 @@
 <app-reset-password />
 } @else {
   <header class="app-header">
-    <h1>Statsfinity <span class="app-version-badge" [title]="appCommit">{{ appVersion }}</span></h1>
+    <!-- Auf dem Handy steht hier der Name des Tabs (Wunsch des Users, 21.10.2026: man soll ohne
+         Blick auf die Leiste unten sehen, wo man ist). Ab Tablet zeigt das die Leiste oben, dort
+         bleibt der App-Name. -->
+    <h1>
+      <span class="brand">Statsfinity</span>
+      @if (currentTab(); as tab) {
+        <span class="page-title"><app-icon [name]="tab.icon" /> {{ i18n.t(tab.labelKey) }}</span>
+      }
+      <span class="app-version-badge" [title]="appCommit">{{ appVersion }}</span>
+    </h1>
     <div class="header-actions" data-tutorial="header-actions">
       <!-- Erklärt den gerade sichtbaren Bildschirm (TutorialService.currentScreenTutorial) - statt
            einer Tour, die beim ersten Besuch ungefragt über allem liegt. -->
@@ -39,47 +48,9 @@
     </div>
   </header>
 
-<main class="content">
-  @if (deckViewer.state.viewingDeck()) {
-  <!-- Die Deck-Detailansicht ist eine eigene Seite im Inhaltsbereich statt eines Vollbild-Popups:
-       so scrollt nur das Fenster selbst (statt Seite + Overlay gleichzeitig) und der App-Hintergrund
-       bleibt wie in den Tabs sichtbar. -->
-  <app-deck-detail-view />
-  } @else if (collection.view()) {
-  <!-- Die Sammlung ist wie die Deck-Ansicht eine eigene Seite (collection-view/). -->
-  <app-collection-view />
-  } @else if (cubeService.view()) {
-  <!-- Cube-Builder, ebenfalls eine eigene Seite (cube-view/). -->
-  <app-cube-view />
-  } @else if (tournament.panelExpanded()) {
-  <app-tournament-panel />
-  } @else {
-  @switch (navigation.activeTab()) { @case ('match') {
-  <app-match-tab />
-  } @case ('search') {
-  <app-search-tab />
-  } @case ('stats') {
-  @if (auth.currentUser()) { <app-stats-tab /> } @else { <app-global-stats /> }
-  } @case ('group') {
-  @if (auth.currentUser()) { <app-group-tab /> } @else { <app-login-required [message]="i18n.t('loginRequired.group')" /> }
-  } @case ('profile') {
-  <!-- Ein FREMDES Profil (etwa über „von …“ in der Deck-Suche) ist auch ohne Login lesbar, das eigene nicht. -->
-  @if (auth.currentUser() || profiles.viewingUserId()) { <app-profile-tab /> } @else { <app-login-required [message]="i18n.t('loginRequired.profile')" /> }
-  } }
-  }
-</main>
-
-<app-ingame-tracker />
-<app-goldfish-tracker />
-<app-deck-import-dialogs />
-<app-deck-pdf-dialog />
-<app-manual-deck-link-dialog />
-<app-tutorial-overlay />
-<app-feedback-dialog />
-<app-placement-dialog />
-<app-dialog />
-
-<!-- In der Deck-Detailansicht ausgeblendet: sie ist eine eigene Seite, verlassen wird sie über
+<!-- Steht vor dem Inhalt: ab Tablet-Breite ist sie die Leiste OBEN (app.scss), auf dem Handy
+     schwebt sie weiter unten (position: fixed - dort ist ihr Platz im Dokument egal).
+     In der Deck-Detailansicht ausgeblendet: sie ist eine eigene Seite, verlassen wird sie über
      "Zurück" bzw. die Zurück-Geste - die Leiste würde dort nur Platz kosten und über den Inhalt
      ragen. Der Tutorial-Schritt zur Leiste steckt im Intro-Rundgang, der ohne offenes Deck läuft. -->
 @if (!deckViewer.state.viewingDeck() && !collection.view() && !cubeService.view()) {
@@ -125,6 +96,47 @@
   }
 </nav>
 }
+
+<main class="content">
+  @if (deckViewer.state.viewingDeck()) {
+  <!-- Die Deck-Detailansicht ist eine eigene Seite im Inhaltsbereich statt eines Vollbild-Popups:
+       so scrollt nur das Fenster selbst (statt Seite + Overlay gleichzeitig) und der App-Hintergrund
+       bleibt wie in den Tabs sichtbar. -->
+  <app-deck-detail-view />
+  } @else if (collection.view()) {
+  <!-- Die Sammlung ist wie die Deck-Ansicht eine eigene Seite (collection-view/). -->
+  <app-collection-view />
+  } @else if (cubeService.view()) {
+  <!-- Cube-Builder, ebenfalls eine eigene Seite (cube-view/). -->
+  <app-cube-view />
+  } @else if (tournament.panelExpanded()) {
+  <app-tournament-panel />
+  } @else {
+  @switch (navigation.activeTab()) { @case ('match') {
+  <app-match-tab />
+  } @case ('search') {
+  <app-search-tab />
+  } @case ('stats') {
+  @if (auth.currentUser()) { <app-stats-tab /> } @else { <app-global-stats /> }
+  } @case ('group') {
+  @if (auth.currentUser()) { <app-group-tab /> } @else { <app-login-required [message]="i18n.t('loginRequired.group')" /> }
+  } @case ('profile') {
+  <!-- Ein FREMDES Profil (etwa über „von …“ in der Deck-Suche) ist auch ohne Login lesbar, das eigene nicht. -->
+  @if (auth.currentUser() || profiles.viewingUserId()) { <app-profile-tab /> } @else { <app-login-required [message]="i18n.t('loginRequired.profile')" /> }
+  } }
+  }
+</main>
+
+<app-ingame-tracker />
+<app-goldfish-tracker />
+<app-deck-import-dialogs />
+<app-deck-pdf-dialog />
+<app-manual-deck-link-dialog />
+<app-tutorial-overlay />
+<app-feedback-dialog />
+<app-placement-dialog />
+<app-dialog />
+
 <app-legal-footer [class.without-tab-bar]="deckViewer.state.viewingDeck()" />
 }
 

@@ -342,50 +342,6 @@
     opacity: 0.75;
   }
 }
-.qualification {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-
-  li {
-    // Grid statt Flex: Name, Zähler und "noch X nötig" in der ersten Zeile, der Fortschrittsbalken
-    // darunter über die volle Breite. Als Flex-Zeile waren die beiden rechten Spalten
-    // white-space: nowrap und flex: 0 0 auto, konnten also nicht schrumpfen - auf schmalen Handys
-    // drückten sie den Namen zusammen.
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
-    align-items: center;
-    gap: var(--sp-2) var(--sp-3);
-    padding: var(--sp-4) 0;
-    border-bottom: 1px solid var(--divider);
-
-    &:last-child {
-      border-bottom: none;
-    }
-  }
-
-  app-meter {
-    grid-column: 1 / -1;
-  }
-
-  .name {
-    font-weight: 600;
-    min-width: 0;
-  }
-
-  .detail {
-    font-size: 0.82rem;
-    opacity: 0.75;
-    white-space: nowrap;
-  }
-
-  .needed {
-    font-weight: 700;
-    color: var(--gold);
-    font-size: 0.85rem;
-    white-space: nowrap;
-  }
-}
 
 // Gruppenweite Farbkombinationen: mehrspaltiges Zeilenraster wie im Profil-Tab (dort .combo-grid,
 // siehe profile-tab.scss) - Angular kapselt Komponenten-Styles, eine gemeinsame Datei für dieses
@@ -435,10 +391,6 @@
   @include bp.up(md) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-
-  @include bp.up(lg) {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
 }
 
 // Obergrenze für die Inhaltsbreite dieses Tabs.
@@ -451,6 +403,39 @@
   display: block;
   max-width: var(--content-measure);
   margin: 0 auto;
+}
+
+// Desktop: Dashboard aus zwei Spalten, die Abschnitte füllen die Lücken (dense). Umschalter,
+// Filter und alles, was eine eigene Seite ist (Persönlich, Freunde, Global, Turniere), gehen
+// über die ganze Breite.
+@include bp.up(lg) {
+  :host {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-flow: row dense;
+    // Karten einer Reihe gleich hoch - sonst stünde neben einer kurzen Karte ein Loch.
+    align-items: stretch;
+
+    > * {
+      grid-column: 1 / -1;
+    }
+
+    > section.glass-card,
+    > app-performance-stats,
+    > app-match-insights {
+      grid-column: auto;
+    }
+
+    // Filter, der aufklappbare Head-to-Head (zugeklappt nur eine Zeile, gestreckt wäre er ein leerer
+    // Kasten) und die Danger Zone über die ganze Breite.
+    // Farbkombinationen über die ganze Breite, zwei je Reihe (Rückmeldung des Users, 21.10.2026).
+    > section.combo-section,
+    > section[data-tutorial='stats-filters'],
+    > section[data-tutorial='stats-h2h'],
+    > section.danger-zone {
+      grid-column: 1 / -1;
+    }
+  }
 }
 
 // Ab Tablet passen mehrere Einträge nebeneinander - dasselbe Muster wie die Deck-Liste im Profil
@@ -469,5 +454,15 @@
       background: rgba(255, 255, 255, 0.05);
       border: 1px solid var(--glass-border);
     }
+  }
+}
+
+// Lieblingsfarben (Radar) links, Farbkombinationen rechts - ab Desktop nebeneinander.
+@include bp.up(lg) {
+  .colors-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+    gap: var(--sp-7);
+    align-items: start;
   }
 }

@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DecimalPipe, CurrencyPipe } from '@angular/common';
 import { PreconService, PreconSummary } from '../precon.service';
@@ -12,6 +12,7 @@ import { normalizeCardName } from '../array-utils';
 import { BarChart } from '../ui/bar-chart/bar-chart';
 import { ColorFilter } from '../ui/color-filter/color-filter';
 import { ReadonlyDeckAnalysis, ReadonlyDeckEntry } from '../deck-analyse';
+import { CardThumb } from '../ui/card-thumb/card-thumb';
 
 /**
  * Precons (MTGJSON) nach Jahr und Name durchsuchen und lesend ansehen, auch ohne Account.
@@ -19,7 +20,16 @@ import { ReadonlyDeckAnalysis, ReadonlyDeckEntry } from '../deck-analyse';
  */
 @Component({
   selector: 'app-precon-browser',
-  imports: [FormsModule, CardImage, PartnerCardImage, DecimalPipe, CurrencyPipe, BarChart, ColorFilter],
+  imports: [
+    FormsModule,
+    CardImage,
+    PartnerCardImage,
+    DecimalPipe,
+    CurrencyPipe,
+    BarChart,
+    ColorFilter,
+    CardThumb,
+  ],
   templateUrl: './precon-browser.html',
   styleUrl: './precon-browser.scss',
 })
@@ -52,11 +62,35 @@ export class PreconBrowser {
   readonly totalDeckPrice = signal<number | null>(null);
   readonly priceBusy = signal(false);
 
+  /** Jahre mit Precons, neueste zuerst - für das Auswahlfeld. */
+  readonly years = signal<number[]>([]);
+  /** Commander je Precon (Dateiname) für das Bild der Kachel; fehlt = wird noch geladen. */
+  readonly commanders = signal<Record<string, string[]>>({});
+
   constructor() {
     this.searchPrecons();
+    void this.precon.getAllPrecons().then((all) => {
+      const years = [...new Set(all.map((p) => p.releaseYear))].sort((a, b) => b - a);
+      this.years.set(years);
+    });
+
+    // Commander der sichtbaren Precons nachladen (je Gerät nur einmal, siehe PreconService).
+    effect(() => {
+      for (const p of this.filteredPrecons()) {
+        if (this.commanders()[p.fileName]) continue;
+        void this.precon.commandersOf(p.fileName).then((names) =>
+          this.commanders.update((map) => ({ ...map, [p.fileName]: names })),
+        );
+      }
+    });
   }
 
-  setYear(value: string): void {
+  commanderOf(p: PreconSummary): string | null {
+    const names = this.commanders()[p.fileName];
+    return names?.length ? names.join(' + ') : null;
+  }
+
+  setYear(value: number | string): void {
     const year = Number(value);
     if (Number.isNaN(year)) return;
     this.year.set(year);

@@ -1,3 +1,8 @@
+// Die Kästen sind direkt Teil des umgebenden Rasters (Statistik-Dashboard).
+:host {
+  display: contents;
+}
+
 // Kopf wie die übrigen Karten im Statistik-Tab: Überschrift links, Aufklapp-Winkel rechts. Die
 // ganze Zeile ist die Trefferfläche.
 .perf-header {
@@ -31,4 +36,12 @@
 
 app-performance-summary {
   margin-top: var(--sp-4);
+}
+
+// Lange Listen (Decks, Gegen Commander) scrollen in sich, der Kasten wächst nicht endlos.
+.stat-list-scroll {
+  max-height: 420px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: var(--sp-2);
 }

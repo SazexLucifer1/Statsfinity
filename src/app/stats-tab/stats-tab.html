@@ -394,7 +394,12 @@
 
 <!-- NEU -->
 <section class="glass-card" data-tutorial="stats-ranking">
-  <h2>{{ i18n.t('stats.ranking') }}</h2>
+  <!-- Ab wann man in der Rangliste steht, sagt das ⓘ - ein eigener Abschnitt "Spiele bis zur
+       Qualifikation" ist entfallen (Rückmeldung des Users, 21.10.2026). -->
+  <app-info-toggle [label]="i18n.t('stats.qualificationInfoAria')">
+    <h2 info-title>{{ i18n.t('stats.ranking') }}</h2>
+    <p class="hint">{{ i18n.t('stats.qualificationHint', { threshold: qualificationThreshold() }) }}</p>
+  </app-info-toggle>
   <div class="segmented sort-toggle">
     <button [class.active]="playerSortMode() === 'winRate'" (click)="playerSortMode.set('winRate')">{{ i18n.t('sort.winRate') }}</button>
     <button [class.active]="playerSortMode() === 'wins'" (click)="playerSortMode.set('wins')">{{ i18n.t('sort.wins') }}</button>
@@ -427,38 +432,6 @@
     (pageChange)="playerPage.set($event)"
   />
 </section>
-
-@if (playersInQualification().length > 0) {
-<section class="glass-card">
-  <h2>{{ i18n.t('stats.gamesUntilQualification') }}</h2>
-  <p class="hint">
-    {{ i18n.t('stats.qualificationHint', { threshold: qualificationThreshold() }) }}
-  </p>
-  <button class="glass-chip" (click)="toggleQualification()">
-    {{ showQualification() ? i18n.t('stats.playerQualificationToggleExpanded', { count: playersInQualification().length }) : i18n.t('stats.playerQualificationToggle', { count: playersInQualification().length }) }}
-  </button>
-  @if (showQualification()) {
-  <ul class="qualification">
-    @for (p of pagedPlayersInQualification(); track p.name) {
-    <li>
-      <span class="name player-name-cell clickable" (click)="openPlayerProfile(p.name)">
-        <app-player-avatar [url]="mtg.playerAvatars()[p.name] ?? null" />
-        {{ p.name }}
-      </span>
-      <span class="detail">{{ p.games }} / {{ qualificationThreshold() }} {{ i18n.t('stats.games') }}</span>
-      <span class="needed">{{ i18n.t('stats.stillNeeded', { count: p.gamesNeeded }) }}</span>
-      <app-meter [value]="p.games" [max]="qualificationThreshold()" />
-    </li>
-    }
-  </ul>
-  <app-pager
-    [page]="playerQualPage()"
-    [totalItems]="playersInQualification().length"
-    (pageChange)="playerQualPage.set($event)"
-  />
-  }
-</section>
-}
 
 <section class="glass-card" data-tutorial="stats-h2h">
   <button class="section-header-row h2h-toggle" (click)="toggleH2h()">
@@ -579,10 +552,13 @@
 </section>
 } @else if (combinedDeckCommanderStats().length > 0) {
 <section class="glass-card" data-tutorial="stats-decks-commanders">
-  <h2>{{ i18n.t('stats.decksAndCommanders') }}</h2>
-  <p class="hint">
-    {{ i18n.t('stats.decksAndCommandersHint') }}
-  </p>
+  <app-info-toggle [label]="i18n.t('stats.qualificationInfoAria')">
+    <h2 info-title>{{ i18n.t('stats.decksAndCommanders') }}</h2>
+    <p class="hint">{{ i18n.t('stats.decksAndCommandersHint') }}</p>
+    <p class="hint">
+      {{ i18n.t('stats.deckQualificationHint', { threshold: deckQualificationThreshold() }) }}
+    </p>
+  </app-info-toggle>
   <p class="hint">
     {{ i18n.t('stats.distinctDecksCount', { count: distinctDeckCount() }) }} ·
     {{ i18n.t('stats.distinctCommandersCount', { count: distinctCommanderCount() }) }}
@@ -639,34 +615,6 @@
     [totalItems]="rankedCombinedStats().length"
     (pageChange)="combinedPage.set($event)"
   />
-  @if (combinedInQualification().length > 0) {
-  <button class="glass-chip" (click)="toggleDeckQualification()">
-    {{ showDeckQualification() ? i18n.t('stats.qualificationToggleExpanded', { count: combinedInQualification().length }) : i18n.t('stats.qualificationToggle', { count: combinedInQualification().length }) }}
-  </button>
-  } @if (showDeckQualification()) {
-  <ul class="qualification">
-    @for (e of pagedCombinedInQualification(); track e.key) {
-    <li>
-      <span class="name card-name-cell">
-        @if (commanderImage(e.cardName, e.cardImageUrl); as img) {
-        <button type="button" class="card-thumb" (click)="cardPreview.open(img, commanderBackImage(e.cardName), e.cardName)">
-          <app-card-image [compact]="true" [imageUrl]="img" [backImageUrl]="commanderBackImage(e.cardName)" [alt]="e.cardName" />
-        </button>
-        }
-        <span class="card-name-text">{{ e.name }}</span>
-      </span>
-      <span class="detail">{{ e.games }} / {{ deckQualificationThreshold() }} {{ i18n.t('stats.games') }}</span>
-      <span class="needed">{{ i18n.t('stats.stillNeeded', { count: e.gamesNeeded }) }}</span>
-      <app-meter [value]="e.games" [max]="deckQualificationThreshold()" />
-    </li>
-    }
-  </ul>
-  <app-pager
-    [page]="combinedQualPage()"
-    [totalItems]="combinedInQualification().length"
-    (pageChange)="combinedQualPage.set($event)"
-  />
-  }
 </section>
 }
 
@@ -680,13 +628,16 @@
   </button>
 </div>
 
-<section class="glass-card">
+<!-- Lieblingsfarben und Farbkombinationen in einem Kasten über die ganze Breite (Rückmeldung des
+     Users, 21.10.2026): das Radar allein nahm nur eine halbe Zeile ein und ließ daneben Leere. -->
+<section class="glass-card combo-section">
+  <div class="colors-layout">
+  <div>
   <h2>{{ i18n.t('stats.colorRankingTitle') }}</h2>
   <p class="hint">{{ i18n.t('stats.colorRankingHint') }}</p>
   <app-radar-chart [data]="groupColorRadarChart()" />
-</section>
-
-<section class="glass-card">
+  </div>
+  <div>
   <h2>{{ i18n.t('stats.colorComboRankingTitle') }}</h2>
   <p class="hint">{{ i18n.t('stats.colorComboRankingHint') }}</p>
   <ul class="combo-grid">
@@ -707,6 +658,8 @@
       </li>
     }
   </ul>
+  </div>
+  </div>
 </section>
 }
 }

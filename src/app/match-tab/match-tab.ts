@@ -731,7 +731,17 @@ export class MatchTab {
   }
   // --- Verlauf ---
 
-  readonly historyExpanded = signal(false);
+  /**
+   * Ab Desktop-Breite steht der Verlauf als eigene Spalte neben dem neuen Match (match-tab.scss) -
+   * dort von Anfang an aufgeklappt, sonst bliebe die Spalte bis auf einen Knopf leer. Schwelle aus
+   * --bp-lg wie in den Styles.
+   */
+  readonly historyExpanded = signal(
+    typeof window !== 'undefined' &&
+      window.matchMedia(
+        `(min-width: ${parseInt(getComputedStyle(document.documentElement).getPropertyValue('--bp-lg'), 10) || 1000}px)`,
+      ).matches,
+  );
   readonly historyPage = signal(0);
   readonly historyPageSize = 10;
 

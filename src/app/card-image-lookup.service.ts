@@ -1,5 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { ScryfallService } from './scryfall.service';
+import { CardDataService } from './card-data.service';
 
 export interface CardImageEntry {
   imageUrl: string | null;
@@ -10,12 +10,13 @@ export interface CardImageEntry {
  * Kartenbild zu einem Kartennamen, gemeinsam für ui/card-thumb. Viele Listen nennen nur einen
  * Namen (Commander eines Decks, Empfehlungen, Änderungsverlauf); statt dass jede davon ihre eigene
  * Nachlade-Logik mitbringt, sammelt dieser Service alle Anfragen eines Augenblicks und fragt sie
- * gebündelt über ScryfallService.findCardsBulk() ab - der berücksichtigt die eingestellte
- * Artwork-Sprache. Ergebnisse (auch "nicht gefunden") bleiben für die Sitzung im Speicher.
+ * gebündelt über CardDataService.findCardsBulk() ab (Datenbank-Cache, Rest live bei Scryfall) - das
+ * berücksichtigt die eingestellte Artwork-Sprache. Ergebnisse (auch "nicht gefunden") bleiben für
+ * die Sitzung im Speicher, gescheiterte Abfragen nicht.
  */
 @Injectable({ providedIn: 'root' })
 export class CardImageLookupService {
-  private readonly scryfall = inject(ScryfallService);
+  private readonly cardData = inject(CardDataService);
 
   /** Kleingeschriebener Name -> Bild; null = gesucht und nicht gefunden. */
   readonly entries = signal<ReadonlyMap<string, CardImageEntry | null>>(new Map());
@@ -44,17 +45,26 @@ export class CardImageLookupService {
     const names = [...this.pending];
     this.pending.clear();
     if (names.length === 0) return;
+    // Erst der nächtliche Karten-Cache in der eigenen Datenbank, nur was dort fehlt live bei Scryfall
+    // (CardDataService.findCardsBulk) - vorher ging jede Liste direkt an Scryfall, und wenn Scryfall
+    // nach vielen Anfragen drosselte, blieben die Bilder für die ganze Sitzung weg.
     let found: Map<string, { imageUrl?: string | null; backImageUrl?: string | null }>;
+    const failed = new Set<string>();
     try {
-      found = await this.scryfall.findCardsBulk(names);
+      found = await this.cardData.findCardsBulk(names, failed);
     } catch (error) {
       console.error('Konnte Kartenbilder nicht laden:', error);
       found = new Map();
+      for (const name of names) failed.add(name);
     }
+    // Gescheiterte Abfragen nicht als "kein Bild" merken - beim nächsten Anzeigen erneut versuchen.
+    for (const name of failed) this.requested.delete(CardImageLookupService.key(name));
+    const failedKeys = new Set([...failed].map((n) => CardImageLookupService.key(n)));
     this.entries.update((current) => {
       const next = new Map(current);
       for (const name of names) {
         const key = CardImageLookupService.key(name);
+        if (failedKeys.has(key)) continue;
         const card = found.get(key);
         next.set(
           key,

@@ -25,27 +25,64 @@
   flex: 0 0 auto !important;
 }
 
-.precon-list {
+.precon-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 140px), 1fr));
+  gap: var(--sp-4);
+  margin: var(--sp-3) 0 var(--sp-5);
+  padding: 0;
   list-style: none;
-  margin: 0 0 12px;
-  padding: 6px;
-  max-height: min(320px, 45dvh);
-  overflow-y: auto;
-  border-radius: 14px;
-  background: rgba(20, 16, 38, 0.85);
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+}
 
-  li {
-    padding: 8px 10px;
-    cursor: pointer;
-    border-radius: 10px;
+// Eine Kachel: Commander-Bild, darunter Precon- und Commander-Name. Knöpfe erben Farbe und
+// Schrift nicht von selbst.
+.precon-grid > li {
+  display: flex;
+}
 
+// Alle Kacheln einer Reihe gleich hoch (Rückmeldung des Users, 21.10.2026): Name und Commander
+// stehen unter dem Bild, die Kachel füllt die ganze Zelle.
+.precon-tile {
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  align-content: start;
+  height: 100%;
+  gap: var(--sp-2);
+  width: 100%;
+  padding: var(--sp-3);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-md);
+  background: var(--surface-tile);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  @media (hover: hover) {
     &:hover {
-      background: rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.14);
     }
   }
+}
+
+.precon-tile-placeholder {
+  display: block;
+  width: 100%;
+  aspect-ratio: 63.5 / 88.9;
+  border-radius: var(--r-xs);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.precon-tile-name {
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.precon-tile-commander {
+  // Unten bündig: die Kacheln einer Reihe sind gleich hoch, die Namen darüber verschieden lang.
+  align-self: end;
+  font-size: 0.78rem;
+  opacity: 0.7;
 }
 
 .commander-rec-header {

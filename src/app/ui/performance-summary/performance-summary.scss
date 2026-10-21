@@ -6,17 +6,24 @@
 // Linksbündig nebeneinander statt drei Kacheln; die Winrate ist die eine Zahl, die etwas größer
 // sein darf, alles andere tritt einen Schritt zurück.
 .headline {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--sp-5);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
   padding-top: var(--sp-2);
 }
 
+// Jede Kennzahl in einem kleinen Kasten, links ausgerichtet - vorher standen die drei Zahlen über
+// die ganze Kartenbreite verteilt und wirkten wie verloren (Rückmeldung des Users, 21.10.2026).
 .headline-item {
   display: flex;
+  flex: 0 1 auto;
   flex-direction: column;
   gap: 2px;
-  min-width: 0;
+  min-width: 92px;
+  padding: var(--sp-3) var(--sp-5);
+  border: 1px solid var(--divider);
+  border-radius: var(--r-md);
+  background: var(--surface-tile);
 }
 
 .headline-value {
@@ -49,81 +56,19 @@
 }
 
 .facts {
-  margin: var(--sp-2) 0 0;
-  border-top: 1px solid var(--divider);
+  padding-top: var(--sp-2);
 }
 
-.fact {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-5);
-  min-height: 44px;
-  padding: var(--sp-3) 0;
-  border-bottom: 1px solid var(--divider);
-
-  dt {
-    font-size: 0.92rem;
-    opacity: 0.85;
-  }
-
-  dd {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 1px;
-    margin: 0;
-    text-align: right;
-  }
-
-  &.missing .fact-value {
-    opacity: 0.45;
-  }
-}
-
-.fact-value {
-  font-size: 1rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
+.headline-item.missing .headline-value {
+  opacity: 0.45;
 }
 
 .fact-basis {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   opacity: 0.55;
 }
 
-// --- 3. Siegarten ---
-.conditions {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-4);
-  margin: var(--sp-2) 0 0;
-  padding: 0;
-  list-style: none;
-
-  li {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    row-gap: var(--sp-2);
-    align-items: baseline;
-    font-size: 0.92rem;
-  }
-
-  // "Unbekannt" ist kein Ergebnis, sondern eine Lücke in den Daten - leiser darstellen.
-  .unknown {
-    opacity: 0.55;
-  }
-}
-
-.condition-count {
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-.condition-bar {
-  grid-column: 1 / -1;
-}
-
+// --- 3. Siegarten: Balkendiagramm (ui/bar-chart) ---
 .empty {
   margin: var(--sp-2) 0 0;
   font-size: 0.88rem;

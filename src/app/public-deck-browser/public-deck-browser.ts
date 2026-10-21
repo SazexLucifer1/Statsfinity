@@ -216,11 +216,18 @@ export class PublicDeckBrowser {
       sort: this.sort(),
     });
 
-    this.results.set(decks);
+    // Nur regelkonforme Decks zeigen (Wunsch des Users, 21.10.2026): Viele Decks enthalten nur den
+    // Commander - für die Statistik der Gruppe nötig, zum Stöbern nutzlos. Geprüft werden
+    // Kartenzahl, Kopien und Bannliste (dieselbe Prüfung wie das rote Ausrufezeichen), alle Decks
+    // der Trefferliste in einer Anfrage. Ohne die Migrationen ist nichts geprüft - dann bleibt alles.
+    await this.banlist.loadForDecks(decks.map((d) => d.id));
+    const legal = decks.filter((d) => this.banlist.problemsFor(d.id, d.format).length === 0);
+
+    this.results.set(legal);
     this.stats.set(stats);
     this.page.set(0);
 
-    this.commanderCardsByDeck.set(await this.commanderKarten(decks));
+    this.commanderCardsByDeck.set(await this.commanderKarten(legal));
 
     this.busy.set(false);
   }

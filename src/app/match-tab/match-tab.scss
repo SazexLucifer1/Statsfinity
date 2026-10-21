@@ -1,3 +1,5 @@
+@use '../../styles/breakpoints' as bp;
+
 .glass-card {
   // backdrop-filter erzeugt einen eigenen Stacking-Context pro Card.
   // Ohne explizites z-index gewinnt sonst einfach die DOM-Reihenfolge
@@ -343,6 +345,26 @@
   display: block;
   max-width: var(--content-measure);
   margin: 0 auto;
+}
+
+// Desktop: eine Arbeitsfläche aus zwei Spalten - links das neue Match, rechts der Verlauf
+// (Wunsch des Users, 21.10.2026: jeder Tab soll schon am Aufbau erkennbar sein).
+@include bp.up(lg) {
+  :host {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    // Beide Kästen beginnen oben auf einer Linie und sind gleich hoch (Rückmeldung des Users,
+    // 21.10.2026). Die Höhe gibt das neue Match vor ...
+    align-items: stretch;
+  }
+
+  // ... der Verlauf nimmt sie nur an (contain: size - er selbst zählt für die Reihenhöhe nicht mit)
+  // und scrollt in sich, statt die Seite lang zu machen.
+  section[data-tutorial='match-history'] {
+    contain: size;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
 }
 
 // Ranked/Frei unter Modus und Format beim Match-Start.

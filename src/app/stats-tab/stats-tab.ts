@@ -27,6 +27,7 @@ import { TournamentHistory } from '../tournament-history/tournament-history';
 import { isImportLossDuplicate, isPlayerWinner as isMatchWinner } from '../match-utils';
 import { RankTier, rankTiersFor, ratedModes } from '../elo';
 import { rankStyle } from '../ui/rank-badge/rank-badge';
+import { InfoToggle } from '../ui/info-toggle/info-toggle';
 import { Meter } from '../ui/meter/meter';
 import { Pager } from '../ui/pager/pager';
 import { SplitBar, SplitSegment } from '../ui/split-bar/split-bar';
@@ -97,6 +98,7 @@ interface CombinedRankEntry {
 @Component({
   selector: 'app-stats-tab',
   imports: [
+    InfoToggle,
     PersonalStats,
     MatchInsights,
     PerformanceStats,
