@@ -87,6 +87,14 @@ h3 {
     &:last-child {
       border-bottom: none;
     }
+
+    // "A → B" links, Anzahl rechts in derselben Zeile.
+    &.pair-row {
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: var(--sp-3);
+    }
   }
 
   .row-name {
@@ -138,22 +146,11 @@ h3 {
   }
 }
 
-// Rauswürfe: Kopfzeile klappt Wer-wen auf. Knöpfe erben Farbe und Schrift nicht von selbst.
+// Rauswürfe eines Spielers: Name und Bilanz untereinander, darunter wen er wie oft rausgeworfen hat.
 .knockout-head {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 0;
-  border: none;
-  background: none;
-  font: inherit;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-
-  &:disabled {
-    cursor: default;
-  }
 }
 
 .knockout-detail {

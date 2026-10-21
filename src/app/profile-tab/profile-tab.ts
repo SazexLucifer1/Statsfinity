@@ -119,8 +119,6 @@ export class ProfileTab {
 
   readonly deckListRef = viewChild<DeckList>('deckListRef');
   readonly ownCommanderListRef = viewChild<CommanderStatList>('ownCommanderListRef');
-  readonly viewingCommanderListRef = viewChild<CommanderStatList>('viewingCommanderListRef');
-  readonly viewingNpcCommanderListRef = viewChild<CommanderStatList>('viewingNpcCommanderListRef');
 
   /**
    * Stats eines fremden/NPC-Profils ausblenden, wenn der Host dem Viewer alle Modi gesperrt hat
@@ -446,15 +444,6 @@ export class ProfileTab {
     this.unassignedCommanderStats().filter((c) => c.category === this.commanderListMode()),
   );
 
-  /** Nur die echten "es fehlt ein Deck"-Einträge - fremde und NPC-Profile bekommen keinen Umschalter. */
-  readonly viewingCommanderStatsWithoutDeck = computed<UnassignedCommanderStats[]>(() =>
-    this.viewingUnassignedCommanderStats().filter((c) => c.category === 'none'),
-  );
-
-  readonly viewingNpcCommanderStatsWithoutDeck = computed<UnassignedCommanderStats[]>(() =>
-    this.viewingNpcUnassignedCommanderStats().filter((c) => c.category === 'none'),
-  );
-
   setCommanderListMode(mode: UnassignedCommanderCategory): void {
     this.commanderListModeChoice.set(mode);
     this.ownCommanderListRef()?.reset();
@@ -722,32 +711,6 @@ export class ProfileTab {
       this.deckService
         .getCardAndColorStats(owner, year === 'Alle' ? undefined : year)
         .then((stats) => this.cardAndColorStats.set(stats));
-    });
-
-    effect(() => {
-      const userId = this.profileService.viewingUserId();
-      // In der Developer-Vollansicht zeigt der gemeinsame Haupt-Bereich die Liste - dieselbe
-      // Abfrage hier ein zweites Mal zu stellen, lädt nur unsichtbare Daten nach.
-      if (!userId || this.devFullView()) {
-        this.viewingUnassignedCommanderStats.set([]);
-        return;
-      }
-      this.deckService.getUnassignedCommanderStats({ kind: 'user', userId }).then((stats) => {
-        this.viewingUnassignedCommanderStats.set(stats);
-        this.viewingCommanderListRef()?.reset();
-      });
-    });
-
-    effect(() => {
-      const playerId = this.profileService.viewingPlayerId();
-      if (!playerId || this.devFullView()) {
-        this.viewingNpcUnassignedCommanderStats.set([]);
-        return;
-      }
-      this.deckService.getUnassignedCommanderStats({ kind: 'player', playerId }).then((stats) => {
-        this.viewingNpcUnassignedCommanderStats.set(stats);
-        this.viewingNpcCommanderListRef()?.reset();
-      });
     });
 
     effect(() => {

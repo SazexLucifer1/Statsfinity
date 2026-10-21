@@ -1,5 +1,5 @@
 import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
-import { DatePipe, DecimalPipe } from '@angular/common';
+import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MtgService } from '../mtg.service';
 import { GroupService } from '../group.service';
@@ -25,12 +25,8 @@ import {
 import { I18nService } from '../i18n.service';
 import { TournamentHistory } from '../tournament-history/tournament-history';
 import { isImportLossDuplicate, isPlayerWinner as isMatchWinner } from '../match-utils';
-import {
-  ELO_PROVISIONAL_GAMES,
-  EloEntry,
-  RankTier,
-  divisionLabel, eloRanking, rankFromLp, rankTiersFor, ratedModes } from '../elo';
-import { RankBadge, rankStyle } from '../ui/rank-badge/rank-badge';
+import { RankTier, rankTiersFor, ratedModes } from '../elo';
+import { rankStyle } from '../ui/rank-badge/rank-badge';
 import { Meter } from '../ui/meter/meter';
 import { Pager } from '../ui/pager/pager';
 import { SplitBar, SplitSegment } from '../ui/split-bar/split-bar';
@@ -102,11 +98,9 @@ interface CombinedRankEntry {
   selector: 'app-stats-tab',
   imports: [
     PersonalStats,
-    RankBadge,
     MatchInsights,
     PerformanceStats,
     DecimalPipe,
-    DatePipe,
     PlayerAvatar,
     FormsModule,
     TournamentHistory,
@@ -337,44 +331,13 @@ export class StatsTab {
           GAME_MODES.filter((m) => this.canViewMode(m)),
         ),
   );
-  private readonly eloModeChoice = signal<GameMode | null>(null);
-  readonly eloMode = computed(() => {
-    const choice = this.eloModeChoice();
-    const modes = this.eloModes();
-    return choice && modes.includes(choice) ? choice : (modes[0] ?? null);
-  });
-  readonly eloRanking = computed<EloEntry[]>(() => {
-    const mode = this.eloMode();
-    if (!mode) return [];
-    const format = this.selectedFormat();
-    return eloRanking(this.seasonMatches(), mode, format === 'Alle' ? {} : { format });
-  });
-  readonly eloPage = signal(0);
-  readonly pagedEloRanking = computed(() => {
-    const pages = Math.max(1, Math.ceil(this.eloRanking().length / PAGE_SIZE));
-    const start = Math.min(this.eloPage(), pages - 1) * PAGE_SIZE;
-    // Ganze Zahlen ohne Tausendertrennzeichen - "1,016" läse sich im deutschen Text als Kommazahl.
-    return this.eloRanking()
-      .slice(start, start + PAGE_SIZE)
-      .map((e, i) => ({
-        ...e,
-        place: start + i,
-        lp: Math.round(e.lp),
-        rank: rankFromLp(e.lp),
-        peak: Math.round(e.peak),
-        lastChange: Math.round(e.lastChange),
-      }));
-  });
-  readonly showEloInfo = signal(false);
-  /** Rangsystem aus, aber der Gruppenleiter sieht die Wertung trotzdem (nur er). */
-  readonly eloHiddenForOthers = computed(
-    () => !this.groupService.isRankedGroup(this.effectiveViewedGroupId()),
-  );
-  readonly placementTotal = ELO_PROVISIONAL_GAMES;
+  /** Modus der Rangfarben im Tab: der erste gewertete (meist Normal). Eine Elo-Liste gibt es hier
+   *  nicht mehr (Wunsch des Users, 21.10.2026) - den Rang sieht jeder im eigenen Profil. */
+  readonly eloMode = computed(() => this.eloModes()[0] ?? null);
 
   /**
-   * Rangfarbe für die Ringe um die Profilbilder im ganzen Tab - derselbe Modus wie die Elo-Liste
-   * (Standard Normal) und das Format aus dem Filter oben. Leer ohne Rangsystem in der Gruppe.
+   * Rangfarbe für die Ringe um die Profilbilder im ganzen Tab - der erste gewertete Modus
+   * (meist Normal) und das Format aus dem Filter oben. Leer ohne Rangsystem in der Gruppe.
    */
   private readonly rankTiers = computed<Map<string, RankTier>>(() => {
     if (!this.groupService.isRankedGroup(this.effectiveViewedGroupId())) return new Map();
@@ -393,17 +356,6 @@ export class StatsTab {
   /** CSS-Variablen der Rangfarbe für eine Spielerkachel (Klasse .rank-tinted in styles.scss). */
   rankVars(tier: RankTier | null): Record<string, string> | null {
     return rankStyle(tier);
-  }
-
-  /** "Gold III" - Rangname für Abzeichen und Tooltip in der Elo-Liste. */
-  rankLabel(rank: ReturnType<typeof rankFromLp>): string {
-    const tier = this.i18n.t('profile.rank.tier.' + rank.tier);
-    return rank.division == null ? tier : `${tier} ${divisionLabel(rank.division)}`;
-  }
-
-  setEloMode(mode: GameMode): void {
-    this.eloModeChoice.set(mode);
-    this.eloPage.set(0);
   }
 
   // --- Sortierung der Ranglisten (Logik in rank-sort.ts, geteilt mit GlobalStats) ---

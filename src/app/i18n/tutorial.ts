@@ -86,15 +86,12 @@ export const tutorial = {
     'tutorial.stats.ranking.title': 'Rangliste',
     'tutorial.stats.ranking.text':
       'Die Spieler-Rangliste, sortierbar nach Winrate, Siegen oder Spielen. Wer noch nicht genug Spiele hat, steht weiter unten bei „Spiele bis zur Qualifikation“.',
-    'tutorial.stats.elo.title': 'Elo-Wertung',
-    'tutorial.stats.elo.text':
-      'Die Ränge der Gruppe von Holz bis Infinity, je Format getrennt. Es zählen nur Ranked-Partien: Der Sieger gewinnt LP gegen jeden Gegner, alle anderen verlieren gegen den Sieger. Das i neben der Überschrift erklärt die Rechnung.',
     'tutorial.stats.performance.title': 'Performance',
     'tutorial.stats.performance.text':
       'Partien, Siege, Winrate, Ø Platz, Ø Siegzug, Ø Dauer und Siegarten - nur aus den gespeicherten Partien. Das ⓘ sagt, seit wann jeder Wert erfasst wird; Siegart und Zug trägst du optional im Sieger-Dialog ein. Die Decks stehen weiter unten.',
     'tutorial.stats.insights.title': 'Spiel-Analysen',
     'tutorial.stats.insights.text':
-      'Rauswürfe, Winrate je Startplatz und Spieldauer. Mit gewähltem Spieler zusätzlich Form, Winrate je Monat, Angst- und Lieblingsgegner sowie der Jahresrückblick als Bild zum Teilen.',
+      'Spieldauer, Winrate je Startplatz und Rauswürfe. Mit gewähltem Spieler zusätzlich Form, Winrate je Monat, Angst- und Lieblingsgegner sowie der Jahresrückblick als Bild zum Teilen.',
     'tutorial.stats.h2h.title': 'Head-to-Head',
     'tutorial.stats.h2h.text':
       'Aufklappen, zwei Spieler wählen und sehen, wer in gemeinsamen Partien wie oft gewonnen hat - und mit welchen Commandern.',
@@ -194,7 +191,7 @@ export const tutorial = {
       'Die Commander, die dieser Spieler auf seinem Profil zeigt.',
     'tutorial.profileView.content.title': 'Decks & Partien',
     'tutorial.profileView.content.text':
-      'Darunter folgen seine Decks, Commander-Statistiken, Platzierungen und die Partien, die er gespielt hat. Mit „Zurück“ bzw. einem Tipp auf den Profil-Tab kommst du wieder zu deinem eigenen Profil.',
+      'Darunter folgen seine Decks und die Partien, die er gespielt hat. Seine Statistik findest du im Statistik-Tab. Mit „Zurück“ bzw. einem Tipp auf den Profil-Tab kommst du wieder zu deinem eigenen Profil.',
 
     // --- Deck-Ansicht ---
     'tutorial.deckDetail.intro.title': 'Deck-Ansicht',
@@ -392,15 +389,12 @@ export const tutorial = {
     'tutorial.stats.ranking.title': 'Ranking',
     'tutorial.stats.ranking.text':
       'The player ranking, sortable by win rate, wins or games. Anyone without enough games yet shows up further down under “Games until qualification”.',
-    'tutorial.stats.elo.title': 'Elo rating',
-    'tutorial.stats.elo.text':
-      "The group's ranks from Wood to Infinity, separate per format. Only ranked games count: the winner gains LP against every opponent, everyone else loses against the winner. The i next to the heading explains the maths.",
     'tutorial.stats.performance.title': 'Performance',
     'tutorial.stats.performance.text':
       'Games, wins, win rate, avg. placement, avg. win turn, avg. duration and win conditions - only from saved games. The ⓘ says since when each value is tracked; win condition and turn are optional in the winner dialog. Decks follow further down.',
     'tutorial.stats.insights.title': 'Game insights',
     'tutorial.stats.insights.text':
-      'Knockouts, win rate by seat and game length. With a player selected, also form, win rate per month, nemesis and favourite opponent, and the year in review as an image to share.',
+      'Game length, win rate by seat and knockouts. With a player selected, also form, win rate per month, nemesis and favourite opponent, and the year in review as an image to share.',
     'tutorial.stats.h2h.title': 'Head-to-head',
     'tutorial.stats.h2h.text':
       'Expand it, pick two players and see who won their shared games how often - and with which commanders.',
@@ -497,7 +491,7 @@ export const tutorial = {
     'tutorial.profileView.favorites.text': 'The commanders this player shows on their profile.',
     'tutorial.profileView.content.title': 'Decks & games',
     'tutorial.profileView.content.text':
-      'Below are their decks, commander stats, placements and the games they played. “Back” or a tap on the profile tab brings you back to your own profile.',
+      'Below are their decks and the games they played. Their stats are in the Stats tab. “Back” or a tap on the profile tab brings you back to your own profile.',
 
     // --- Deck view ---
     'tutorial.deckDetail.intro.title': 'Deck view',

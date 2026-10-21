@@ -90,16 +90,12 @@ export class MatchInsights {
       .map((k) => ({ label: k.name, value: k.kills, color: 'var(--danger-strong)' })),
   );
   readonly showKnockoutDetails = signal(false);
-  /** Aufgeklappte Zeile der Rangliste; mit gewähltem Spieler ist seine immer offen. */
-  readonly knockoutOpen = signal<string | null>(null);
-
-  isKnockoutOpen(name: string): boolean {
-    return !!this.player() || this.knockoutOpen() === name;
-  }
-
-  toggleKnockout(name: string): void {
-    this.knockoutOpen.update((open) => (open === name ? null : name));
-  }
+  /** Jedes Paar "A hat B rausgeworfen" mit Anzahl, häufigstes zuerst. */
+  readonly knockoutPairs = computed(() =>
+    this.knockouts()
+      .flatMap((k) => k.victims.map((v) => ({ killer: k.name, victim: v.name, count: v.count })))
+      .sort((a, b) => b.count - a.count || a.killer.localeCompare(b.killer)),
+  );
 
   readonly form = computed(() => {
     const player = this.player();
