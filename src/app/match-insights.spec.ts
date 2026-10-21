@@ -508,6 +508,12 @@ describe('match-insights: Performance', () => {
       expect(counted).toBe(6);
     });
 
+    it('zeigt nie mehr gespielte als alle Partien, wenn die Sieg-Datensätze fehlen', () => {
+      // Nur Fabians eigene Datensätze, wie in der Persönlich-Ansicht.
+      const own = importMatches().filter((m) => m.players.some((x) => x.name === 'Fabian'));
+      expect(monthlyGames(own, 'Fabian')[0]).toEqual({ month: '2026-01', games: 6, total: 6 });
+    });
+
     it('lässt einen Verlierer-Datensatz mit mehreren Spielern als Duplikat weg', () => {
       const matches = [
         match('Fabian', [rionya(), p('Theodor')]),

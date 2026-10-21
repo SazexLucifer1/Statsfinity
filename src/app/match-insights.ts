@@ -294,7 +294,9 @@ export function monthlyGames(matches: readonly Match[], player: string, months =
   return [...byMonth.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
     .slice(-months)
-    .map(([month, { games, total }]) => ({ month, games, total }));
+    // Import-Niederlagen zählen für den Spieler, die Partie selbst steht über den Sieg-Datensatz
+    // eines anderen da - fehlt der in der übergebenen Liste, wären es mehr gespielte als alle.
+    .map(([month, { games, total }]) => ({ month, games, total: Math.max(total, games) }));
 }
 
 // --- Jahresrückblick ---
