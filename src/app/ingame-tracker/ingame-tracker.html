@@ -548,18 +548,17 @@
       @if (session.winner() && session.winner() !== session.DRAW) {
       <h3 class="winner-subtitle">{{ i18n.t('ingame.winConditionTitle') }}</h3>
       <div class="chip-row">
+        <!-- "Anderes" und "Unbekannt" sind eins (Wunsch des Users, 21.10.2026): ohne Auswahl ist
+             "Anderes" markiert, ein zweiter Tipp auf eine Siegart springt dorthin zurück. -->
         @for (wc of winConditions; track wc) {
         <button
           class="glass-chip"
-          [class.active]="session.winCondition() === wc"
-          (click)="session.winCondition.set(session.winCondition() === wc ? null : wc)"
+          [class.active]="session.winCondition() === wc || (wc === 'other' && !session.winCondition())"
+          (click)="session.winCondition.set(session.winCondition() === wc || wc === 'other' ? null : wc)"
         >
           {{ i18n.t('stats.winCondition.' + wc) }}
         </button>
         }
-        <button class="glass-chip" [class.active]="!session.winCondition()" (click)="session.winCondition.set(null)">
-          {{ i18n.t('stats.winCondition.unknown') }}
-        </button>
       </div>
       }
       <div class="result-extra">
