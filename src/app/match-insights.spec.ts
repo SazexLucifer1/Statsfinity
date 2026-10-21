@@ -382,18 +382,20 @@ describe('match-insights: Performance', () => {
       match(DRAW, [p('A'), p('B')], { winCondition: 'mill' }),
     ];
     const all = Object.fromEntries(winConditionStats(matches).map((w) => [w.condition, w.count]));
-    expect(all).toEqual({
-      combat: 1,
-      combo: 1,
-      commander_damage: 1,
+    const none = {
+      effect_damage: 0,
+      poison: 0,
+      alt_win: 0,
       mill: 0,
+      control: 0,
+      concede: 0,
       other: 0,
-      unknown: 1,
-    });
+    };
+    expect(all).toEqual({ ...none, combat: 1, combo: 1, commander_damage: 1, unknown: 1 });
     const a = Object.fromEntries(
       winConditionStats(matches, pickPlayer('A')).map((w) => [w.condition, w.count]),
     );
-    expect(a).toEqual({ combat: 1, combo: 1, commander_damage: 0, mill: 0, other: 0, unknown: 1 });
+    expect(a).toEqual({ ...none, combat: 1, combo: 1, commander_damage: 0, unknown: 1 });
   });
 
   it('trennt Deck-Versionen und hält Partien ohne Version getrennt', () => {
