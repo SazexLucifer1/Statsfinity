@@ -99,6 +99,9 @@ export class CardScanner implements OnInit, OnDestroy {
   private lastHitAt = 0;
   private sawEmpty = false;
   private readonly small = document.createElement('canvas');
+  /** Der Ausschnitt in voller Kameraauflösung, für die Nahaufnahme der Ecke - wiederverwendet,
+   *  Safari begrenzt den Speicher aller Canvas zusammen. */
+  private readonly detail = document.createElement('canvas');
   private scanCounter = 0;
 
   async ngOnInit(): Promise<void> {
@@ -260,7 +263,18 @@ export class CardScanner implements OnInit, OnDestroy {
         (rect.x + rect.w - x0) / (x1 - x0),
         (rect.y + rect.h - y0) / (y1 - y0),
       ] as const;
-      const found = await this.scan.identify(frame, guide, this.fallbackLang());
+      // Die Sammlerzeile ist gut 1 mm hoch: Für sie zählt jedes Kamerapixel, `frame` ist dafür
+      // verkleinert (Artwork und Kantensuche brauchen die Auflösung nicht).
+      let detail: HTMLCanvasElement | undefined;
+      if (x1 - x0 > frame.width) {
+        detail = this.detail;
+        detail.width = Math.round(x1 - x0);
+        detail.height = Math.round(y1 - y0);
+        detail
+          .getContext('2d')
+          ?.drawImage(video, x0, y0, x1 - x0, y1 - y0, 0, 0, detail.width, detail.height);
+      }
+      const found = await this.scan.identify(frame, guide, this.fallbackLang(), detail);
       if (!found) {
         this.status.set(this.scan.glare() ? 'glare' : 'notFound');
         return;
