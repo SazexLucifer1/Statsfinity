@@ -27,6 +27,7 @@
     </select>
   </div>
   <app-cmc-filter [value]="cmc()" (valueChange)="cmc.set($event)" />
+  <app-rarity-filter [value]="rarities()" (valueChange)="rarities.set($event)" />
   <app-color-filter [value]="colors()" (valueChange)="colors.set($event)" />
   <div class="chip-row sort-row">
     <button
@@ -53,7 +54,7 @@
     @if (format(); as f) {
       · {{ i18n.t('cube.pickerLegalIn', { format: f }) }}
     }
-    @if (checkingLegality()) {
+    @if (checkingLegality() && format()) {
       · {{ i18n.t('cube.pickerCheckingLegality') }}
     }
   }

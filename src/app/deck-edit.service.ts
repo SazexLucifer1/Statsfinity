@@ -36,6 +36,7 @@ export class DeckEditService {
   readonly addCardCreatureTypeFilter = signal('');
   readonly addCardColorFilter = signal<ColorSelection>(EMPTY_COLOR_SELECTION);
   readonly addCardCmcFilter = signal<'all' | number>('all');
+  readonly addCardRarityFilter = signal<ReadonlySet<string>>(new Set());
   readonly addCardEffectFilter = signal('all');
   readonly addCardKeywordFilter = signal('all');
   /** Künstler, Artwork, Flavortext und Lore - wie in der Kartensuche. Ein Treffer bringt sein Artwork mit ins Deck. */
@@ -455,6 +456,11 @@ export class DeckEditService {
     this.triggerAddCardSearch();
   }
 
+  setAddCardRarityFilter(value: ReadonlySet<string>): void {
+    this.addCardRarityFilter.set(value);
+    this.triggerAddCardSearch();
+  }
+
   setAddCardEffectFilter(value: string): void {
     this.addCardEffectFilter.set(value);
     this.triggerAddCardSearch();
@@ -482,6 +488,7 @@ export class DeckEditService {
     const creatureType = this.addCardCreatureTypeFilter();
     const colors = this.addCardColorFilter();
     const cmc = this.addCardCmcFilter();
+    const rarities = this.addCardRarityFilter();
     const effect = this.addCardEffectFilter();
     const keyword = this.addCardKeywordFilter();
     const print = this.addCardPrintSearch();
@@ -492,6 +499,7 @@ export class DeckEditService {
       !creatureType.trim() &&
       colors.colors.length === 0 &&
       cmc === 'all' &&
+      rarities.size === 0 &&
       effect === 'all' &&
       keyword === 'all' &&
       !printSearchActive(print)
@@ -516,6 +524,7 @@ export class DeckEditService {
             ? undefined
             : this.effects.effectFilters.find((f) => f.value === effect)?.query,
         keyword: keyword === 'all' ? undefined : keyword,
+        rarities,
         print,
         colorIdentitySubset: this.state.deckColorIdentitySubset(),
         order: this.addCardSortMode(),
@@ -599,6 +608,7 @@ export class DeckEditService {
     this.addCardCreatureTypeFilter.set('');
     this.addCardColorFilter.set(EMPTY_COLOR_SELECTION);
     this.addCardCmcFilter.set('all');
+    this.addCardRarityFilter.set(new Set());
     this.addCardEffectFilter.set('all');
     this.addCardKeywordFilter.set('all');
     this.addCardPrintSearch.set(EMPTY_PRINT_SEARCH);

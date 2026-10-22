@@ -32,6 +32,8 @@
 
     <app-cmc-filter [value]="cmcFilter()" (valueChange)="setCmcFilter($event)" />
 
+    <app-rarity-filter [value]="rarityFilter()" (valueChange)="setRarityFilter($event)" />
+
     <app-color-filter [value]="colorFilter()" (valueChange)="setColorFilter($event)" />
 
     <select class="glass-input small" [ngModel]="effectFilter()" (ngModelChange)="setEffectFilter($event)">

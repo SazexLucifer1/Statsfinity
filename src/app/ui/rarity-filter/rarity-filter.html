@@ -1,0 +1,11 @@
+@for (r of rarities; track r) {
+  <button
+    type="button"
+    class="glass-chip small"
+    [class.active]="value().has(r)"
+    [attr.aria-pressed]="value().has(r)"
+    (click)="toggle(r)"
+  >
+    {{ i18n.t('collection.rarity.' + r) }}
+  </button>
+}
