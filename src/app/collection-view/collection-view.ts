@@ -15,7 +15,6 @@ import {
   CollectionItem,
   CollectionSection,
   CollectionSort,
-  RARITIES,
   activeFilterCount,
   collectionValue,
   filterCollection,
@@ -34,6 +33,7 @@ import { TYPE_ORDER, translateSectionLabel } from '../deck-analyse';
 import { Icon } from '../ui/icon/icon';
 import { InfoToggle } from '../ui/info-toggle/info-toggle';
 import { CmcFilter } from '../ui/cmc-filter/cmc-filter';
+import { RarityFilter } from '../ui/rarity-filter/rarity-filter';
 import { ColorFilter } from '../ui/color-filter/color-filter';
 import { MultiSelect } from '../ui/multi-select/multi-select';
 import { CardScanner } from '../card-scanner/card-scanner';
@@ -63,6 +63,7 @@ const FLAG_EFFECTS: Record<string, keyof SpellbookCardFlags> = {
     Icon,
     InfoToggle,
     CmcFilter,
+    RarityFilter,
     ColorFilter,
     MultiSelect,
     CardScanner,
@@ -78,7 +79,6 @@ export class CollectionView {
   private readonly cardData = inject(CardDataService);
   private readonly scryfall = inject(ScryfallService);
 
-  readonly rarities = RARITIES;
   readonly typeSections = TYPE_ORDER.map((t) => t.label);
 
   readonly userId = computed(() => this.collection.view()?.userId ?? null);
@@ -429,10 +429,6 @@ export class CollectionView {
 
   toggleLang(code: string): void {
     this.langs.update((set) => toggled(set, code));
-  }
-
-  toggleRarity(code: string): void {
-    this.rarityFilter.update((set) => toggled(set, code));
   }
 
   setEffect(value: string): void {

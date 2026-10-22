@@ -222,18 +222,7 @@
           </div>
           <div class="filter-block">
             <span class="filter-label">{{ i18n.t('collection.rarityLabel') }}</span>
-            <div class="chip-row">
-              @for (r of rarities; track r) {
-                <button
-                  type="button"
-                  class="glass-chip small"
-                  [class.active]="rarityFilter().has(r)"
-                  (click)="toggleRarity(r)"
-                >
-                  {{ i18n.t('collection.rarity.' + r) }}
-                </button>
-              }
-            </div>
+            <app-rarity-filter [(value)]="rarityFilter" />
           </div>
           <div class="filter-block">
             <span class="filter-label">{{ i18n.t('collection.manaValue') }}</span>

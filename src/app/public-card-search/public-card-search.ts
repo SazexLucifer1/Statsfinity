@@ -16,6 +16,7 @@ import { CARD_EFFECT_FILTERS } from '../card-effect-filters';
 import { ColorFilter } from '../ui/color-filter/color-filter';
 import { ColorSelection, EMPTY_COLOR_SELECTION } from '../color-filter-match';
 import { CmcFilter, CmcFilterValue } from '../ui/cmc-filter/cmc-filter';
+import { RarityFilter } from '../ui/rarity-filter/rarity-filter';
 import { PrintSearch } from '../ui/print-search/print-search';
 
 /**
@@ -28,7 +29,7 @@ import { PrintSearch } from '../ui/print-search/print-search';
  */
 @Component({
   selector: 'app-public-card-search',
-  imports: [FormsModule, CardImage, ColorFilter, CmcFilter, PrintSearch],
+  imports: [FormsModule, CardImage, ColorFilter, CmcFilter, RarityFilter, PrintSearch],
   templateUrl: './public-card-search.html',
   styleUrl: './public-card-search.scss',
 })
@@ -52,6 +53,7 @@ export class PublicCardSearch {
   /** Künstler, Artwork, Flavortext und Lore - siehe PrintSearch in scryfall.service.ts. */
   readonly printSearch = signal<PrintSearchValue>(EMPTY_PRINT_SEARCH);
   readonly cmcFilter = signal<CmcFilterValue>('all');
+  readonly rarityFilter = signal<ReadonlySet<string>>(new Set());
   readonly colorFilter = signal<ColorSelection>(EMPTY_COLOR_SELECTION);
   readonly effectFilter = signal<'all' | string>('all');
   readonly keywordFilter = signal<'all' | string>('all');
@@ -147,6 +149,7 @@ export class PublicCardSearch {
       this.creatureTypeFilter().trim() !== '' ||
       printSearchActive(this.printSearch()) ||
       this.cmcFilter() !== 'all' ||
+      this.rarityFilter().size > 0 ||
       this.colorFilter().colors.length > 0 ||
       this.effectFilter() !== 'all' ||
       this.keywordFilter() !== 'all'
@@ -158,6 +161,7 @@ export class PublicCardSearch {
     this.creatureTypeFilter.set('');
     this.printSearch.set(EMPTY_PRINT_SEARCH);
     this.cmcFilter.set('all');
+    this.rarityFilter.set(new Set());
     this.colorFilter.set(EMPTY_COLOR_SELECTION);
     this.effectFilter.set('all');
     this.keywordFilter.set('all');
@@ -183,6 +187,11 @@ export class PublicCardSearch {
 
   setCmcFilter(value: CmcFilterValue): void {
     this.cmcFilter.set(value);
+    this.runFilterSearch();
+  }
+
+  setRarityFilter(value: ReadonlySet<string>): void {
+    this.rarityFilter.set(value);
     this.runFilterSearch();
   }
 
@@ -223,6 +232,7 @@ export class PublicCardSearch {
       effectQuery:
         this.effectFilter() === 'all' ? undefined : this.effectFilters.find((f) => f.value === this.effectFilter())?.query,
       keyword: this.keywordFilter() === 'all' ? undefined : this.keywordFilter(),
+      rarities: this.rarityFilter(),
       print: this.printSearch(),
       order: this.sortMode(),
       commanderOnly: false,

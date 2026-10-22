@@ -646,6 +646,8 @@ export class ScryfallService {
     }
     if (filters.effectQuery) parts.push(filters.effectQuery);
     if (filters.keyword) parts.push(`keyword:"${filters.keyword.replace(/"/g, '')}"`);
+    // Eine Karte zählt, wenn es irgendeinen Druck in dieser Seltenheit gibt (Scryfalls r:).
+    if (filters.rarities?.size) parts.push(`(${[...filters.rarities].map((r) => `r:${r}`).join(' or ')})`);
     if (filters.colorIdentitySubset) {
       parts.push(filters.colorIdentitySubset.length > 0 ? `id<=${filters.colorIdentitySubset.join('')}` : 'id:c');
     }
@@ -700,6 +702,8 @@ export class ScryfallService {
       effectQuery?: string;
       /** Fähigkeits-Keyword wie "lifelink" oder "first strike" (native Scryfall-Abfrage, kein Tagger-Tag). */
       keyword?: string;
+      /** Seltenheiten (Scryfall-Schlüssel wie "rare"); leer = alle. Siehe ui/rarity-filter. */
+      rarities?: ReadonlySet<string>;
       /** Suche nach Künstler, Artwork, Flavortext und Lore - siehe PrintSearch. */
       print?: PrintSearch;
       /** Sortierung der Ergebnisliste - Default 'name' (alphabetisch), 'cmc' sortiert nach Manawert aufsteigend. */
@@ -724,7 +728,8 @@ export class ScryfallService {
       filters.cmc == null &&
       !filters.colors?.colors.length &&
       !filters.effectQuery &&
-      !filters.keyword
+      !filters.keyword &&
+      !filters.rarities?.size
     ) {
       return [];
     }

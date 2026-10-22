@@ -21,6 +21,7 @@ import { EMPTY_COLOR_SELECTION, matchesColorSelection } from '../color-filter-ma
 import { TYPE_ORDER, cmcBucket, translateSectionLabel, typeSection } from '../deck-analyse';
 import { CmcFilter } from '../ui/cmc-filter/cmc-filter';
 import { ColorFilter } from '../ui/color-filter/color-filter';
+import { RarityFilter } from '../ui/rarity-filter/rarity-filter';
 import { Icon } from '../ui/icon/icon';
 
 /** Eine Karte im Auswahl-Raster. */
@@ -75,7 +76,7 @@ const FLAG_EFFECTS: Record<string, keyof SpellbookCardFlags> = {
  */
 @Component({
   selector: 'app-cube-card-picker',
-  imports: [FormsModule, CmcFilter, ColorFilter, Icon],
+  imports: [FormsModule, CmcFilter, ColorFilter, RarityFilter, Icon],
   templateUrl: './cube-card-picker.html',
   styleUrl: './cube-card-picker.scss',
 })
@@ -100,6 +101,7 @@ export class CubeCardPicker {
   readonly type = signal('all');
   readonly cmc = signal<'all' | number>('all');
   readonly colors = signal(EMPTY_COLOR_SELECTION);
+  readonly rarities = signal<ReadonlySet<string>>(new Set());
   readonly effect = signal('all');
   readonly keyword = signal('all');
   readonly order = signal<'name' | 'cmc'>('name');
@@ -130,17 +132,32 @@ export class CubeCardPicker {
   private readonly requestedNames = new Set<string>();
   private readonly requestedIds = new Set<string>();
 
-  /** Eine Karte je Name, mit dem zuletzt hinzugefügten Druck als Bild. */
+  /** Eine Karte je Name, mit dem zuletzt hinzugefügten Druck als Bild; `ids` = alle eigenen Drucke. */
   private readonly ownedBase = computed(() => {
-    const byName = new Map<string, { name: string; scryfallId: string; owned: number }>();
+    const byName = new Map<
+      string,
+      { name: string; scryfallId: string; owned: number; ids: string[] }
+    >();
     for (const e of this.collection.entries() ?? []) {
       const key = e.cardName.toLowerCase();
       const prev = byName.get(key);
-      if (prev) prev.owned += e.quantity;
-      else byName.set(key, { name: e.cardName, scryfallId: e.scryfallId, owned: e.quantity });
+      if (prev) {
+        prev.owned += e.quantity;
+        prev.ids.push(e.scryfallId);
+      } else {
+        byName.set(key, {
+          name: e.cardName,
+          scryfallId: e.scryfallId,
+          owned: e.quantity,
+          ids: [e.scryfallId],
+        });
+      }
     }
     return [...byName.values()];
   });
+  private readonly ownedIds = computed(
+    () => new Map(this.ownedBase().map((o) => [o.name.toLowerCase(), o.ids])),
+  );
 
   private readonly ownedCards = computed<OwnedCard[]>(() => {
     const details = this.details();
@@ -175,8 +192,10 @@ export class CubeCardPicker {
     const colors = this.colors();
     const eff = this.effect();
     const keyword = this.keyword();
+    const rarities = this.rarities();
     const format = this.format();
     const prints = this.prints();
+    const ownedIds = this.ownedIds();
     const list = this.ownedCards().filter((c) => {
       if (q && !c.name.toLowerCase().includes(q)) return false;
       if (type !== 'all' && typeSection(c.typeLine) !== type) return false;
@@ -184,6 +203,13 @@ export class CubeCardPicker {
       if (colors.colors.length && !matchesColorSelection(c.colorIdentity, colors)) return false;
       if (eff !== 'all' && !c.effects.has(eff)) return false;
       if (keyword !== 'all' && !c.keywords.some((k) => k.toLowerCase() === keyword)) return false;
+      if (rarities.size) {
+        // Ein eigener Druck in dieser Seltenheit reicht; noch nicht geladen bleibt sichtbar.
+        const known = (ownedIds.get(c.name.toLowerCase()) ?? [])
+          .map((id) => prints.get(id))
+          .filter((info): info is PrintInfo => !!info);
+        if (known.length && !known.some((info) => rarities.has(info.rarity ?? ''))) return false;
+      }
       if (format && c.scryfallId) {
         // Unbekannt (noch nicht geladen oder Scryfall ohne Antwort) bleibt sichtbar.
         const legal = prints.get(c.scryfallId)?.legalities[SCRYFALL_FORMAT[format]];
@@ -216,8 +242,8 @@ export class CubeCardPicker {
     effect(() => {
       if (!this.collectionOnly()) return;
       const base = this.ownedBase();
-      const format = this.format();
-      untracked(() => void this.loadOwned(base, !!format));
+      const withPrints = !!this.format() || this.rarities().size > 0;
+      untracked(() => void this.loadOwned(base, withPrints));
     });
 
     // Alle Karten: bei jeder Filteränderung neu suchen (kurz gesammelt, wie im Deck-Editor).
@@ -228,6 +254,7 @@ export class CubeCardPicker {
         type: this.type(),
         cmc: this.cmc(),
         colors: this.colors(),
+        rarities: this.rarities(),
         effect: this.effect(),
         keyword: this.keyword(),
         order: this.order(),
@@ -248,6 +275,7 @@ export class CubeCardPicker {
       type: string;
       cmc: 'all' | number;
       colors: typeof EMPTY_COLOR_SELECTION;
+      rarities: ReadonlySet<string>;
       effect: string;
       keyword: string;
       order: 'name' | 'cmc';
@@ -263,6 +291,7 @@ export class CubeCardPicker {
         type: args.type === 'all' ? undefined : TYPE_TO_SCRYFALL[args.type],
         cmc: args.cmc === 'all' ? null : args.cmc,
         colors: args.colors,
+        rarities: args.rarities,
         effectQuery:
           args.effect === 'all'
             ? undefined
@@ -292,8 +321,8 @@ export class CubeCardPicker {
   private lastArgs: Parameters<CubeCardPicker['search']>[0] | null = null;
 
   private async loadOwned(
-    base: readonly { name: string; scryfallId: string }[],
-    withLegality: boolean,
+    base: readonly { name: string; scryfallId: string; ids: string[] }[],
+    withPrints: boolean,
   ): Promise<void> {
     const names = base.map((b) => b.name).filter((n) => !this.requestedNames.has(n));
     names.forEach((n) => this.requestedNames.add(n));
@@ -310,8 +339,9 @@ export class CubeCardPicker {
         return next;
       });
     }
-    if (!withLegality) return;
-    const ids = base.map((b) => b.scryfallId).filter((id) => !this.requestedIds.has(id));
+    // Seltenheit und Legalität hängen am Druck - beides aus printInfo().
+    if (!withPrints) return;
+    const ids = base.flatMap((b) => b.ids).filter((id) => !this.requestedIds.has(id));
     if (!ids.length) return;
     ids.forEach((id) => this.requestedIds.add(id));
     this.checkingLegality.set(true);
@@ -357,6 +387,7 @@ export class CubeCardPicker {
     this.type.set('all');
     this.cmc.set('all');
     this.colors.set(EMPTY_COLOR_SELECTION);
+    this.rarities.set(new Set());
     this.effect.set('all');
     this.keyword.set('all');
   }
