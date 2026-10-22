@@ -77,15 +77,6 @@ export class PerformanceStats {
     this.showAllMatchups() ? this.matchups() : this.matchups().slice(0, this.PREVIEW),
   );
 
-  readonly lead = computed(() => {
-    // Mit Spieler seine Partien (inkl. Import-Niederlagen) - sonst stünde "aus 44 Spielen" über
-    // "67 Spiele" (Rückmeldung des Users, 21.10.2026).
-    const games = this.playerSummary()?.games ?? this.overall().games;
-    return games === 1
-      ? this.i18n.t('stats.performance.leadOne')
-      : this.i18n.t('stats.performance.lead', { count: games });
-  });
-
   rate(value: number | null): string {
     return formatRate(value, this.i18n.lang());
   }

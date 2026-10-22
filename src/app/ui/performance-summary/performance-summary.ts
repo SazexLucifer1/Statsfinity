@@ -82,6 +82,9 @@ export class PerformanceSummaryView {
   readonly overall = input<OverallSummary | null>(null);
   /** Winrate/Spiele/Siege zeigen - aus, wo diese Zahlen schon direkt darüber stehen. */
   readonly showCounts = input(true);
+  /** Ø Spieldauer zeigen - aus, wo die Spiel-Analysen darunter ohnehin einen Kasten "Spieldauer"
+   *  haben (Rückmeldung des Users, 21.10.2026: stand sonst zweimal da). */
+  readonly showDuration = input(true);
   readonly winConditions = input<readonly WinConditionCount[] | null>(null);
 
   readonly rate = computed(() => formatRate(this.summary()?.winRate ?? null, this.i18n.lang()));
@@ -103,22 +106,30 @@ export class PerformanceSummaryView {
           s.placementGames,
         ),
         fact('stats.performance.avgWinTurn', formatAverage(s.avgWinTurn, lang), s.winTurnGames),
-        fact(
-          'stats.performance.avgDuration',
-          formatMinutes(s.avgMinutes, this.i18n),
-          s.durationGames,
-        ),
+        ...(this.showDuration()
+          ? [
+              fact(
+                'stats.performance.avgDuration',
+                formatMinutes(s.avgMinutes, this.i18n),
+                s.durationGames,
+              ),
+            ]
+          : []),
       ];
     }
     const o = this.overall();
     if (o) {
       return [
         fact('stats.performance.avgTurn', formatAverage(o.avgTurn, lang), o.turnGames),
-        fact(
-          'stats.performance.avgDuration',
-          formatMinutes(o.avgMinutes, this.i18n),
-          o.durationGames,
-        ),
+        ...(this.showDuration()
+          ? [
+              fact(
+                'stats.performance.avgDuration',
+                formatMinutes(o.avgMinutes, this.i18n),
+                o.durationGames,
+              ),
+            ]
+          : []),
       ];
     }
     return [];
@@ -134,14 +145,14 @@ export class PerformanceSummaryView {
       return [
         ...entry('stats.performance.avgPlacement', s.placementSince),
         ...entry('stats.performance.avgWinTurn', s.winTurnSince),
-        ...entry('stats.performance.avgDuration', s.durationSince),
+        ...(this.showDuration() ? entry('stats.performance.avgDuration', s.durationSince) : []),
       ];
     }
     const o = this.overall();
     if (o) {
       return [
         ...entry('stats.performance.avgTurn', o.turnSince),
-        ...entry('stats.performance.avgDuration', o.durationSince),
+        ...(this.showDuration() ? entry('stats.performance.avgDuration', o.durationSince) : []),
       ];
     }
     return [];

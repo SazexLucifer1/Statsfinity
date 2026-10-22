@@ -17,18 +17,21 @@
     </button>
 
     @if (expanded()) {
-      <app-info-toggle [label]="i18n.t('stats.performance.infoAria')">
-        <p info-title class="perf-lead">{{ lead() }}</p>
-        <p class="hint">{{ i18n.t('stats.performance.info') }}</p>
-      </app-info-toggle>
-
       @if (overall().games === 0) {
         <p class="perf-empty">{{ i18n.t('stats.performance.noGames') }}</p>
       } @else {
         @if (playerSummary(); as s) {
-          <app-performance-summary [summary]="s" [winConditions]="winConditions()" />
+          <app-performance-summary
+            [summary]="s"
+            [winConditions]="winConditions()"
+            [showDuration]="false"
+          />
         } @else {
-          <app-performance-summary [overall]="overall()" [winConditions]="winConditions()" />
+          <app-performance-summary
+            [overall]="overall()"
+            [winConditions]="winConditions()"
+            [showDuration]="false"
+          />
         }
 
         @if (part() === 'all') {

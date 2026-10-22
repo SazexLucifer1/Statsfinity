@@ -64,7 +64,6 @@ export const stats = {
     'stats.performance.title': 'Performance',
     'stats.performance.titlePlayer': 'Performance von {{name}}',
     'stats.performance.infoAria': 'Erklärung zur Performance',
-    'stats.performance.info': 'Alle Zahlen stammen nur aus den gespeicherten Partien. Ein Schnitt rechnet nur über die Partien, in denen der Wert eingetragen ist - seit wann, steht im ⓘ bei den Durchschnitten. Platz: eingetragene Platzierung, im 1 gegen 1 aus dem Sieger. Die Zahlen zeigen, was passiert ist, nicht warum.',
     'stats.performance.games': 'Spiele',
     'stats.performance.wins': 'Siege',
     'stats.performance.winRate': 'Winrate',
@@ -83,14 +82,15 @@ export const stats = {
     'stats.performance.averagesTitle': 'Durchschnitte',
     'stats.performance.commandersWithoutDeck': 'Commander ohne Deck ({{count}})',
     'stats.performance.trackedSince': '{{label}}: erfasst seit {{date}}',
-    'stats.performance.averagesInfo': 'Ein Schnitt rechnet nur über Partien, in denen der Wert eingetragen wurde - ältere Partien ohne den Wert zählen dort nicht mit.',
-    'stats.performance.lead': 'Aus {{count}} gespeicherten Spielen',
-    'stats.performance.leadOne': 'Aus 1 gespeicherten Spiel',
+    'stats.performance.averagesInfo':
+      'Alle Zahlen stammen nur aus den gespeicherten Partien. Ein Schnitt rechnet nur über Partien, in denen der Wert eingetragen wurde - ältere Partien ohne den Wert zählen dort nicht mit. Platz: eingetragene Platzierung, im 1 gegen 1 aus dem Sieger. Die Zahlen zeigen, was passiert ist, nicht warum.',
     'stats.performance.decksTitle': 'Decks',
     'stats.performance.matchupsTitle': 'Gegen Commander',
-    'stats.performance.matchupsInfo': 'Bilanz in den aufgezeichneten Partien gegen diesen Commander. Gewinnt ein Dritter, zählt die Partie mit, aber weder als Sieg noch als Niederlage. Daraus folgt nicht, dass ein Deck ein anderes kontert.',
+    'stats.performance.matchupsInfo':
+      'Bilanz in den aufgezeichneten Partien gegen diesen Commander. Gewinnt ein Dritter, zählt die Partie mit, aber weder als Sieg noch als Niederlage. Daraus folgt nicht, dass ein Deck ein anderes kontert.',
     'stats.performance.winConditionsTitle': 'Siegarten',
-    'stats.performance.winConditionsInfo': 'Nur was nach der Partie im Sieger-Dialog eingetragen wurde. Ohne Eintrag zählt ein Sieg unter „Anderes“ - die App rät nicht.',
+    'stats.performance.winConditionsInfo':
+      'Nur was nach der Partie im Sieger-Dialog eingetragen wurde. Ohne Eintrag zählt ein Sieg unter „Anderes“ - die App rät nicht.',
     'stats.performance.noGames': 'Keine Spiele in dieser Auswahl.',
     'stats.insights.titlePlayer': 'Spiel-Analysen: {{name}}',
     'stats.insights.noGames': 'Noch keine Partien in dieser Auswahl.',
@@ -111,27 +111,35 @@ export const stats = {
     'stats.insights.victim': 'Lieblingsgegner',
     'stats.insights.lostToOf': '{{name}} gewann {{count}} von {{games}} gemeinsamen Partien',
     'stats.insights.beatOf': '{{count}} von {{games}} Partien gewonnen',
-    'stats.insights.opponentLine': '{{games}} Partien · {{beat}} selbst gewonnen · {{lost}} gewann {{name}}',
+    'stats.insights.opponentLine':
+      '{{games}} Partien · {{beat}} selbst gewonnen · {{lost}} gewann {{name}}',
     'stats.insights.turnOrderTitle': 'Zugreihenfolge',
-    'stats.insights.turnOrderEmpty': 'Noch keine Partie mit bekanntem Startspieler. Ab jetzt wird er beim Speichern erfasst - per Auslosung oder im Sieger-Dialog.',
+    'stats.insights.turnOrderEmpty':
+      'Noch keine Partie mit bekanntem Startspieler. Ab jetzt wird er beim Speichern erfasst - per Auslosung oder im Sieger-Dialog.',
     'stats.insights.turnOrderCount': 'Aus {{games}} Einträgen. 1. = hat angefangen.',
-    'stats.insights.turnOrderInfo': 'Winrate je Platz in der Zugreihenfolge. Die Reihenfolge speichert der Tracker aus dem Startspieler und der Sitzordnung im Uhrzeigersinn - Partien ohne Startspieler fehlen hier.',
+    'stats.insights.turnOrderInfo':
+      'Winrate je Platz in der Zugreihenfolge. Die Reihenfolge speichert der Tracker aus dem Startspieler und der Sitzordnung im Uhrzeigersinn - Partien ohne Startspieler fehlen hier.',
     'stats.insights.infoAria': 'Wie wird das gerechnet?',
-    'stats.insights.opponentsInfo': 'Angstgegner: wer dich anteilig am häufigsten geschlagen hat. Lieblingsgegner: wen du anteilig am häufigsten geschlagen hast. Beides erst ab {{min}} gemeinsamen Partien. Teamkollegen und Verbündete gegen den Archenemy zählen nicht als Gegner.',
-    'stats.insights.durationInfo': 'Vom Start des Trackers bis zum Speichern der Partie. Nachgetragene Partien haben keine Dauer; unter 3 Minuten oder über 8 Stunden gilt als Messfehler und zählt nicht.',
+    'stats.insights.opponentsInfo':
+      'Angstgegner: wer dich anteilig am häufigsten geschlagen hat. Lieblingsgegner: wen du anteilig am häufigsten geschlagen hast. Beides erst ab {{min}} gemeinsamen Partien. Teamkollegen und Verbündete gegen den Archenemy zählen nicht als Gegner.',
+    'stats.insights.durationInfo':
+      'Vom Start des Trackers bis zum Speichern der Partie. Nachgetragene Partien haben keine Dauer; unter 3 Minuten oder über 8 Stunden gilt als Messfehler und zählt nicht.',
     'stats.insights.seatLabel': 'Startplatz {{seat}}',
     'stats.insights.durationTitle': 'Spieldauer',
     'stats.insights.knockoutsTitle': 'Rauswürfe',
-    'stats.insights.knockoutsInfo': 'Wer wen aus einer Commander-Partie geworfen hat - der letzte Treffer, nicht der Sieg. Erfasst im Tracker beim Totenkopf; wer bis zum Spielende nicht markiert ist, zählt für den Sieger. Die Säulen zählen, wie oft jemand andere rausgeworfen hat; darunter aufklappbar, wer wen wie oft.',
+    'stats.insights.knockoutsInfo':
+      'Wer wen aus einer Commander-Partie geworfen hat - der letzte Treffer, nicht der Sieg. Erfasst im Tracker beim Totenkopf; wer bis zum Spielende nicht markiert ist, zählt für den Sieger. Die Säulen zählen, wie oft jemand andere rausgeworfen hat; darunter aufklappbar, wer wen wie oft.',
     'stats.insights.knockoutsDetails': 'Wer wen wie oft rausgeworfen hat',
-    'stats.insights.knockoutsEmpty': 'Noch keine Rauswürfe erfasst. Ab jetzt fragt der Tracker in Commander-Partien beim Totenkopf, wer es war.',
+    'stats.insights.knockoutsEmpty':
+      'Noch keine Rauswürfe erfasst. Ab jetzt fragt der Tracker in Commander-Partien beim Totenkopf, wer es war.',
     'stats.insights.knockoutsLine': '{{kills}} rausgeworfen · {{deaths}}× rausgeflogen',
     'stats.insights.knockedOut': 'Hat rausgeworfen',
     'stats.insights.knockedOutBy': 'Rausgeworfen von',
     'stats.insights.knockedOutSelf': 'Selbst rausgeflogen',
     'stats.insights.knockoutTimes': '{{count}}×',
     'stats.insights.knockoutPair': '{{killer}} → {{victim}}',
-    'stats.insights.durationEmpty': 'Noch keine Partie mit gemessener Dauer. Ab jetzt wird jede im Tracker gespielte Partie gestoppt.',
+    'stats.insights.durationEmpty':
+      'Noch keine Partie mit gemessener Dauer. Ab jetzt wird jede im Tracker gespielte Partie gestoppt.',
     'stats.insights.avgDuration': 'Durchschnitt',
     'stats.insights.longest': 'Längste Partie',
     'stats.insights.shortest': 'kürzeste: {{duration}}',
@@ -142,7 +150,8 @@ export const stats = {
     'stats.insights.otherResult': 'Anderes Deck/Unentschieden',
     'stats.insights.yearReview': 'Jahresrückblick als Bild',
     'stats.review.title': 'Jahresrückblick: {{name}}',
-    'stats.review.englishHint': 'Das Bild ist immer auf Englisch, damit es überall gelesen wird, wo du es teilst.',
+    'stats.review.englishHint':
+      'Das Bild ist immer auf Englisch, damit es überall gelesen wird, wo du es teilst.',
     'stats.review.download': 'Bild herunterladen',
     'stats.review.empty': 'Keine Partien in diesem Jahr.',
     'stats.review.imageTitle': '{{year}} Year in Review',
@@ -190,7 +199,8 @@ export const stats = {
     'stats.of': 'von',
     'stats.gamesUntilQualification': 'Spiele bis zur Qualifikation',
     'stats.qualificationInfoAria': 'Ab wann man in der Rangliste steht',
-    'stats.deckQualificationHint': 'Ab {{threshold}} Spielen (in diesem Zeitraum/Modus) erscheinen Decks und Commander in der Rangliste.',
+    'stats.deckQualificationHint':
+      'Ab {{threshold}} Spielen (in diesem Zeitraum/Modus) erscheinen Decks und Commander in der Rangliste.',
     'stats.qualificationHint':
       'Ab {{threshold}} Spielen (in diesem Zeitraum/Modus) erscheinen Spieler in der Rangliste.',
     'stats.stillNeeded': 'noch {{count}}',
@@ -227,28 +237,34 @@ export const stats = {
     'stats.personal.versusNone': 'Ihr habt in diesem Zeitraum noch keine Partie zusammen gespielt.',
     'stats.personal.versusGames': '{{count}} gemeinsame Partien - wer hat sie gewonnen?',
     'stats.personal.openFull': 'Ganze Statistik von {{name}}',
-    'stats.personal.tapHint': 'Tipp auf einen Spieler zeigt seine Statistik und den Vergleich mit dir.',
+    'stats.personal.tapHint':
+      'Tipp auf einen Spieler zeigt seine Statistik und den Vergleich mit dir.',
     'stats.friends.title': 'Freunde',
     'stats.friends.filterTitle': 'Zeitraum & Format',
     'stats.friends.unavailable': 'Die Freunde-Funktion ist gerade nicht verfügbar.',
-    'stats.friends.noFriends': 'Noch keine Freunde. Im Profil unter „Freunde“ findest du Spieler und schickst Anfragen - danach vergleichst du dich hier mit ihnen über alle Gruppen hinweg.',
+    'stats.friends.noFriends':
+      'Noch keine Freunde. Im Profil unter „Freunde“ findest du Spieler und schickst Anfragen - danach vergleichst du dich hier mit ihnen über alle Gruppen hinweg.',
     'stats.friends.loading': 'Partien aus allen Gruppen werden geladen …',
     'stats.friends.infoAria': 'Was zählt hier?',
     'stats.friends.rankingTitle': 'Rangliste mit Freunden',
-    'stats.friends.rankingInfo': 'Du und deine Freunde über alle Partien aus allen Gruppen und Freundesspielen. Dieselbe Partie zählt nur einmal, auch wenn mehrere von euch dabei waren. In der Liste steht, wer mindestens {{min}} Partien hat.',
+    'stats.friends.rankingInfo':
+      'Du und deine Freunde über alle Partien aus allen Gruppen und Freundesspielen. Dieselbe Partie zählt nur einmal, auch wenn mehrere von euch dabei waren. In der Liste steht, wer mindestens {{min}} Partien hat.',
     'stats.friends.rankingEmpty': 'Noch niemand mit mindestens {{min}} Partien in diesem Zeitraum.',
     'stats.friends.belowMin': 'Unter {{min}} Partien: {{names}}',
     'stats.friends.winsOfGames': '{{wins}} Siege aus {{games}} Partien',
     'stats.friends.choosePerson': 'Wähle dich oder einen Freund für Details.',
     'stats.friends.vsTitle': 'Du gegen {{name}}',
     'stats.friends.vsNone': 'Ihr habt in diesem Zeitraum noch nicht zusammen gespielt.',
-    'stats.friends.vsGames': '{{games}} gemeinsame Partien, {{other}} davon hat jemand anderes gewonnen',
+    'stats.friends.vsGames':
+      '{{games}} gemeinsame Partien, {{other}} davon hat jemand anderes gewonnen',
     'stats.friends.commandersTitle': 'Meistgespielte Commander',
     'stats.friends.commandersEmpty': 'Keine Partien mit Commander in diesem Zeitraum.',
     'stats.friends.eloTitle': 'Elo unter Freunden',
-    'stats.friends.eloInfo': 'Nur aus Freundesspielen (Match-Tab → „Freunde“), gerechnet wie das Rangsystem einer Gruppe. Gruppenpartien zählen hier nicht - sonst würden Runden mit ganz anderen Gegnern vermischt.',
+    'stats.friends.eloInfo':
+      'Nur aus Freundesspielen (Match-Tab → „Freunde“), gerechnet wie das Rangsystem einer Gruppe. Gruppenpartien zählen hier nicht - sonst würden Runden mit ganz anderen Gegnern vermischt.',
     'stats.friends.eloEmpty': 'Noch keine Freundesspiele in diesem Zeitraum.',
-    'stats.groupSwitcherHint': 'Gruppe wählen – gilt für die ganze Statistik und auch für neue Matches.',
+    'stats.groupSwitcherHint':
+      'Gruppe wählen – gilt für die ganze Statistik und auch für neue Matches.',
     'stats.globalDecksAndCommandersHint':
       'Über alle Spieler der gesamten Website hinweg - ohne Spielernamen (die würden sonst Personen aus fremden Gruppen offenlegen). In der Winrate-Rangliste zählen nur Decks/Commander ab 10 Partien mit, sonst würde ein einzelnes Spiel mit 100% die Liste anführen.',
     'stats.globalLoading': 'Lade weltweite Statistik …',
@@ -340,7 +356,6 @@ export const stats = {
     'stats.performance.title': 'Performance',
     'stats.performance.titlePlayer': 'Performance of {{name}}',
     'stats.performance.infoAria': 'About performance',
-    'stats.performance.info': 'All numbers come only from saved games. An average only uses the games where the value was entered - since when is shown in the ⓘ next to the averages. Placement: as entered, in 1-vs-1 taken from the winner. The numbers show what happened, not why.',
     'stats.performance.games': 'Games',
     'stats.performance.wins': 'Wins',
     'stats.performance.winRate': 'Win rate',
@@ -359,14 +374,15 @@ export const stats = {
     'stats.performance.averagesTitle': 'Averages',
     'stats.performance.commandersWithoutDeck': 'Commanders without a deck ({{count}})',
     'stats.performance.trackedSince': '{{label}}: tracked since {{date}}',
-    'stats.performance.averagesInfo': 'An average only uses games where the value was entered - older games without it do not count there.',
-    'stats.performance.lead': 'From {{count}} saved games',
-    'stats.performance.leadOne': 'From 1 saved game',
+    'stats.performance.averagesInfo':
+      'All numbers come only from saved games. An average only uses games where the value was entered - older games without it do not count there. Placement: as entered, in 1-vs-1 taken from the winner. The numbers show what happened, not why.',
     'stats.performance.decksTitle': 'Decks',
     'stats.performance.matchupsTitle': 'Against commanders',
-    'stats.performance.matchupsInfo': 'Record in the recorded games against this commander. If a third player wins, the game counts, but neither as a win nor as a loss. This does not mean one deck counters another.',
+    'stats.performance.matchupsInfo':
+      'Record in the recorded games against this commander. If a third player wins, the game counts, but neither as a win nor as a loss. This does not mean one deck counters another.',
     'stats.performance.winConditionsTitle': 'Win conditions',
-    'stats.performance.winConditionsInfo': 'Only what was entered in the winner dialog after the game. Without an entry a win counts as "Other" - the app does not guess.',
+    'stats.performance.winConditionsInfo':
+      'Only what was entered in the winner dialog after the game. Without an entry a win counts as "Other" - the app does not guess.',
     'stats.performance.noGames': 'No games in this selection.',
     'stats.insights.titlePlayer': 'Game insights: {{name}}',
     'stats.insights.noGames': 'No games in this selection yet.',
@@ -387,27 +403,35 @@ export const stats = {
     'stats.insights.victim': 'Favorite opponent',
     'stats.insights.lostToOf': '{{name}} won {{count}} of {{games}} games together',
     'stats.insights.beatOf': 'won {{count}} of {{games}} games',
-    'stats.insights.opponentLine': '{{games}} games · {{beat}} won yourself · {{lost}} won by {{name}}',
+    'stats.insights.opponentLine':
+      '{{games}} games · {{beat}} won yourself · {{lost}} won by {{name}}',
     'stats.insights.turnOrderTitle': 'Turn order',
-    'stats.insights.turnOrderEmpty': 'No game with a known starting player yet. From now on it is recorded when saving - via the draw or in the winner dialog.',
+    'stats.insights.turnOrderEmpty':
+      'No game with a known starting player yet. From now on it is recorded when saving - via the draw or in the winner dialog.',
     'stats.insights.turnOrderCount': 'From {{games}} entries. 1st = went first.',
-    'stats.insights.turnOrderInfo': 'Win rate per position in turn order. The tracker stores the order from the starting player and the clockwise seating - games without a starting player are missing here.',
+    'stats.insights.turnOrderInfo':
+      'Win rate per position in turn order. The tracker stores the order from the starting player and the clockwise seating - games without a starting player are missing here.',
     'stats.insights.infoAria': 'How is this calculated?',
-    'stats.insights.opponentsInfo': 'Nemesis: who beat you most often, proportionally. Favourite opponent: who you beat most often, proportionally. Both only from {{min}} shared games. Teammates and allies against the Archenemy do not count as opponents.',
-    'stats.insights.durationInfo': 'From starting the tracker until the game is saved. Added past games have no duration; under 3 minutes or over 8 hours counts as a measuring error and is left out.',
+    'stats.insights.opponentsInfo':
+      'Nemesis: who beat you most often, proportionally. Favourite opponent: who you beat most often, proportionally. Both only from {{min}} shared games. Teammates and allies against the Archenemy do not count as opponents.',
+    'stats.insights.durationInfo':
+      'From starting the tracker until the game is saved. Added past games have no duration; under 3 minutes or over 8 hours counts as a measuring error and is left out.',
     'stats.insights.seatLabel': 'Seat {{seat}}',
     'stats.insights.durationTitle': 'Game length',
     'stats.insights.knockoutsTitle': 'Knockouts',
-    'stats.insights.knockoutsInfo': 'Who knocked whom out of a Commander game - the final hit, not the win. Recorded in the tracker via the skull; anyone not marked by the end of the game counts for the winner. The bars count how often someone knocked others out; expand below to see who knocked out whom and how often.',
+    'stats.insights.knockoutsInfo':
+      'Who knocked whom out of a Commander game - the final hit, not the win. Recorded in the tracker via the skull; anyone not marked by the end of the game counts for the winner. The bars count how often someone knocked others out; expand below to see who knocked out whom and how often.',
     'stats.insights.knockoutsDetails': 'Who knocked out whom, how often',
-    'stats.insights.knockoutsEmpty': 'No knockouts recorded yet. From now on the tracker asks who did it when a player is marked dead in Commander games.',
+    'stats.insights.knockoutsEmpty':
+      'No knockouts recorded yet. From now on the tracker asks who did it when a player is marked dead in Commander games.',
     'stats.insights.knockoutsLine': '{{kills}} knocked out · out {{deaths}}×',
     'stats.insights.knockedOut': 'Knocked out',
     'stats.insights.knockedOutBy': 'Knocked out by',
     'stats.insights.knockedOutSelf': 'Knocked themselves out',
     'stats.insights.knockoutTimes': '{{count}}×',
     'stats.insights.knockoutPair': '{{killer}} → {{victim}}',
-    'stats.insights.durationEmpty': 'No game with a measured length yet. From now on every game played in the tracker is timed.',
+    'stats.insights.durationEmpty':
+      'No game with a measured length yet. From now on every game played in the tracker is timed.',
     'stats.insights.avgDuration': 'Average',
     'stats.insights.longest': 'Longest game',
     'stats.insights.shortest': 'shortest: {{duration}}',
@@ -418,7 +442,8 @@ export const stats = {
     'stats.insights.otherResult': 'Another deck/draw',
     'stats.insights.yearReview': 'Year in review as image',
     'stats.review.title': 'Year in review: {{name}}',
-    'stats.review.englishHint': 'The image is always in English so it can be read wherever you share it.',
+    'stats.review.englishHint':
+      'The image is always in English so it can be read wherever you share it.',
     'stats.review.download': 'Download image',
     'stats.review.empty': 'No games in this year.',
     'stats.review.imageTitle': '{{year}} Year in Review',
@@ -466,7 +491,8 @@ export const stats = {
     'stats.of': 'of',
     'stats.gamesUntilQualification': 'Games until qualification',
     'stats.qualificationInfoAria': 'When you appear in the ranking',
-    'stats.deckQualificationHint': 'From {{threshold}} games (in this period/mode) decks and commanders appear in the ranking.',
+    'stats.deckQualificationHint':
+      'From {{threshold}} games (in this period/mode) decks and commanders appear in the ranking.',
     'stats.qualificationHint':
       'From {{threshold}} games (in this period/mode) players appear in the ranking.',
     'stats.stillNeeded': '{{count}} more',
@@ -507,11 +533,13 @@ export const stats = {
     'stats.friends.title': 'Friends',
     'stats.friends.filterTitle': 'Period & format',
     'stats.friends.unavailable': 'The friends feature is currently unavailable.',
-    'stats.friends.noFriends': 'No friends yet. Under “Friends” in your profile you can find players and send requests - then compare yourself with them here across all groups.',
+    'stats.friends.noFriends':
+      'No friends yet. Under “Friends” in your profile you can find players and send requests - then compare yourself with them here across all groups.',
     'stats.friends.loading': 'Loading games from all groups …',
     'stats.friends.infoAria': 'What counts here?',
     'stats.friends.rankingTitle': 'Leaderboard with friends',
-    'stats.friends.rankingInfo': 'You and your friends across all games from all groups and friend games. The same game counts only once, even if several of you played in it. Listed is everyone with at least {{min}} games.',
+    'stats.friends.rankingInfo':
+      'You and your friends across all games from all groups and friend games. The same game counts only once, even if several of you played in it. Listed is everyone with at least {{min}} games.',
     'stats.friends.rankingEmpty': 'Nobody with at least {{min}} games in this period yet.',
     'stats.friends.belowMin': 'Under {{min}} games: {{names}}',
     'stats.friends.winsOfGames': '{{wins}} wins from {{games}} games',
@@ -522,7 +550,8 @@ export const stats = {
     'stats.friends.commandersTitle': 'Most played commanders',
     'stats.friends.commandersEmpty': 'No games with a commander in this period.',
     'stats.friends.eloTitle': 'Elo among friends',
-    'stats.friends.eloInfo': 'Only from friend games (Match tab → “Friends”), calculated like a group\'s ranking system. Group games do not count here - otherwise rounds with completely different opponents would be mixed.',
+    'stats.friends.eloInfo':
+      "Only from friend games (Match tab → “Friends”), calculated like a group's ranking system. Group games do not count here - otherwise rounds with completely different opponents would be mixed.",
     'stats.friends.eloEmpty': 'No friend games in this period yet.',
     'stats.groupSwitcherHint': 'Choose a group – applies to all stats and to new matches too.',
     'stats.globalDecksAndCommandersHint':
