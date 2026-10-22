@@ -234,4 +234,17 @@ describe('foilFromPixels', () => {
     // Sechs Zeichen auf 114 px: das vierte (der Stern) liegt bei 77-96.
     expect(foilFromPixels(star.gray, 200, 60, merged)).toBe(true);
   });
+
+  it('findet den Stern auch, wenn ihn die Texterkennung als Buchstaben liest', () => {
+    const star = line(15);
+    const merged = [{ text: 'TLERDE', bbox: { x0: 20, y0: 20, x1: 134, y1: 40 } }];
+    expect(foilFromPixels(star.gray, 200, 60, merged)).toBe(true);
+  });
+
+  it('findet den Stern auch im Wortrahmen der Sprache', () => {
+    const star = line(15);
+    // iPhone: "FRA DE", der Rahmen von "DE" beginnt schon vor dem Stern.
+    const words = [star.words[0], { text: 'EN', bbox: { x0: 74, y0: 20, x1: 134, y1: 40 } }];
+    expect(foilFromPixels(star.gray, 200, 60, words)).toBe(true);
+  });
 });

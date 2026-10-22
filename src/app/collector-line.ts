@@ -294,6 +294,8 @@ export function symbolHeight(
       let count = 0;
       let top = y;
       let bottom = y;
+      let left = x - gx0;
+      let right = left;
       const stack = [i];
       seen[i] = 1;
       while (stack.length) {
@@ -303,6 +305,8 @@ export function symbolHeight(
         count++;
         top = Math.min(top, jy + y0);
         bottom = Math.max(bottom, jy + y0);
+        left = Math.min(left, jx);
+        right = Math.max(right, jx);
         for (const [dx, dy] of [
           [1, 0],
           [-1, 0],
@@ -319,6 +323,8 @@ export function symbolHeight(
           }
         }
       }
+      // Was an den Seiten der Lücke anstößt, ist ein angeschnittener Buchstabe daneben.
+      if (left === 0 || right === w - 1) continue;
       if (count > biggest) {
         biggest = count;
         tallest = bottom - top + 1;
@@ -343,12 +349,11 @@ function symbolGap(
     const charW = (b.x1 - b.x0) / Math.max(1, raw.length);
     const code = clean(raw);
     // Alles in einem Wort ("PRM*EN", "TLE.EN"): das Zeichen steht vor den letzten beiden.
+    // Auch wenn das Zeichen als Buchstabe gelesen wurde ("FRARDE"): Steht dort in Wahrheit ein
+    // Buchstabe, ist der Fleck so hoch wie die Schrift und foilFromPixels() sagt nichts.
     if (raw.length >= 5 && PRINTED_LANG[code.slice(-2)] && isSetCode(code.slice(0, -2))) {
       const at = b.x0 + charW * (raw.length - 3);
-      if (!/[A-Z0-9]/.test(raw[raw.length - 3]) || code.length === raw.length - 1) {
-        return { x0: at - charW * 0.3, x1: at + charW * 1.3, letters: b };
-      }
-      continue;
+      return { x0: at - charW * 0.5, x1: at + charW * 1.5, letters: b };
     }
     // Sprache allein oder mit angeklebtem Zeichen ("EN", "*EN").
     const lang = code.slice(-2);
@@ -359,14 +364,19 @@ function symbolGap(
       if (!prev) break;
       if (!isSetCode(clean(prev.text))) continue;
       const p = prev.bbox;
-      const x1 = raw.length === 3 ? b.x0 + charW : b.x0;
+      // Der Wortrahmen der Sprache schließt das Zeichen oft mit ein ("DE" doppelt so breit wie
+      // zwei Buchstaben) - die Buchstaben beginnen erst knapp zwei Zeichenbreiten vor dem Ende.
+      // Die Lücke reicht deshalb ein Stück in beide Wörter hinein; angeschnittene Buchstaben
+      // zählen in symbolHeight() nicht.
+      const setCharW = (p.x1 - p.x0) / Math.max(1, prev.text.length);
+      const x1 = Math.max(raw.length === 3 ? b.x0 + charW : b.x0, b.x1 - 1.8 * setCharW);
       const letters = {
         x0: p.x0,
         y0: Math.min(p.y0, b.y0),
         x1: b.x1,
         y1: Math.max(p.y1, b.y1),
       };
-      return { x0: p.x1, x1, letters };
+      return { x0: p.x1 - 0.5 * setCharW, x1: x1 + 0.5 * setCharW, letters };
     }
   }
   return null;
