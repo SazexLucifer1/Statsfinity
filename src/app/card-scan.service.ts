@@ -24,8 +24,10 @@ import {
 import {
   CollectorLine,
   OcrWord,
+  foilFromPixels,
   foilFromWords,
   languageFromText,
+  matchCornerText,
   parseCollectorLine,
 } from './collector-line';
 import { findCardCandidates } from './card-bounds';
@@ -41,8 +43,14 @@ import { toCollectionPrint } from './collection.service';
  *    (scripts/sync-card-art-hashes.mjs). Für alte Karten ohne Sammlerzeile - und als Gegenprobe:
  *    Passt das Artwork des per Text gefundenen Drucks nicht zum Bild, war der Text verlesen.
  *
- * Die Sprache steht nur in der Sammlerzeile. Ohne sie (Karten vor ~2015) gilt die im Scanner
- * eingestellte Sprache.
+ * Ist das Artwork erkannt, liest ein eigener Durchgang die Ecke unten links dieser Karte noch
+ * einmal - in voller Kameraauflösung (`detail`) und zweimal aufbereitet - und gleicht sie nur
+ * noch mit den Drucken ab, die dieses Artwork haben (matchCornerText()). Foil entscheidet dort
+ * die Größe des Zeichens zwischen Set und Sprache (foilFromPixels()), aber nur, wenn die Karte
+ * groß genug im Bild ist: unscharf und klein wächst der Punkt zum Stern.
+ *
+ * Die Sprache steht nur in der Sammlerzeile. Ohne sie (Karten vor ~2015) kommt sie aus dem
+ * großen Kartentext, sonst gilt die im Scanner eingestellte Sprache.
  */
 
 export interface ScanHit {
@@ -63,6 +71,21 @@ const GLARE_HINT = 0.01;
 
 /** Bereich der Sammlerzeile auf der Karte (Anteile), großzügig wegen ungenauem Anlegen. */
 const COLLECTOR_BOX = [0.0, 0.875, 0.56, 0.99] as const;
+/**
+ * Dasselbe für die Nahaufnahme nach dem Artwork-Treffer - mit viel mehr Rand: Die Kartenlage aus
+ * dem Fingerabdruck ist nur so genau wie die Lage des Artworks, im Test endete sie gut 7 % über
+ * der Unterkante, genau über der Sammlerzeile.
+ */
+const CORNER_BOX = [-0.04, 0.8, 0.6, 1.12] as const;
+
+/**
+ * Ab dieser Kartenhöhe im Kamerabild (Pixel) entscheidet das Zeichen in der Ecke über Foil, und
+ * für den Druck aus der Ecke reichen zwei Belege. Im Test mit verkleinerten, unscharfen
+ * Scryfall-Scans hielt die Messung bei knapp 600 px Kartenhöhe 3 von 55 Punkten für einen Stern;
+ * ab gut 800 px keinen mehr (Foils werden dort eher übersehen - harmlos, dafür gibt es den
+ * Foil-Schalter).
+ */
+const FOIL_MIN_CARD_HEIGHT = 700;
 
 @Injectable({ providedIn: 'root' })
 export class CardScanService {
@@ -146,12 +169,14 @@ export class CardScanService {
   /**
    * Erkennt die Karte auf `frame` - einem Ausschnitt um den Scanner-Rahmen herum, etwas größer als
    * dieser. `guide` ist der Rahmen selbst in Anteilen von `frame`. `fallbackLang` gilt, wenn keine
-   * Sammlerzeile lesbar ist.
+   * Sammlerzeile lesbar ist. `detail` ist derselbe Ausschnitt in voller Kameraauflösung (fehlt,
+   * wenn `frame` schon so groß ist) - für die Nahaufnahme der Ecke.
    */
   async identify(
     frame: HTMLCanvasElement,
     guide: ArtBox,
     fallbackLang: string,
+    detail?: HTMLCanvasElement,
   ): Promise<ScanHit | null> {
     // Zwei Annahmen, wo die Karte liegt: wo die Kantensuche sie findet (card-bounds.ts) und genau
     // im Rahmen. Die Kantensuche irrt, wenn sich der Kartenrand kaum vom Untergrund abhebt - mit
@@ -167,27 +192,56 @@ export class CardScanService {
     const score = (l: CollectorLine) => (l.setCode && l.collectorNumber ? 2 : 0) + (l.lang ? 1 : 0);
     let line = parseCollectorLine('');
     let words: OcrWord[] = [];
-    // Texterkennung kostet je Versuch spürbar Zeit: nur die wahrscheinlichste Lage und der Rahmen.
-    for (const box of found.length ? [found[0], guide] : [guide]) {
-      const read = await this.readCollectorLine(crop(frame, box));
-      const parsed = parseCollectorLine(read.text);
-      if (score(parsed) > score(line)) {
-        line = parsed;
-        words = read.words;
+    let cornerPrint: CollectionPrint | null = null;
+    let pixelFoil: boolean | null = null;
+    if (art) {
+      // Nahaufnahme der Ecke: Die Lage der Karte steht durch das Artwork fest, die Drucke mit
+      // diesem Artwork sind bekannt - die Texterkennung muss nur noch zwischen ihnen entscheiden.
+      const source = detail ?? frame;
+      const corner = crop(source, within(art.cardBox, CORNER_BOX));
+      const prints = await this.printsWithArt(art.match.id);
+      const largeEnough = (art.cardBox[3] - art.cardBox[1]) * source.height >= FOIL_MIN_CARD_HEIGHT;
+      for (const variant of ['contrast', 'stretch'] as const) {
+        const read = await this.readCollectorLine(corner, variant);
+        const parsed = parseCollectorLine(read.text);
+        if (score(parsed) > score(line)) {
+          line = parsed;
+          words = read.words;
+        }
+        if (prints.length > 1)
+          cornerPrint ??= matchCornerText(read.text, prints, largeEnough ? 5 : 6);
+        if (largeEnough && pixelFoil === null) {
+          pixelFoil = foilFromPixels(read.gray, read.width, read.height, read.words);
+        }
+        if (cornerPrint && (pixelFoil !== null || !largeEnough)) break;
       }
-      if (score(line) === 3) break;
+    } else {
+      // Ohne Artwork: Texterkennung kostet je Versuch spürbar Zeit, nur die wahrscheinlichste
+      // Lage und der Rahmen.
+      for (const box of found.length ? [found[0], guide] : [guide]) {
+        const read = await this.readCollectorLine(
+          crop(frame, within(box, COLLECTOR_BOX)),
+          'contrast',
+        );
+        const parsed = parseCollectorLine(read.text);
+        if (score(parsed) > score(line)) {
+          line = parsed;
+          words = read.words;
+        }
+        if (score(line) === 3) break;
+      }
     }
-    const detectedFoil = foilFromWords(words);
+    const detectedFoil = pixelFoil ?? foilFromWords(words);
 
-    // Die Sammlerzeile ist gut 1 mm hoch und auf dem iPhone fast nie lesbar - dann die Sprache aus
-    // Name, Typzeile und Regeltext der per Artwork erkannten Karte (languageFromText()).
-    if (!line.lang && art) {
+    // Die Sammlerzeile ist gut 1 mm hoch und auf dem iPhone oft nicht lesbar - dann die Sprache
+    // aus Name, Typzeile und Regeltext der per Artwork erkannten Karte (languageFromText()).
+    if (!cornerPrint && !line.lang && art) {
       line = { ...line, lang: await this.languageFromCard(frame, art.cardBox, art.match.id) };
     }
 
-    let print: CollectionPrint | null = null;
+    let print: CollectionPrint | null = cornerPrint;
     let via: ScanHit['via'] = 'text';
-    if (line.setCode && line.collectorNumber) {
+    if (!print && line.setCode && line.collectorNumber) {
       const byText = await this.cardBy(
         `${API}/cards/${line.setCode}/${line.collectorNumber}${line.lang ? `/${line.lang}` : ''}`,
       );
@@ -363,6 +417,15 @@ export class CardScanService {
 
   /** Sprachen (mit gedrucktem Namen), in denen es das Artwork dieses Drucks gibt. */
   private async languagesOf(artId: string): Promise<{ lang: string; name: string }[]> {
+    const seen = new Map<string, string>();
+    for (const print of await this.printsWithArt(artId)) {
+      if (!seen.has(print.lang)) seen.set(print.lang, print.printedName ?? print.cardName);
+    }
+    return [...seen].map(([lang, name]) => ({ lang, name }));
+  }
+
+  /** Alle Drucke (Sets und Sprachen) mit demselben Artwork wie dieser. */
+  private async printsWithArt(artId: string): Promise<CollectionPrint[]> {
     const base = await this.cardBy(`${API}/cards/${artId}`);
     if (!base?.oracle_id) return [];
     const illustration = toCollectionPrint(base).illustrationId;
@@ -370,21 +433,22 @@ export class CardScanService {
     const list = await this.cardBy(
       `${API}/cards/search?q=${q}&unique=prints&include_multilingual=true`,
     );
-    const seen = new Map<string, string>();
-    for (const c of (list?.data as any[]) ?? []) {
-      const print = toCollectionPrint(c);
-      if (print.illustrationId === illustration && !seen.has(print.lang)) {
-        seen.set(print.lang, print.printedName ?? print.cardName);
-      }
-    }
-    return [...seen].map(([lang, name]) => ({ lang, name }));
+    return (((list?.data as any[]) ?? []).map(toCollectionPrint) as CollectionPrint[]).filter(
+      (print) => print.illustrationId === illustration,
+    );
   }
 
-  /** Texterkennung auf der Sammlerzeile, vergrößert und in Graustufen. */
+  /**
+   * Texterkennung auf der Sammlerzeile, vergrößert und in Graustufen. `contrast` wie bisher;
+   * `stretch` spreizt die Helligkeit auf den ganzen Bereich und dreht helle Schrift auf dunklem
+   * Rand um - Tesseract liest dunkle Schrift auf hellem Grund am besten. Gibt auch die Pixel
+   * zurück, auf denen gelesen wurde (für foilFromPixels()).
+   */
   private async readCollectorLine(
-    card: HTMLCanvasElement,
-  ): Promise<{ text: string; words: OcrWord[] }> {
-    const none = { text: '', words: [] };
+    region: HTMLCanvasElement,
+    variant: 'contrast' | 'stretch',
+  ): Promise<{ text: string; words: OcrWord[]; gray: Uint8Array; width: number; height: number }> {
+    const none = { text: '', words: [], gray: new Uint8Array(0), width: 0, height: 0 };
     const worker = await this.loadWorker();
     if (!worker) return none;
     // Jedes Mal setzen: languageFromCard() liest dazwischen Fließtext mit anderen Einstellungen.
@@ -393,18 +457,29 @@ export class CardScanService {
       tessedit_pageseg_mode: PSM.SINGLE_BLOCK,
       tessedit_char_whitelist: COLLECTOR_CHARS,
     });
-    const [l, t, r, b] = COLLECTOR_BOX;
-    const sx = l * card.width;
-    const sy = t * card.height;
-    const sw = (r - l) * card.width;
-    const sh = (b - t) * card.height;
     const crop = document.createElement('canvas');
     crop.width = 900;
-    crop.height = Math.round((sh * 900) / sw);
-    const ctx = crop.getContext('2d');
+    crop.height = Math.round((region.height * 900) / region.width);
+    const ctx = crop.getContext('2d', { willReadFrequently: true });
     if (!ctx) return none;
-    ctx.filter = 'grayscale(1) contrast(1.4)';
-    ctx.drawImage(card, sx, sy, sw, sh, 0, 0, crop.width, crop.height);
+    ctx.imageSmoothingQuality = 'high';
+    ctx.filter = variant === 'contrast' ? 'grayscale(1) contrast(1.4)' : 'grayscale(1)';
+    ctx.drawImage(region, 0, 0, crop.width, crop.height);
+    ctx.filter = 'none';
+    const image = ctx.getImageData(0, 0, crop.width, crop.height);
+    const gray = new Uint8Array(crop.width * crop.height);
+    // Selbst gerechnet statt dem Rotkanal zu trauen: Ältere Safari-Versionen kennen ctx.filter nicht.
+    const px = image.data;
+    for (let i = 0; i < gray.length; i++) {
+      gray[i] = 0.299 * px[i * 4] + 0.587 * px[i * 4 + 1] + 0.114 * px[i * 4 + 2];
+    }
+    if (variant === 'stretch') {
+      stretchContrast(gray);
+      for (let i = 0; i < gray.length; i++) {
+        image.data[i * 4] = image.data[i * 4 + 1] = image.data[i * 4 + 2] = gray[i];
+      }
+      ctx.putImageData(image, 0, 0);
+    }
     const { data } = await worker.recognize(crop, {}, { blocks: true, text: true });
     const words: OcrWord[] = [];
     for (const block of data.blocks ?? []) {
@@ -414,7 +489,7 @@ export class CardScanService {
         }
       }
     }
-    return { text: data.text ?? '', words };
+    return { text: data.text ?? '', words, gray, width: crop.width, height: crop.height };
   }
 
   /** Der Druck mit diesem Artwork in der gewünschten Sprache - sonst der aus dem Fingerabdruck. */
@@ -451,6 +526,18 @@ export class CardScanService {
   }
 }
 
+/** `part` (Anteile der Karte) als Ausschnitt des Bildes, wenn die Karte bei `card` liegt. */
+function within(card: ArtBox, part: readonly [number, number, number, number]): ArtBox {
+  const w = card[2] - card[0];
+  const h = card[3] - card[1];
+  return [
+    card[0] + part[0] * w,
+    card[1] + part[1] * h,
+    card[0] + part[2] * w,
+    card[1] + part[3] * h,
+  ];
+}
+
 /** Ausschnitt `box` (Anteile) von `source` als eigenes Canvas. */
 function crop(source: HTMLCanvasElement, box: ArtBox): HTMLCanvasElement {
   const sx = Math.max(0, box[0] * source.width);
@@ -471,4 +558,32 @@ function scaled(source: HTMLCanvasElement, width: number): HTMLCanvasElement {
   out.height = Math.round((source.height * width) / source.width);
   out.getContext('2d')?.drawImage(source, 0, 0, out.width, out.height);
   return out;
+}
+
+/**
+ * Helligkeit auf 0-255 spreizen (2. bis 98. Perzentil) und auf dunkle Schrift drehen, wenn der
+ * Ausschnitt überwiegend dunkel ist - der Rand unter der Sammlerzeile ist meist schwarz.
+ */
+function stretchContrast(gray: Uint8Array): void {
+  const hist = new Array<number>(256).fill(0);
+  let sum = 0;
+  for (const v of gray) {
+    hist[v]++;
+    sum += v;
+  }
+  const at = (share: number) => {
+    let seen = 0;
+    for (let v = 0; v < 256; v++) {
+      seen += hist[v];
+      if (seen >= share * gray.length) return v;
+    }
+    return 255;
+  };
+  const lo = at(0.02);
+  const hi = Math.max(lo + 1, at(0.98));
+  const invert = sum / gray.length < 128;
+  for (let i = 0; i < gray.length; i++) {
+    const v = Math.max(0, Math.min(255, Math.round(((gray[i] - lo) * 255) / (hi - lo))));
+    gray[i] = invert ? 255 - v : v;
+  }
 }

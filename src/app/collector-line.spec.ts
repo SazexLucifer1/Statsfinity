@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { foilFromWords, languageFromText, parseCollectorLine } from './collector-line';
+import {
+  foilFromPixels,
+  foilFromWords,
+  languageFromText,
+  matchCornerText,
+  OcrWord,
+  parseCollectorLine,
+} from './collector-line';
 
 describe('parseCollectorLine', () => {
   it('liest die heutige zweizeilige Sammlerzeile', () => {
@@ -136,5 +143,95 @@ describe('languageFromText', () => {
   it('rät nicht, wenn nichts Lesbares dasteht', () => {
     expect(languageFromText('g $80 wy ) 5 BomEE. YUP CR', candidates)).toBeNull();
     expect(languageFromText('Liliana', candidates)).toBeNull();
+  });
+});
+
+describe('matchCornerText', () => {
+  const prints = [
+    { id: 'en', setCode: 'tle', collectorNumber: '146', lang: 'en' },
+    { id: 'de', setCode: 'tle', collectorNumber: '146', lang: 'de' },
+    { id: 'fr', setCode: 'tle', collectorNumber: '146', lang: 'fr' },
+    { id: 'alt', setCode: 'tle', collectorNumber: '74', lang: 'de' },
+  ];
+
+  it('wählt unter den Drucken mit diesem Artwork', () => {
+    // Echte Lesung aus dem Browser-Test (4K-Kamera, deutsche Karte).
+    const text = 'FE LLU ANULILLVILICI OL\n4 M  A\nU 0146\nTLE DE  3HIY/TOMOYO ASATANI';
+    expect(matchCornerText(text, prints)?.id).toBe('de');
+  });
+
+  it('verträgt ein falsch gelesenes Zeichen in der Nummer', () => {
+    expect(matchCornerText('U 0148\nTLE * FR', prints)?.id).toBe('fr');
+  });
+
+  it('entscheidet nicht ohne zwei Belege oder bei Gleichstand', () => {
+    expect(matchCornerText('TLE', prints)).toBeNull();
+    expect(matchCornerText('U 0146\nTLE', prints)).toBeNull(); // Sprache offen
+  });
+
+  it('nimmt zwei Buchstaben nur direkt hinter dem Set als Sprache', () => {
+    // Ohne lesbare Nummer: nur Drucke derselben Nummer, sonst stünden zwei deutsche gleichauf.
+    const es = [
+      ...prints.filter((p) => p.id !== 'alt'),
+      { id: 'es', setCode: 'tle', collectorNumber: '146', lang: 'es' },
+    ];
+    expect(matchCornerText('R OOO N SP\nTLE DE', es)?.id).toBe('de');
+  });
+
+  it('nimmt bei gleichem Bild den normalen Druck statt der Prerelease-Promo', () => {
+    const promo = [
+      { id: 'promo', setCode: 'ptla', collectorNumber: '263s', lang: 'en' },
+      { id: 'normal', setCode: 'tla', collectorNumber: '263', lang: 'en' },
+    ];
+    expect(matchCornerText('R 0263\nTLA EN DOM LAY', promo)?.id).toBe('normal');
+  });
+
+  it('verlangt mit minScore 6 Nummer und Set', () => {
+    expect(matchCornerText('TLE DE', prints, 6)).toBeNull();
+    expect(matchCornerText('U 0146\nTLE DE', prints, 6)?.id).toBe('de');
+  });
+});
+
+describe('foilFromPixels', () => {
+  // Helle Schrift auf dunklem Rand: "TLE", Zeichen, "EN" - Buchstaben 20 px hoch.
+  function line(symbolHeight: number): { gray: Uint8Array; words: OcrWord[] } {
+    const width = 200;
+    const height = 60;
+    const gray = new Uint8Array(width * height).fill(20);
+    const fill = (x0: number, y0: number, x1: number, y1: number) => {
+      for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) gray[y * width + x] = 230;
+    };
+    // Buchstaben als senkrechte Striche, damit die Schrift im Wortrahmen die Minderheit ist.
+    for (const x of [20, 30, 40, 120, 130]) fill(x, 20, x + 4, 40);
+    const top = 30 - Math.floor(symbolHeight / 2);
+    fill(78, top, 78 + symbolHeight, top + symbolHeight);
+    return {
+      gray,
+      words: [
+        { text: 'TLE', bbox: { x0: 20, y0: 20, x1: 44, y1: 40 } },
+        { text: 'EN', bbox: { x0: 120, y0: 20, x1: 134, y1: 40 } },
+      ],
+    };
+  }
+
+  it('erkennt den Punkt als nicht-Foil und den Stern als Foil', () => {
+    const dot = line(8);
+    expect(foilFromPixels(dot.gray, 200, 60, dot.words)).toBe(false);
+    const star = line(15);
+    expect(foilFromPixels(star.gray, 200, 60, star.words)).toBe(true);
+  });
+
+  it('sagt nichts, wenn die Höhe zwischen Punkt und Stern liegt oder ein Buchstabe ist', () => {
+    const unclear = line(11);
+    expect(foilFromPixels(unclear.gray, 200, 60, unclear.words)).toBeNull();
+    const letter = line(20);
+    expect(foilFromPixels(letter.gray, 200, 60, letter.words)).toBeNull();
+  });
+
+  it('findet das Zeichen auch, wenn die Texterkennung alles zu einem Wort klebt', () => {
+    const star = line(15);
+    const merged = [{ text: 'TLE*EN', bbox: { x0: 20, y0: 20, x1: 134, y1: 40 } }];
+    // Sechs Zeichen auf 114 px: das vierte (der Stern) liegt bei 77-96.
+    expect(foilFromPixels(star.gray, 200, 60, merged)).toBe(true);
   });
 });
