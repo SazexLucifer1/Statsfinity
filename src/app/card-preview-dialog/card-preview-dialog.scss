@@ -16,3 +16,18 @@
   overflow: hidden;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7);
 }
+
+.card-preview-overlay {
+  flex-direction: column;
+  gap: 14px;
+}
+
+.idea-button {
+  color: #fff;
+}
+
+.idea-saved {
+  margin: 0;
+  color: #fff;
+  opacity: 0.85;
+}

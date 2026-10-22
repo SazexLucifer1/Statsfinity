@@ -1,0 +1,147 @@
+<div class="ideas-view">
+  <div class="view-header">
+    <button type="button" class="glass-button small back" (click)="close()">
+      ‹ {{ i18n.t('collection.back') }}
+    </button>
+    <h2>{{ i18n.t('profile.ideas.title') }}</h2>
+  </div>
+
+  @if (!ideas.available()) {
+    <p class="glass-card hint">{{ i18n.t('profile.ideas.unavailable') }}</p>
+  } @else {
+    <section class="glass-card add">
+      <app-info-toggle [label]="i18n.t('profile.ideas.infoAria')">
+        <h3 info-title>{{ i18n.t('profile.ideas.addTitle') }}</h3>
+        <p class="hint">{{ i18n.t('profile.ideas.info') }}</p>
+      </app-info-toggle>
+      <div class="search">
+        <input
+          class="glass-input"
+          type="search"
+          [placeholder]="i18n.t('profile.ideas.searchPlaceholder')"
+          [ngModel]="query()"
+          (ngModelChange)="onSearchInput($event)"
+        />
+        @if (suggestions().length > 0) {
+          <ul class="suggestions">
+            @for (name of suggestions(); track name) {
+              <li>
+                <button type="button" (click)="addIdea(name)">{{ name }}</button>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+      @if (message(); as m) {
+        <p class="hint">{{ m }}</p>
+      }
+    </section>
+
+    @if (ideas.ideas(); as list) {
+      @if (list.length === 0) {
+        <p class="hint empty">{{ i18n.t('profile.ideas.empty') }}</p>
+      }
+      <ul class="idea-list">
+        @for (idea of list; track idea.id; let first = $first; let last = $last) {
+          <li class="glass-card idea">
+            <div class="images">
+              <app-card-thumb [name]="idea.commander" size="large" />
+              @if (idea.partner) {
+                <app-card-thumb [name]="idea.partner" size="large" />
+              }
+            </div>
+            <div class="body">
+              <div class="names">
+                <strong>{{ idea.commander }}</strong>
+                @if (idea.partner) {
+                  <span class="partner">
+                    + {{ idea.partner }}
+                    <button
+                      type="button"
+                      class="link-button"
+                      [attr.aria-label]="i18n.t('profile.ideas.removePartner')"
+                      (click)="removePartner(idea)"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                }
+              </div>
+              <input
+                class="glass-input small note"
+                maxlength="200"
+                [placeholder]="i18n.t('profile.ideas.notePlaceholder')"
+                [ngModel]="idea.note"
+                (change)="saveNote(idea, $any($event.target).value)"
+              />
+              @if (partnerFor() === idea.id) {
+                <div class="search">
+                  <input
+                    class="glass-input small"
+                    type="search"
+                    [placeholder]="i18n.t('profile.ideas.partnerPlaceholder')"
+                    [ngModel]="partnerQuery()"
+                    (ngModelChange)="onPartnerInput($event)"
+                  />
+                  @if (partnerSuggestions().length > 0) {
+                    <ul class="suggestions">
+                      @for (name of partnerSuggestions(); track name) {
+                        <li>
+                          <button type="button" (click)="choosePartner(idea, name)">
+                            {{ name }}
+                          </button>
+                        </li>
+                      }
+                    </ul>
+                  }
+                  @if (partnerError(); as e) {
+                    <p class="hint error">{{ e }}</p>
+                  }
+                </div>
+              }
+              <div class="actions">
+                <button type="button" class="glass-button small primary" (click)="createDeck(idea)">
+                  <app-icon name="plus" /> {{ i18n.t('profile.ideas.createDeck') }}
+                </button>
+                @if (canAddPartner(idea)) {
+                  <button type="button" class="glass-button small" (click)="startPartner(idea)">
+                    <app-icon name="users" /> {{ i18n.t('profile.ideas.addPartner') }}
+                  </button>
+                }
+                <span class="spacer"></span>
+                <button
+                  type="button"
+                  class="icon-button"
+                  [disabled]="first"
+                  [attr.aria-label]="i18n.t('profile.ideas.moveUp')"
+                  (click)="move(idea, -1)"
+                >
+                  ▲
+                </button>
+                <button
+                  type="button"
+                  class="icon-button"
+                  [disabled]="last"
+                  [attr.aria-label]="i18n.t('profile.ideas.moveDown')"
+                  (click)="move(idea, 1)"
+                >
+                  ▼
+                </button>
+                <button
+                  type="button"
+                  class="icon-button"
+                  [attr.aria-label]="i18n.t('profile.ideas.remove')"
+                  (click)="remove(idea)"
+                >
+                  <app-icon name="trash" />
+                </button>
+              </div>
+            </div>
+          </li>
+        }
+      </ul>
+    } @else {
+      <p class="hint">{{ i18n.t('cube.loading') }}</p>
+    }
+  }
+</div>

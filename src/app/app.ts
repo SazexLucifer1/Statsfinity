@@ -8,6 +8,8 @@ import { IngameTracker } from './ingame-tracker/ingame-tracker';
 import { DeckDetailView } from './deck-detail-view/deck-detail-view';
 import { CollectionView } from './collection-view/collection-view';
 import { CollectionService } from './collection.service';
+import { CommanderIdeasService } from './commander-ideas.service';
+import { CommanderIdeasView } from './commander-ideas-view/commander-ideas-view';
 import { CubeView } from './cube-view/cube-view';
 import { CubeService } from './cube.service';
 import { GoldfishTracker } from './goldfish-tracker/goldfish-tracker';
@@ -53,6 +55,7 @@ import { APP_VERSION, APP_COMMIT } from './version';
     IngameTracker,
     DeckDetailView,
     CollectionView,
+    CommanderIdeasView,
     CubeView,
     GoldfishTracker,
     DeckImportDialogs,
@@ -89,6 +92,7 @@ export class App {
   readonly loginOverlay = inject(LoginOverlayService);
   readonly deckViewer = inject(DeckViewerService);
   readonly collection = inject(CollectionService);
+  readonly ideas = inject(CommanderIdeasService);
   readonly cubeService = inject(CubeService);
   /** Nur fuer das Abzeichen an der Profil-Schaltflaeche der Tab-Leiste (ungelesene Deck-Kommentare). */
   readonly inbox = inject(DeckCommentInboxService);
@@ -114,6 +118,7 @@ export class App {
       this.deckViewer.state.viewingDeck() ||
       this.collection.view() ||
       this.cubeService.view() ||
+      this.ideas.view() ||
       this.tournament.panelExpanded()
     )
       return null;

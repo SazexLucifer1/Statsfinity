@@ -1,7 +1,24 @@
 @if (preview.imageUrl(); as img) {
   <div class="card-preview-overlay" (click)="preview.close()">
     <div class="card-preview-img">
-      <app-card-image [imageUrl]="img" [backImageUrl]="preview.backImageUrl()" [alt]="preview.alt()" />
+      <app-card-image
+        [imageUrl]="img"
+        [backImageUrl]="preview.backImageUrl()"
+        [alt]="preview.alt()"
+      />
     </div>
+    @if (commanderName(); as name) {
+      @if (saved(name)) {
+        <p class="idea-saved"><app-icon name="check" /> {{ i18n.t('profile.ideas.saved') }}</p>
+      } @else {
+        <button
+          type="button"
+          class="glass-button small idea-button"
+          (click)="remember($event, name)"
+        >
+          <app-icon name="star" /> {{ i18n.t('profile.ideas.remember') }}
+        </button>
+      }
+    }
   </div>
 }
