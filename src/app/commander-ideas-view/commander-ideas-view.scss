@@ -1,0 +1,122 @@
+.ideas-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.view-header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+
+  h2 {
+    margin: 0;
+  }
+}
+
+.search {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.suggestions {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  border-radius: var(--r-md, 12px);
+  background: rgba(20, 20, 30, 0.95);
+  max-height: 240px;
+  overflow-y: auto;
+
+  button {
+    width: 100%;
+    padding: 8px 10px;
+    border: 0;
+    background: none;
+    color: inherit;
+    text-align: left;
+    font: inherit;
+  }
+}
+
+.idea-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--sp-3);
+
+  @media (min-width: 900px) {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.idea {
+  display: flex;
+  gap: var(--sp-3);
+  margin: 0;
+}
+
+.images {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.names {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  .partner {
+    opacity: 0.85;
+  }
+}
+
+.link-button,
+.icon-button {
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.icon-button {
+  min-width: 32px;
+  min-height: 32px;
+  font-size: 1rem;
+
+  &:disabled {
+    opacity: 0.3;
+  }
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+
+  .spacer {
+    flex: 1;
+  }
+}
+
+.error {
+  color: #ff8a80;
+}
+
+.empty {
+  text-align: center;
+}

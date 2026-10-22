@@ -414,7 +414,7 @@ function normalizePreconName(name: string): string {
  * Kann die Karte Commander sein? Legendäre Kreaturen und alles, was es sich im Regeltext erlaubt
  * (Backgrounds, Planeswalker, Doctor's companion).
  */
-function canBeCommander(card: ScryfallCard | undefined): boolean {
+export function canBeCommander(card: ScryfallCard | null | undefined): boolean {
   if (!card) return false;
   const typeLine = card.typeLine ?? '';
   if (/legendary/i.test(typeLine) && /creature/i.test(typeLine)) return true;
