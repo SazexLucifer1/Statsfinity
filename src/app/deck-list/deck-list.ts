@@ -4,7 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { DeckService, Deck, DeckGameStats, DeckOwner, deckKopieName } from '../deck.service';
 import { DeckViewerService } from '../deck-viewer.service';
 import { DeckImportService } from '../deck-import.service';
-import { ScryfallCard, ScryfallService } from '../scryfall.service';
+import { ScryfallCard } from '../scryfall.service';
+import { CardDataService } from '../card-data.service';
 import { I18nService } from '../i18n.service';
 import { DialogService } from '../dialog.service';
 import { GoldfishService } from '../goldfish.service';
@@ -66,7 +67,7 @@ export class DeckList {
   readonly viewer = inject(DeckViewerService);
   readonly goldfish = inject(GoldfishService);
   readonly importService = inject(DeckImportService);
-  private readonly scryfall = inject(ScryfallService);
+  private readonly cardData = inject(CardDataService);
   readonly i18n = inject(I18nService);
   private readonly social = inject(DeckSocialService);
   readonly banlist = inject(BanlistService);
@@ -143,7 +144,7 @@ export class DeckList {
       const missing = [...new Set(names)].filter((n) => !(n.toLowerCase() in cache));
       if (missing.length === 0) return;
 
-      this.scryfall.findCardsBulk(missing).then((found) => {
+      this.cardData.findCardsBulk(missing).then((found) => {
         this.cardDetails.update((current) => {
           const next = { ...current };
           for (const name of missing) {

@@ -1,6 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { DeckService, Deck, DeckCard } from './deck.service';
-import { ScryfallService } from './scryfall.service';
+import { CardDataService } from './card-data.service';
 import { shuffle } from './array-utils';
 
 export type GoldfishZone = 'library' | 'hand' | 'battlefield' | 'graveyard' | 'exile' | 'command';
@@ -68,7 +68,7 @@ export function isAttachable(typeLine: string | null): boolean {
 @Injectable({ providedIn: 'root' })
 export class GoldfishService {
   private readonly deckService = inject(DeckService);
-  private readonly scryfall = inject(ScryfallService);
+  private readonly cardData = inject(CardDataService);
 
   readonly activeDeck = signal<Deck | null>(null);
   readonly busy = signal(false);
@@ -144,7 +144,7 @@ export class GoldfishService {
     );
     // Nur für DFC-Rückseiten nötig (deck_cards speichert nur die Vorderseite) - läuft parallel zum
     // Rendern der Vorderseiten, blockt also nicht, bis die Starthand gezogen werden kann.
-    const scryfallByName = await this.scryfall.findCardsBulk(deckCards.map((c) => c.cardName));
+    const scryfallByName = await this.cardData.findCardsBulk(deckCards.map((c) => c.cardName));
     const instances = this.buildInstances(deckCards, scryfallByName);
     const commanders = instances.filter((c) => c.isCommander).map((c) => ({ ...c, zone: 'command' as const }));
     const rest = shuffle(instances.filter((c) => !c.isCommander));

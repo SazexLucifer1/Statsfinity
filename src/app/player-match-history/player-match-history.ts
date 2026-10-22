@@ -8,7 +8,8 @@ import { DRAW, gameModeLabel, isPlayerWinner } from '../match-utils';
 import { PlayerAvatar } from '../player-avatar/player-avatar';
 import { CardImage } from '../card-image/card-image';
 import { Pager } from '../ui/pager/pager';
-import { ScryfallCard, ScryfallService } from '../scryfall.service';
+import { ScryfallCard } from '../scryfall.service';
+import { CardDataService } from '../card-data.service';
 import { DeckService } from '../deck.service';
 import { DeckViewerService } from '../deck-viewer.service';
 import { Icon } from '../ui/icon/icon';
@@ -56,7 +57,7 @@ export interface PlayerMatchRow {
 export class PlayerMatchHistory {
   readonly mtg = inject(MtgService);
   readonly i18n = inject(I18nService);
-  private readonly scryfall = inject(ScryfallService);
+  private readonly cardData = inject(CardDataService);
   private readonly deckService = inject(DeckService);
   private readonly deckViewer = inject(DeckViewerService);
   private readonly groupService = inject(GroupService);
@@ -195,7 +196,7 @@ export class PlayerMatchHistory {
       const missing = [...names].filter((n) => !(n.toLowerCase() in cache));
       if (missing.length === 0) return;
 
-      void this.scryfall.findCardsBulk(missing).then((found) => {
+      void this.cardData.findCardsBulk(missing).then((found) => {
         this.commanderCards.update((current) => {
           const next = { ...current };
           for (const name of missing) {

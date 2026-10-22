@@ -306,15 +306,20 @@ export class CollectionService {
   }
 
   /**
-   * Angaben je Druck, die nur Scryfall kennt (Seltenheit, Setname, Preise, illustration_id) -
-   * gebündelt zu je 75 über /cards/collection, im Sitzungs-Cache. Bewusst nicht in der Datenbank:
-   * Preise ändern sich täglich, und die Sammlungs-Tabelle soll klein bleiben.
+   * Angaben je Druck (Seltenheit, Setname, Preis normal und Foil, illustration_id, Legalitäten) -
+   * zuerst aus scryfall_print_info, die der Nachtlauf für jeden Sammlungsdruck aus Scryfalls
+   * default_cards füllt (sql/karten-cache-ausbau-2026-10-22.sql). Nur was dort fehlt (heute neu
+   * hinzugefügt, Drucke außerhalb der Sammlungen), live gebündelt zu je 75 über
+   * /cards/collection. Alles im Sitzungs-Cache; die Sammlungs-Tabelle selbst bleibt klein.
    */
   private readonly printInfoCache = new Map<string, PrintInfo | null>();
+  /** false, sobald die Tabelle fehlt (Migration noch nicht gelaufen) - dann nur Scryfall. */
+  private printInfoTableAvailable = true;
   async printInfo(
     ids: string[],
     onProgress?: (done: number, total: number) => void,
   ): Promise<Map<string, PrintInfo | null>> {
+    await this.printInfoFromTable([...new Set(ids)].filter((id) => !this.printInfoCache.has(id)));
     const open = [...new Set(ids)].filter((id) => !this.printInfoCache.has(id));
     // Drucke in anderen Sprachen haben bei Scryfall keinen Preis (die Preise kommen von
     // Cardmarket und hängen am englischen Druck) - für die wird danach der englische Druck
@@ -351,6 +356,33 @@ export class CollectionService {
     await this.englishPrices(withoutPrice);
     onProgress?.(open.length, open.length);
     return new Map(ids.map((id) => [id, this.printInfoCache.get(id) ?? null]));
+  }
+
+  private async printInfoFromTable(ids: string[]): Promise<void> {
+    if (!this.printInfoTableAvailable) return;
+    for (let i = 0; i < ids.length; i += 200) {
+      const { data, error } = await supabase
+        .from('scryfall_print_info')
+        .select(
+          'scryfall_id, rarity, set_name, illustration_id, eur, eur_foil, legalities, price_from_english',
+        )
+        .in('scryfall_id', ids.slice(i, i + 200));
+      if (error) {
+        if (['42P01', 'PGRST205'].includes(error.code ?? '')) this.printInfoTableAvailable = false;
+        return;
+      }
+      for (const row of data ?? []) {
+        this.printInfoCache.set(row.scryfall_id, {
+          illustrationId: row.illustration_id ?? null,
+          rarity: row.rarity ?? null,
+          setName: row.set_name ?? null,
+          eur: row.eur == null ? null : Number(row.eur),
+          eurFoil: row.eur_foil == null ? null : Number(row.eur_foil),
+          legalities: row.legalities ?? {},
+          priceFromEnglish: !!row.price_from_english,
+        });
+      }
+    }
   }
 
   /** Preise der englischen Drucke für fremdsprachige (gleiches Set, gleiche Nummer). */

@@ -2,7 +2,7 @@ import { Component, computed, effect, inject, signal } from '@angular/core';
 import { PercentPipe } from '@angular/common';
 import { DeckViewerService } from '../deck-viewer.service';
 import { GoldfishService } from '../goldfish.service';
-import { ScryfallService } from '../scryfall.service';
+import { CardDataService } from '../card-data.service';
 import { CardPreviewService } from '../card-preview.service';
 import { CardSuggestion, DeckSuggestionsService } from '../deck-suggestions.service';
 import { DeckCheckService } from '../deck-check.service';
@@ -37,7 +37,7 @@ import { InfoToggle } from '../ui/info-toggle/info-toggle';
 export class DeckCheck {
   readonly viewer = inject(DeckViewerService);
   private readonly goldfish = inject(GoldfishService);
-  private readonly scryfall = inject(ScryfallService);
+  private readonly cardData = inject(CardDataService);
   private readonly cardPreview = inject(CardPreviewService);
   readonly suggestionsService = inject(DeckSuggestionsService);
   readonly i18n = this.viewer.i18n;
@@ -213,7 +213,7 @@ export class DeckCheck {
   }
 
   async previewCard(name: string): Promise<void> {
-    const card = await this.scryfall.findCard(name);
+    const card = await this.cardData.findCard(name);
     if (card?.imageUrl) this.cardPreview.open(card.imageUrl, card.backImageUrl, card.name);
   }
 }

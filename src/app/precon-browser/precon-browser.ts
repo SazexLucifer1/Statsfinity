@@ -4,6 +4,7 @@ import { DecimalPipe, CurrencyPipe } from '@angular/common';
 import { PreconService, PreconSummary } from '../precon.service';
 import { DeckService } from '../deck.service';
 import { ScryfallCard, ScryfallService } from '../scryfall.service';
+import { CardDataService } from '../card-data.service';
 import { CardPreviewService } from '../card-preview.service';
 import { I18nService } from '../i18n.service';
 import { CardImage } from '../card-image/card-image';
@@ -37,6 +38,7 @@ export class PreconBrowser {
   private readonly precon = inject(PreconService);
   private readonly deckService = inject(DeckService);
   private readonly scryfall = inject(ScryfallService);
+  private readonly cardData = inject(CardDataService);
   private readonly cardPreview = inject(CardPreviewService);
   readonly i18n = inject(I18nService);
 
@@ -120,7 +122,7 @@ export class PreconBrowser {
     }
 
     const parsed = this.deckService.parseDecklistText(text);
-    const cardMap = await this.scryfall.findCardsBulk(parsed.map((p) => p.name));
+    const cardMap = await this.cardData.findCardsBulk(parsed.map((p) => p.name));
 
     const commanders: ScryfallCard[] = [];
     const all: ReadonlyDeckEntry[] = [];
@@ -144,7 +146,7 @@ export class PreconBrowser {
     // Nur die Preise; das incomplete-Flag wertet bislang allein die Deck-Ansicht aus ("ab X €",
     // siehe deckPriceIncomplete in deck-analysis.service.ts). Von der geduldigeren Wiederholung
     // in cheapestPrices() profitiert diese Ansicht trotzdem.
-    const { prices } = await this.scryfall.cheapestPrices(names);
+    const { prices } = await this.cardData.cheapestPrices(names);
     let total = 0;
     for (const c of cards) {
       const price = prices.get(normalizeCardName(c.card.name.split(' // ')[0].trim()));

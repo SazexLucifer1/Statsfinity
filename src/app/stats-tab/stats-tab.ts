@@ -7,7 +7,8 @@ import { NavigationService } from '../navigation.service';
 import { ProfileService } from '../profile.service';
 import { CardPreviewService } from '../card-preview.service';
 import { PlayerAvatar } from '../player-avatar/player-avatar';
-import { ScryfallCard, ScryfallService } from '../scryfall.service';
+import { ScryfallCard } from '../scryfall.service';
+import { CardDataService } from '../card-data.service';
 import { DeckService } from '../deck.service';
 import { DeckViewerService } from '../deck-viewer.service';
 import { CardImage } from '../card-image/card-image';
@@ -125,7 +126,7 @@ export class StatsTab {
   readonly groupService = inject(GroupService);
   readonly auth = inject(AuthService);
   readonly friends = inject(FriendsService);
-  private readonly scryfall = inject(ScryfallService);
+  private readonly cardData = inject(CardDataService);
   private readonly deckService = inject(DeckService);
   private readonly viewer = inject(DeckViewerService);
   private readonly navigation = inject(NavigationService);
@@ -291,7 +292,7 @@ export class StatsTab {
       const missing = [...names].filter((n) => !(n.toLowerCase() in cache));
       if (missing.length === 0) return;
 
-      this.scryfall.findCardsBulk(missing).then((found) => {
+      this.cardData.findCardsBulk(missing).then((found) => {
         this.cardDetails.update((current) => {
           const next = { ...current };
           for (const name of missing) {

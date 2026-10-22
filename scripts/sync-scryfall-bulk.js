@@ -592,10 +592,230 @@ async function syncBannlisten() {
   console.log(`Teil 3 fertig: ${gesamt} Zeilen über ${geladen.length} Formate.`);
 }
 
+// =====================================================================================
+// Teil 4: Wer Commander sein darf (sql/karten-cache-ausbau-2026-10-22.sql)
+// =====================================================================================
+
+/**
+ * Scryfalls eigene Liste "is:commander" (Regel 903.3 samt "can be your commander") und die
+ * Backgrounds - damit die App die Commander-Vorschläge beim Tippen aus der eigenen Datenbank
+ * bedienen kann (card_name_suggestions()). ~20 kleine CSV-Seiten, unabhängig von der Bulk-Datei.
+ * Fehlt die Tabelle noch, wird Teil 4 übersprungen statt den ganzen Lauf scheitern zu lassen.
+ */
+async function syncCommanderNamen() {
+  console.log('--- Teil 4: Commander-Liste ---');
+  const { namen: commander } = await ladeKategorie('is:commander');
+  await sleep(500);
+  const { namen: backgrounds } = await ladeKategorie('t:background');
+  const zeilen = new Map();
+  for (const name of backgrounds) zeilen.set(name, 'background');
+  for (const name of commander) zeilen.set(name, 'commander');
+  // Lieber die alte Liste behalten als eine leere schreiben, falls Scryfall gerade nichts liefert.
+  if (commander.size < 1000) {
+    throw new Error(`Nur ${commander.size} Commander gefunden - Liste bleibt unverändert.`);
+  }
+
+  const { error: deleteError } = await supabase
+    .from('scryfall_commander_names')
+    .delete()
+    .neq('name_normalized', '');
+  if (deleteError) {
+    if (['42P01', 'PGRST205'].includes(deleteError.code)) {
+      console.log(
+        'Tabelle scryfall_commander_names fehlt (Migration noch nicht gelaufen) - übersprungen.',
+      );
+      return;
+    }
+    throw new Error(`Konnte Commander-Liste nicht leeren: ${deleteError.message}`);
+  }
+  const rows = [...zeilen].map(([name_normalized, kind]) => ({ name_normalized, kind }));
+  for (let i = 0; i < rows.length; i += 1000) {
+    const { error } = await supabase
+      .from('scryfall_commander_names')
+      .insert(rows.slice(i, i + 1000));
+    if (error) throw new Error(`Insert für Commander-Liste fehlgeschlagen: ${error.message}`);
+  }
+  await writeSyncState('commander_names', null, rows.length);
+  console.log(`Teil 4 fertig: ${commander.size} Commander, ${backgrounds.size} Backgrounds.`);
+}
+
+// =====================================================================================
+// Teil 5: Preise - je Karte der günstigste, je Sammlungsdruck der echte
+// (sql/karten-cache-ausbau-2026-10-22.sql)
+// =====================================================================================
+
+/**
+ * Wie ScryfallService.cheapestPrices() live (eur>0, nicht digital, billigster Druck), nur für alle
+ * Karten auf einmal aus der default_cards-Datei (~80 MB gepackt, alle Drucke). Auch Karten ohne
+ * Preis bekommen eine Zeile (eur null) - sonst fragte die App bei jedem Deck erneut nach ihnen.
+ * Im selben Durchgang je Druck aus einer Sammlung der echte Preis (normal und Foil) samt
+ * Seltenheit, Setname und Legalitäten - für die Sammlung zählt der Druck, nicht die billigste
+ * Variante. Fehlen die Tabellen noch, wird der jeweilige Teil übersprungen.
+ */
+async function syncPreise() {
+  console.log('--- Teil 5: Preise ---');
+  const sammlung = await ladeSammlungsDrucke();
+  const gesucht = new Set(sammlung.map((d) => d.scryfall_id));
+  const gesuchtNachNummer = new Set(sammlung.map((d) => `${d.set_code}/${d.collector_number}`));
+  const drucke = new Map(); // scryfall_id -> Scryfalls Karte (nur Sammlungsdrucke)
+  const englisch = new Map(); // "set/nummer" -> Karte, für fremdsprachige Sammlungsdrucke
+  const eintrag = await fetchJson(`${API}/bulk-data/default_cards`);
+  const res = await fetch(eintrag.jsonl_download_uri, {
+    headers: { 'User-Agent': HEADERS['User-Agent'] },
+  });
+  if (!res.ok) throw new Error(`Download von default_cards fehlgeschlagen: HTTP ${res.status}`);
+  const zeilen = readline.createInterface({
+    input: Readable.fromWeb(res.body).pipe(zlib.createGunzip()),
+    crlfDelay: Infinity,
+  });
+
+  const preise = new Map();
+  for await (const zeile of zeilen) {
+    const inhalt = zeile.trim().replace(/,$/, '');
+    if (!inhalt || inhalt === '[' || inhalt === ']') continue;
+    let data;
+    try {
+      data = JSON.parse(inhalt);
+    } catch {
+      continue;
+    }
+    if (gesucht.has(data.id)) drucke.set(data.id, kompakterDruck(data));
+    const nummer = `${data.set}/${data.collector_number}`;
+    if (data.lang === 'en' && gesuchtNachNummer.has(nummer))
+      englisch.set(nummer, kompakterDruck(data));
+    if (!data.name || data.digital || UEBERSPRUNGENE_LAYOUTS.has(data.layout)) continue;
+    const name = normalizedFrontName(data.name);
+    const eur = parseFloat(data.prices?.eur);
+    const bisher = preise.get(name);
+    if (eur > 0 && (bisher == null || eur < bisher)) preise.set(name, eur);
+    else if (!preise.has(name)) preise.set(name, null);
+  }
+  const mitPreis = [...preise.values()].filter((eur) => eur != null).length;
+  // Lieber die Preise von gestern behalten als eine halb gelesene Datei schreiben.
+  if (mitPreis < 20000) {
+    throw new Error(`Nur ${mitPreis} Karten mit Preis gelesen - Preise bleiben unverändert.`);
+  }
+
+  const start = new Date().toISOString();
+  const rows = [...preise].map(([name_normalized, eur]) => ({
+    name_normalized,
+    eur,
+    synced_at: start,
+  }));
+  for (let i = 0; i < rows.length; i += 1000) {
+    const { error } = await supabase
+      .from('scryfall_card_prices')
+      .upsert(rows.slice(i, i + 1000), { onConflict: 'name_normalized' });
+    if (error) {
+      if (i === 0 && ['42P01', 'PGRST205'].includes(error.code)) {
+        console.log(
+          'Tabelle scryfall_card_prices fehlt (Migration noch nicht gelaufen) - übersprungen.',
+        );
+        return;
+      }
+      throw new Error(`Upsert der Preise fehlgeschlagen: ${error.message}`);
+    }
+  }
+  const { error: cleanupError } = await supabase
+    .from('scryfall_card_prices')
+    .delete()
+    .lt('synced_at', start);
+  if (cleanupError) console.warn('Alte Preiszeilen nicht gelöscht:', cleanupError.message);
+
+  await writeSyncState('prices', eintrag.updated_at, rows.length);
+  console.log(`Teil 5 fertig: ${rows.length} Karten, davon ${mitPreis} mit Preis.`);
+  await schreibeDruckInfos(sammlung, drucke, englisch);
+}
+
+/** Alle verschiedenen Drucke aus allen Sammlungen (PostgREST liefert höchstens 1000 je Abfrage). */
+async function ladeSammlungsDrucke() {
+  const drucke = new Map();
+  for (let von = 0; ; von += 1000) {
+    const { data, error } = await supabase
+      .from('collection_cards')
+      .select('scryfall_id, set_code, collector_number, lang, illustration_id')
+      .order('scryfall_id')
+      .range(von, von + 999);
+    if (error) {
+      console.warn('Sammlungen nicht gelesen, Preise je Druck übersprungen:', error.message);
+      return [];
+    }
+    for (const zeile of data ?? []) drucke.set(zeile.scryfall_id, zeile);
+    if (!data || data.length < 1000) break;
+  }
+  console.log(`  ${drucke.size} verschiedene Drucke in Sammlungen.`);
+  return [...drucke.values()];
+}
+
+function kompakterDruck(data) {
+  const preis = (wert) => {
+    const zahl = parseFloat(wert);
+    return zahl > 0 ? zahl : null;
+  };
+  return {
+    rarity: data.rarity ?? null,
+    set_name: data.set_name ?? null,
+    illustration_id: data.illustration_id ?? data.card_faces?.[0]?.illustration_id ?? null,
+    eur: preis(data.prices?.eur),
+    eur_foil: preis(data.prices?.eur_foil),
+    legalities: data.legalities ?? {},
+  };
+}
+
+/**
+ * Wie CollectionService.printInfo(): der Druck selbst, und fehlt ihm der Preis (andere Sprache),
+ * der englische Druck mit gleichem Set und gleicher Nummer. default_cards enthält fremdsprachige
+ * Drucke gar nicht - die kommen deshalb immer über den englischen.
+ */
+async function schreibeDruckInfos(sammlung, drucke, englisch) {
+  if (sammlung.length === 0) return;
+  const start = new Date().toISOString();
+  const rows = [];
+  for (const d of sammlung) {
+    const eigen = drucke.get(d.scryfall_id);
+    const en = englisch.get(`${d.set_code}/${d.collector_number}`);
+    const basis = eigen ?? en;
+    if (!basis) continue;
+    const ohnePreis = !eigen || (eigen.eur == null && eigen.eur_foil == null);
+    const ausEnglisch =
+      d.lang !== 'en' && ohnePreis && !!en && (en.eur != null || en.eur_foil != null);
+    rows.push({
+      scryfall_id: d.scryfall_id,
+      ...basis,
+      illustration_id: eigen?.illustration_id ?? d.illustration_id ?? basis.illustration_id,
+      eur: ausEnglisch ? en.eur : (eigen?.eur ?? null),
+      eur_foil: ausEnglisch ? en.eur_foil : (eigen?.eur_foil ?? null),
+      price_from_english: ausEnglisch,
+      synced_at: start,
+    });
+  }
+  for (let i = 0; i < rows.length; i += 1000) {
+    const { error } = await supabase
+      .from('scryfall_print_info')
+      .upsert(rows.slice(i, i + 1000), { onConflict: 'scryfall_id' });
+    if (error) {
+      if (i === 0 && ['42P01', 'PGRST205'].includes(error.code)) {
+        console.log(
+          'Tabelle scryfall_print_info fehlt (Migration noch nicht gelaufen) - übersprungen.',
+        );
+        return;
+      }
+      throw new Error(`Upsert der Druck-Infos fehlgeschlagen: ${error.message}`);
+    }
+  }
+  const { error } = await supabase.from('scryfall_print_info').delete().lt('synced_at', start);
+  if (error) console.warn('Alte Druck-Infos nicht gelöscht:', error.message);
+  console.log(
+    `  ${rows.length} von ${sammlung.length} Sammlungsdrucken mit Preis-Infos geschrieben.`,
+  );
+}
+
 async function main() {
   await syncKarten();
   await syncEffekte();
   await syncBannlisten();
+  await syncCommanderNamen();
+  await syncPreise();
   console.log('Abgleich abgeschlossen.');
 }
 

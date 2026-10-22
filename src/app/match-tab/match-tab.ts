@@ -3,6 +3,7 @@ import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MtgService } from '../mtg.service';
 import { ScryfallCard, ScryfallService, ScryfallSet } from '../scryfall.service';
+import { CardDataService } from '../card-data.service';
 import { GameSessionService } from '../game-session.service';
 import { GroupService } from '../group.service';
 import { AuthService } from '../auth.service';
@@ -52,6 +53,7 @@ export class MatchTab {
   readonly groupService = inject(GroupService);
   readonly auth = inject(AuthService);
   private readonly scryfall = inject(ScryfallService);
+  private readonly cardData = inject(CardDataService);
   private readonly deckService = inject(DeckService);
   readonly i18n = inject(I18nService);
   readonly tournament = inject(TournamentService);
@@ -558,7 +560,7 @@ export class MatchTab {
     ];
     if (missing.length === 0) return;
 
-    const found = await this.scryfall.findCardsBulk(missing);
+    const found = await this.cardData.findCardsBulk(missing);
     this.deckPickerCards.update((current) => {
       const next = { ...current };
       for (const name of missing) {
@@ -844,7 +846,7 @@ export class MatchTab {
       const missing = [...names].filter((n) => !(n.toLowerCase() in cache));
       if (missing.length === 0) return;
 
-      void this.scryfall.findCardsBulk(missing).then((found) => {
+      void this.cardData.findCardsBulk(missing).then((found) => {
         this.historyCommanderCards.update((current) => {
           const next = { ...current };
           for (const name of missing) {

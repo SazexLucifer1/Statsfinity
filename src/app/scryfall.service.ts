@@ -4,6 +4,7 @@ import { ColorSelection } from './color-filter-match';
 import { ArtLanguageService } from './art-language.service';
 import { ArtLang } from './art-languages';
 import { DeckFormat, SCRYFALL_FORMAT } from './models';
+import { supabase } from './supabase.client';
 
 export interface ScryfallCard {
   name: string;
@@ -239,7 +240,8 @@ export class ScryfallService {
   async autocomplete(query: string): Promise<string[]> {
     if (query.trim().length < 2) return [];
     try {
-      const english = await this.searchCommanderNamesByName(query);
+      const english =
+        (await this.namenAusCache(query, 'commander')) ?? (await this.searchCommanderNamesByName(query));
       if (english.length >= 5) return english;
 
       // Wenige/keine englischen Treffer: zusätzlich deutsche gedruckte Namen durchsuchen
@@ -257,7 +259,9 @@ export class ScryfallService {
   async autocompleteSecondCommander(query: string): Promise<string[]> {
     if (query.trim().length < 2) return [];
     try {
-      const english = await this.searchCommanderNamesByName(query, true);
+      const english =
+        (await this.namenAusCache(query, 'commanderOrBackground')) ??
+        (await this.searchCommanderNamesByName(query, true));
       if (english.length >= 5) return english;
 
       const german = await this.searchGermanPrintedNames(query, 'commanderOrBackground');
@@ -273,8 +277,11 @@ export class ScryfallService {
    */
   async autocompleteAnyCard(query: string): Promise<CardSuggestion[]> {
     if (query.trim().length < 2) return [];
-    const res = await this.fetchWithRetry(`${API}/cards/autocomplete?q=${encodeURIComponent(query.trim())}`);
-    const english = res?.ok ? (((await res.json()).data as string[]) ?? []) : [];
+    let english = await this.namenAusCache(query, 'any');
+    if (!english) {
+      const res = await this.fetchWithRetry(`${API}/cards/autocomplete?q=${encodeURIComponent(query.trim())}`);
+      english = res?.ok ? (((await res.json()).data as string[]) ?? []) : [];
+    }
     const vorschlaege: CardSuggestion[] = english.map((name) => ({ name }));
     if (english.length >= 5) return vorschlaege;
 
@@ -286,6 +293,35 @@ export class ScryfallService {
       vorschlaege.push(vorschlag);
     }
     return vorschlaege.slice(0, 12);
+  }
+
+  /** false, sobald die Funktion card_name_suggestions() fehlt - dann nur noch Scryfall. */
+  private namenCacheVerfuegbar = true;
+
+  /**
+   * Englische Kartennamen aus dem nächtlichen Karten-Cache (sql/karten-cache-ausbau-2026-10-22.sql),
+   * Treffer am Wortanfang zuerst. null = nichts gefunden oder nicht verfügbar - dann wie bisher
+   * Scryfall: frische Spoiler kennt der Cache noch nicht, und bis zum ersten Nachtlauf nach der
+   * Migration ist die Commander-Liste leer.
+   */
+  private async namenAusCache(
+    query: string,
+    kind: 'any' | 'commander' | 'commanderOrBackground'
+  ): Promise<string[] | null> {
+    if (!this.namenCacheVerfuegbar) return null;
+    const { data, error } = await supabase.rpc('card_name_suggestions', {
+      p_query: query.trim(),
+      p_kind: kind,
+      p_limit: 12,
+    });
+    if (error) {
+      if (error.code === 'PGRST202' || error.code === '42883' || error.code === '42P01') {
+        this.namenCacheVerfuegbar = false;
+      }
+      return null;
+    }
+    const namen = ((data ?? []) as { name: string }[]).map((zeile) => zeile.name);
+    return namen.length > 0 ? namen : null;
   }
 
   /** Sucht englische Kartennamen, die als Commander erlaubt sind (Regel 903.3). */

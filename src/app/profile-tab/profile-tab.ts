@@ -29,7 +29,8 @@ import { ManualDeckLinkService } from '../manual-deck-link.service';
 import { CardPreviewService } from '../card-preview.service';
 import { AuthService } from '../auth.service';
 import { BackgroundService } from '../background.service';
-import { ScryfallCard, ScryfallService } from '../scryfall.service';
+import { ScryfallCard } from '../scryfall.service';
+import { CardDataService } from '../card-data.service';
 import { I18nService } from '../i18n.service';
 import { ArtLanguageService } from '../art-language.service';
 import { ART_LANGUAGES, ArtLang } from '../art-languages';
@@ -114,7 +115,7 @@ export class ProfileTab {
   readonly cardPreview = inject(CardPreviewService);
   private readonly auth = inject(AuthService);
   readonly backgrounds = inject(BackgroundService);
-  private readonly scryfall = inject(ScryfallService);
+  private readonly cardData = inject(CardDataService);
   readonly i18n = inject(I18nService);
   readonly feedback = inject(FeedbackService);
   private readonly dialog = inject(DialogService);
@@ -734,7 +735,7 @@ export class ProfileTab {
         return;
       }
       Promise.all(
-        names.map((n) => this.scryfall.findCard(n).then((card) => [n, card] as const)),
+        names.map((n) => this.cardData.findCard(n).then((card) => [n, card] as const)),
       ).then((entries) => {
         this.favoriteCommanderCards.set(Object.fromEntries(entries));
       });
@@ -756,7 +757,7 @@ export class ProfileTab {
       if (missing.length === 0) return;
 
       const failed = new Set<string>();
-      this.scryfall.findCardsBulk(missing, failed).then((found) => {
+      this.cardData.findCardsBulk(missing, failed).then((found) => {
         this.commanderCards.update((current) => {
           const next = { ...current };
           for (const name of missing) {
