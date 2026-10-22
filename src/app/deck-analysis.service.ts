@@ -395,12 +395,12 @@ export class DeckAnalysisService {
     return this.pricePromise;
   }
 
-  /** Lädt den Gesamtpreis (billigste Druckvariante je Karte, siehe ScryfallService.cheapestPrices()) nach. */
+  /** Lädt den Gesamtpreis (billigste Druckvariante je Karte, erst aus dem Nacht-Cache, siehe CardDataService.cheapestPrices()) nach. */
   private async loadCardPrices(cards: DeckCard[]): Promise<void> {
     this.priceBusy.set(true);
     const realCards = cards.filter((c) => !c.isMaybeboard && !c.isToken);
     const names = [...new Set(realCards.map((c) => c.cardName))];
-    const { prices, incomplete } = await this.scryfall.cheapestPrices(names);
+    const { prices, incomplete } = await this.cardData.cheapestPrices(names);
     let total = 0;
     for (const card of realCards) {
       const price = prices.get(normalizeCardName(card.cardName.split(' // ')[0].trim()));

@@ -2,6 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { DeckService, Deck, DeckCard, DeckOwner } from './deck.service';
 import { PreconService, PreconSummary } from './precon.service';
 import { ScryfallService, ScryfallCard } from './scryfall.service';
+import { CardDataService } from './card-data.service';
 import { EdhrecService, EdhrecTag } from './edhrec.service';
 import { I18nService } from './i18n.service';
 import { ProfileService } from './profile.service';
@@ -21,6 +22,7 @@ export class DeckImportService {
   private readonly deckService = inject(DeckService);
   private readonly preconService = inject(PreconService);
   private readonly scryfall = inject(ScryfallService);
+  private readonly cardData = inject(CardDataService);
   private readonly edhrec = inject(EdhrecService);
   readonly i18n = inject(I18nService);
   private readonly profileService = inject(ProfileService);
@@ -246,7 +248,7 @@ export class DeckImportService {
     this.clearNewDeckPartner();
     this.loadTagsForCommander(name);
 
-    const card = await this.scryfall.findCard(name);
+    const card = await this.cardData.findCard(name);
     // Zwischenzeitlich einen anderen Commander gewählt? Dann gehört dieses (langsamere) Ergebnis
     // nicht mehr zur aktuellen Auswahl und wird verworfen.
     if (this.newDeckCommanderSelected() !== name) return;
@@ -280,7 +282,7 @@ export class DeckImportService {
     if (!first) return;
 
     this.newDeckPartnerBusy.set(true);
-    const card = await this.scryfall.findCard(name);
+    const card = await this.cardData.findCard(name);
     this.newDeckPartnerBusy.set(false);
     if (this.newDeckPartnerQuery() !== name) return;
 

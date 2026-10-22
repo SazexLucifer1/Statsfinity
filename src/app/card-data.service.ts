@@ -236,6 +236,44 @@ export class CardDataService {
     return this.scryfall.findCard(cardName);
   }
 
+  /** false, sobald die Preistabelle fehlt (Migration noch nicht gelaufen) - dann nur Scryfall. */
+  private preiseVerfuegbar = true;
+
+  /**
+   * Wie ScryfallService.cheapestPrices(), aber zuerst aus der eigenen DB (scryfall_card_prices,
+   * nächtlich aus Scryfalls default_cards, sql/karten-cache-ausbau-2026-10-22.sql). Nur Karten,
+   * die der Nachtlauf gar nicht kennt (frische Spoiler), gehen noch live an Scryfall - eine Karte
+   * ohne Preis steht dort mit null und wird nicht erneut erfragt. Schlüssel wie dort.
+   */
+  async cheapestPrices(
+    cardNames: string[],
+  ): Promise<{ prices: Map<string, number>; incomplete: boolean }> {
+    if (!this.preiseVerfuegbar) return this.scryfall.cheapestPrices(cardNames);
+    const prices = new Map<string, number>();
+    const byKey = new Map<string, string>();
+    for (const name of cardNames) if (name.trim()) byKey.set(this.lookupKey(name), name);
+    const bekannt = new Set<string>();
+    for (const block of chunk([...byKey.keys()], 200)) {
+      const { data, error } = await supabase
+        .from('scryfall_card_prices')
+        .select('name_normalized, eur')
+        .in('name_normalized', block);
+      if (error) {
+        if (['42P01', 'PGRST205'].includes(error.code ?? '')) this.preiseVerfuegbar = false;
+        return this.scryfall.cheapestPrices(cardNames);
+      }
+      for (const row of data ?? []) {
+        bekannt.add(row.name_normalized);
+        if (row.eur != null) prices.set(row.name_normalized, Number(row.eur));
+      }
+    }
+    const fehlend = [...byKey].filter(([key]) => !bekannt.has(key)).map(([, name]) => name);
+    if (fehlend.length === 0) return { prices, incomplete: false };
+    const live = await this.scryfall.cheapestPrices(fehlend);
+    for (const [key, eur] of live.prices) prices.set(key, eur);
+    return { prices, incomplete: live.incomplete };
+  }
+
   /** Einmal je Sitzung geladen (~200 Zeilen, ändert sich nur nachts). */
   private spellbookFlagsPromise: Promise<Map<string, SpellbookCardFlags>> | null = null;
 

@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { DecimalPipe, CurrencyPipe } from '@angular/common';
 import { PublicDeckService, PublicDeck, PublicDeckStats } from '../public-deck.service';
 import { ScryfallCard, ScryfallService } from '../scryfall.service';
+import { CardDataService } from '../card-data.service';
 import { CardPreviewService } from '../card-preview.service';
 import { I18nService } from '../i18n.service';
 import { NavigationService } from '../navigation.service';
@@ -42,6 +43,7 @@ import { Icon } from '../ui/icon/icon';
 export class PublicDeckBrowser {
   private readonly publicDecks = inject(PublicDeckService);
   private readonly scryfall = inject(ScryfallService);
+  private readonly cardData = inject(CardDataService);
   private readonly cardPreview = inject(CardPreviewService);
   readonly i18n = inject(I18nService);
   private readonly navigation = inject(NavigationService);
@@ -238,7 +240,7 @@ export class PublicDeckBrowser {
    */
   private async commanderKarten(decks: PublicDeck[]): Promise<Map<string, ScryfallCard[]>> {
     const namen = [...new Set(decks.flatMap((d) => d.commanders.map((c) => c.name)))];
-    const cardMap = await this.scryfall.findCardsBulk(namen);
+    const cardMap = await this.cardData.findCardsBulk(namen);
     const byDeck = new Map<string, ScryfallCard[]>();
     for (const deck of decks) {
       // Individuell gewähltes Artwork (deck_cards.image_url) hat Vorrang vor dem generischen
@@ -295,7 +297,7 @@ export class PublicDeckBrowser {
     this.deckBusy.set(true);
 
     const entries = await this.publicDecks.loadDeckCards(deck.id);
-    const cardMap = await this.scryfall.findCardsBulk(entries.map((e) => e.name));
+    const cardMap = await this.cardData.findCardsBulk(entries.map((e) => e.name));
 
     const all: ReadonlyDeckEntry[] = [];
     for (const entry of entries) {
@@ -315,7 +317,7 @@ export class PublicDeckBrowser {
     // Nur die Preise; das incomplete-Flag wertet bislang allein die Deck-Ansicht aus ("ab X €",
     // siehe deckPriceIncomplete in deck-analysis.service.ts). Von der geduldigeren Wiederholung
     // in cheapestPrices() profitiert diese Ansicht trotzdem.
-    const { prices } = await this.scryfall.cheapestPrices(names);
+    const { prices } = await this.cardData.cheapestPrices(names);
     let total = 0;
     for (const c of cards) {
       const price = prices.get(normalizeCardName(c.card.name.split(' // ')[0].trim()));
@@ -338,7 +340,7 @@ export class PublicDeckBrowser {
     this.steckbriefTexte.load(deck.id);
 
     const entries = await this.publicDecks.loadDeckCards(deck.id);
-    const cardMap = await this.scryfall.findCardsBulk(entries.map((e) => e.name));
+    const cardMap = await this.cardData.findCardsBulk(entries.map((e) => e.name));
     // Inzwischen geschlossen oder ein anderes Deck geöffnet - diese Antwort gehört nicht mehr hierher.
     if (this.passportDeck()?.id !== deck.id) return;
 

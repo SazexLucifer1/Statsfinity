@@ -25,6 +25,7 @@ import { DialogService } from '../dialog.service';
 import { I18nService } from '../i18n.service';
 import { CardPreviewService } from '../card-preview.service';
 import { CardSuggestion, ScryfallCard, ScryfallService } from '../scryfall.service';
+import { CardDataService } from '../card-data.service';
 import { Icon } from '../ui/icon/icon';
 import { ManaSymbol } from '../ui/mana-symbol/mana-symbol';
 
@@ -59,6 +60,7 @@ export class DeckPrimer implements OnDestroy {
   readonly i18n = inject(I18nService);
   private readonly dialog = inject(DialogService);
   private readonly scryfall = inject(ScryfallService);
+  private readonly cardData = inject(CardDataService);
   private readonly cardPreview = inject(CardPreviewService);
 
   readonly deckId = input.required<string>();
@@ -171,7 +173,7 @@ export class DeckPrimer implements OnDestroy {
         untracked(() => this.kartenBilder.set(new Map()));
         return;
       }
-      untracked(async () => this.kartenBilder.set(await this.scryfall.findCardsBulk(namen)));
+      untracked(async () => this.kartenBilder.set(await this.cardData.findCardsBulk(namen)));
     });
 
     document.addEventListener('selectionchange', this.aufAuswahlWechsel);
@@ -214,7 +216,7 @@ export class DeckPrimer implements OnDestroy {
     const name = (ziel.textContent ?? '').trim();
     if (!name) return;
     const karte =
-      this.kartenBilder().get(name.toLowerCase()) ?? (await this.scryfall.findCard(name));
+      this.kartenBilder().get(name.toLowerCase()) ?? (await this.cardData.findCard(name));
     if (karte?.imageUrl) this.cardPreview.open(karte.imageUrl, karte.backImageUrl, karte.name);
   }
 
@@ -336,7 +338,7 @@ export class DeckPrimer implements OnDestroy {
     const name = this.kartenName().trim();
     if (!name) return;
     this.kartenBildLaedt.set(true);
-    const karte = await this.scryfall.findCard(name);
+    const karte = await this.cardData.findCard(name);
     this.kartenBildLaedt.set(false);
     if (!karte?.imageUrl) {
       this.primerService.errorKey.set('deckPrimer.cardNotFound');

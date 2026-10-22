@@ -8,6 +8,7 @@ import {
   ScryfallCard,
   ScryfallService,
 } from '../scryfall.service';
+import { CardDataService } from '../card-data.service';
 import { CardPreviewService } from '../card-preview.service';
 import { I18nService } from '../i18n.service';
 import { CardImage } from '../card-image/card-image';
@@ -33,6 +34,7 @@ import { PrintSearch } from '../ui/print-search/print-search';
 })
 export class PublicCardSearch {
   private readonly scryfall = inject(ScryfallService);
+  private readonly cardData = inject(CardDataService);
   private readonly cardPreview = inject(CardPreviewService);
   readonly i18n = inject(I18nService);
 
@@ -261,7 +263,7 @@ export class PublicCardSearch {
     this.query.set(vorschlag.printedName ?? vorschlag.name);
     this.loading.set(true);
     this.searched.set(true);
-    this.result.set(await this.scryfall.findCard(vorschlag.name));
+    this.result.set(await this.cardData.findCard(vorschlag.name));
     this.loading.set(false);
   }
 
