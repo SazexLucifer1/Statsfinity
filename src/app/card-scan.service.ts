@@ -31,6 +31,7 @@ import {
   parseCollectorLine,
 } from './collector-line';
 import { findCardCandidates } from './card-bounds';
+import { foilFromSheen, sheenScore } from './foil-sheen';
 import { CollectionPrint } from './collection-coverage';
 import { toCollectionPrint } from './collection.service';
 
@@ -47,7 +48,8 @@ import { toCollectionPrint } from './collection.service';
  * einmal - in voller Kameraauflösung (`detail`) und zweimal aufbereitet - und gleicht sie nur
  * noch mit den Drucken ab, die dieses Artwork haben (matchCornerText()). Foil entscheidet dort
  * die Größe des Zeichens zwischen Set und Sprache (foilFromPixels()), aber nur, wenn die Karte
- * groß genug im Bild ist: unscharf und klein wächst der Punkt zum Stern.
+ * groß genug im Bild ist: unscharf und klein wächst der Punkt zum Stern. Bleibt der Stern
+ * ungelesen, entscheidet der Regenbogen-Schimmer im Textkasten (foil-sheen.ts).
  *
  * Die Sprache steht nur in der Sammlerzeile. Ohne sie (Karten vor ~2015) kommt sie aus dem
  * großen Kartentext, sonst gilt die im Scanner eingestellte Sprache.
@@ -102,6 +104,8 @@ export class CardScanService {
   private workerPromise: Promise<OcrWorker | null> | null = null;
   private readonly cardCache = new Map<string, any>();
   private readonly artCache = new Map<string, ImageData>();
+  /** Kartenbilder für den Foil-Vergleich, je Adresse. */
+  private readonly scanCache = new Map<string, ImageData>();
 
   /** Spiegelt die Karte im Rahmen gerade deutlich (Foil, Hülle, Lampe)? Für den Hinweis im Scanner. */
   readonly glare = signal(false);
@@ -261,8 +265,58 @@ export class CardScanService {
 
     const canNonfoil = print.finishes.includes('nonfoil');
     const canFoil = print.finishes.some((f) => f !== 'nonfoil');
-    const foil = !canNonfoil ? true : !canFoil ? false : (detectedFoil ?? false);
+    let foil = !canNonfoil ? true : !canFoil ? false : (detectedFoil ?? false);
+    // Den Stern liest die Kamera oft nicht (zu klein, Spiegelung) - dann der Regenbogen-Schimmer
+    // im Textkasten, verglichen mit Scryfalls Scan desselben Drucks (foil-sheen.ts).
+    if (!foil && canFoil && art) {
+      foil = (await this.foilFromSheen(detail ?? frame, art.cardBox, print.imageUrl)) ?? false;
+    }
     return { print, foil, via };
+  }
+
+  /** Foil am Schimmer im Textkasten, verglichen mit dem Scan unter `scanUrl` (null = unklar). */
+  private async foilFromSheen(
+    source: HTMLCanvasElement,
+    cardBox: ArtBox,
+    scanUrl: string,
+  ): Promise<boolean | null> {
+    const photo = source.width > 1000 ? scaled(source, 1000) : source;
+    const pixels = photo
+      .getContext('2d', { willReadFrequently: true })
+      ?.getImageData(0, 0, photo.width, photo.height);
+    if (!pixels) return null;
+    const scan = await this.scanImage(scanUrl);
+    if (!scan) return null;
+    // Beim Scan der höchste Wert über die Lagen, um die die Kartenlage im Foto danebenliegen kann.
+    const scanScores = [-0.07, 0, 0.04].map((dy) =>
+      sheenScore(scan.data, scan.width, scan.height, 4, [0, dy, 1, 1 + dy]),
+    );
+    if (scanScores.some((v) => v === null)) return null;
+    return foilFromSheen(
+      sheenScore(pixels.data, pixels.width, pixels.height, 4, cardBox),
+      Math.max(...(scanScores as number[])),
+    );
+  }
+
+  /** Scryfalls Kartenbild eines Drucks als Pixel (für foilFromSheen). */
+  private async scanImage(url: string): Promise<ImageData | null> {
+    if (this.scanCache.has(url)) return this.scanCache.get(url)!;
+    const pixels = await new Promise<ImageData | null>((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        ctx?.drawImage(img, 0, 0);
+        resolve(ctx?.getImageData(0, 0, canvas.width, canvas.height) ?? null);
+      };
+      img.onerror = () => resolve(null);
+      img.src = url;
+    });
+    if (pixels) this.scanCache.set(url, pixels);
+    return pixels;
   }
 
   /** Mögliche Lagen der Karte in `frame` (Anteile), Kantensuche auf einem verkleinerten Graubild. */
