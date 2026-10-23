@@ -216,10 +216,13 @@ export class DeckDetailView {
 
     // Einzelpreise auch für Maybeboard, Marken, beim Bearbeiten hinzugefügte Karten und die
     // Treffer der Kartensuche (Suche und EDHREC) - immer der günstigste Druck.
+    // Auch ohne "Preise", sobald der Gesamtpreis steht - sonst zählte eine beim Bearbeiten
+    // hinzugefügte Karte darin erst nach dem Neuladen.
     effect(() => {
-      if (!this.viewer.showCardPrices()) return;
+      const showPrices = this.viewer.showCardPrices();
+      if (!showPrices && !this.viewer.analysis.pricesLoaded()) return;
       const names = this.viewer.state.editedDeckCards().map((c) => c.cardName);
-      if (this.viewer.state.editMode()) {
+      if (showPrices && this.viewer.state.editMode()) {
         names.push(...this.viewer.edit.pagedAddCardResults().map((c) => c.name));
         for (const list of this.viewer.edhrecPanel.edhrecLists() ?? []) names.push(...list.cards.map((c) => c.name));
       }
