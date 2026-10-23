@@ -123,6 +123,9 @@ export class DeckAnalysisService {
     return this.cardPrices().get(normalizeCardName(cardName.split(' // ')[0].trim())) ?? null;
   }
 
+  /** Schon abgefragte Kartennamen (Schlüssel wie cardPrices) - auch die ohne Preis, damit sie nicht erneut gehen. */
+  private readonly pricesAsked = new Set<string>();
+
   // --- Diagramm-Reihen für <app-bar-chart> (Abbildung in ui/bar-chart/deck-chart-data.ts) ---
   readonly manaCurveChart = computed<BarChartDatum[]>(() => manaCurveChartData(this.manaCurve()));
   readonly pipDistributionChart = computed<BarChartDatum[]>(() =>
@@ -395,18 +398,34 @@ export class DeckAnalysisService {
     return this.pricePromise;
   }
 
+  /**
+   * Einzelpreise für Karten, die der Gesamtpreis nicht abfragt (Maybeboard, Marken) oder die erst
+   * beim Bearbeiten dazukamen. Ändert nur cardPrices, nicht die Summe.
+   */
+  async loadMissingCardPrices(cards: DeckCard[]): Promise<void> {
+    await this.pricePromise;
+    const names = [...new Set(cards.map((c) => c.cardName))].filter(
+      (name) => !this.pricesAsked.has(normalizeCardName(name.split(' // ')[0].trim())),
+    );
+    if (names.length === 0) return;
+    for (const name of names) this.pricesAsked.add(normalizeCardName(name.split(' // ')[0].trim()));
+    const { prices } = await this.cardData.cheapestPrices(names);
+    this.cardPrices.update((bisher) => new Map([...bisher, ...prices]));
+  }
+
   /** Lädt den Gesamtpreis (billigste Druckvariante je Karte, erst aus dem Nacht-Cache, siehe CardDataService.cheapestPrices()) nach. */
   private async loadCardPrices(cards: DeckCard[]): Promise<void> {
     this.priceBusy.set(true);
     const realCards = cards.filter((c) => !c.isMaybeboard && !c.isToken);
     const names = [...new Set(realCards.map((c) => c.cardName))];
+    for (const name of names) this.pricesAsked.add(normalizeCardName(name.split(' // ')[0].trim()));
     const { prices, incomplete } = await this.cardData.cheapestPrices(names);
     let total = 0;
     for (const card of realCards) {
       const price = prices.get(normalizeCardName(card.cardName.split(' // ')[0].trim()));
       if (price != null) total += price * card.quantity;
     }
-    this.cardPrices.set(prices);
+    this.cardPrices.update((bisher) => new Map([...bisher, ...prices]));
     this.totalDeckPrice.set(total);
     this.deckPriceIncomplete.set(incomplete);
     this.priceBusy.set(false);
@@ -444,6 +463,7 @@ export class DeckAnalysisService {
     this.totalDeckPrice.set(null);
     this.deckPriceIncomplete.set(false);
     this.cardPrices.set(new Map());
+    this.pricesAsked.clear();
     this.priceBusy.set(false);
     this.pricePromise = null;
   }

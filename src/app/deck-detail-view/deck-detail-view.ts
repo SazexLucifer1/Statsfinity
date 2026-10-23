@@ -214,6 +214,11 @@ export class DeckDetailView {
       )
     );
 
+    // Einzelpreise auch für Maybeboard, Marken und beim Bearbeiten hinzugefügte Karten.
+    effect(() => {
+      if (this.viewer.showCardPrices()) void this.viewer.analysis.loadMissingCardPrices(this.viewer.state.editedDeckCards());
+    });
+
     // Sobald sich die EDHREC-Vorschlagsliste ändert (Tag gewechselt, Commander gewechselt, erneutes
     // Bearbeiten nach dem Speichern, ...), für bereits aufgeklappte Kategorien die Bilder direkt neu
     // nachladen - sonst zeigen sie weiterhin nur die (jetzt zu den neuen Karten nicht mehr
