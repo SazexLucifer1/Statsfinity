@@ -28,6 +28,8 @@ import {
 } from './deck-analyse';
 import type { GameChangerEntry, AnalysisCombo, ManaSourceCount } from './deck-viewer.service';
 import { DeckViewerState } from './deck-viewer-state.service';
+import { CollectionService } from './collection.service';
+import { printIdFromImageUrl } from './collection-coverage';
 
 /**
  * Deck-Analyse der Detailansicht: Kennzahlen, Diagramme, Manaquellen, Game Changer, Tutoren, Spellbook-Markierungen, Combos und Kartenpreis.
@@ -39,6 +41,7 @@ export class DeckAnalysisService {
   readonly i18n = inject(I18nService);
   private readonly scryfall = inject(ScryfallService);
   private readonly state = inject(DeckViewerState);
+  private readonly collection = inject(CollectionService);
 
   readonly analysisBusy = signal(false);
 
@@ -125,6 +128,57 @@ export class DeckAnalysisService {
 
   /** Schon abgefragte Kartennamen (Schlüssel wie cardPrices) - auch die ohne Preis, damit sie nicht erneut gehen. */
   private readonly pricesAsked = new Set<string>();
+
+  /**
+   * Welcher Preis an Karten und im Gesamtwert steht: der günstigste Druck (Standard) oder der im
+   * Deck gewählte. Die Bracket-Einstufung rechnet unabhängig davon immer mit totalDeckPrice.
+   */
+  readonly priceMode = signal<'cheapest' | 'selected'>('cheapest');
+  /** Preis je gewähltem Druck (Scryfall-ID aus image_url), nur für priceMode 'selected'. */
+  private readonly printPrices = signal<Map<string, number>>(new Map());
+  private readonly printsAsked = new Set<string>();
+
+  /** Preis, wie er an der Karte steht - ohne Preis des gewählten Drucks der günstigste. */
+  displayedCardPrice(card: DeckCard): number | null {
+    if (this.priceMode() === 'selected') {
+      const id = printIdFromImageUrl(card.imageUrl);
+      const price = id ? this.printPrices().get(id) : undefined;
+      if (price != null) return price;
+    }
+    return this.cardPrice(card.cardName);
+  }
+
+  /** Gesamtwert für die Anzeige (ohne Maybeboard und Marken) - je nach priceMode. */
+  readonly displayedDeckPrice = computed<number | null>(() => {
+    const cheapest = this.totalDeckPrice();
+    if (this.priceMode() === 'cheapest' || cheapest == null) return cheapest;
+    let total = 0;
+    for (const card of this.state.viewingDeckCards()) {
+      if (card.isMaybeboard || card.isToken) continue;
+      total += (this.displayedCardPrice(card) ?? 0) * card.quantity;
+    }
+    return total;
+  });
+
+  /** Preise der im Deck gewählten Drucke (erst scryfall_print_info, sonst live, siehe CollectionService.printInfo()). */
+  async loadSelectedPrintPrices(cards: DeckCard[]): Promise<void> {
+    const ids = [
+      ...new Set(
+        cards.map((c) => printIdFromImageUrl(c.imageUrl)).filter((id): id is string => !!id),
+      ),
+    ].filter((id) => !this.printsAsked.has(id));
+    if (ids.length === 0) return;
+    for (const id of ids) this.printsAsked.add(id);
+    const infos = await this.collection.printInfo(ids);
+    this.printPrices.update((bisher) => {
+      const neu = new Map(bisher);
+      for (const [id, info] of infos) {
+        const eur = info?.eur ?? info?.eurFoil ?? null;
+        if (eur != null) neu.set(id, eur);
+      }
+      return neu;
+    });
+  }
 
   // --- Diagramm-Reihen für <app-bar-chart> (Abbildung in ui/bar-chart/deck-chart-data.ts) ---
   readonly manaCurveChart = computed<BarChartDatum[]>(() => manaCurveChartData(this.manaCurve()));
@@ -399,12 +453,12 @@ export class DeckAnalysisService {
   }
 
   /**
-   * Einzelpreise für Karten, die der Gesamtpreis nicht abfragt (Maybeboard, Marken) oder die erst
-   * beim Bearbeiten dazukamen. Ändert nur cardPrices, nicht die Summe.
+   * Einzelpreise für Karten, die der Gesamtpreis nicht abfragt (Maybeboard, Marken, Treffer der
+   * Kartensuche) oder die erst beim Bearbeiten dazukamen. Ändert nur cardPrices, nicht die Summe.
    */
-  async loadMissingCardPrices(cards: DeckCard[]): Promise<void> {
+  async loadMissingCardPrices(cardNames: string[]): Promise<void> {
     await this.pricePromise;
-    const names = [...new Set(cards.map((c) => c.cardName))].filter(
+    const names = [...new Set(cardNames)].filter(
       (name) => !this.pricesAsked.has(normalizeCardName(name.split(' // ')[0].trim())),
     );
     if (names.length === 0) return;
@@ -464,6 +518,8 @@ export class DeckAnalysisService {
     this.deckPriceIncomplete.set(false);
     this.cardPrices.set(new Map());
     this.pricesAsked.clear();
+    this.printPrices.set(new Map());
+    this.printsAsked.clear();
     this.priceBusy.set(false);
     this.pricePromise = null;
   }

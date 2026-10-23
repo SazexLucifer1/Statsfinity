@@ -670,6 +670,7 @@ async function syncPreise() {
   });
 
   const preise = new Map();
+  const foilPreise = new Map();
   for await (const zeile of zeilen) {
     const inhalt = zeile.trim().replace(/,$/, '');
     if (!inhalt || inhalt === '[' || inhalt === ']') continue;
@@ -689,6 +690,14 @@ async function syncPreise() {
     const bisher = preise.get(name);
     if (eur > 0 && (bisher == null || eur < bisher)) preise.set(name, eur);
     else if (!preise.has(name)) preise.set(name, null);
+    const foil = parseFloat(data.prices?.eur_foil);
+    const foilBisher = foilPreise.get(name);
+    if (foil > 0 && (foilBisher == null || foil < foilBisher)) foilPreise.set(name, foil);
+  }
+  // Manche Karten gibt es bei Cardmarket nur als Foil (z.B. die Warhammer-Commander) - dann zählt
+  // der günstigste Foil-Preis statt gar keiner.
+  for (const [name, eur] of preise) {
+    if (eur == null && foilPreise.has(name)) preise.set(name, foilPreise.get(name));
   }
   const mitPreis = [...preise.values()].filter((eur) => eur != null).length;
   // Lieber die Preise von gestern behalten als eine halb gelesene Datei schreiben.

@@ -214,9 +214,22 @@ export class DeckDetailView {
       )
     );
 
-    // Einzelpreise auch für Maybeboard, Marken und beim Bearbeiten hinzugefügte Karten.
+    // Einzelpreise auch für Maybeboard, Marken, beim Bearbeiten hinzugefügte Karten und die
+    // Treffer der Kartensuche (Suche und EDHREC) - immer der günstigste Druck.
     effect(() => {
-      if (this.viewer.showCardPrices()) void this.viewer.analysis.loadMissingCardPrices(this.viewer.state.editedDeckCards());
+      if (!this.viewer.showCardPrices()) return;
+      const names = this.viewer.state.editedDeckCards().map((c) => c.cardName);
+      if (this.viewer.state.editMode()) {
+        names.push(...this.viewer.edit.pagedAddCardResults().map((c) => c.name));
+        for (const list of this.viewer.edhrecPanel.edhrecLists() ?? []) names.push(...list.cards.map((c) => c.name));
+      }
+      void this.viewer.analysis.loadMissingCardPrices(names);
+    });
+
+    // Umgeschaltet auf "gewähltes Artwork": Preise genau dieser Drucke nachladen.
+    effect(() => {
+      if (this.viewer.analysis.priceMode() === 'selected')
+        void this.viewer.analysis.loadSelectedPrintPrices(this.viewer.state.editedDeckCards());
     });
 
     // Sobald sich die EDHREC-Vorschlagsliste ändert (Tag gewechselt, Commander gewechselt, erneutes
