@@ -110,8 +110,22 @@ export class DeckAnalysisService {
     typeBreakdown(this.analyseKarten(), this.i18n),
   );
 
-  /** Gesamtpreis (USD, billigste Druckvariante je Karte) - null solange noch nicht geladen. */
-  readonly totalDeckPrice = signal<number | null>(null);
+  /** true, sobald die Preise dieser Deck-Öffnung einmal geladen sind (siehe totalDeckPrice). */
+  readonly pricesLoaded = signal(false);
+  /**
+   * Gesamtpreis (EUR, billigste Druckvariante je Karte, ohne Maybeboard und Marken) - null solange
+   * noch nicht geladen. Gerechnet aus der gerade angezeigten Liste, damit er beim Bearbeiten
+   * mitläuft (Hinzufügen, Menge, Maybeboard); Preise neuer Karten lädt deck-detail-view nach.
+   */
+  readonly totalDeckPrice = computed<number | null>(() => {
+    if (!this.pricesLoaded()) return null;
+    let total = 0;
+    for (const card of this.state.editedDeckCards()) {
+      if (card.isMaybeboard || card.isToken) continue;
+      total += (this.cardPrice(card.cardName) ?? 0) * card.quantity;
+    }
+    return total;
+  });
   readonly priceBusy = signal(false);
   /**
    * Mindestens eine Preisabfrage scheiterte, die Summe ist also eine Untergrenze ("ab X €"). Karten
@@ -153,7 +167,7 @@ export class DeckAnalysisService {
     const cheapest = this.totalDeckPrice();
     if (this.priceMode() === 'cheapest' || cheapest == null) return cheapest;
     let total = 0;
-    for (const card of this.state.viewingDeckCards()) {
+    for (const card of this.state.editedDeckCards()) {
       if (card.isMaybeboard || card.isToken) continue;
       total += (this.displayedCardPrice(card) ?? 0) * card.quantity;
     }
@@ -474,13 +488,8 @@ export class DeckAnalysisService {
     const names = [...new Set(realCards.map((c) => c.cardName))];
     for (const name of names) this.pricesAsked.add(normalizeCardName(name.split(' // ')[0].trim()));
     const { prices, incomplete } = await this.cardData.cheapestPrices(names);
-    let total = 0;
-    for (const card of realCards) {
-      const price = prices.get(normalizeCardName(card.cardName.split(' // ')[0].trim()));
-      if (price != null) total += price * card.quantity;
-    }
     this.cardPrices.update((bisher) => new Map([...bisher, ...prices]));
-    this.totalDeckPrice.set(total);
+    this.pricesLoaded.set(true);
     this.deckPriceIncomplete.set(incomplete);
     this.priceBusy.set(false);
   }
@@ -514,7 +523,7 @@ export class DeckAnalysisService {
     this.bracketEstimateBusy.set(false);
     this.bracketEstimateFailed.set(false);
     this.bracketEstimateErrorDetail.set(null);
-    this.totalDeckPrice.set(null);
+    this.pricesLoaded.set(false);
     this.deckPriceIncomplete.set(false);
     this.cardPrices.set(new Map());
     this.pricesAsked.clear();
