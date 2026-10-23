@@ -687,6 +687,10 @@
                 {{ viewer.i18n.t('deckView.edhrec') }}
               </button>
             }
+            <!-- Günstigster Druck je Treffer, dieselbe Einstellung wie "Preise" an der Kartenliste. -->
+            <button class="glass-chip small" [class.active]="viewer.showCardPrices()" (click)="viewer.toggleCardPrices()">
+              {{ viewer.i18n.t('deckView.cardPrices') }}
+            </button>
           </div>
 
           <div class="chip-row" data-tutorial="deck-add-card-destination">
@@ -887,6 +891,9 @@
                     >
                       <app-icon [name]="viewer.state.isCardInDeck(card.name) ? 'check' : 'plus'" />
                     </button>
+                    @if (viewer.showCardPrices() && viewer.analysis.cardPrice(card.name); as price) {
+                      <span class="deck-card-price-badge">{{ price | currency: 'EUR' }}</span>
+                    }
                   </div>
                 </div>
               }
@@ -952,6 +959,9 @@
                         >
                           <app-icon [name]="viewer.state.isCardInDeck(card.name) ? 'check' : 'plus'" />
                         </button>
+                        @if (viewer.showCardPrices() && viewer.analysis.cardPrice(card.name); as price) {
+                          <span class="deck-card-price-badge">{{ price | currency: 'EUR' }}</span>
+                        }
                       </div>
                       <span class="card-pick-stats">
                         {{ card.numDecks }}/{{ card.potentialDecks }} · {{ card.synergy | percent: '1.0-1' }}
@@ -1053,11 +1063,11 @@
                   <div class="stat-tile">
                     @if (viewer.analysis.priceBusy()) {
                       <span class="stat-value">…</span>
-                    } @else if (viewer.analysis.totalDeckPrice(); as price) {
+                    } @else if (viewer.analysis.displayedDeckPrice(); as price) {
                       <span class="stat-value">
                         @if (viewer.analysis.deckPriceIncomplete()) {
                           <span class="stat-value-prefix">{{ viewer.i18n.t('deckView.priceFrom') }}</span>
-                        }{{ price | currency: 'EUR' }}
+                        }<!-- ab 1000 € ohne Cent, sonst passt die Zahl nicht in die Kachel -->{{ price | currency: 'EUR' : 'symbol' : (price >= 1000 ? '1.0-0' : '1.2-2') }}
                       </span>
                     } @else {
                       <span class="stat-value">–</span>
@@ -1065,6 +1075,7 @@
                     <span class="stat-label">{{ viewer.i18n.t('deckView.priceTile') }}</span>
                   </div>
                 </div>
+                <ng-container *ngTemplateOutlet="priceModeChips" />
               </section>
 
               <section class="analysis-section">
@@ -1246,6 +1257,9 @@
           {{ viewer.i18n.t('deckView.cardPrices') }}
         </button>
       </div>
+      @if (viewer.showCardPrices()) {
+        <ng-container *ngTemplateOutlet="priceModeChips" />
+      }
       <input
         class="glass-input"
         type="text"
@@ -1359,9 +1373,9 @@
                     @if (card.quantity > 1) {
                       <span class="deck-card-qty">{{ card.quantity }}×</span>
                     }
-                    @if (viewer.showCardPrices() && viewer.analysis.cardPrice(card.cardName); as price) {
-                      <span class="deck-card-price-badge">{{ price | currency: 'EUR' }}</span>
-                    }
+                  }
+                  @if (viewer.showCardPrices() && viewer.analysis.displayedCardPrice(card); as price) {
+                    <span class="deck-card-price-badge">{{ price | currency: 'EUR' }}</span>
                   }
                 </div>
 
@@ -1448,7 +1462,7 @@
                 @if (pruefung().markiert.has(card.cardName)) {
                   <span class="ban-badge" aria-hidden="true">!</span>
                 }
-                @if (viewer.showCardPrices() && !viewer.state.editMode() && viewer.analysis.cardPrice(card.cardName); as price) {
+                @if (viewer.showCardPrices() && viewer.analysis.displayedCardPrice(card); as price) {
                   <span class="deck-card-price-text">{{ price | currency: 'EUR' }}</span>
                 }
                 @if (viewer.state.editMode() && viewer.edit.showCommanderToggle() && (card.isCommander || viewer.edit.isCommanderEligible(card))) {
@@ -1927,3 +1941,15 @@
     }
   </div>
 }
+
+<!-- Umschalter des Preises an Karten und im Gesamtwert; die Bracket-Einstufung nimmt immer den günstigsten. -->
+<ng-template #priceModeChips>
+  <div class="chip-row">
+    <button class="glass-chip small" [class.active]="viewer.analysis.priceMode() === 'cheapest'" (click)="viewer.analysis.priceMode.set('cheapest')">
+      {{ viewer.i18n.t('deckView.priceModeCheapest') }}
+    </button>
+    <button class="glass-chip small" [class.active]="viewer.analysis.priceMode() === 'selected'" (click)="viewer.analysis.priceMode.set('selected')">
+      {{ viewer.i18n.t('deckView.priceModeSelected') }}
+    </button>
+  </div>
+</ng-template>

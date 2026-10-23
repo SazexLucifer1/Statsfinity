@@ -966,17 +966,35 @@ export class ScryfallService {
       // Chunk trotzdem, wird das gemeldet statt still eine zu niedrige Summe zu zeigen (so
       // geschehen: 277 statt 388 €). Retry-After ist wegen CORS nicht lesbar.
       const res = await this.fetchWithRetry(`${API}/cards/search?q=${q}`, 4);
-      if (!res?.ok) {
+      // 404 = kein Druck mit normalem Preis, also kein Fehler - weiter mit dem Foil-Rückfall.
+      if (!res?.ok && res?.status !== 404) {
         incomplete = true;
         continue;
       }
-      const data = await res.json();
+      const data = res?.ok ? await res.json() : { data: [] };
       for (const card of (data.data as any[]) ?? []) {
         // Schlüssel ist die Vorderseite, wie bei allen Aufrufern (sonst fielen Doppel-, Split- und
         // Abenteuerkarten still aus der Summe).
         const name = normalizeCardName(frontFaceName(card.name as string));
         const price = parseFloat(card.prices?.eur);
         if (!prices.has(name) && !Number.isNaN(price)) prices.set(name, price);
+      }
+      // Ohne normalen Preis bei keinem Druck: günstigster Foil-Preis (manche Karten gibt es bei
+      // Cardmarket nur als Foil). Betrifft selten mehr als eine Handvoll Namen.
+      const ohnePreis = chunk.filter((n) => !prices.has(normalizeCardName(n)));
+      if (ohnePreis.length === 0) continue;
+      await sleep(300);
+      const foilQ = encodeURIComponent(
+        '(' + ohnePreis.map((n) => `!"${n.replace(/"/g, '')}"`).join(' or ') + ') -is:digital unique:prints',
+      );
+      const foilRes = await this.fetchWithRetry(`${API}/cards/search?q=${foilQ}`, 2);
+      if (!foilRes?.ok) continue; // 404 = keine Treffer, kein Fehler
+      const foilData = await foilRes.json();
+      for (const card of (foilData.data as any[]) ?? []) {
+        const name = normalizeCardName(frontFaceName(card.name as string));
+        const foil = parseFloat(card.prices?.eur_foil);
+        const bisher = prices.get(name);
+        if (foil > 0 && (bisher == null || foil < bisher)) prices.set(name, foil);
       }
     }
 

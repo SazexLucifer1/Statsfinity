@@ -156,14 +156,32 @@ describe('ScryfallService', () => {
     });
 
     it('reports incomplete when a chunk request fails', async () => {
-      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-        new Response(null, { status: 404 }) as Response,
-      );
+      vi.spyOn(service, 'fetchWithRetry').mockResolvedValue(null);
 
       const { prices, incomplete } = await service.cheapestPrices(['Sol Ring']);
 
       expect(prices.size).toBe(0);
       expect(incomplete).toBe(true);
+    });
+
+    it('falls back to the cheapest foil price when no printing has a regular price', async () => {
+      vi.spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce(new Response(null, { status: 404 }) as Response)
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              data: [
+                { name: 'Abaddon the Despoiler', prices: { eur: null, eur_foil: '9.43' } },
+                { name: 'Abaddon the Despoiler', prices: { eur: null, eur_foil: '7.10' } },
+              ],
+            }),
+          ) as Response,
+        );
+
+      const { prices, incomplete } = await service.cheapestPrices(['Abaddon the Despoiler']);
+
+      expect(prices.get('abaddon the despoiler')).toBe(7.1);
+      expect(incomplete).toBe(false);
     });
   });
 });

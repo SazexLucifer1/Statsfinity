@@ -211,7 +211,7 @@ export const deckView = {
       'Wie viele Karten Mana welcher Farbe erzeugen können - Länder, Manasteine und Manadorks zusammen, nach Scryfalls produced_mana. Gezählt werden Karten, nicht Manasymbole: Eine Karte, die mehrere Farben erzeugt (z.B. ein Triom), zählt bei jeder dieser Farben mit, die Balkensumme ist deshalb größer als die Zahl der Manaquellen.',
     'deckView.priceInfoLabel': 'Kartenpreis gesamt:',
     'deckView.priceInfoText':
-      'Summe der Scryfall-EUR-Preise (Cardmarket) der günstigsten Druckvariante jeder Karte - unabhängig vom im Deck gewählten Artwork. Karten ohne ermittelbaren Preis fließen nicht in die Summe ein.',
+      'Summe der Scryfall-EUR-Preise (Cardmarket) der günstigsten Druckvariante jeder Karte, ohne Maybeboard und Marken. Gibt es eine Karte nur als Foil, zählt der günstigste Foil-Preis. Mit „Gewähltes Artwork“ zählt stattdessen der Preis des im Deck gewählten Drucks. Die Bracket-Einstufung rechnet immer mit der günstigsten Variante.',
     'deckView.typeBreakdownInfoLabel': 'Kartentyp-Verteilung:',
     'deckView.typeBreakdownInfoText':
       'Jede Karte zählt genau einmal, bei mehreren Typen (z.B. Artefaktkreatur) nach fester Priorität (Kreatur > Planeswalker > Kampf > Land > Artefakt > Verzauberung > Spontanzauber > Hexerei).',
@@ -362,6 +362,8 @@ export const deckView = {
     'deckView.nonBasicLandTile': 'Nichtbasisland',
     'deckView.priceTile': 'Kartenpreis (ca.)',
     'deckView.cardPrices': 'Preise',
+    'deckView.priceModeCheapest': 'Günstigste Version',
+    'deckView.priceModeSelected': 'Gewähltes Artwork',
     // Vorangestellt, wenn eine Preisabfrage gescheitert ist: Die Summe ist dann nur eine
     // Untergrenze. Bewusst kein Fehlertext - siehe deckPriceIncomplete in deck-analysis.service.ts.
     'deckView.priceFrom': 'ab',
@@ -689,7 +691,7 @@ export const deckView = {
       "How many cards can produce mana of each color - lands, mana rocks and mana dorks together, based on Scryfall's produced_mana. Cards are counted, not mana symbols: a card producing several colors (e.g. a triome) counts towards each of them, so the bars add up to more than the number of mana sources.",
     'deckView.priceInfoLabel': 'Total card price:',
     'deckView.priceInfoText':
-      "Sum of the Scryfall EUR prices (Cardmarket) of each card's cheapest printing - independent of the artwork chosen in the deck. Cards without a determinable price are excluded from the sum.",
+      "Sum of the Scryfall EUR prices (Cardmarket) of each card's cheapest printing, without maybeboard and tokens. If a card only exists as a foil, its cheapest foil price counts. With \"Chosen artwork\" the price of the printing chosen in the deck counts instead. The bracket estimate always uses the cheapest version.",
     'deckView.typeBreakdownInfoLabel': 'Card type breakdown:',
     'deckView.typeBreakdownInfoText':
       'Each card counts exactly once - cards with multiple types (e.g. artifact creature) are assigned by fixed priority (Creature > Planeswalker > Battle > Land > Artifact > Enchantment > Instant > Sorcery).',
@@ -839,6 +841,8 @@ export const deckView = {
     'deckView.nonBasicLandTile': 'Nonbasic land',
     'deckView.priceTile': 'Card price (approx.)',
     'deckView.cardPrices': 'Prices',
+    'deckView.priceModeCheapest': 'Cheapest version',
+    'deckView.priceModeSelected': 'Chosen artwork',
     'deckView.priceFrom': 'from',
     'deckView.removalTile': 'Removal',
     'deckView.counterspellTile': 'Counterspells',
