@@ -1,0 +1,71 @@
+:host {
+  display: block;
+}
+
+.deck-variants {
+  margin-top: var(--sp-2);
+}
+
+.segmented {
+  margin: var(--sp-2) 0;
+}
+
+// Drei Listen mit Zahl und Namen - auf dem Handy dürfen die Segmente umbrechen statt zu quetschen.
+.lists button {
+  white-space: normal;
+  line-height: 1.2;
+}
+
+.print {
+  margin-bottom: var(--sp-2);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: var(--sp-2);
+}
+
+.tile {
+  position: relative;
+
+  app-card-thumb {
+    width: 100%;
+  }
+}
+
+.qty {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  padding: 1px 6px;
+  border-radius: var(--r-xs);
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.manage {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+}
+
+.link-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+
+  select {
+    max-width: 100%;
+  }
+}
+
+.error {
+  color: #f87171;
+}
