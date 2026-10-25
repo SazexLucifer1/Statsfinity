@@ -368,6 +368,12 @@ export class DeckImportService {
   readonly preconImportBusy = signal(false);
   readonly preconImportProgress = signal<{ done: number; total: number } | null>(null);
   readonly preconMessage = signal('');
+  /**
+   * Commander-Namen je Precon-Datei - der Deckname verrät den Commander oft nicht, ein Bild findet
+   * man mit dem Auge schneller. PreconService lädt höchstens drei Dateien gleichzeitig und merkt
+   * sich die Namen dauerhaft, beim zweiten Öffnen stehen sie sofort da.
+   */
+  readonly preconCommanders = signal<Record<string, string[]>>({});
 
   async openPreconDialog(owner: DeckOwner, onSaved: () => void): Promise<void> {
     this.owner = owner;
@@ -395,6 +401,12 @@ export class DeckImportService {
     this.selectedPreconFileNames.set(new Set());
     this.preconOptions.set(await this.preconService.getPreconsForYear(this.preconYear()));
     this.preconSearchBusy.set(false);
+    for (const p of this.preconOptions()) {
+      if (this.preconCommanders()[p.fileName]) continue;
+      void this.preconService.commandersOf(p.fileName).then((names) =>
+        this.preconCommanders.update((map) => ({ ...map, [p.fileName]: names })),
+      );
+    }
   }
 
   isPreconSelected(fileName: string): boolean {
