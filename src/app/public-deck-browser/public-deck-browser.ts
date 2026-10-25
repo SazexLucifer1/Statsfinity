@@ -13,6 +13,7 @@ import { normalizeCardName } from '../array-utils';
 import { BarChart } from '../ui/bar-chart/bar-chart';
 import { ColorFilter } from '../ui/color-filter/color-filter';
 import { DeckComments } from '../deck-comments/deck-comments';
+import { DeckVariants } from '../deck-variants/deck-variants';
 import { DeckPrimer } from '../deck-primer/deck-primer';
 import { DeckPrimerService } from '../deck-primer.service';
 import {
@@ -36,7 +37,7 @@ import { Icon } from '../ui/icon/icon';
  */
 @Component({
   selector: 'app-public-deck-browser',
-  imports: [FormsModule, CardImage, PartnerCardImage, DecimalPipe, CurrencyPipe, BarChart, ColorFilter, DeckComments, DeckPrimer, DeckSocial, DeckSteckbrief, Icon],
+  imports: [FormsModule, CardImage, PartnerCardImage, DecimalPipe, CurrencyPipe, BarChart, ColorFilter, DeckComments, DeckPrimer, DeckSocial, DeckSteckbrief, DeckVariants, Icon],
   templateUrl: './public-deck-browser.html',
   styleUrl: './public-deck-browser.scss',
 })

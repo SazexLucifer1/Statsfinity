@@ -1,0 +1,125 @@
+@if (visible()) {
+  <div class="deck-variants">
+    <app-info-toggle [label]="i18n.t('deckView.variants.infoAria')">
+      <button
+        info-title
+        type="button"
+        class="stat-disclosure"
+        [attr.aria-expanded]="expanded()"
+        (click)="expanded.set(!expanded())"
+      >
+        <span class="stat-disclosure-chevron" aria-hidden="true"></span>
+        <span class="stat-disclosure-title">
+          @if (selectedVariant(); as variant) {
+            {{ i18n.t('deckView.variants.titleWith', { name: variant.name }) }}
+          } @else {
+            {{ i18n.t('deckView.variants.title') }}
+          }
+        </span>
+      </button>
+      <p class="hint">{{ i18n.t('deckView.variants.info') }}</p>
+    </app-info-toggle>
+
+    @if (expanded()) {
+      @if (service.variants().length > 1) {
+        <div class="segmented block">
+          @for (v of service.variants(); track v.id) {
+            <button
+              type="button"
+              [class.active]="selectedVariant()?.id === v.id"
+              (click)="selectedVariantId.set(v.id)"
+            >
+              {{ v.name }}
+            </button>
+          }
+        </div>
+      }
+
+      @if (selectedVariant()) {
+        @if (comparison(); as cmp) {
+          <div class="segmented block lists">
+            <button type="button" [class.active]="list() === 'common'" (click)="list.set('common')">
+              {{ listLabel('common') }}
+            </button>
+            <button
+              type="button"
+              [class.active]="list() === 'onlyThis'"
+              (click)="list.set('onlyThis')"
+            >
+              {{ listLabel('onlyThis') }}
+            </button>
+            <button
+              type="button"
+              [class.active]="list() === 'onlyOther'"
+              (click)="list.set('onlyOther')"
+            >
+              {{ listLabel('onlyOther') }}
+            </button>
+          </div>
+
+          @if (entries().length === 0) {
+            <p class="hint">{{ i18n.t('deckView.variants.empty') }}</p>
+          } @else {
+            <button
+              type="button"
+              class="glass-button small print"
+              [disabled]="pdfBusy()"
+              (click)="printList()"
+            >
+              {{ i18n.t('deckView.variants.print') }}
+            </button>
+            <div class="grid">
+              @for (e of entries(); track e.cardName) {
+                <div class="tile">
+                  <app-card-thumb [name]="e.cardName" [imageUrl]="e.imageUrl" />
+                  @if (e.quantity > 1) {
+                    <span class="qty">{{ e.quantity }}×</span>
+                  }
+                </div>
+              }
+            </div>
+          }
+        } @else {
+          <p class="hint">{{ i18n.t('login.pleaseWait') }}</p>
+        }
+      }
+
+      @if (isOwner()) {
+        <div class="manage">
+          @if (service.candidates().length > 0) {
+            <label class="link-row">
+              <span>{{ i18n.t('deckView.variants.linkLabel') }}</span>
+              <select [value]="linkTarget()" (change)="linkTarget.set($any($event.target).value)">
+                <option value="">{{ i18n.t('deckView.variants.choose') }}</option>
+                @for (c of service.candidates(); track c.id) {
+                  <option [value]="c.id">{{ c.name }}</option>
+                }
+              </select>
+              <button
+                type="button"
+                class="glass-button small"
+                [disabled]="!linkTarget() || service.busy()"
+                (click)="link()"
+              >
+                {{ i18n.t('deckView.variants.link') }}
+              </button>
+            </label>
+          }
+          @if (service.variants().length > 0) {
+            <button
+              type="button"
+              class="glass-button small"
+              [disabled]="service.busy()"
+              (click)="unlink()"
+            >
+              {{ i18n.t('deckView.variants.unlink') }}
+            </button>
+          }
+          @if (service.errorKey(); as key) {
+            <p class="hint error">{{ i18n.t(key) }}</p>
+          }
+        </div>
+      }
+    }
+  </div>
+}

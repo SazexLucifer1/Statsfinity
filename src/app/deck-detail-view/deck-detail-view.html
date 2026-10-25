@@ -491,6 +491,8 @@
       }
       <!-- Abgleich mit der eigenen Sammlung (fehlende Karten, Karten für mehrere Decks). -->
       <app-deck-collection [deckId]="deck.id" [canEdit]="viewer.state.canEditViewingDeck()" />
+      <!-- Andere Fassungen desselben Decks (z. B. Bracket 4 / Bracket 2): gemeinsam, nur hier, nur dort. -->
+      <app-deck-variants [deckId]="deck.id" [deckName]="deck.name" [ownerUserId]="deck.userId" />
 
       <!-- Vorher standen hier bis zu sieben gleich aussehende Chips in einer Reihe. Bilder/Text ist
            ein Ansichtswechsel und gehört in einen segmentierten Umschalter; Bearbeiten ist die
