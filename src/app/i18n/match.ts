@@ -60,6 +60,9 @@ export const match = {
     'match.noDecksFound': 'Keine Decks gefunden.',
     'match.deckPickerSearchPlaceholder': 'Nach Name oder Commander suchen …',
     'match.deckPickerYearPlaceholder': 'Jahr',
+    'match.deckPickerFilter': 'Filter',
+    'match.deckPickerBracket': 'Bracket',
+    'match.deckPickerColors': 'Farben',
     'match.deckPickerNoMatch': 'Keine Decks für diesen Filter gefunden.',
     'match.deckPickerFormatHint': 'Nur Decks im Format {{format}}.',
     'match.deckPickerNoFormatMatch':
@@ -221,6 +224,9 @@ export const match = {
     'match.noDecksFound': 'No decks found.',
     'match.deckPickerSearchPlaceholder': 'Search by name or commander …',
     'match.deckPickerYearPlaceholder': 'Year',
+    'match.deckPickerFilter': 'Filter',
+    'match.deckPickerBracket': 'Bracket',
+    'match.deckPickerColors': 'Colors',
     'match.deckPickerNoMatch': 'No decks match this filter.',
     'match.deckPickerFormatHint': 'Only decks in format {{format}}.',
     'match.deckPickerNoFormatMatch':

@@ -80,11 +80,14 @@
 
 .deck-picker-filters {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 10px;
 
+  // Suchfeld volle Breite, Jahr und Filter-Knopf darunter - nebeneinander blieb auf dem Handy
+  // vom Suchfeld nur „Nach Na…“ übrig.
   input[type='text'] {
-    flex: 1;
+    flex: 1 1 100%;
     min-width: 0;
   }
 
@@ -95,7 +98,30 @@
 
 // Deck-Auswahl-Dialog (eigenes/geliehenes Deck): kleineres Vorschaubild als in der Deck-Liste
 // (deck-list.scss), da der Dialog nur max-width: 300px hat (siehe .options-menu-sheet).
+.deck-picker-more-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+
+  .chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+}
+
 .deck-picker-list {
+  li.has-variants {
+    flex-wrap: wrap;
+  }
+
+  // Umschalter zwischen verknüpften Varianten - volle Breite unter der Zeile.
+  .deck-picker-variants {
+    flex: 1 0 100%;
+    margin-top: 4px;
+  }
+
   .deck-thumb {
     flex: 0 0 40px;
     width: 40px;

@@ -91,6 +91,29 @@ export class DeckVariantService {
     this.loading.set(false);
   }
 
+  /**
+   * Variantengruppe je Deck, für Listen wie die Deck-Auswahl im Match (dort wird ein verknüpftes
+   * Deck zu einer Zeile mit Umschalter). Decks ohne Gruppe fehlen in der Map.
+   */
+  async groupsFor(deckIds: string[]): Promise<Map<string, string>> {
+    const result = new Map<string, string>();
+    if (deckIds.length === 0 || !this.available()) return result;
+    const { data, error } = await supabase
+      .from('decks')
+      .select('id, variant_group')
+      .in('id', deckIds)
+      .not('variant_group', 'is', null);
+    if (error) {
+      if (error.code === '42703') this.available.set(false);
+      else console.error('Konnte Deck-Varianten nicht laden:', error);
+      return result;
+    }
+    for (const row of data as { id: string; variant_group: string }[]) {
+      result.set(row.id, row.variant_group);
+    }
+    return result;
+  }
+
   async ensureOtherCards(otherId: string): Promise<void> {
     if (this.otherCards().has(otherId)) return;
     const deckId = this.loadedDeckId;
