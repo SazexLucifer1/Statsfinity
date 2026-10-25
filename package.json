@@ -20,7 +20,7 @@
     "@angular/common": "^21.2.0",
     "@angular/compiler": "^21.2.0",
     "@angular/core": "^21.2.0",
-    "@angular/forms": "^21.2.0",
+    "@angular/forms": "^22.2.2",
     "@angular/platform-browser": "^21.2.0",
     "@supabase/supabase-js": "^2.110.5",
     "@tesseract.js-data/eng": "^1.0.0",
