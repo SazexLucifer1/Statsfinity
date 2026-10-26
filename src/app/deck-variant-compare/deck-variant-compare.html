@@ -1,159 +1,146 @@
 @if (visible()) {
   <div class="variant-compare">
-    <button
-      type="button"
-      class="stat-disclosure"
-      [attr.aria-expanded]="expanded()"
-      (click)="expanded.set(!expanded())"
-    >
-      <span class="stat-disclosure-chevron" aria-hidden="true"></span>
-      <span class="stat-disclosure-title">{{
-        viewer.i18n.t('deckView.variantCompare.title')
-      }}</span>
-    </button>
+    <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.variantCompare.title') }}</h4>
+    @if (variants().length > 1) {
+      <div class="segmented">
+        @for (v of variants(); track v.id) {
+          <button
+            type="button"
+            [class.active]="selectedVariant()?.id === v.id"
+            (click)="selectedVariantId.set(v.id)"
+          >
+            {{ v.name }}
+          </button>
+        }
+      </div>
+    }
 
-    @if (expanded()) {
-      @if (variants().length > 1) {
-        <div class="segmented">
-          @for (v of variants(); track v.id) {
-            <button
-              type="button"
-              [class.active]="selectedVariant()?.id === v.id"
-              (click)="selectedVariantId.set(v.id)"
-            >
-              {{ v.name }}
-            </button>
-          }
-        </div>
-      }
-
-      @if (comparison(); as cmp) {
-        <div class="panes">
-          <section class="pane only-this">
-            <h4 class="deck-section-title">
-              {{
-                viewer.i18n.t('deckView.variantCompare.onlyThis', {
-                  name: viewer.state.viewingDeck()?.name ?? '',
-                  count: count(cmp.onlyThis),
-                })
-              }}
-            </h4>
-            <div class="pane-scroll">
-              @if (cmp.onlyThis.length === 0) {
-                <p class="hint">{{ viewer.i18n.t('deckView.variants.empty') }}</p>
+    @if (comparison(); as cmp) {
+      <div class="panes">
+        <section class="pane only-this">
+          <h4 class="deck-section-title">
+            {{
+              viewer.i18n.t('deckView.variantCompare.onlyThis', {
+                name: viewer.state.viewingDeck()?.name ?? '',
+                count: count(cmp.onlyThis),
+              })
+            }}
+          </h4>
+          <div class="pane-scroll">
+            @if (cmp.onlyThis.length === 0) {
+              <p class="hint">{{ viewer.i18n.t('deckView.variants.empty') }}</p>
+            }
+            <div class="grid">
+              @for (e of cmp.onlyThis; track e.cardName) {
+                <div class="tile">
+                  <app-card-thumb [name]="e.cardName" [imageUrl]="e.imageUrl" />
+                  @if (!e.isCommander) {
+                    <div class="qtybar">
+                      <button
+                        type="button"
+                        (click)="decrement(e)"
+                        [attr.aria-label]="viewer.i18n.t('deckView.oneLess')"
+                      >
+                        −
+                      </button>
+                      <span>{{ e.quantity }}</span>
+                      <button
+                        type="button"
+                        (click)="increment(e)"
+                        [attr.aria-label]="viewer.i18n.t('deckView.oneMore')"
+                      >
+                        +
+                      </button>
+                    </div>
+                  }
+                </div>
               }
-              <div class="grid">
-                @for (e of cmp.onlyThis; track e.cardName) {
-                  <div class="tile">
-                    <app-card-thumb [name]="e.cardName" [imageUrl]="e.imageUrl" />
+            </div>
+          </div>
+        </section>
+
+        <section class="pane only-other">
+          <h4 class="deck-section-title">
+            {{
+              viewer.i18n.t('deckView.variantCompare.onlyOther', {
+                name: selectedVariant()?.name ?? '',
+                count: count(cmp.onlyOther),
+              })
+            }}
+          </h4>
+          <div class="pane-scroll">
+            @if (cmp.onlyOther.length === 0) {
+              <p class="hint">{{ viewer.i18n.t('deckView.variants.empty') }}</p>
+            }
+            <div class="grid">
+              @for (e of cmp.onlyOther; track e.cardName) {
+                <div class="tile">
+                  <app-card-thumb [name]="e.cardName" [imageUrl]="e.imageUrl" />
+                  <div class="qtybar">
+                    <span>{{ e.quantity }}×</span>
                     @if (!e.isCommander) {
-                      <div class="qtybar">
-                        <button
-                          type="button"
-                          (click)="decrement(e)"
-                          [attr.aria-label]="viewer.i18n.t('deckView.oneLess')"
-                        >
-                          −
-                        </button>
-                        <span>{{ e.quantity }}</span>
-                        <button
-                          type="button"
-                          (click)="increment(e)"
-                          [attr.aria-label]="viewer.i18n.t('deckView.oneMore')"
-                        >
-                          +
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        (click)="takeOver(e)"
+                        [attr.aria-label]="
+                          viewer.i18n.t('deckView.variantCompare.takeOver', { name: e.cardName })
+                        "
+                        [title]="
+                          viewer.i18n.t('deckView.variantCompare.takeOver', { name: e.cardName })
+                        "
+                      >
+                        +
+                      </button>
                     }
                   </div>
-                }
-              </div>
-            </div>
-          </section>
-
-          <section class="pane only-other">
-            <h4 class="deck-section-title">
-              {{
-                viewer.i18n.t('deckView.variantCompare.onlyOther', {
-                  name: selectedVariant()?.name ?? '',
-                  count: count(cmp.onlyOther),
-                })
-              }}
-            </h4>
-            <div class="pane-scroll">
-              @if (cmp.onlyOther.length === 0) {
-                <p class="hint">{{ viewer.i18n.t('deckView.variants.empty') }}</p>
+                </div>
               }
-              <div class="grid">
-                @for (e of cmp.onlyOther; track e.cardName) {
-                  <div class="tile">
-                    <app-card-thumb [name]="e.cardName" [imageUrl]="e.imageUrl" />
-                    <div class="qtybar">
-                      <span>{{ e.quantity }}×</span>
-                      @if (!e.isCommander) {
-                        <button
-                          type="button"
-                          (click)="takeOver(e)"
-                          [attr.aria-label]="
-                            viewer.i18n.t('deckView.variantCompare.takeOver', { name: e.cardName })
-                          "
-                          [title]="
-                            viewer.i18n.t('deckView.variantCompare.takeOver', { name: e.cardName })
-                          "
-                        >
-                          +
-                        </button>
-                      }
-                    </div>
-                  </div>
-                }
-              </div>
             </div>
-          </section>
+          </div>
+        </section>
 
-          <section class="pane common">
-            <h4 class="deck-section-title">
-              {{ viewer.i18n.t('deckView.variantCompare.common', { count: count(cmp.common) }) }}
-            </h4>
-            <div class="pane-scroll">
-              @if (cmp.common.length === 0) {
-                <p class="hint">{{ viewer.i18n.t('deckView.variants.empty') }}</p>
-              }
-              <div class="grid">
-                @for (e of cmp.common; track e.cardName) {
-                  <div class="tile">
-                    <app-card-thumb [name]="e.cardName" [imageUrl]="e.imageUrl" />
-                    <div class="qtybar">
-                      <span>{{ e.quantity }}×</span>
-                      @if (!e.isCommander) {
-                        <button
-                          type="button"
-                          (click)="decrement(e)"
-                          [attr.aria-label]="
-                            viewer.i18n.t('deckView.variantCompare.removeHere', {
-                              name: e.cardName,
-                            })
-                          "
-                          [title]="
-                            viewer.i18n.t('deckView.variantCompare.removeHere', {
-                              name: e.cardName,
-                            })
-                          "
-                        >
-                          −
-                        </button>
-                      }
-                    </div>
+        <section class="pane common">
+          <h4 class="deck-section-title">
+            {{ viewer.i18n.t('deckView.variantCompare.common', { count: count(cmp.common) }) }}
+          </h4>
+          <div class="pane-scroll">
+            @if (cmp.common.length === 0) {
+              <p class="hint">{{ viewer.i18n.t('deckView.variants.empty') }}</p>
+            }
+            <div class="grid">
+              @for (e of cmp.common; track e.cardName) {
+                <div class="tile">
+                  <app-card-thumb [name]="e.cardName" [imageUrl]="e.imageUrl" />
+                  <div class="qtybar">
+                    <span>{{ e.quantity }}×</span>
+                    @if (!e.isCommander) {
+                      <button
+                        type="button"
+                        (click)="decrement(e)"
+                        [attr.aria-label]="
+                          viewer.i18n.t('deckView.variantCompare.removeHere', {
+                            name: e.cardName,
+                          })
+                        "
+                        [title]="
+                          viewer.i18n.t('deckView.variantCompare.removeHere', {
+                            name: e.cardName,
+                          })
+                        "
+                      >
+                        −
+                      </button>
+                    }
                   </div>
-                }
-              </div>
+                </div>
+              }
             </div>
-          </section>
-        </div>
-        <p class="hint">{{ viewer.i18n.t('deckView.variantCompare.hint') }}</p>
-      } @else {
-        <p class="hint">{{ viewer.i18n.t('login.pleaseWait') }}</p>
-      }
+          </div>
+        </section>
+      </div>
+      <p class="hint">{{ viewer.i18n.t('deckView.variantCompare.hint') }}</p>
+    } @else {
+      <p class="hint">{{ viewer.i18n.t('login.pleaseWait') }}</p>
     }
   </div>
 }

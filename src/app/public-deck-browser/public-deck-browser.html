@@ -304,7 +304,18 @@
       }
 
       @for (section of analyse.filteredGroupedCards(); track section.label) {
-        <h4 class="deck-section-title">{{ analyse.translateLabel(section.label) }} ({{ analyse.sectionCardCount(section.cards) }})</h4>
+        <h4 class="deck-section-title">
+          <button
+            type="button"
+            class="stat-disclosure"
+            [attr.aria-expanded]="!sectionCollapse.isCollapsed(section.label)"
+            (click)="sectionCollapse.toggle(section.label)"
+          >
+            <span class="stat-disclosure-chevron" aria-hidden="true"></span>
+            <span>{{ analyse.translateLabel(section.label) }} ({{ analyse.sectionCardCount(section.cards) }})</span>
+          </button>
+        </h4>
+        @if (!sectionCollapse.isCollapsed(section.label)) {
         <div class="card-pick-grid">
           @for (entry of section.cards; track entry.card.name) {
             <div class="card-pick-tile" (click)="openPreview(entry.card)">
@@ -321,6 +332,7 @@
             </div>
           }
         </div>
+        }
       }
     }
 

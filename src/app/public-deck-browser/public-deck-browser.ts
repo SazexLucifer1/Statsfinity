@@ -29,6 +29,7 @@ import { DeckSocialService } from '../deck-social.service';
 import { BanlistService } from '../banlist.service';
 import { ProfileService } from '../profile.service';
 import { Icon } from '../ui/icon/icon';
+import { DeckSectionCollapseService } from '../deck-section-collapse.service';
 
 /**
  * Öffentliche Decks anderer Nutzer durchsuchen (Name, Farbe, Archetyp, Kreaturtyp; sortiert nach
@@ -47,6 +48,7 @@ export class PublicDeckBrowser {
   private readonly cardData = inject(CardDataService);
   private readonly cardPreview = inject(CardPreviewService);
   readonly i18n = inject(I18nService);
+  readonly sectionCollapse = inject(DeckSectionCollapseService);
   private readonly navigation = inject(NavigationService);
 
   readonly nameFilter = signal('');
