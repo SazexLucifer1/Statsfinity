@@ -100,3 +100,14 @@
   justify-content: center;
   margin-top: 10px;
 }
+
+// Umschalter der verknüpften Varianten auf der Kachel - schmal, damit die Kachel nicht wächst.
+.variant-switch {
+  align-self: flex-start;
+  max-width: 100%;
+
+  button {
+    padding: 2px 10px;
+    font-size: 0.8rem;
+  }
+}

@@ -53,7 +53,8 @@
   <p class="hint">{{ i18n.t('deck.noDeckFound') }}</p>
 } @else {
   <ul class="deck-list" #deckListEl>
-    @for (deck of pagedDecks(); track deck.id) {
+    @for (row of pagedRows(); track row.key) {
+      @let deck = row.selected;
       <li>
         <div class="deck-thumb">
           @if (commanderImage(deck); as img) {
@@ -91,6 +92,16 @@
               <span class="hint">{{ i18n.t('deck.notPlayedYet') }}</span>
             }
           }
+          <!-- Verknüpfte Varianten: eine Kachel, umgeschaltet wird, welche Variante sie zeigt. -->
+          @if (row.variants.length > 1) {
+            <div class="segmented variant-switch" [attr.aria-label]="i18n.t('deck.variantSwitchAria')">
+              @for (v of row.variants; track v.id) {
+                <button type="button" [class.active]="v.id === deck.id" (click)="chooseVariant(row, v.id)">
+                  {{ variantLabel(v, row) }}
+                </button>
+              }
+            </div>
+          }
           <app-deck-social [deckId]="deck.id" [compact]="true" />
           <!-- Ansehen ist die Aktion, die man auf einer Deck-Zeile praktisch immer will; Goldfisch,
                Sichtbarkeit und Löschen wandern ins ⋮. Bei zehn Decks waren das vorher 40 Knöpfe,
@@ -119,7 +130,7 @@
 
   <app-pager
     [page]="page()"
-    [totalItems]="filteredSortedDecks().length"
+    [totalItems]="deckRows().length"
     [pageSize]="pageSize()"
     (pageChange)="page.set($event)"
   />

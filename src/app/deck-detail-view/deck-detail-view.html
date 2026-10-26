@@ -99,6 +99,25 @@
     @if (viewer.detailBusy()) {
       <p class="hint">{{ viewer.i18n.t('deckView.loadingDeck') }}</p>
     } @else {
+      <!-- Verknüpfte Varianten: in der Deckliste eine Kachel, hier umschaltbar. Im Bearbeiten-Modus
+           aus, sonst wären die ungespeicherten Änderungen mit einem Klick weg. -->
+      @if (variantOptions().length > 1 && !viewer.state.editMode()) {
+        <div class="chip-row variant-switch-row" style="align-items: center">
+          <span class="hint">{{ viewer.i18n.t('deckView.variantSwitch') }}</span>
+          <div class="segmented">
+            @for (v of variantOptions(); track v.id) {
+              <button
+                type="button"
+                [class.active]="v.id === deck.id"
+                [disabled]="variantSwitchBusy()"
+                (click)="openVariant(v.id)"
+              >
+                {{ v.name }}
+              </button>
+            }
+          </div>
+        </div>
+      }
       @if (viewer.state.canEditViewingDeck()) {
         <div class="deck-info-edit">
           <input
@@ -677,6 +696,9 @@
             <p class="hint">{{ viewer.edit.tokenScanMessage() }}</p>
           }
         </div>
+
+        <!-- Nur ab --bp-lg: Varianten in drei einzeln scrollbaren Fenstern vergleichen und bearbeiten. -->
+        <app-deck-variant-compare />
 
         <div class="add-card-panel">
           <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.addCardTitle') }}</h4>

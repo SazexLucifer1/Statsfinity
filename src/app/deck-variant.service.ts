@@ -50,11 +50,15 @@ export class DeckVariantService {
   /** Kartenlisten der Varianten, je Deck-ID - einmal geladen, dann gemerkt. */
   readonly otherCards = signal<ReadonlyMap<string, VariantCard[]>>(new Map());
 
+  /** Zu welchem Deck variants()/thisCards() gehören - damit Anzeigen außerhalb von deck-variants/ keinen Stand des vorigen Decks zeigen. */
+  readonly loadedFor = signal<string | null>(null);
+
   private loadedDeckId: string | null = null;
   private group: string | null = null;
 
   async load(deckId: string, ownerUserId: string | null): Promise<void> {
     this.loadedDeckId = deckId;
+    this.loadedFor.set(null);
     this.group = null;
     this.variants.set([]);
     this.candidates.set([]);
@@ -88,6 +92,7 @@ export class DeckVariantService {
     this.variants.set(variants);
     this.thisCards.set(cards);
     this.candidates.set(candidates);
+    this.loadedFor.set(deckId);
     this.loading.set(false);
   }
 
