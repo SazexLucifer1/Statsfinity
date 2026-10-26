@@ -86,6 +86,14 @@
 
       @if (isOwner()) {
         <div class="manage">
+          <button
+            type="button"
+            class="glass-button small"
+            [disabled]="service.busy()"
+            (click)="createVariant()"
+          >
+            {{ i18n.t('deckView.variants.create') }}
+          </button>
           @if (service.candidates().length > 0) {
             <label class="link-row">
               <span>{{ i18n.t('deckView.variants.linkLabel') }}</span>

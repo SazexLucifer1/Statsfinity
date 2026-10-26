@@ -46,10 +46,7 @@ export class DeckVariants {
   });
 
   readonly visible = computed(
-    () =>
-      this.service.available() &&
-      (this.service.variants().length > 0 ||
-        (this.isOwner() && this.service.candidates().length > 0)),
+    () => this.service.available() && (this.service.variants().length > 0 || this.isOwner()),
   );
 
   readonly selectedVariant = computed(() => {
@@ -106,6 +103,16 @@ export class DeckVariants {
     this.selectedVariantId.set(target);
     this.linkTarget.set('');
     this.expanded.set(true);
+  }
+
+  async createVariant(): Promise<void> {
+    const owner = this.ownerUserId();
+    if (!owner) return;
+    const id = await this.service.createVariant(this.deckId(), this.deckName(), owner);
+    if (id) {
+      this.selectedVariantId.set(id);
+      this.expanded.set(true);
+    }
   }
 
   async unlink(): Promise<void> {

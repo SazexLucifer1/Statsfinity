@@ -51,6 +51,25 @@
                       >
                         +
                       </button>
+                      <button
+                        type="button"
+                        class="move"
+                        (click)="changeOther(e, 1)"
+                        [attr.aria-label]="
+                          viewer.i18n.t('deckView.variantCompare.addToOther', {
+                            name: e.cardName,
+                            variant: selectedVariant()?.name ?? '',
+                          })
+                        "
+                        [title]="
+                          viewer.i18n.t('deckView.variantCompare.addToOther', {
+                            name: e.cardName,
+                            variant: selectedVariant()?.name ?? '',
+                          })
+                        "
+                      >
+                        →
+                      </button>
                     </div>
                   }
                 </div>
@@ -76,11 +95,11 @@
               @for (e of cmp.onlyOther; track e.cardName) {
                 <div class="tile">
                   <app-card-thumb [name]="e.cardName" [imageUrl]="e.imageUrl" />
-                  <div class="qtybar">
-                    <span>{{ e.quantity }}×</span>
-                    @if (!e.isCommander) {
+                  @if (!e.isCommander) {
+                    <div class="qtybar">
                       <button
                         type="button"
+                        class="move"
                         (click)="takeOver(e)"
                         [attr.aria-label]="
                           viewer.i18n.t('deckView.variantCompare.takeOver', { name: e.cardName })
@@ -89,10 +108,25 @@
                           viewer.i18n.t('deckView.variantCompare.takeOver', { name: e.cardName })
                         "
                       >
+                        ←
+                      </button>
+                      <button
+                        type="button"
+                        (click)="changeOther(e, -1)"
+                        [attr.aria-label]="viewer.i18n.t('deckView.oneLess')"
+                      >
+                        −
+                      </button>
+                      <span>{{ e.quantity }}</span>
+                      <button
+                        type="button"
+                        (click)="changeOther(e, 1)"
+                        [attr.aria-label]="viewer.i18n.t('deckView.oneMore')"
+                      >
                         +
                       </button>
-                    }
-                  </div>
+                    </div>
+                  }
                 </div>
               }
             </div>
@@ -112,19 +146,35 @@
                 <div class="tile">
                   <app-card-thumb [name]="e.cardName" [imageUrl]="e.imageUrl" />
                   <div class="qtybar">
-                    <span>{{ e.quantity }}×</span>
                     @if (!e.isCommander) {
                       <button
                         type="button"
                         (click)="decrement(e)"
                         [attr.aria-label]="
-                          viewer.i18n.t('deckView.variantCompare.removeHere', {
+                          viewer.i18n.t('deckView.variantCompare.removeHere', { name: e.cardName })
+                        "
+                        [title]="
+                          viewer.i18n.t('deckView.variantCompare.removeHere', { name: e.cardName })
+                        "
+                      >
+                        −
+                      </button>
+                    }
+                    <span>{{ e.quantity }}×</span>
+                    @if (!e.isCommander) {
+                      <button
+                        type="button"
+                        (click)="changeOther(e, -1)"
+                        [attr.aria-label]="
+                          viewer.i18n.t('deckView.variantCompare.removeThere', {
                             name: e.cardName,
+                            variant: selectedVariant()?.name ?? '',
                           })
                         "
                         [title]="
-                          viewer.i18n.t('deckView.variantCompare.removeHere', {
+                          viewer.i18n.t('deckView.variantCompare.removeThere', {
                             name: e.cardName,
+                            variant: selectedVariant()?.name ?? '',
                           })
                         "
                       >

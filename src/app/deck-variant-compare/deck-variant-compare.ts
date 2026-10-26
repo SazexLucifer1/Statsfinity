@@ -11,10 +11,10 @@ import { CardThumb } from '../ui/card-thumb/card-thumb';
  * Oben links die Karten nur in diesem Deck, oben rechts die nur in der Variante, unten die
  * gemeinsamen; jedes Fenster scrollt für sich.
  *
- * Verglichen wird der BEARBEITETE Stand dieses Decks (editedDeckCards) mit dem gespeicherten der
- * Variante - so wandert eine Karte beim Klick sofort ins richtige Fenster. Geändert wird nur
- * dieses Deck, über dieselben Wege wie in der Kartenliste (DeckEditService), gespeichert mit dem
- * normalen Speichern-Knopf.
+ * Verglichen wird der BEARBEITETE Stand beider Seiten - so wandert eine Karte beim Klick sofort
+ * ins richtige Fenster. Dieses Deck ändert sich über dieselben Wege wie in der Kartenliste
+ * (DeckEditService), die Variante über DeckVariantService.setOtherQuantity(); beides speichert
+ * der normale Speichern-Knopf. Die Pfeile holen eine Karte auf die jeweils andere Seite dazu.
  */
 @Component({
   selector: 'app-deck-variant-compare',
@@ -47,7 +47,7 @@ export class DeckVariantCompare {
 
   readonly comparison = computed(() => {
     const variant = this.selectedVariant();
-    const other = variant ? this.service.otherCards().get(variant.id) : undefined;
+    const other = variant ? this.service.editedOtherCards(variant.id) : undefined;
     if (!variant || !other) return null;
     return compareDeckVariants(this.viewer.state.editedDeckCards(), other);
   });
@@ -76,6 +76,14 @@ export class DeckVariantCompare {
   increment(entry: VariantEntry): void {
     const card = this.deckCard(entry.cardName);
     if (card && !card.isCommander) this.viewer.edit.incrementCard(card);
+  }
+
+  /** Menge in der Variante ändern (ungespeichert, siehe DeckVariantService.pendingOther). */
+  changeOther(entry: VariantEntry, delta: number): void {
+    const variant = this.selectedVariant();
+    if (!variant || entry.isCommander) return;
+    const current = this.service.otherQuantity(variant.id, entry.cardName);
+    this.service.setOtherQuantity(variant.id, entry, current + delta);
   }
 
   /** Karte der Variante in dieses Deck holen - liegt sie hier in der engeren Auswahl, kommt sie von dort ins Deck. */

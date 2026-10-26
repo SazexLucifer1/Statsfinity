@@ -34,6 +34,7 @@ import { DeckBracketService } from './deck-bracket.service';
 import { DeckComboFinderService } from './deck-combo-finder.service';
 import { DeckEffectsService } from './deck-effects.service';
 import { DeckEdhrecService } from './deck-edhrec.service';
+import { DeckVariantService } from './deck-variant.service';
 import { DeckEditService } from './deck-edit.service';
 
 /** Wie viele Deckkarten Mana dieser Farbe erzeugen können (Manaquellen-Verteilung). */
@@ -158,6 +159,7 @@ export class DeckViewerService {
   readonly effects = inject(DeckEffectsService);
   readonly edhrecPanel = inject(DeckEdhrecService);
   readonly edit = inject(DeckEditService);
+  private readonly variantEdits = inject(DeckVariantService);
 
   /**
    * Die Detailansicht ist eine eigene Seite; open() legt einen History-Eintrag an, damit die
@@ -746,6 +748,7 @@ export class DeckViewerService {
     if (this.state.editMode() || !this.state.canEditViewingDeck()) return; // Verlassen geht nur bewusst über saveEdits()/cancelEdits()
     this.state.editMode.set(true);
     this.edit.reset();
+    this.variantEdits.discardPendingOther();
     if (this.creatureTypeOptions().length === 0) this.loadCreatureTypeOptions();
     this.state.discardPendingChanges();
     this.edhrecPanel.reset();
@@ -840,6 +843,9 @@ export class DeckViewerService {
       await this.deckService.setCardMaybeboardFlag(deck.id, cardName, isMaybeboard);
     }
 
+    // Änderungen an verknüpften Varianten aus dem Vergleich (deck-variant-compare/).
+    await this.variantEdits.savePendingOther();
+
     this.state.discardPendingChanges();
     this.edit.reset();
     this.state.editMode.set(false);
@@ -851,6 +857,7 @@ export class DeckViewerService {
 
   cancelEdits(): void {
     this.state.discardPendingChanges();
+    this.variantEdits.discardPendingOther();
     this.edit.reset();
     this.state.editMode.set(false);
     this.edhrecPanel.addCardMode.set('search');

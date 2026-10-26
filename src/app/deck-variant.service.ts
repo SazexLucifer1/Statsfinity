@@ -1,13 +1,22 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import { supabase } from './supabase.client';
 import { AuthService } from './auth.service';
-import { DeckService } from './deck.service';
-import { VariantCard } from './deck-variants';
+import { DeckService, deckKopieName } from './deck.service';
+import { VariantCard, VariantEntry } from './deck-variants';
 
 export interface DeckVariantInfo {
   id: string;
   name: string;
   isPrivate: boolean;
+}
+
+/** Ungespeicherte Zielmenge einer Karte in einer Variante (wie pendingChanges im Deck-Editor). */
+interface PendingVariantCard {
+  cardName: string;
+  quantity: number;
+  imageUrl: string | null;
+  typeLine: string | null;
+  cmc: number;
 }
 
 interface DeckCardRow {
@@ -35,6 +44,7 @@ interface DeckCardRow {
 @Injectable({ providedIn: 'root' })
 export class DeckVariantService {
   private readonly auth = inject(AuthService);
+  private readonly deckService = inject(DeckService);
 
   /** Fehlt die Migration, verschwindet der Abschnitt beim ersten 42703 still. */
   readonly available = signal(true);
@@ -53,6 +63,25 @@ export class DeckVariantService {
   /** Zu welchem Deck variants()/thisCards() gehören - damit Anzeigen außerhalb von deck-variants/ keinen Stand des vorigen Decks zeigen. */
   readonly loadedFor = signal<string | null>(null);
 
+  /**
+   * Ungespeicherte Änderungen an den VARIANTEN, gemacht im Vergleich beim Bearbeiten
+   * (deck-variant-compare/): Variante -> Kartenschlüssel -> Zielmenge im Stapel. Gespeichert
+   * zusammen mit dem offenen Deck über DeckViewerService.saveEdits(), verworfen mit Abbrechen.
+   */
+  readonly pendingOther = signal<ReadonlyMap<string, ReadonlyMap<string, PendingVariantCard>>>(
+    new Map(),
+  );
+
+  /** Gibt es ungespeicherte Änderungen an einer Variante? Zählt für "Speichern" mit. */
+  readonly hasPendingOther = computed(() => {
+    for (const [variantId, changes] of this.pendingOther()) {
+      const saved = this.savedQuantities(variantId);
+      for (const [key, change] of changes)
+        if (change.quantity !== (saved.get(key) ?? 0)) return true;
+    }
+    return false;
+  });
+
   private loadedDeckId: string | null = null;
   private group: string | null = null;
 
@@ -64,6 +93,7 @@ export class DeckVariantService {
     this.candidates.set([]);
     this.thisCards.set([]);
     this.otherCards.set(new Map());
+    this.pendingOther.set(new Map());
     this.errorKey.set(null);
     if (!this.available()) return;
 
@@ -119,6 +149,101 @@ export class DeckVariantService {
     return result;
   }
 
+  /** Menge je Karte im Stapel der Variante (ohne Maybeboard und Marken), gespeicherter Stand. */
+  private savedQuantities(variantId: string): Map<string, number> {
+    const map = new Map<string, number>();
+    for (const c of this.otherCards().get(variantId) ?? []) {
+      if (c.isMaybeboard || c.isToken) continue;
+      const key = c.cardName.toLowerCase();
+      map.set(key, (map.get(key) ?? 0) + c.quantity);
+    }
+    return map;
+  }
+
+  /** Kartenliste der Variante mit den ungespeicherten Änderungen - das, was der Vergleich zeigt. */
+  editedOtherCards(variantId: string): VariantCard[] | undefined {
+    const cards = this.otherCards().get(variantId);
+    if (!cards) return undefined;
+    const changes = this.pendingOther().get(variantId);
+    if (!changes || changes.size === 0) return cards;
+    const result: VariantCard[] = [];
+    for (const c of cards) {
+      const change =
+        c.isMaybeboard || c.isToken ? undefined : changes.get(c.cardName.toLowerCase());
+      if (!change) result.push(c);
+      else if (change.quantity > 0) result.push({ ...c, quantity: change.quantity });
+    }
+    const present = new Set(
+      cards.filter((c) => !c.isMaybeboard && !c.isToken).map((c) => c.cardName.toLowerCase()),
+    );
+    for (const [key, change] of changes) {
+      if (present.has(key) || change.quantity <= 0) continue;
+      result.push({ ...change, isCommander: false, isMaybeboard: false, isToken: false });
+    }
+    return result;
+  }
+
+  /** Menge einer Karte im (bearbeiteten) Stapel der Variante. */
+  otherQuantity(variantId: string, cardName: string): number {
+    const key = cardName.toLowerCase();
+    const change = this.pendingOther().get(variantId)?.get(key);
+    return change ? change.quantity : (this.savedQuantities(variantId).get(key) ?? 0);
+  }
+
+  setOtherQuantity(variantId: string, entry: VariantEntry, quantity: number): void {
+    const key = entry.cardName.toLowerCase();
+    this.pendingOther.update((all) => {
+      const next = new Map(all);
+      const changes = new Map(next.get(variantId) ?? []);
+      changes.set(key, {
+        cardName: entry.cardName,
+        quantity: Math.max(0, quantity),
+        imageUrl: entry.imageUrl,
+        typeLine: entry.typeLine,
+        cmc: entry.cmc,
+      });
+      next.set(variantId, changes);
+      return next;
+    });
+  }
+
+  discardPendingOther(): void {
+    this.pendingOther.set(new Map());
+  }
+
+  /** Schreibt die Änderungen an den Varianten - aufgerufen aus DeckViewerService.saveEdits(). */
+  async savePendingOther(): Promise<void> {
+    const all = this.pendingOther();
+    for (const [variantId, changes] of all) {
+      const saved = this.savedQuantities(variantId);
+      let changed = false;
+      for (const [key, change] of changes) {
+        const diff = change.quantity - (saved.get(key) ?? 0);
+        if (diff > 0) {
+          await this.deckService.addCardToDeck(
+            variantId,
+            {
+              name: change.cardName,
+              imageUrl: change.imageUrl ?? undefined,
+              typeLine: change.typeLine ?? undefined,
+              cmc: change.cmc,
+            },
+            diff,
+          );
+          changed = true;
+        } else if (diff < 0) {
+          await this.deckService.removeCardFromDeck(variantId, change.cardName, -diff);
+          changed = true;
+        }
+      }
+      if (changed) {
+        const cards = await this.loadCards(variantId);
+        this.otherCards.update((m) => new Map(m).set(variantId, cards));
+      }
+    }
+    this.discardPendingOther();
+  }
+
   async ensureOtherCards(otherId: string): Promise<void> {
     if (this.otherCards().has(otherId)) return;
     const deckId = this.loadedDeckId;
@@ -160,6 +285,34 @@ export class DeckVariantService {
     } catch (e) {
       console.error('Konnte Decks nicht als Varianten verknüpfen:', e);
       this.errorKey.set('deckView.variants.linkFailed');
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  /**
+   * Neue Variante in einem Schritt: Kopie dieses Decks (gleiche Kartenliste, null Partien, siehe
+   * DeckService.duplicateDeck) und gleich verknüpft - vorher musste man erst duplizieren und dann
+   * verknüpfen. Gibt die ID der Kopie zurück.
+   */
+  async createVariant(
+    deckId: string,
+    deckName: string,
+    ownerUserId: string,
+  ): Promise<string | null> {
+    this.busy.set(true);
+    this.errorKey.set(null);
+    try {
+      const name = deckKopieName(deckName, [deckName, ...this.variants().map((v) => v.name)]);
+      const newId = await this.deckService.duplicateDeck(deckId, name);
+      if (!newId) throw new Error('Kopie fehlgeschlagen');
+      this.busy.set(false);
+      await this.link(deckId, newId, ownerUserId);
+      return newId;
+    } catch (e) {
+      console.error('Konnte keine neue Variante anlegen:', e);
+      this.errorKey.set('deckView.variants.createFailed');
+      return null;
     } finally {
       this.busy.set(false);
     }
