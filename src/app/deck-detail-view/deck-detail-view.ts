@@ -20,6 +20,8 @@ import { DeckManualRecord } from '../deck-manual-record/deck-manual-record';
 import { DeckPerformance } from '../deck-performance/deck-performance';
 import { DeckCollection } from '../deck-collection/deck-collection';
 import { DeckVariants } from '../deck-variants/deck-variants';
+import { DeckVariantCompare } from '../deck-variant-compare/deck-variant-compare';
+import { DeckVariantService } from '../deck-variant.service';
 import { CardThumb } from '../ui/card-thumb/card-thumb';
 import { DeckCheck } from '../deck-check/deck-check';
 import { DeckPrimer } from '../deck-primer/deck-primer';
@@ -38,7 +40,7 @@ import { BanlistService } from '../banlist.service';
 
 @Component({
   selector: 'app-deck-detail-view',
-  imports: [CurrencyPipe, DatePipe, DecimalPipe, NgTemplateOutlet, PercentPipe, FormsModule, CardImage, DeckCheck, DeckComments, DeckManualRecord, DeckPerformance, DeckCollection, DeckVariants, CardThumb, DeckPrimer, DeckSocial, DeckSteckbrief, BarChart, OverflowMenu, ColorFilter, CmcFilter, RarityFilter, PrintSearch, BracketBadge, ManaSymbol, Icon],
+  imports: [CurrencyPipe, DatePipe, DecimalPipe, NgTemplateOutlet, PercentPipe, FormsModule, CardImage, DeckCheck, DeckComments, DeckManualRecord, DeckPerformance, DeckCollection, DeckVariants, DeckVariantCompare, CardThumb, DeckPrimer, DeckSocial, DeckSteckbrief, BarChart, OverflowMenu, ColorFilter, CmcFilter, RarityFilter, PrintSearch, BracketBadge, ManaSymbol, Icon],
   templateUrl: './deck-detail-view.html',
   styleUrls: ['./deck-detail-view.scss', './deck-detail-view.bracket.scss'],
 })
@@ -49,6 +51,33 @@ export class DeckDetailView {
   private readonly importService = inject(DeckImportService);
   private readonly pdfService = inject(DeckPdfService);
   private readonly banlist = inject(BanlistService);
+  private readonly variantService = inject(DeckVariantService);
+
+  /**
+   * Umschalter zwischen verknüpften Varianten oben in der Ansicht (Wunsch des Users, 26.10.2026):
+   * In der Deckliste stehen Varianten als eine Kachel, hier wechselt man zwischen ihnen. Die
+   * Liste lädt deck-variants/ weiter unten; loadedFor verhindert, dass kurz die Varianten des
+   * vorigen Decks erscheinen.
+   */
+  readonly variantOptions = computed(() => {
+    const deck = this.viewer.state.viewingDeck();
+    if (!deck || this.variantService.loadedFor() !== deck.id) return [];
+    const others = this.variantService.variants();
+    if (others.length === 0) return [];
+    return [{ id: deck.id, name: deck.name }, ...others].sort((a, b) => a.name.localeCompare(b.name));
+  });
+  readonly variantSwitchBusy = signal(false);
+
+  async openVariant(deckId: string): Promise<void> {
+    if (deckId === this.viewer.state.viewingDeck()?.id || this.variantSwitchBusy()) return;
+    this.variantSwitchBusy.set(true);
+    try {
+      const deck = await this.deckService.getDeckById(deckId);
+      if (deck) await this.viewer.open(deck);
+    } finally {
+      this.variantSwitchBusy.set(false);
+    }
+  }
 
   /**
    * Bannliste und Bauregeln (Kartenzahl, Kopien) für das angezeigte Deck: rot markierte Karten und

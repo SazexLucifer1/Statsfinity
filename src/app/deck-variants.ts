@@ -8,6 +8,8 @@
  * genau die Kartenzahl jedes Decks, und jede Liste ist eine Druckliste für die Tauschkarten.
  */
 
+import { storedDeckBracket } from './bracket';
+
 export interface VariantCard {
   cardName: string;
   quantity: number;
@@ -109,4 +111,23 @@ export function compareDeckVariants(
 
 export function totalQuantity(entries: readonly VariantEntry[]): number {
   return entries.reduce((sum, e) => sum + e.quantity, 0);
+}
+
+/**
+ * Beschriftung einer Variante in einem Umschalter (Deck-Auswahl im Match, Deckliste im Profil):
+ * das Bracket, wenn es die Varianten unterscheidet, sonst der Deckname.
+ */
+export function variantLabel(
+  name: string,
+  deck: { format: string | null; bracket: number | null; bracketAuto: number | null },
+  variants: readonly {
+    format: string | null;
+    bracket: number | null;
+    bracketAuto: number | null;
+  }[],
+): string {
+  const levels = variants.map((v) => storedDeckBracket(v)?.level ?? null);
+  const distinct = levels.every((l) => l !== null) && new Set(levels).size === levels.length;
+  const level = storedDeckBracket(deck)?.level;
+  return distinct && level ? `B${level}` : name;
 }

@@ -1,0 +1,97 @@
+:host {
+  display: block;
+}
+
+.variant-compare {
+  margin: var(--sp-3) 0;
+}
+
+.segmented {
+  margin: var(--sp-2) 0;
+}
+
+// Aufteilung nach der Skizze des Users: oben zwei Fenster nebeneinander (nur hier | nur in der
+// Variante), darunter über die volle Breite die gemeinsamen Karten. Jedes Fenster hat eine feste
+// Höhe und scrollt für sich - sonst schiebt eine lange Liste die anderen aus dem Bild.
+.panes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-areas:
+    'this other'
+    'common common';
+  gap: var(--sp-3);
+  margin-top: var(--sp-2);
+}
+
+.only-this {
+  grid-area: this;
+}
+
+.only-other {
+  grid-area: other;
+}
+
+.common {
+  grid-area: common;
+}
+
+.pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: var(--sp-2);
+  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.2));
+  border-radius: var(--r-md);
+  background: rgba(0, 0, 0, 0.18);
+
+  h4 {
+    margin: 0 0 var(--sp-2);
+  }
+}
+
+.pane-scroll {
+  height: 55vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: var(--sp-1);
+}
+
+.common .pane-scroll {
+  height: 40vh;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: var(--sp-2);
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  app-card-thumb {
+    width: 100%;
+  }
+}
+
+.qtybar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  font-size: 0.85rem;
+  font-weight: 600;
+
+  button {
+    min-width: 28px;
+    padding: 2px 8px;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: var(--r-xs);
+    background: rgba(0, 0, 0, 0.35);
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+}

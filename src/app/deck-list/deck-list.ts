@@ -19,8 +19,17 @@ import { Icon } from '../ui/icon/icon';
 import { DeckSocial } from '../deck-social/deck-social';
 import { DeckSocialService } from '../deck-social.service';
 import { BanlistService } from '../banlist.service';
+import { DeckVariantService } from '../deck-variant.service';
+import { variantLabel } from '../deck-variants';
 
 export type DeckSortMode = 'alpha' | 'winRate' | 'games';
+
+/** Eine Kachel der Liste - ein Deck oder mehrere verknüpfte Varianten mit Umschalter. */
+interface DeckRow {
+  key: string;
+  variants: DeckWithStats[];
+  selected: DeckWithStats;
+}
 
 interface DeckWithStats extends Deck {
   games: number;
@@ -72,12 +81,17 @@ export class DeckList {
   private readonly social = inject(DeckSocialService);
   readonly banlist = inject(BanlistService);
   private readonly dialog = inject(DialogService);
+  private readonly variantService = inject(DeckVariantService);
 
   readonly decks = signal<Deck[]>([]);
   private readonly deckStats = signal<Map<string, DeckGameStats>>(new Map());
   /** Fallback-Commander direkt aus dem Deck (deck_cards), falls noch keine Partie mit Commander-Angabe existiert. */
   private readonly storedCommanders = signal<Map<string, { name: string; imageUrl: string | null }>>(new Map());
   readonly loading = signal(true);
+  /** Variantengruppe je Deck-ID (decks.variant_group) - verknüpfte Varianten stehen als eine Kachel da. */
+  private readonly variantGroups = signal<ReadonlyMap<string, string>>(new Map());
+  /** Gewählte Variante je Gruppe (Gruppe -> Deck-ID); ohne Eintrag die erste in der Sortierung. */
+  readonly variantChoice = signal<Readonly<Record<string, string>>>({});
 
   readonly searchQuery = signal('');
   readonly sortMode = signal<DeckSortMode>('alpha');
@@ -123,12 +137,14 @@ export class DeckList {
       this.deckService.loadDecksForOwner(owner).then(async (decks) => {
         this.decks.set(decks);
         const deckIds = decks.map((d) => d.id);
-        const [stats, storedCommanders] = await Promise.all([
+        const [stats, storedCommanders, groups] = await Promise.all([
           this.deckService.getDeckStatsForDecks(deckIds),
           this.deckService.getStoredCommanders(deckIds),
+          this.variantService.groupsFor(deckIds),
         ]);
         this.deckStats.set(stats);
         this.storedCommanders.set(storedCommanders);
+        this.variantGroups.set(groups);
         this.loading.set(false);
       });
     });
@@ -271,13 +287,50 @@ export class DeckList {
     return list;
   });
 
-  readonly totalPages = computed(() => Math.max(1, Math.ceil(this.filteredSortedDecks().length / this.pageSize())));
+  /**
+   * Kacheln der Liste: verknüpfte Varianten (Deck-Varianten, z. B. Bracket 4 und 2 desselben
+   * Decks) stehen als EINE Kachel mit Umschalter da - physisch ist es ein Deck. Statistik, Bracket
+   * und Aktionen bleiben je Variante, die Kachel zeigt die gewählte. Gefiltert und sortiert wird
+   * vorher je Deck, die Kachel steht dort, wo ihre erste Variante steht.
+   */
+  readonly deckRows = computed<DeckRow[]>(() => {
+    const groups = this.variantGroups();
+    const choice = this.variantChoice();
+    const rows: DeckRow[] = [];
+    const byGroup = new Map<string, DeckRow>();
+    for (const deck of this.filteredSortedDecks()) {
+      const group = groups.get(deck.id);
+      const existing = group ? byGroup.get(group) : undefined;
+      if (existing) {
+        existing.variants.push(deck);
+        if (choice[group!] === deck.id) existing.selected = deck;
+        continue;
+      }
+      const row: DeckRow = { key: group ?? deck.id, variants: [deck], selected: deck };
+      if (group) byGroup.set(group, row);
+      rows.push(row);
+    }
+    return rows;
+  });
 
-  readonly pagedDecks = computed<DeckWithStats[]>(() => {
+  readonly totalPages = computed(() => Math.max(1, Math.ceil(this.deckRows().length / this.pageSize())));
+
+  readonly pagedRows = computed<DeckRow[]>(() => {
     const size = this.pageSize();
     const start = this.page() * size;
-    return this.filteredSortedDecks().slice(start, start + size);
+    return this.deckRows().slice(start, start + size);
   });
+
+  /** Alle Decks der sichtbaren Seite, auch die gerade nicht gewählten Varianten - Bilder, Likes und Bannliste stehen dann beim Umschalten schon da. */
+  readonly pagedDecks = computed<DeckWithStats[]>(() => this.pagedRows().flatMap((r) => r.variants));
+
+  variantLabel(deck: DeckWithStats, row: DeckRow): string {
+    return variantLabel(deck.name, deck, row.variants);
+  }
+
+  chooseVariant(row: DeckRow, deckId: string): void {
+    this.variantChoice.update((current) => ({ ...current, [row.key]: deckId }));
+  }
 
 
   setSearchQuery(value: string): void {
@@ -306,12 +359,14 @@ export class DeckList {
     const decks = await this.deckService.loadDecksForOwner(this.owner());
     this.decks.set(decks);
     const deckIds = decks.map((d) => d.id);
-    const [stats, storedCommanders] = await Promise.all([
+    const [stats, storedCommanders, groups] = await Promise.all([
       this.deckService.getDeckStatsForDecks(deckIds),
       this.deckService.getStoredCommanders(deckIds),
+      this.variantService.groupsFor(deckIds),
     ]);
     this.deckStats.set(stats);
     this.storedCommanders.set(storedCommanders);
+    this.variantGroups.set(groups);
   }
 
   openNewDeckDialog(): void {

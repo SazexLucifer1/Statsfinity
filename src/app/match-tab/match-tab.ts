@@ -25,6 +25,7 @@ import { Icon } from '../ui/icon/icon';
 import { ColorFilter } from '../ui/color-filter/color-filter';
 import { ColorSelection, EMPTY_COLOR_SELECTION, matchesColorSelection } from '../color-filter-match';
 import { DeckVariantService } from '../deck-variant.service';
+import { variantLabel } from '../deck-variants';
 import { LifeChart } from '../ui/life-chart/life-chart';
 import { Cube, GroupCubeList, LifeLog } from '../models';
 import { FriendsService } from '../friends.service';
@@ -459,10 +460,7 @@ export class MatchTab {
     option: { deckName: string; format: string | null; bracket: number | null; bracketAuto: number | null },
     variants: readonly { format: string | null; bracket: number | null; bracketAuto: number | null }[],
   ): string {
-    const levels = variants.map((v) => storedDeckBracket(v)?.level ?? null);
-    const distinct = levels.every((l) => l !== null) && new Set(levels).size === levels.length;
-    const level = storedDeckBracket(option)?.level;
-    return distinct && level ? `B${level}` : option.deckName;
+    return variantLabel(option.deckName, option, variants);
   }
 
   chooseDeckPickerVariant(groupKey: string, deckId: string): void {
