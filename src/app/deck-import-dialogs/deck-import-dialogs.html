@@ -260,7 +260,18 @@
               (click)="$event.stopPropagation()"
               (change)="importService.togglePreconSelected(precon.fileName)"
             />
-            <span class="deck-name">{{ precon.name }}</span>
+            @let commanders = importService.preconCommanders()[precon.fileName];
+            @if (commanders?.length) {
+              <app-card-thumb [name]="commanders![0]" size="large" />
+            } @else {
+              <span class="precon-thumb-placeholder" aria-hidden="true"></span>
+            }
+            <span class="deck-name">
+              {{ precon.name }}
+              @if (commanders?.length) {
+                <span class="hint precon-commander">{{ commanders!.join(' + ') }}</span>
+              }
+            </span>
             <span class="hint">{{ precon.code }}</span>
           </li>
         }

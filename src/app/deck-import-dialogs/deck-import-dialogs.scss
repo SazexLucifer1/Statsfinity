@@ -71,8 +71,25 @@
 
     .deck-name {
       flex: 1;
+      min-width: 0;
+    }
+
+    // Commander-Name unter dem Decknamen - der Deckname verrät ihn oft nicht.
+    .precon-commander {
+      display: block;
+      margin-top: 2px;
     }
   }
+}
+
+// Gleiche Breite wie app-card-thumb size="large", solange der Commander noch lädt - sonst
+// springen die Zeilen, sobald die Bilder nacheinander eintreffen.
+.precon-thumb-placeholder {
+  flex-shrink: 0;
+  width: clamp(40px, 3vw + 22px, 64px);
+  aspect-ratio: 63.5 / 88.9;
+  border-radius: var(--r-xs);
+  background: var(--surface-tile);
 }
 
 .commander-suggestions {

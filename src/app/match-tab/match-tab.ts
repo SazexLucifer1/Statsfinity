@@ -22,6 +22,9 @@ import { Pager } from '../ui/pager/pager';
 import { DeckViewerService } from '../deck-viewer.service';
 import { storedDeckBracket } from '../bracket';
 import { Icon } from '../ui/icon/icon';
+import { ColorFilter } from '../ui/color-filter/color-filter';
+import { ColorSelection, EMPTY_COLOR_SELECTION, matchesColorSelection } from '../color-filter-match';
+import { DeckVariantService } from '../deck-variant.service';
 import { LifeChart } from '../ui/life-chart/life-chart';
 import { Cube, GroupCubeList, LifeLog } from '../models';
 import { FriendsService } from '../friends.service';
@@ -43,7 +46,7 @@ export type HistoryRow =
 
 @Component({
   selector: 'app-match-tab',
-  imports: [FormsModule, DatePipe, NgTemplateOutlet, PlayerAvatar, CardImage, BracketBadge, Pager, Icon, LifeChart],
+  imports: [FormsModule, DatePipe, NgTemplateOutlet, PlayerAvatar, CardImage, BracketBadge, Pager, Icon, LifeChart, ColorFilter],
   templateUrl: './match-tab.html',
   styleUrl: './match-tab.scss',
 })
@@ -55,6 +58,7 @@ export class MatchTab {
   private readonly scryfall = inject(ScryfallService);
   private readonly cardData = inject(CardDataService);
   private readonly deckService = inject(DeckService);
+  private readonly variants = inject(DeckVariantService);
   readonly i18n = inject(I18nService);
   readonly tournament = inject(TournamentService);
   private readonly dialog = inject(DialogService);
@@ -329,6 +333,42 @@ export class MatchTab {
   readonly deckPickerSearchQuery = signal('');
   /** Jahresfilter im Deck-Auswahl-Dialog - bei Precons das MTGJSON-Release-Jahr, sonst das Anlage-Jahr des Decks. */
   readonly deckPickerYearFilter = signal<number | null>(null);
+  /** Bracket-Filter (Mehrfachauswahl 1-5, leer = alle) - bei Spielern mit vielen Decks. */
+  readonly deckPickerBrackets = signal<ReadonlySet<number>>(new Set());
+  /** Farbfilter auf die Farbidentität des Decks. */
+  readonly deckPickerColors = signal<ColorSelection>(EMPTY_COLOR_SELECTION);
+  /** Bracket- und Farbfilter aufgeklappt - zugeklappt bleibt die Liste so lang wie bisher. */
+  readonly deckPickerFiltersOpen = signal(false);
+  /** Farbidentität je Deck-ID für den Farbfilter, nachgeladen wie die Commander-Bilder. */
+  readonly deckPickerIdentities = signal<ReadonlyMap<string, string[]>>(new Map());
+  /** Variantengruppe je Deck-ID (DeckVariantService) - verknüpfte Decks stehen als eine Zeile da. */
+  readonly deckPickerVariantGroups = signal<ReadonlyMap<string, string>>(new Map());
+  /** Gewählte Variante je Gruppe (Gruppe -> Deck-ID); ohne Eintrag die erste. */
+  readonly deckPickerVariantChoice = signal<Readonly<Record<string, string>>>({});
+  readonly bracketLevels = [1, 2, 3, 4, 5] as const;
+
+  readonly deckPickerActiveFilters = computed(
+    () => this.deckPickerBrackets().size + (this.deckPickerColors().colors.length > 0 ? 1 : 0),
+  );
+
+  toggleDeckPickerBracket(level: number): void {
+    this.deckPickerBrackets.update((current) => {
+      const next = new Set(current);
+      if (next.has(level)) next.delete(level);
+      else next.add(level);
+      return next;
+    });
+  }
+
+  private resetDeckPickerFilters(): void {
+    this.deckPickerSearchQuery.set('');
+    this.deckPickerYearFilter.set(null);
+    this.deckPickerBrackets.set(new Set());
+    this.deckPickerColors.set(EMPTY_COLOR_SELECTION);
+    this.deckPickerIdentities.set(new Map());
+    this.deckPickerVariantGroups.set(new Map());
+    this.deckPickerVariantChoice.set({});
+  }
 
   /** Effektives Jahr eines Deck-Picker-Eintrags für den Jahresfilter: bei Precons das echte Release-Jahr, sonst das Anlage-Jahr. */
   private deckPickerYear(option: { isPrecon: boolean; preconReleaseYear: number | null; createdAt: string }): number | null {
@@ -370,13 +410,64 @@ export class MatchTab {
     const query = this.deckPickerSearchQuery().trim().toLowerCase();
     const year = this.deckPickerYearFilter();
     const format = this.deckPickerFormat();
+    const brackets = this.deckPickerBrackets();
+    const colors = this.deckPickerColors();
+    const identities = this.deckPickerIdentities();
 
     return this.deckPickerOptions()
       .filter((o) => format === null || o.format === format)
       .filter((o) => !query || o.deckName.toLowerCase().includes(query) || (o.commanderName?.toLowerCase().includes(query) ?? false))
       .filter((o) => year === null || this.deckPickerYear(o) === year)
+      .filter((o) => brackets.size === 0 || brackets.has(storedDeckBracket(o)?.level ?? 0))
+      // Unbekannte Farbidentität (z. B. fremdes privates Deck) bleibt drin - lieber eins zu viel
+      // anzeigen als ein Deck verstecken, das passen könnte.
+      .filter((o) => {
+        if (colors.colors.length === 0) return true;
+        const identity = identities.get(o.deckId);
+        return !identity || matchesColorSelection(identity, colors);
+      })
       .sort((a, b) => a.deckName.localeCompare(b.deckName));
   });
+
+  /**
+   * Zeilen der Deck-Auswahl: verknüpfte Varianten (Deck-Varianten, z. B. Bracket 4 und 2 desselben
+   * Decks) stehen als EINE Zeile mit Umschalter da, damit die Liste kürzer wird. Gefiltert wird
+   * vorher je Deck - eine Variante, die nicht passt, fehlt auch im Umschalter.
+   */
+  readonly deckPickerRows = computed(() => {
+    const groups = this.deckPickerVariantGroups();
+    const choice = this.deckPickerVariantChoice();
+    const rows: DeckPickerRow[] = [];
+    const byGroup = new Map<string, (typeof rows)[number]>();
+    for (const option of this.filteredDeckPickerOptions()) {
+      const group = groups.get(option.deckId);
+      const existing = group ? byGroup.get(group) : undefined;
+      if (existing) {
+        existing.variants.push(option);
+        if (choice[group!] === option.deckId) existing.selected = option;
+        continue;
+      }
+      const row = { key: group ?? option.deckId, variants: [option], selected: option };
+      if (group) byGroup.set(group, row);
+      rows.push(row);
+    }
+    return rows;
+  });
+
+  /** Beschriftung einer Variante im Umschalter: das Bracket, wenn es die Varianten unterscheidet, sonst der Deckname. */
+  deckPickerVariantLabel(
+    option: { deckName: string; format: string | null; bracket: number | null; bracketAuto: number | null },
+    variants: readonly { format: string | null; bracket: number | null; bracketAuto: number | null }[],
+  ): string {
+    const levels = variants.map((v) => storedDeckBracket(v)?.level ?? null);
+    const distinct = levels.every((l) => l !== null) && new Set(levels).size === levels.length;
+    const level = storedDeckBracket(option)?.level;
+    return distinct && level ? `B${level}` : option.deckName;
+  }
+
+  chooseDeckPickerVariant(groupKey: string, deckId: string): void {
+    this.deckPickerVariantChoice.update((current) => ({ ...current, [groupKey]: deckId }));
+  }
 
   /**
    * Hinweistext, wenn die Liste leer bleibt - unterscheidet „kein Deck in diesem Format" (dann ist
@@ -417,8 +508,7 @@ export class MatchTab {
     this.deckPickerMessage.set('');
     this.deckPickerBusy.set(true);
     this.deckPickerCards.set({});
-    this.deckPickerSearchQuery.set('');
-    this.deckPickerYearFilter.set(null);
+    this.resetDeckPickerFilters();
 
     const options = await this.deckOptionsFor(owner);
     this.deckPickerOptions.set(options);
@@ -436,8 +526,7 @@ export class MatchTab {
     this.borrowFromOwner.set(null);
     this.deckPickerMessage.set('');
     this.deckPickerOptions.set([]);
-    this.deckPickerSearchQuery.set('');
-    this.deckPickerYearFilter.set(null);
+    this.resetDeckPickerFilters();
 
     // Im History-Modus (Verlauf bearbeiten) gibt es keine laufende session-Spielerauswahl mehr -
     // dort kommen alle Gruppenmitglieder mit eigenem Deck-Bestand als Leihgeber infrage, nicht nur
@@ -488,8 +577,7 @@ export class MatchTab {
     this.deckPickerOptions.set([]);
     this.deckPickerMessage.set('');
     this.deckPickerCards.set({});
-    this.deckPickerSearchQuery.set('');
-    this.deckPickerYearFilter.set(null);
+    this.resetDeckPickerFilters();
   }
 
   /**
@@ -540,7 +628,17 @@ export class MatchTab {
   ): Promise<void> {
     if (options.length === 0) return;
 
-    const stored = await this.deckService.getStoredCommanders(options.map((o) => o.deckId));
+    const ids = options.map((o) => o.deckId);
+    void Promise.all([this.deckService.getColorIdentities(ids), this.variants.groupsFor(ids)]).then(
+      ([identities, groups]) => {
+        // Inzwischen eine andere Person/ein anderer Dialog - nicht in fremde Optionen schreiben.
+        if (!this.deckPickerOptions().some((o) => o.deckId === ids[0])) return;
+        this.deckPickerIdentities.set(identities);
+        this.deckPickerVariantGroups.set(groups);
+      },
+    );
+
+    const stored = await this.deckService.getStoredCommanders(ids);
     this.deckPickerOptions.update((current) =>
       current.map((o) => {
         const commander = stored.get(o.deckId);
@@ -592,8 +690,7 @@ export class MatchTab {
     this.deckPickerBorrowMode.set(false);
     this.borrowFromOwner.set(null);
     this.borrowOwnerOptions.set([]);
-    this.deckPickerSearchQuery.set('');
-    this.deckPickerYearFilter.set(null);
+    this.resetDeckPickerFilters();
   }
 
   async selectDeck(deckId: string): Promise<void> {
@@ -1222,4 +1319,13 @@ export class MatchTab {
     options.push({ value: DRAW, label: this.i18n.t('match.draw') });
     return options;
   }
+}
+
+type DeckPickerOption = ReturnType<MatchTab['deckPickerOptions']>[number];
+
+/** Eine Zeile der Deck-Auswahl - ein Deck oder mehrere verknüpfte Varianten (siehe deckPickerRows). */
+interface DeckPickerRow {
+  key: string;
+  variants: DeckPickerOption[];
+  selected: DeckPickerOption;
 }

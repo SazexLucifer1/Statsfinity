@@ -813,13 +813,45 @@
               [ngModel]="deckPickerYearFilter()"
               (ngModelChange)="setDeckPickerYearFilter($event)"
             />
+            <button
+              type="button"
+              class="glass-chip small"
+              [class.active]="deckPickerFiltersOpen() || deckPickerActiveFilters() > 0"
+              [attr.aria-expanded]="deckPickerFiltersOpen()"
+              (click)="deckPickerFiltersOpen.set(!deckPickerFiltersOpen())"
+            >
+              {{ i18n.t('match.deckPickerFilter') }}
+              @if (deckPickerActiveFilters() > 0) {
+                ({{ deckPickerActiveFilters() }})
+              }
+            </button>
           </div>
+          @if (deckPickerFiltersOpen()) {
+            <div class="deck-picker-more-filters">
+              <span class="hint">{{ i18n.t('match.deckPickerBracket') }}</span>
+              <div class="chip-row">
+                @for (level of bracketLevels; track level) {
+                  <button
+                    type="button"
+                    class="glass-chip small"
+                    [class.active]="deckPickerBrackets().has(level)"
+                    (click)="toggleDeckPickerBracket(level)"
+                  >
+                    {{ level }}
+                  </button>
+                }
+              </div>
+              <span class="hint">{{ i18n.t('match.deckPickerColors') }}</span>
+              <app-color-filter [value]="deckPickerColors()" (valueChange)="deckPickerColors.set($event)" />
+            </div>
+          }
           @if (filteredDeckPickerOptions().length === 0) {
             <p class="hint">{{ deckPickerEmptyHint() }}</p>
           }
           <ul class="player-list deck-picker-list">
-            @for (option of filteredDeckPickerOptions(); track option.deckId) {
-              <li>
+            @for (row of deckPickerRows(); track row.key) {
+              @let option = row.selected;
+              <li [class.has-variants]="row.variants.length > 1">
                 <div class="deck-thumb">
                   @if (deckPickerThumb(option); as img) {
                     <app-card-image
@@ -846,6 +878,20 @@
                   <span class="hint">{{ i18n.t('match.from', { name: option.ownerName }) }}</span>
                 }
                 <button class="glass-button small" (click)="selectDeck(option.deckId)">{{ i18n.t('match.choose') }}</button>
+                <!-- Verknüpfte Varianten desselben Decks (Deck-Varianten) als eine Zeile mit Umschalter. -->
+                @if (row.variants.length > 1) {
+                  <div class="segmented deck-picker-variants">
+                    @for (v of row.variants; track v.deckId) {
+                      <button
+                        type="button"
+                        [class.active]="v.deckId === option.deckId"
+                        (click)="chooseDeckPickerVariant(row.key, v.deckId)"
+                      >
+                        {{ deckPickerVariantLabel(v, row.variants) }}
+                      </button>
+                    }
+                  </div>
+                }
               </li>
             }
           </ul>
