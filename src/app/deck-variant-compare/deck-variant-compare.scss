@@ -95,3 +95,9 @@
     cursor: pointer;
   }
 }
+
+// Pfeil = die Karte auf die andere Seite dazuholen; abgesetzt von −/+, die nur die eigene Seite ändern.
+.qtybar button.move {
+  border-color: var(--accent, #7aa7ff);
+  color: var(--accent, #7aa7ff);
+}

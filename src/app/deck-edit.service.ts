@@ -13,6 +13,7 @@ import { AuthService } from './auth.service';
 import { I18nService } from './i18n.service';
 import { ColorSelection, EMPTY_COLOR_SELECTION } from './color-filter-match';
 import { DeckViewerState } from './deck-viewer-state.service';
+import { DeckVariantService } from './deck-variant.service';
 import { DeckEffectsService } from './deck-effects.service';
 import type { GameChangerEntry } from './deck-viewer.service';
 
@@ -28,6 +29,7 @@ export class DeckEditService {
   private readonly i18n = inject(I18nService);
   private readonly scryfall = inject(ScryfallService);
   private readonly state = inject(DeckViewerState);
+  private readonly variants = inject(DeckVariantService);
 
   /** Blendet die Kronen-Buttons auf den Kartenkacheln ein/aus - standardmäßig aus, da sie sonst auf jeder einzelnen Karte stören, obwohl man sie nur selten braucht. */
   readonly showCommanderToggle = signal(false);
@@ -100,7 +102,8 @@ export class DeckEditService {
     for (const [key, isMaybeboard] of this.state.pendingMaybeboardChanges()) {
       if (isMaybeboard !== (savedMaybeboard.get(key) ?? false)) return true;
     }
-    return false;
+    // Änderungen an einer Variante aus dem Vergleich - gespeichert mit demselben Knopf.
+    return this.variants.hasPendingOther();
   });
 
   /** Welche Karten in welcher Menge noch ungespeichert hinzugefügt/entfernt wurden - für die Anzeige vor dem Speichern. */
