@@ -665,6 +665,11 @@
             <button class="glass-chip small" [disabled]="viewer.edit.tokenScanBusy()" (click)="viewer.scanForTokens()">
               {{ viewer.edit.tokenScanBusy() ? viewer.i18n.t('deckView.scanningTokens') : viewer.i18n.t('deckView.scanTokens') }}
             </button>
+            @if (canCompareVariants()) {
+              <button class="glass-chip small" [class.active]="variantCompareOpen()" (click)="variantCompareOpen.set(!variantCompareOpen())">
+                {{ viewer.i18n.t('deckView.variantCompare.toggle') }}
+              </button>
+            }
 
             <select
               class="glass-input small"
@@ -698,7 +703,7 @@
         </div>
 
         <!-- Nur ab --bp-lg: Varianten in drei einzeln scrollbaren Fenstern vergleichen und bearbeiten. -->
-        <app-deck-variant-compare />
+        <app-deck-variant-compare [open]="canCompareVariants() && variantCompareOpen()" />
 
         <div class="add-card-panel">
           <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.addCardTitle') }}</h4>
@@ -1359,11 +1364,22 @@
         <p class="hint">{{ viewer.i18n.t('deckView.noCardsFound') }}</p>
       }
 
+      <!-- Jeder Bereich lässt sich einklappen (Wunsch des Users, 26.10.2026), in Bilder- und
+           Textansicht, beim Ansehen wie beim Bearbeiten. Gemerkt in DeckSectionCollapseService. -->
       @for (section of viewer.filteredGroupedDeckCards(); track section.label) {
         <h4 class="deck-section-title">
-          {{ viewer.translateLabel(section.label) }} ({{ sectionCardCount(section.cards) }}@if (section.label === 'Land' && viewer.hiddenMdfcLandCount() > 0) { + {{ viewer.hiddenMdfcLandCount() }} {{ viewer.i18n.t('deckView.mdfcLandSuffix') }}})
+          <button
+            type="button"
+            class="stat-disclosure"
+            [attr.aria-expanded]="!sectionCollapse.isCollapsed(section.label)"
+            (click)="sectionCollapse.toggle(section.label)"
+          >
+            <span class="stat-disclosure-chevron" aria-hidden="true"></span>
+            <span>{{ viewer.translateLabel(section.label) }} ({{ sectionCardCount(section.cards) }}@if (section.label === 'Land' && viewer.hiddenMdfcLandCount() > 0) { + {{ viewer.hiddenMdfcLandCount() }} {{ viewer.i18n.t('deckView.mdfcLandSuffix') }}})</span>
+          </button>
         </h4>
-        @if (viewer.viewMode() === 'visual') {
+        @if (sectionCollapse.isCollapsed(section.label)) {
+        } @else if (viewer.viewMode() === 'visual') {
           <div class="deck-visual-grid">
             @for (card of section.cards; track card.cardName) {
               <!-- Im Bearbeiten-Modus liegt kein Knopf mehr auf dem Bild: die Menge hängt als Leiste

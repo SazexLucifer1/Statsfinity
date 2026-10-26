@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { DeckViewerService } from '../deck-viewer.service';
 import { DeckCard } from '../deck.service';
 import { DeckVariantService } from '../deck-variant.service';
@@ -26,9 +26,9 @@ export class DeckVariantCompare {
   readonly viewer = inject(DeckViewerService);
   readonly service = inject(DeckVariantService);
 
-  readonly expanded = signal(false);
+  /** Ein-/ausgeblendet über den Knopf „Varianten vergleichen“ in der Bearbeiten-Leiste der Deck-Ansicht. */
+  readonly open = input(false);
   readonly selectedVariantId = signal<string | null>(null);
-  readonly wide = signal(false);
 
   private readonly deckId = computed(() => this.viewer.state.viewingDeck()?.id ?? null);
 
@@ -37,7 +37,7 @@ export class DeckVariantCompare {
   );
 
   readonly visible = computed(
-    () => this.wide() && this.service.available() && this.variants().length > 0,
+    () => this.open() && this.service.available() && this.variants().length > 0,
   );
 
   readonly selectedVariant = computed(() => {
@@ -55,16 +55,9 @@ export class DeckVariantCompare {
   readonly count = (entries: readonly VariantEntry[]): number => totalQuantity(entries);
 
   constructor() {
-    const px = Number.parseFloat(
-      getComputedStyle(document.documentElement).getPropertyValue('--bp-lg'),
-    );
-    const query = window.matchMedia(`(min-width: ${px || 1000}px)`);
-    this.wide.set(query.matches);
-    query.addEventListener('change', (e) => this.wide.set(e.matches));
-
     effect(() => {
       const variant = this.selectedVariant();
-      if (variant && this.expanded())
+      if (variant && this.visible())
         void untracked(() => this.service.ensureOtherCards(variant.id));
     });
   }

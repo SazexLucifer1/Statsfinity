@@ -22,6 +22,7 @@ import { DeckCollection } from '../deck-collection/deck-collection';
 import { DeckVariants } from '../deck-variants/deck-variants';
 import { DeckVariantCompare } from '../deck-variant-compare/deck-variant-compare';
 import { DeckVariantService } from '../deck-variant.service';
+import { DeckSectionCollapseService } from '../deck-section-collapse.service';
 import { CardThumb } from '../ui/card-thumb/card-thumb';
 import { DeckCheck } from '../deck-check/deck-check';
 import { DeckPrimer } from '../deck-primer/deck-primer';
@@ -52,6 +53,7 @@ export class DeckDetailView {
   private readonly pdfService = inject(DeckPdfService);
   private readonly banlist = inject(BanlistService);
   private readonly variantService = inject(DeckVariantService);
+  readonly sectionCollapse = inject(DeckSectionCollapseService);
 
   /**
    * Umschalter zwischen verknüpften Varianten oben in der Ansicht (Wunsch des Users, 26.10.2026):
@@ -67,6 +69,14 @@ export class DeckDetailView {
     return [{ id: deck.id, name: deck.name }, ...others].sort((a, b) => a.name.localeCompare(b.name));
   });
   readonly variantSwitchBusy = signal(false);
+
+  /**
+   * Varianten nebeneinander bearbeiten (deck-variant-compare/) - nur ab --bp-lg, auf dem Handy ist
+   * für drei Fenster kein Platz. Ein- und ausgeblendet über einen Knopf in der Bearbeiten-Leiste.
+   */
+  readonly wideViewport = signal(false);
+  readonly variantCompareOpen = signal(false);
+  readonly canCompareVariants = computed(() => this.wideViewport() && this.variantOptions().length > 1);
 
   async openVariant(deckId: string): Promise<void> {
     if (deckId === this.viewer.state.viewingDeck()?.id || this.variantSwitchBusy()) return;
@@ -237,6 +247,11 @@ export class DeckDetailView {
   private readonly expandedEdhrecCategories = new Set<string>();
 
   constructor() {
+    const px = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--bp-lg'));
+    const query = window.matchMedia(`(min-width: ${px || 1000}px)`);
+    this.wideViewport.set(query.matches);
+    query.addEventListener('change', (e) => this.wideViewport.set(e.matches));
+
     // Bannliste des Deck-Formats nachladen (einmal je Format und Sitzung).
     effect(() =>
       void this.banlist.loadFormat(
