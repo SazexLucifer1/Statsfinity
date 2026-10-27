@@ -49,6 +49,8 @@ export class DeckEditService {
   readonly addCardBusy = signal(false);
   readonly addCardMessage = signal('');
   private addCardSearchTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Nur die Antwort der zuletzt gestarteten Suche zählt - Antworten überholen sich. */
+  private addCardSearchRun = 0;
 
   /** Suchergebnisse (bis 175) seitenweise statt hart abgeschnitten. */
   private static readonly ADD_CARD_PAGE_SIZE = 30;
@@ -507,12 +509,15 @@ export class DeckEditService {
       keyword === 'all' &&
       !printSearchActive(print)
     ) {
+      this.addCardSearchRun++;
+      this.addCardBusy.set(false);
       this.addCardResults.set([]);
       this.addCardResultsPage.set(0);
       return;
     }
 
     this.addCardSearchTimer = setTimeout(async () => {
+      const run = ++this.addCardSearchRun;
       this.addCardBusy.set(true);
       const results = await this.scryfall.searchCards(query, {
         type:
@@ -535,6 +540,7 @@ export class DeckEditService {
         // sucht schon für das neue.
         format: this.state.deckFormatDraft(),
       });
+      if (run !== this.addCardSearchRun) return;
       this.addCardResults.set(results);
       this.addCardResultsPage.set(0);
       this.addCardBusy.set(false);
