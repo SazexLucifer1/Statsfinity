@@ -433,6 +433,24 @@ describe('bracket - Zusammenführung', () => {
     expect(ergebnis.reasons.some((r) => r.key === 'tuning')).toBe(true);
   });
 
+  it('stuft einen Precon auch bei Bracket-4-Befunden als Bracket 2 ein', () => {
+    const analyse = analyzeBracket(
+      basis({
+        isPrecon: true,
+        cards: [karte('Armageddon'), karte('Forest')],
+        flags: flags({ Armageddon: { massLandDenial: true } }),
+      }),
+    );
+    expect(analyse.bracket).toBe(2);
+    expect(analyse.preconRulesBracket).toBe(4);
+    // Die Befunde bleiben stehen - sie erklären, warum die Regeln höher lägen.
+    expect(analyse.reasons.map((r) => r.key)).toEqual(['massLandDenial']);
+  });
+
+  it('nennt kein Regel-Ergebnis, wenn auch die Regeln Bracket 2 ergeben', () => {
+    expect(analyzeBracket(basis({ isPrecon: true })).preconRulesBracket).toBeNull();
+  });
+
   it('hebt einen Precon nicht an, egal wie gut die Kennzahlen sind', () => {
     const ergebnis = analyzeBracket(
       basis({
@@ -554,8 +572,10 @@ describe('bracket - Urteil E: Kartenwert', () => {
     expect(analyse.bracket).toBe(4);
   });
 
-  it('greift auch bei unveränderten Precons', () => {
-    expect(analyzeBracket(basis({ isPrecon: true, totalPrice: 196.17 })).bracket).toBe(3);
+  it('stuft einen teuren Precon trotzdem als Bracket 2 ein und nennt Bracket 3 als Regel-Ergebnis', () => {
+    const analyse = analyzeBracket(basis({ isPrecon: true, totalPrice: 196.17 }));
+    expect(analyse.bracket).toBe(2);
+    expect(analyse.preconRulesBracket).toBe(3);
   });
 
   it('lässt die Zeile "Offiziell" unberührt - der Preis ist kein offizielles Kriterium', () => {

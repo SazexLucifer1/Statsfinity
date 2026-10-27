@@ -246,6 +246,12 @@
           }
           <p class="hint bracket-caveat bracket-never-auto">{{ viewer.i18n.t('deckView.bracketNeverAutoNote') }}</p>
         </div>
+        <!-- Sichtbar ohne ⓘ: ein Precon mit B4-Combo als "Bracket 2" wäre sonst unerklärt. -->
+        @if (viewer.bracket.effectiveBracket()?.source === 'auto') {
+          @if (viewer.bracket.bracketAnalysis()?.preconRulesBracket; as level) {
+            <p class="hint bracket-caveat">{{ viewer.i18n.t('deckView.bracketPreconNote', { level: level }) }}</p>
+          }
+        }
 
         @if (viewer.bracket.showBracketWhy()) {
           <!-- Zwei Kästen: links WAS die Stufe treibt (mit den verantwortlichen Karten als Bild),
@@ -399,13 +405,6 @@
 
                 @if (analysis.verdicts.precon) {
                   <p class="hint">{{ viewer.i18n.t('deckView.bracketVerdictPrecon') }}</p>
-                }
-                <!-- Ein Precon über Bracket 2 sieht nach einem Fehler aus, ist aber keiner: das
-                     Bracket-Update vom Februar 2026 hat Precons von Bracket 2 entkoppelt und im
-                     selben Zug Farewell und Biorhythm auf die Game-Changer-Liste gesetzt. Der Satz
-                     steht genau dort, wo die Verwunderung entsteht. -->
-                @if (analysis.verdicts.precon && analysis.bracket > 2) {
-                  <p class="hint">{{ viewer.i18n.t('deckView.bracketPreconNote') }}</p>
                 }
 
                 <p class="hint">
