@@ -226,7 +226,7 @@ export const tutorial = {
       'Oben in der Analyse: Passen Länder, Rampe, Kartenziehen, Removal und Bretträumung zur Spielweise des Decks? Dazu Farbquellen, Wahrscheinlichkeiten, Win Cons und eine Testhand. Die Spielweise legst du über „Spielweise wählen“ fest.',
     'tutorial.deckDetail.sort.title': 'Sortierung',
     'tutorial.deckDetail.sort.text':
-      'Nach Kartentyp gruppiert oder nach deinen eigenen Tags - eine Karte mit mehreren Tags erscheint dann in mehreren Abschnitten.',
+      'Nach Kartentyp gruppiert, nach deinen eigenen Tags - eine Karte mit mehreren Tags erscheint dann in mehreren Abschnitten - oder nach Preis, die teuerste Karte zuerst.',
     'tutorial.deckDetail.search.title': 'Suchen & Filtern',
     'tutorial.deckDetail.search.text':
       'Karten nach Name, Manawert, Typ, Kreaturtyp, Farbe, Fähigkeit oder Effekt (z.B. „Kartenziehen“) filtern.',
@@ -526,7 +526,7 @@ export const tutorial = {
       'At the top of the analysis: do lands, ramp, card draw, removal and board wipes fit the deck\'s play style? Plus color sources, odds, win cons and a test hand. You set the play style via “Choose play style”.',
     'tutorial.deckDetail.sort.title': 'Sorting',
     'tutorial.deckDetail.sort.text':
-      'Grouped by card type or by your own tags - a card with several tags then appears in several sections.',
+      'Grouped by card type, by your own tags - a card with several tags then appears in several sections - or by price, most expensive card first.',
     'tutorial.deckDetail.search.title': 'Search & filter',
     'tutorial.deckDetail.search.text':
       'Filter cards by name, mana value, type, creature type, colour, ability or effect (e.g. “card draw”).',

@@ -1281,6 +1281,9 @@
         <button class="glass-chip small" [class.active]="viewer.cardSortMode() === 'tags'" (click)="viewer.setCardSortMode('tags')">
           {{ viewer.i18n.t('deckView.byOwnTags') }}
         </button>
+        <button class="glass-chip small" [class.active]="viewer.cardSortMode() === 'price'" (click)="viewer.setCardSortMode('price')">
+          {{ viewer.i18n.t('deckView.byPrice') }}
+        </button>
         <!-- Einzelpreis an jeder Karte; geladen wird erst beim Einschalten (Scryfall-Abfrage). -->
         <button class="glass-chip small" [class.active]="viewer.showCardPrices()" (click)="viewer.toggleCardPrices()">
           {{ viewer.i18n.t('deckView.cardPrices') }}
@@ -1308,7 +1311,7 @@
             <option [ngValue]="n">{{ n === 7 ? '7+' : n }}</option>
           }
         </select>
-        @if (viewer.cardSortMode() === 'type') {
+        @if (viewer.cardSortMode() !== 'tags') {
           <select
             class="glass-input small"
             [ngModel]="viewer.typeFilterValue()"

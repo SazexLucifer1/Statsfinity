@@ -260,6 +260,7 @@ export class DeckViewerService {
     this.showCardPrices.update((v) => !v);
     if (this.showCardPrices())
       void this.analysis.ensureCardPricesLoaded(this.state.viewingDeckCards());
+    else if (this.cardSortMode() === 'price') this.cardSortMode.set('type');
   }
   /**
    * Offener Reiter: Kartenliste mit Analyse, Steckbrief oder Primer. Kopf und Kommentare stehen
@@ -379,12 +380,43 @@ export class DeckViewerService {
     return sections;
   });
 
-  /** Ob die Kartenliste nach Kartentyp (Standard) oder nach eigenen Tags gruppiert/sortiert wird. */
-  readonly cardSortMode = signal<'type' | 'tags'>('type');
+  /**
+   * Ob die Kartenliste nach Kartentyp (Standard), nach eigenen Tags oder nach Preis gruppiert/
+   * sortiert wird. "Preis" schaltet die Preisanzeige mit ein - ohne sichtbare Preise wäre die
+   * Reihenfolge nicht nachvollziehbar.
+   */
+  readonly cardSortMode = signal<'type' | 'tags' | 'price'>('type');
 
-  setCardSortMode(mode: 'type' | 'tags'): void {
+  setCardSortMode(mode: 'type' | 'tags' | 'price'): void {
     this.cardSortMode.set(mode);
+    if (mode === 'price' && !this.showCardPrices()) this.toggleCardPrices();
   }
+
+  /**
+   * Commander oben, darunter alle übrigen Karten in EINER Liste, teuerste zuerst (der Preis, der an
+   * der Karte steht - also je nach Umschalter günstigster oder gewählter Druck). Karten ohne Preis
+   * ans Ende. Gebaut aus groupedDeckCards, damit der Typ-Filter weiter greift.
+   */
+  readonly groupedDeckCardsByPrice = computed(() => {
+    const typeFilter = this.typeFilterValue();
+    const preis = (c: DeckCard) => this.analysis.displayedCardPrice(c) ?? -1;
+    const sections = this.groupedDeckCards();
+    const eigene = new Set(['Commander', 'Maybeboard', 'Tokens']);
+    const karten = sections
+      .filter((s) => !eigene.has(s.label) && (typeFilter === 'all' || s.label === typeFilter))
+      .flatMap((s) => s.cards)
+      .sort((a, b) => preis(b) - preis(a) || a.cardName.localeCompare(b.cardName));
+    const result: { label: string; cards: DeckCard[] }[] = [];
+    const commander = sections.find((s) => s.label === 'Commander');
+    if (commander) result.push(commander);
+    if (karten.length > 0) result.push({ label: 'Nach Preis', cards: karten });
+    for (const s of sections) {
+      if (s.label === 'Maybeboard' || s.label === 'Tokens') {
+        result.push({ label: s.label, cards: [...s.cards].sort((a, b) => preis(b) - preis(a)) });
+      }
+    }
+    return result;
+  });
 
   /** Alle im Deck tatsächlich vergebenen eigenen Tags, alphabetisch - für die Tag-Auswahl beim Bearbeiten einer Karte. */
   readonly availableCustomTags = computed(() => {
@@ -509,10 +541,15 @@ export class DeckViewerService {
   readonly filteredGroupedDeckCards = computed(() => {
     const sortMode = this.cardSortMode();
     const typeFilter = this.typeFilterValue();
-    const source = sortMode === 'tags' ? this.groupedDeckCardsByTag() : this.groupedDeckCards();
+    const source =
+      sortMode === 'tags'
+        ? this.groupedDeckCardsByTag()
+        : sortMode === 'price'
+          ? this.groupedDeckCardsByPrice()
+          : this.groupedDeckCards();
     return source
       .filter(
-        (section) => sortMode === 'tags' || typeFilter === 'all' || section.label === typeFilter,
+        (section) => sortMode !== 'type' || typeFilter === 'all' || section.label === typeFilter,
       )
       .map((section) => ({
         label: section.label,
