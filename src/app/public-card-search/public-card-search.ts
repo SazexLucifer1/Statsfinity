@@ -45,6 +45,12 @@ export class PublicCardSearch {
   readonly searched = signal(false);
   readonly loading = signal(false);
   private searchTimer: ReturnType<typeof setTimeout> | null = null;
+  /**
+   * Zählt jede Suche hoch; eine Antwort zählt nur, wenn danach keine neuere gestartet wurde. Die
+   * Antworten kommen nicht in der Reihenfolge der Anfragen zurück - sonst überschrieb die späte
+   * Antwort auf "ch" die Treffer für "chameleon".
+   */
+  private searchRun = 0;
 
   // --- Filter (wirken auf ALLE Karten, keine Commander-Legalitätsprüfung) ---
 
@@ -216,7 +222,10 @@ export class PublicCardSearch {
   }
 
   private async runFilterSearch(): Promise<void> {
+    const run = ++this.searchRun;
+    this.loading.set(false);
     if (!this.hasActiveFilters() && !this.query().trim()) {
+      this.gridBusy.set(false);
       this.gridResults.set([]);
       return;
     }
@@ -237,6 +246,7 @@ export class PublicCardSearch {
       order: this.sortMode(),
       commanderOnly: false,
     });
+    if (run !== this.searchRun) return;
     this.gridResults.set(results);
     this.gridPage.set(0);
     this.gridBusy.set(false);
@@ -258,8 +268,12 @@ export class PublicCardSearch {
       this.searchTimer = setTimeout(() => this.runFilterSearch(), 300);
       return;
     }
+    const run = ++this.searchRun;
+    this.gridBusy.set(false);
+    this.loading.set(false);
     this.searchTimer = setTimeout(async () => {
-      this.suggestions.set(await this.scryfall.autocompleteAnyCard(value));
+      const vorschlaege = await this.scryfall.autocompleteAnyCard(value);
+      if (run === this.searchRun) this.suggestions.set(vorschlaege);
     }, 250);
   }
 
@@ -268,12 +282,16 @@ export class PublicCardSearch {
    * gesucht wird aber mit dem englischen, mit dem die App überall arbeitet.
    */
   async selectCard(vorschlag: CardSuggestion): Promise<void> {
+    const run = ++this.searchRun;
+    this.gridBusy.set(false);
     this.suggestions.set([]);
     this.gridResults.set([]);
     this.query.set(vorschlag.printedName ?? vorschlag.name);
     this.loading.set(true);
     this.searched.set(true);
-    this.result.set(await this.cardData.findCard(vorschlag.name));
+    const karte = await this.cardData.findCard(vorschlag.name);
+    if (run !== this.searchRun) return;
+    this.result.set(karte);
     this.loading.set(false);
   }
 
