@@ -70,6 +70,35 @@ function frontName(name) {
 const normalizedFrontName = (name) => normalizeCardName(frontName(name));
 
 /**
+ * Muss diese Karte der Commander sein? Spellbooks Feld `mustBeCommander` ist nicht immer gesetzt:
+ * Bei "Teferi, Temporal Archmage + The Chain Veil" (787-1124) steht es auf false, der Ablauf
+ * verlangt aber "Cast Teferi from your command zone". Ohne diese Prüfung zählte die Combo in
+ * jedem Deck mit beiden Karten als Zwei-Karten-Combo und hob es auf Bracket 4.
+ *
+ * Gezählt wird nur ein unbedingter Satz "(re)cast <Name> from your/the command zone" in Ablauf
+ * oder Voraussetzungen - nicht "either from your hand or from the command zone" (dann geht es
+ * auch ohne Commander) und nicht Sätze mit "If ..." (Rückfall, falls die Karte schon fehlt).
+ * Gesucht wird mit vollem Namen und mit dem Teil vor dem Komma ("Teferi"), so schreibt Spellbook.
+ */
+function mustBeCommanderByText(variant, cardName) {
+  const front = frontName(cardName);
+  const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const names = [front, front.split(',')[0].trim()].map(escape).join('|');
+  const muster = new RegExp(`\\b(?:re)?cast\\s+(?:${names})\\s+from (?:your|the) command zone`, 'i');
+  const text = [variant.description, variant.notablePrerequisites, variant.easyPrerequisites]
+    .filter(Boolean)
+    .join('\n');
+  return text
+    .split(/(?<=[.\n])/)
+    .some((satz) => muster.test(satz) && !/^\s*if\b/i.test(satz));
+}
+
+/** Spellbooks Markierung oder der Ablauf-Text verlangt die Karte als Commander. */
+function mustBeCommander(variant, use) {
+  return (use.mustBeCommander ?? false) || mustBeCommanderByText(variant, use.card.name);
+}
+
+/**
  * Wiederholt bei Netz-/Rate-Limit-Fehlern mit wachsender Pause - übernommen aus
  * scripts/sync-scryfall-bulk.js, samt der dort teuer gelernten Lehre: der GRUND muss im
  * Fehlertext landen, sonst lässt sich ein Fehlschlag aus dem Lauf-Protokoll heraus nicht
@@ -605,7 +634,7 @@ async function syncCombos(laufBegonnen) {
         const name = u?.card?.name;
         if (!name) continue;
         const key = normalizedFrontName(name);
-        karten.set(key, (karten.get(key) ?? false) || (u.mustBeCommander ?? false));
+        karten.set(key, (karten.get(key) ?? false) || mustBeCommander(variant, u));
       }
       if (karten.size !== uses.length) {
         // Namen konnten nicht aufgelöst werden oder doppelten sich - dann stimmt card_count nicht
@@ -642,8 +671,8 @@ async function syncCombos(laufBegonnen) {
             id: variant.id,
             card_a_normalized: normalizedFrontName(a.card.name),
             card_b_normalized: normalizedFrontName(b.card.name),
-            a_must_be_commander: a.mustBeCommander ?? false,
-            b_must_be_commander: b.mustBeCommander ?? false,
+            a_must_be_commander: mustBeCommander(variant, a),
+            b_must_be_commander: mustBeCommander(variant, b),
             mana_value_needed: variant.manaValueNeeded ?? null,
             bracket_tag: variant.bracketTag ?? null,
             popularity: variant.popularity ?? null,
