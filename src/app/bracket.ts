@@ -62,12 +62,15 @@ export function combinedTuning(cardTuning: number, consistency: number | null | 
 }
 
 /**
- * Ab diesem Kartenwert (€) gilt mindestens Bracket 3. Einzige Regel ohne offizielle Grundlage: Die
- * 92 Precons 2023-2026 liegen im Schnitt bei 74 €, keiner über 150 € (teuerster 147 €). Deutlich
- * darüber heißt gezielt eingekauft - gemessen wird Absicht, nicht Stärke.
+ * Ab diesem Kartenwert (€) gilt mindestens Bracket 3. Einzige Regel ohne offizielle Grundlage.
+ * Nachgemessen am 27.10.2026 (günstigster Druck je Karte, Preise aus scryfall_card_prices): Die 173
+ * Commander-Precons, die 2011-2026 zu einem Set erschienen sind (ohne Secret Lair, Collector's
+ * Editions einfach), liegen im Median bei 62 € (Schnitt 70 €); über 150 € nur Eldrazi Unbound
+ * (198 €) und zwei Warhammer-40K-Decks (172/168 €). Der User hat die Schwelle danach bewusst bei
+ * 150 € gelassen. Deutlich darüber heißt gezielt eingekauft - gemessen wird Absicht, nicht Stärke.
  *
- * Nur Untergrenze (gilt auch für Precons, einige Secret-Lair-Decks liegen darüber); nach oben
- * bewirkt der Preis nichts.
+ * Nur Untergrenze; nach oben bewirkt der Preis nichts. Precons betrifft sie nicht, die sind immer
+ * Bracket 2 (siehe analyzeBracket()).
  */
 export const PREIS_SCHWELLE_EUR = 150;
 
@@ -140,7 +143,7 @@ export interface BracketVerdicts {
    * Power-Spanne. Ohne Beständigkeit gleich dem Karten-Tuning.
    */
   combined: number;
-  /** Urteil D: true, wenn es ein unveränderter Precon ist (dann hebt Urteil C nicht an). */
+  /** Urteil D: true bei einem Precon - der ist immer Bracket 2 (siehe analyzeBracket()). */
   precon: boolean;
   /** Urteil E: gemessener Kartenwert in Euro, null solange der Preis noch nicht vorliegt. */
   price: number | null;
@@ -159,6 +162,11 @@ export interface BracketAnalysis {
   reasons: BracketReason[];
   /** true = Bracket 4 und sehr hoch bewertet; die Oberfläche fragt dann nach Bracket 5. */
   suggestsCedh: boolean;
+  /**
+   * Nur bei Precons: die Stufe, die die Regeln ohne die Precon-Regel ergeben hätten, wenn sie über
+   * Bracket 2 liegt - für den Hinweis "nach den Regeln vielleicht Bracket 3". Sonst null.
+   */
+  preconRulesBracket: BracketLevel | null;
   verdicts: BracketVerdicts;
 }
 
@@ -551,9 +559,12 @@ export function powerPosition(tuning: number, bumped: boolean, canBump: boolean)
  * Führt die Urteile zusammen. Untergrenze = Maximum aus A, B und E; C darf danach um höchstens eine
  * Stufe anheben, nie senken.
  *
- * Unveränderte Precons hebt C nicht an (Urteil D) - nicht weil Precons B2 wären (seit 9.2.2026
- * entkoppelt), sondern weil die weiche Heuristik ein unverändertes Precon nicht hochschieben soll.
- * Harte Kriterien aus A gelten für Precons unverändert.
+ * Precons sind immer Bracket 2 (Urteil D, Entscheidung des Users 27.10.2026) - auch wenn A, B
+ * oder E höher liegen. Offiziell ist das seit dem Bracket-Update vom 9.2.2026 entkoppelt; die App
+ * stuft trotzdem so ein, weil ein Precon das Niveau ist, an dem sich Bracket 2 misst. Was die Regeln
+ * ergeben hätten, steht in preconRulesBracket, damit die Oberfläche darauf hinweist. Das
+ * Kennzeichen hängt am Import und bleibt nach Änderungen stehen - ein aufgerüsteter Precon wird
+ * von Hand eingestuft. Die Feinbewertung (C) hebt Precons nicht an.
  */
 export function analyzeBracket(input: BracketInput): BracketAnalysis {
   const { level: rules, reasons } = rulesVerdict(input);
@@ -583,6 +594,12 @@ export function analyzeBracket(input: BracketInput): BracketAnalysis {
     reasons.push({ key: 'tuning', minimum: bracket, cards: [] });
   }
 
+  let preconRulesBracket: BracketLevel | null = null;
+  if (input.isPrecon) {
+    if (bracket > 2) preconRulesBracket = bracket;
+    bracket = 2;
+  }
+
   const position = Math.min(1, Math.max(0, powerPosition(combined, bumped, canBump)));
   const power = powerLevel(bracket, position);
 
@@ -601,6 +618,7 @@ export function analyzeBracket(input: BracketInput): BracketAnalysis {
     confidence,
     reasons,
     suggestsCedh: bracket === AUTO_BRACKET_MAX && combined >= CEDH_TUNING_HINT,
+    preconRulesBracket,
     verdicts: {
       rules,
       spellbook,

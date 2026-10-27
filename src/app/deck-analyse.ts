@@ -77,6 +77,7 @@ const LABEL_KEYS: Record<string, string> = {
   Commander: 'deckViewer.type.Commander',
   Sonstiges: 'deckViewer.type.Sonstiges',
   'Ohne Tag': 'deckViewer.type.OhneTag',
+  'Nach Preis': 'deckViewer.type.NachPreis',
   Maybeboard: 'deckViewer.type.Maybeboard',
   Tokens: 'deckViewer.type.Tokens',
 };

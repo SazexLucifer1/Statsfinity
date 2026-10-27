@@ -281,9 +281,9 @@ export const deckView = {
     'deckView.bracketPowerValue': '{{power}} / 10',
     'deckView.bracketValueUnavailable': 'nicht erreichbar',
     'deckView.bracketExplainAria': '{{topic}}: genauer erklärt',
-    'deckView.bracketVerdictPrecon': 'Unveränderter Precon – die Feinbewertung hebt nicht an',
+    'deckView.bracketVerdictPrecon': 'Precon – wird immer als Bracket 2 eingestuft',
     'deckView.bracketPreconNote':
-      'Precons sind seit dem Bracket-Update vom Februar 2026 nicht mehr automatisch Bracket 2. Eine einzige Game-Changer-Karte hebt jedes Deck auf mindestens Bracket 3 – auch einen unveränderten Precon.',
+      'Precon, deshalb Bracket 2. Nach den Regeln wäre es vielleicht Bracket {{level}}. Wurde das Deck aufgerüstet, setz das Bracket von Hand.',
     'deckView.bracketTuningExplain':
       'Das Karten-Tuning misst, wie durchgängig auf Tempo gebaut das Deck ist. Zusammen mit der Beständigkeit (60 : 40) ergibt es den gemeinsamen Wert. Der legt das Bracket nicht fest, sondern nur die Position darin – und hebt es erst ab {{bump}} % um eine Stufe an.',
     'deckView.bracketMathRulesTitle': 'So kommt die offizielle Einstufung zustande',
@@ -310,9 +310,9 @@ export const deckView = {
       'Einzelne Kartenpreise konnten nicht geladen werden, die Summe ist also eher zu niedrig als zu hoch.',
     'deckView.bracketMathPriceTitle': 'So kommt der Kartenwert ins Spiel',
     'deckView.bracketMathPriceIntro':
-      'Das ist als einzige Regel hier keine offizielle: Das Regelwerk kennt kein Preiskriterium. Gemessen über alle 92 Commander-Precons aus 2023 bis 2026 liegt der Kartenwert im Schnitt bei 74 €, und kein regulärer Precon über 150 € (teuerster: Eldrazi Unbound, 147 €). Wer deutlich darüber liegt, hat gezielt eingekauft – und damit das verlassen, was Bracket 2 als Precon-Niveau beschreibt. Der Preis misst also nicht Stärke, sondern Absicht.',
+      'Das ist als einzige Regel hier keine offizielle: Das Regelwerk kennt kein Preiskriterium. Gemessen über alle 173 Commander-Precons, die von 2011 bis 2026 zu einem Set erschienen sind (ohne Secret Lair), liegt der Kartenwert im Median bei 62 €, und nur 3 davon über 150 € (teuerster: Eldrazi Unbound, 198 €). Wer deutlich darüber liegt, hat gezielt eingekauft – und damit das verlassen, was Bracket 2 als Precon-Niveau beschreibt. Der Preis misst also nicht Stärke, sondern Absicht.',
     'deckView.bracketMathPriceRule':
-      'Ab {{threshold}} € gilt mindestens Bracket 3 – auch für unveränderte Precons. Nach oben rechnet der Preis nichts: Bracket 4 wird ein Deck dadurch nie.',
+      'Ab {{threshold}} € gilt mindestens Bracket 3 – außer für Precons, die sind immer Bracket 2. Nach oben rechnet der Preis nichts: Bracket 4 wird ein Deck dadurch nie.',
     'deckView.bracketMathPriceSource':
       'Grundlage ist derselbe Betrag wie in der Kachel „Kartenpreis (ca.)“: die günstigste Druckvariante jeder Karte, in Euro über Cardmarket.',
     'deckView.bracketMathTuningTitle': 'So kommt das Karten-Tuning zustande',
@@ -443,6 +443,7 @@ export const deckView = {
     'deckView.cardPreviewAria': '{{name}} groß anzeigen',
     'deckView.byType': 'Nach Typ',
     'deckView.byOwnTags': 'Nach eigenen Tags',
+    'deckView.byPrice': 'Nach Preis',
     'deckView.searchCardPlaceholder': 'Karte suchen …',
     'deckView.creatureTypeAll': 'Kreaturtyp: alle',
     'deckView.resetFilters': '✕ Filter zurücksetzen',
@@ -787,9 +788,9 @@ export const deckView = {
     'deckView.bracketPowerValue': '{{power}} / 10',
     'deckView.bracketValueUnavailable': 'unavailable',
     'deckView.bracketExplainAria': '{{topic}}: explained in detail',
-    'deckView.bracketVerdictPrecon': 'Unchanged precon – the fine rating does not raise it',
+    'deckView.bracketVerdictPrecon': 'Precon – always rated Bracket 2',
     'deckView.bracketPreconNote':
-      'Since the February 2026 bracket update, precons are no longer automatically Bracket 2. A single Game Changer raises any deck to at least Bracket 3 – an unchanged precon included.',
+      'Precon, therefore Bracket 2. By the rules it might be Bracket {{level}}. If the deck has been upgraded, set the bracket by hand.',
     'deckView.bracketTuningExplain':
       'Card tuning measures how consistently the deck is built for speed. Together with consistency (60 : 40) it makes up the combined value. That does not set the bracket, only the position within it – and only raises it by one step from {{bump}} % upwards.',
     'deckView.bracketMathRulesTitle': 'How the official rating comes about',
@@ -816,9 +817,9 @@ export const deckView = {
       'Some card prices could not be loaded, so the sum is more likely too low than too high.',
     'deckView.bracketMathPriceTitle': 'How the deck value factors in',
     'deckView.bracketMathPriceIntro':
-      'This is the only rule here that is not official: the rules document knows no price criterion. Measured across all 92 Commander precons from 2023 to 2026, the deck value averages 74 €, and no regular precon exceeds 150 € (most expensive: Eldrazi Unbound, 147 €). Anyone well above that has deliberately gone shopping – and thereby left what bracket 2 describes as precon level. So the price does not measure power, it measures intent.',
+      'This is the only rule here that is not official: the rules document knows no price criterion. Measured across all 173 Commander precons released with a set from 2011 to 2026 (no Secret Lair), the median deck value is 62 €, and only 3 of them exceed 150 € (most expensive: Eldrazi Unbound, 198 €). Anyone well above that has deliberately gone shopping – and thereby left what bracket 2 describes as precon level. So the price does not measure power, it measures intent.',
     'deckView.bracketMathPriceRule':
-      'From {{threshold}} € upwards it is at least bracket 3 – for unchanged precons too. The price never raises anything beyond that: it can never make a deck bracket 4.',
+      'From {{threshold}} € upwards it is at least bracket 3 – except for precons, which are always bracket 2. The price never raises anything beyond that: it can never make a deck bracket 4.',
     'deckView.bracketMathPriceSource':
       'It uses the same amount as the "Card price (approx.)" tile: the cheapest printing of every card, in euros via Cardmarket.',
     'deckView.bracketMathTuningTitle': 'How card tuning comes about',
@@ -947,6 +948,7 @@ export const deckView = {
     'deckView.cardPreviewAria': 'Show {{name}} large',
     'deckView.byType': 'By Type',
     'deckView.byOwnTags': 'By Custom Tags',
+    'deckView.byPrice': 'By Price',
     'deckView.searchCardPlaceholder': 'Search card …',
     'deckView.creatureTypeAll': 'Creature type: all',
     'deckView.resetFilters': '✕ Reset filters',
