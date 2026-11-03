@@ -190,6 +190,25 @@ describe('matchCornerText', () => {
     expect(matchCornerText('TLE DE', prints, 6)).toBeNull();
     expect(matchCornerText('U 0146\nTLE DE', prints, 6)?.id).toBe('de');
   });
+
+  it('trennt Set und Sprache, wenn der Punkt dazwischen fehlt', () => {
+    // Echte Lesung eines dunklen Handyfotos von Spore Frog (MH1, gleiches Artwork wie PCY).
+    const frog = [
+      { id: 'mh1-en', setCode: 'mh1', collectorNumber: '180', lang: 'en' },
+      { id: 'mh1-de', setCode: 'mh1', collectorNumber: '180', lang: 'de' },
+      { id: 'pcy-en', setCode: 'pcy', collectorNumber: '126', lang: 'en' },
+    ];
+    expect(matchCornerText('A\n180/254 C\nMH1EN N DONATO GIANCOLA', frog, 6)?.id).toBe('mh1-en');
+    expect(parseCollectorLine('180/254 C\nMH1EN N DONATO GIANCOLA')).toMatchObject({
+      setCode: 'mh1',
+      collectorNumber: '180',
+      lang: 'en',
+    });
+  });
+
+  it('trennt kein Set, hinter dem schon eine Sprache steht', () => {
+    expect(parseCollectorLine('R 0012\nPAFR EN')).toMatchObject({ setCode: 'pafr', lang: 'en' });
+  });
 });
 
 describe('foilFromPixels', () => {

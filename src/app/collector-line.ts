@@ -62,7 +62,8 @@ export function parseCollectorLine(text: string): CollectorLine {
         .replace(/[•·★*.,:;]/g, ' ')
         .split(/\s+/)
         .filter(Boolean),
-    );
+    )
+    .map(splitGluedLang);
 
   // Zwei Durchgänge: erst genau ("DE"), dann tolerant - eine unscharfe Handykamera liest aus
   // "• DE" schon mal "DEW" (so geschehen auf dem iPhone). Tolerant heißt: drei Zeichen, die mit
@@ -99,6 +100,20 @@ export function parseCollectorLine(text: string): CollectorLine {
     if (result.collectorNumber) break;
   }
   return result;
+}
+
+/**
+ * Fehlt der Punkt zwischen Set und Sprache, klebt die Texterkennung beide zusammen ("MH1EN") -
+ * bei wenig Licht fast immer. Dann stehen Set und Sprache zusätzlich als eigene Wörter dahinter.
+ * Nicht, wenn schon eine Sprache folgt: "PAFR EN" ist ein Set, kein "PA" + "FR".
+ */
+function splitGluedLang(tokens: string[]): string[] {
+  return tokens.flatMap((token, i) => {
+    const head = token.slice(0, -2);
+    const tail = token.slice(-2);
+    const glued = PRINTED_LANG[tail] && isSetCode(head) && !PRINTED_LANG[tokens[i + 1] ?? ''];
+    return glued ? [token, head, tail] : [token];
+  });
 }
 
 function isSetCode(token: string): boolean {
@@ -165,11 +180,12 @@ export function matchCornerText<T extends CornerCandidate>(
   candidates: readonly T[],
   minScore = 5,
 ): T | null {
-  const tokens = text
+  const words = text
     .toUpperCase()
     .replace(/[•·★*.,:;|]/g, ' ')
     .split(/\s+/)
     .filter(Boolean);
+  const tokens = splitGluedLang(words);
   const numbers = tokens.map(numberPart).filter((n): n is string => !!n);
   const scored = candidates.map((c) => {
     const number = numberPart(c.collectorNumber.toUpperCase());
