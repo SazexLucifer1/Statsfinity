@@ -4,6 +4,7 @@ import {
   foilFromWords,
   languageFromText,
   matchCornerText,
+  nameQueries,
   OcrWord,
   parseCollectorLine,
 } from './collector-line';
@@ -265,5 +266,22 @@ describe('foilFromPixels', () => {
     // iPhone: "FRA DE", der Rahmen von "DE" beginnt schon vor dem Stern.
     const words = [star.words[0], { text: 'EN', bbox: { x0: 74, y0: 20, x1: 134, y1: 40 } }];
     expect(foilFromPixels(star.gray, 200, 60, words)).toBe(true);
+  });
+});
+
+describe('nameQueries', () => {
+  it('nimmt die bereinigte Zeile für die Namenssuche', () => {
+    expect(nameQueries('( Caustic Caterpillar | & . :').fuzzy).toBe('Caustic Caterpillar');
+  });
+
+  it('sucht mit gut gelesenen Wörtern, wenn der Name nur teilweise ankam', () => {
+    // Echte Lesungen aus den Scan-Proben (05.11.2026).
+    expect(nameQueries('dera ~Wachposten').words).toEqual(['dera Wachposten', 'Wachposten']);
+    expect(nameQueries('JE cr vor Grand Pulse').words).toContain('Grand Pulse');
+  });
+
+  it('wirft Rauschen aus Großbuchstaben weg', () => {
+    expect(nameQueries('EEE EE RRR').words).toEqual([]);
+    expect(nameQueries('').fuzzy).toBeNull();
   });
 });
