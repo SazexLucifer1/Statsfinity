@@ -666,3 +666,27 @@ export function languageFromText(
   if (!best || best.score < 3) return null;
   return !second || best.score - second.score >= 2 ? best.lang : null;
 }
+
+/**
+ * Suchanfragen aus der gelesenen Namenszeile einer Karte (card-scan.service.ts, matchByName()):
+ * zuerst die ganze bereinigte Zeile für Scryfalls Namenssuche, dann die gut gelesenen Wörter für
+ * die Volltextsuche - alle zusammen, dann jedes lange Wort allein. Die Texterkennung liest Namen
+ * oft nur teilweise ("ch von Grande" für "Küsschen von Grand Pulse") oder mit Fehlern in einzelnen
+ * Wörtern; ein einzelnes richtig gelesenes Wort ("Wachposten") reicht dann, die Gegenprobe am
+ * Artwork wählt unter den Treffern. Gut gelesen heißt: nur Buchstaben, mindestens 4, und nicht nur
+ * Großbuchstaben (so liest die Texterkennung Rauschen am Rand der Namenszeile).
+ */
+export function nameQueries(text: string): { fuzzy: string | null; words: string[] } {
+  const words = text
+    .split(/[^A-Za-zÄÖÜäöüßÀ-ÿ'’]+/)
+    .filter((w) => w.length >= 4 && /[a-zäöüßà-ÿ]/.test(w.slice(1)) && !/^[A-Z]+$/.test(w));
+  const line = text
+    .replace(/[^A-Za-zÄÖÜäöüßÀ-ÿ'’ ,-]/g, ' ')
+    .split(/\s+/)
+    .filter((w) => w.length >= 2)
+    .join(' ')
+    .trim();
+  const queries = words.length >= 2 ? [words.join(' ')] : [];
+  for (const w of words) if (w.length >= (words.length >= 2 ? 6 : 5)) queries.push(w);
+  return { fuzzy: line.length >= 4 ? line : null, words: [...new Set(queries)] };
+}

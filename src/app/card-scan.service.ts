@@ -20,6 +20,10 @@ import {
   decodeArtHashes,
   glareShare,
   nearestArt,
+  hammingDistance,
+  phash,
+  grayGrid,
+  ArtHash,
 } from './art-hash';
 import {
   CollectorLine,
@@ -28,6 +32,7 @@ import {
   foilFromWords,
   languageFromText,
   matchCornerText,
+  nameQueries,
   parseCollectorLine,
 } from './collector-line';
 import { findCardCandidates } from './card-bounds';
@@ -90,6 +95,9 @@ export interface ScanDiagnostics {
   langSource?: 'corner' | 'image' | 'text' | 'fallback';
   /** Foil aus Zeichengröße, Wortrahmen und Schimmer. */
   foil?: { pixel: boolean | null; words: boolean | null; sheen: boolean | null };
+  /** Gelesene Namenszeile je Kartenlage und Treffer darüber (matchByName()). */
+  nameText?: string[];
+  nameHit?: { oracle: string; distance: number; via: string };
   /** Weg zum Ergebnis. */
   path?: 'corner' | 'look' | 'text' | 'artFallback' | 'none';
   glare?: boolean;
@@ -136,6 +144,16 @@ const FOIL_MIN_CARD_HEIGHT = 700;
  * Homelands-Karte 3 statt 0 erkannt (zusammen mit der Lage für den alten Rahmen in art-hash.ts).
  */
 const GUIDE_CARD_SHARE = 0.8;
+
+/** Namenszeile auf der Karte (Anteile), großzügig, weil die Kartenlage nur ungefähr stimmt. */
+const NAME_BOX = [0.04, 0.025, 0.85, 0.12] as const;
+/**
+ * Höchster Fingerabdruck-Abstand, ab dem ein Artwork der per Name gefundenen Karte zum Foto passt.
+ * Gemessen an den Scan-Proben: richtige Karte höchstens 12, falsch gelesene Namen ab 16.
+ */
+const NAME_ART_MAX = 14;
+/** Höchstens so viele Scryfall-Suchen je Versuch - der Scanner versucht es alle 0,6 s neu. */
+const NAME_MAX_REQUESTS = 6;
 
 /** Helligkeit, auf die dunkle Bilder für die Kantensuche hochgerechnet werden (wie im Scanner). */
 const NORMAL_LIGHT = 128;
@@ -261,7 +279,10 @@ export class CardScanService {
 
     this.lastScan = {};
     this.lastCorner = null;
-    const art = await this.matchArt(frame, boxes, guide);
+    // Findet der Fingerabdruck nichts, der Kartenname (matchByName()) - danach geht es weiter wie
+    // nach einem Artwork-Treffer.
+    const art =
+      (await this.matchArt(frame, boxes, guide)) ?? (await this.matchByName(frame, boxes));
     const artId = art?.match.id ?? null;
     this.lastScan.glare = this.glare();
     this.lastScan.art = art && {
@@ -650,6 +671,105 @@ export class CardScanService {
   }
 
   /** Scryfalls Artwork-Ausschnitt eines Drucks als Pixel, klein gerechnet (für die Nachprüfung). */
+  /**
+   * Karte über ihren Namen, wenn der Fingerabdruck nichts findet (05.11.2026, gemessen an 109
+   * echten Scan-Proben: 10 der 54 Scans ohne Treffer zusätzlich richtig, keiner falsch). Liest die
+   * Namenszeile in jeder Annahme zur Kartenlage, sucht bei Scryfall erst nach dem Namen, dann nach
+   * den gut gelesenen Wörtern (nameQueries()), und nimmt ein Artwork der gefundenen Karten nur,
+   * wenn sein Fingerabdruck höchstens NAME_ART_MAX vom Foto entfernt liegt - ein falsch gelesener
+   * Name, der zufällig eine andere Karte ergibt, fällt so durch (dort lagen die Abstände ab 16, beim
+   * richtigen Namen höchstens 12). Das Ergebnis sieht aus wie ein Artwork-Treffer.
+   */
+  private async matchByName(
+    frame: HTMLCanvasElement,
+    boxes: ArtBox[],
+  ): Promise<{ match: ArtMatch; cardBox: ArtBox } | null> {
+    const worker = await this.loadWorker();
+    if (!worker) return null;
+    const small = frame.width > 900 ? scaled(frame, 900) : frame;
+    const pixels = small
+      .getContext('2d', { willReadFrequently: true })
+      ?.getImageData(0, 0, small.width, small.height);
+    if (!pixels) return null;
+    const { PSM } = await import('tesseract.js');
+    await worker.setParameters({
+      tessedit_pageseg_mode: PSM.SINGLE_LINE,
+      tessedit_char_whitelist: '',
+    });
+    const texts: string[] = [];
+    for (const box of boxes) {
+      const band = scaled(crop(frame, within(box, NAME_BOX)), 1000);
+      texts.push((await worker.recognize(band)).data.text);
+    }
+    this.lastScan.nameText = texts.map((t) => t.trim());
+
+    // Fingerabdrücke des Fotos je Kartenlage (Index = Lage), wie im Artwork-Vergleich.
+    const perBox = boxes.map((box) =>
+      cardArtQueries(pixels.data, pixels.width, pixels.height, 4, box),
+    );
+    const tried = new Set<string>();
+    let requests = 0;
+    for (const text of texts) {
+      const { fuzzy, words } = nameQueries(text);
+      const searches = [
+        ...(fuzzy ? [`${API}/cards/named?fuzzy=${encodeURIComponent(fuzzy)}`] : []),
+        ...words.map(
+          (w) =>
+            `${API}/cards/search?q=${encodeURIComponent(`${w} lang:any -is:digital`)}` +
+            '&include_multilingual=true&unique=prints',
+        ),
+      ];
+      for (const url of searches) {
+        if (tried.has(url) || requests >= NAME_MAX_REQUESTS) continue;
+        tried.add(url);
+        requests++;
+        const result = await this.cardBy(url);
+        const found: any[] = result?.object === 'card' ? [result] : (result?.data ?? []);
+        const oracles = [...new Set(found.map((c) => c.oracle_id).filter(Boolean))].slice(0, 4);
+        for (const oracle of oracles) {
+          const hit = await this.nearestArtOf(oracle, perBox);
+          if (hit && hit.distance <= NAME_ART_MAX) {
+            this.lastScan.nameHit = { oracle, distance: hit.distance, via: url };
+            return {
+              match: { id: hit.id, distance: hit.distance, runnerUp: 64, query: 0 },
+              cardBox: boxes[hit.box],
+            };
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  /** Nächstes Artwork einer Karte (alle Artworks, Fingerabdruck aus art_crop) zum Foto. */
+  private async nearestArtOf(
+    oracle: string,
+    perBox: ArtHash[][],
+  ): Promise<{ id: string; distance: number; box: number } | null> {
+    const q = encodeURIComponent(`oracleid:${oracle} include:extras -is:digital`);
+    const list = await this.cardBy(`${API}/cards/search?q=${q}&unique=art`);
+    let best: { id: string; distance: number; box: number } | null = null;
+    for (const card of ((list?.data as any[]) ?? []).slice(0, 8)) {
+      const hash = await this.artHashOf(card.id);
+      if (!hash) continue;
+      perBox.forEach((queries, box) => {
+        for (const query of queries) {
+          const distance = hammingDistance(query, hash);
+          if (!best || distance < best.distance) best = { id: card.id, distance, box };
+        }
+      });
+    }
+    return best;
+  }
+
+  /** Fingerabdruck eines Artworks, gerechnet wie im Nachtlauf (art_crop, ganzes Bild). */
+  private async artHashOf(id: string): Promise<ArtHash | null> {
+    const pixels = await this.artCrop(id);
+    return pixels
+      ? phash(grayGrid(pixels.data, pixels.width, pixels.height, 4, [0, 0, 1, 1]))
+      : null;
+  }
+
   private async artCrop(id: string): Promise<ImageData | null> {
     if (this.artCache.has(id)) return this.artCache.get(id)!;
     const card = await this.cardBy(`${API}/cards/${id}`);
