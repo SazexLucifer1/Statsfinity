@@ -28,6 +28,18 @@ interface RecentScan extends ScanHit {
   sampleId?: string;
 }
 
+/** Nach so vielen Fehlversuchen in Folge bei liegender Karte kommt einmal der Achtungston. */
+const MISS_ALERT = 3;
+const SOUND_KEY = 'scannerSound';
+
+function readSound(): boolean {
+  try {
+    return localStorage.getItem(SOUND_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
 /** Ohne Treffer höchstens alle so viele ms eine Scan-Probe - der Scanner versucht es alle 0,6 s. */
 const MISS_SAMPLE_MS = 5000;
 
@@ -102,6 +114,12 @@ export class CardScanner implements OnInit, OnDestroy {
    * deshalb einmal vorher (Wunsch des Users, 20.10.2026).
    */
   readonly foilMode = signal(false);
+  /** Töne an (gemerkt im localStorage): hell = sicher erkannt, zwei tiefe = bitte hinsehen. */
+  readonly sound = signal(readSound());
+  private audio: AudioContext | null = null;
+  /** Fehlversuche in Folge bei liegender Karte; ab MISS_ALERT einmal der Achtungston. */
+  private missStreak = 0;
+  private missAlerted = false;
 
   private stream: MediaStream | null = null;
   private timer: ReturnType<typeof setInterval> | null = null;
@@ -253,6 +271,58 @@ export class CardScanner implements OnInit, OnDestroy {
     return code.toUpperCase();
   }
 
+  /** Töne an/aus. Der Klick ist zugleich die Nutzergeste, die Safari zum Abspielen verlangt. */
+  toggleSound(): void {
+    const on = !this.sound();
+    this.sound.set(on);
+    try {
+      localStorage.setItem(SOUND_KEY, on ? '1' : '0');
+    } catch {
+      // privater Modus - gilt dann nur für diese Sitzung
+    }
+    if (on) this.beep('ok');
+  }
+
+  /**
+   * Zwei klar verschiedene Töne aus dem Browser selbst (Web Audio, keine Datei): `ok` hell und
+   * aufsteigend, `check` zwei tiefe, kantigere Töne - "hinsehen". Auf dem iPhone stumm, solange
+   * der Stummschalter an der Seite aktiv ist.
+   */
+  private beep(kind: 'ok' | 'check'): void {
+    if (!this.sound()) return;
+    try {
+      this.audio ??= new AudioContext();
+      void this.audio.resume();
+      const ctx = this.audio;
+      const notes =
+        kind === 'ok'
+          ? [
+              { f: 880, t: 0, d: 0.09 },
+              { f: 1320, t: 0.1, d: 0.12 },
+            ]
+          : [
+              { f: 330, t: 0, d: 0.16 },
+              { f: 330, t: 0.24, d: 0.16 },
+            ];
+      for (const n of notes) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = kind === 'ok' ? 'sine' : 'square';
+        osc.frequency.value = n.f;
+        const start = ctx.currentTime + n.t;
+        const peak = kind === 'ok' ? 0.25 : 0.12;
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.exponentialRampToValueAtTime(peak, start + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + n.d);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(start);
+        osc.stop(start + n.d + 0.02);
+      }
+    } catch {
+      // ohne Web Audio eben ohne Ton
+    }
+  }
+
   private readLang(): string {
     try {
       return localStorage.getItem(LANG_KEY) ?? this.artLanguage.lang();
@@ -315,6 +385,11 @@ export class CardScanner implements OnInit, OnDestroy {
     sinceHit = this.lastHit ? (sinceHit / gray.length) * light : 255;
     this.previous = gray;
 
+    // Karte weg oder bewegt: Der Achtungston für "wird nicht erkannt" darf wieder kommen.
+    if (spread < MIN_CONTRAST || diff > MOTION) {
+      this.missStreak = 0;
+      this.missAlerted = false;
+    }
     // Karte weg oder eine andere im Rahmen: der letzte Treffer sperrt nicht mehr.
     if (spread < MIN_CONTRAST) this.sawEmpty = true;
     if (this.lastHit && (sinceHit > CHANGED || spread < MIN_CONTRAST)) {
@@ -366,6 +441,12 @@ export class CardScanner implements OnInit, OnDestroy {
       const found = await this.scan.identify(frame, guide, this.fallbackLang(), detail);
       if (!found) {
         this.status.set(this.scan.glare() ? 'glare' : 'notFound');
+        // Liegt die Karte und wird mehrmals hintereinander nicht erkannt: einmal Bescheid geben,
+        // erst nach Bewegung oder leerem Rahmen wieder.
+        if (++this.missStreak >= MISS_ALERT && !this.missAlerted) {
+          this.missAlerted = true;
+          this.beep('check');
+        }
         if (this.samples.enabled() && Date.now() - this.lastMissSample > MISS_SAMPLE_MS) {
           this.lastMissSample = Date.now();
           void this.samples.save(frame, guide, this.scan.lastCorner, null, this.scan.lastScan);
@@ -392,6 +473,11 @@ export class CardScanner implements OnInit, OnDestroy {
       this.lastHitKey = key;
       this.lastHitAt = Date.now();
       this.sawEmpty = false;
+      this.missStreak = 0;
+      this.missAlerted = false;
+      // Hell = Ecke gelesen, Set und Sprache stimmen fast immer; tief = nur über das Bild erkannt,
+      // Set und Sprache in der Liste prüfen.
+      this.beep(hit.sure ? 'ok' : 'check');
       const entry = ++this.scanCounter;
       this.recent.update((list) => [{ ...hit, key: entry }, ...list].slice(0, 8));
       void this.loadLanguages(entry, hit.print);

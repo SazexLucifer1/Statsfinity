@@ -60,7 +60,9 @@
       <path d="M15.5 5.5a2 2 0 0 0-2-2h-7a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2" />
     }
     @case ('camera') {
-      <path d="M4 8.5A2 2 0 0 1 6 6.5h2.2l1.5-2h4.6l1.5 2H18a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z" />
+      <path
+        d="M4 8.5A2 2 0 0 1 6 6.5h2.2l1.5-2h4.6l1.5 2H18a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"
+      />
       <circle cx="12" cy="12.7" r="3.4" />
     }
     @case ('castle') {
@@ -109,12 +111,17 @@
       <path d="M4 19.5h16" />
     }
     @case ('heart') {
-      <path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.2a4.3 4.3 0 0 1 7.5 2.6C19.5 15.4 12 20 12 20z" />
+      <path
+        d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.2a4.3 4.3 0 0 1 7.5 2.6C19.5 15.4 12 20 12 20z"
+      />
     }
     @case ('heart-filled') {
       <!-- Dieselbe Form, gefüllt: ein gesetztes Like. Als eigener Name statt als Stilregel, weil
            Stile der umgebenden Komponente nicht bis in dieses SVG durchgreifen. -->
-      <path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.2a4.3 4.3 0 0 1 7.5 2.6C19.5 15.4 12 20 12 20z" fill="currentColor" />
+      <path
+        d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.2a4.3 4.3 0 0 1 7.5 2.6C19.5 15.4 12 20 12 20z"
+        fill="currentColor"
+      />
     }
     @case ('help') {
       <circle cx="12" cy="12" r="8.5" />
@@ -235,6 +242,15 @@
     @case ('tag') {
       <path d="M11.4 3.5H20.5v9.1l-8.4 8.4a1.5 1.5 0 0 1-2.1 0l-7-7a1.5 1.5 0 0 1 0-2.1z" />
       <circle cx="16.4" cy="7.6" r="1.4" />
+    }
+    @case ('volume') {
+      <path d="M4 9.5h3.2L11.5 6v12l-4.3-3.5H4z" />
+      <path d="M15 9.2a4 4 0 0 1 0 5.6" />
+      <path d="M17.6 6.6a7.6 7.6 0 0 1 0 10.8" />
+    }
+    @case ('volume-off') {
+      <path d="M4 9.5h3.2L11.5 6v12l-4.3-3.5H4z" />
+      <path d="m15.5 9.5 5 5M20.5 9.5l-5 5" />
     }
     @case ('trash') {
       <path d="M4.5 7h15" />

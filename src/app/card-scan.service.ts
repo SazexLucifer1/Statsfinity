@@ -110,6 +110,12 @@ export interface ScanHit {
   foil: boolean;
   /** Woran erkannt - nur zur Anzeige. */
   via: 'text' | 'art';
+  /**
+   * Set und Nummer stammen aus der gelesenen Ecke (Weg `corner` oder `text`). Gemessen an 91 echten
+   * Treffern (04.11.2026): so 67 von 73 ohne Korrektur, nur über den Bildvergleich 10 von 18 - der
+   * Scanner meldet deshalb nur sichere Treffer mit dem Erfolgston.
+   */
+  sure: boolean;
 }
 
 const API = 'https://api.scryfall.com';
@@ -426,7 +432,8 @@ export class CardScanService {
       foil = sheen ?? false;
     }
     this.lastScan.foil = { pixel: pixelFoil, words: foilFromWords(words), sheen };
-    return { print, foil, via };
+    const sure = this.lastScan.path === 'corner' || this.lastScan.path === 'text';
+    return { print, foil, via, sure };
   }
 
   /**
