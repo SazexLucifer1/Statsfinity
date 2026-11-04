@@ -236,7 +236,7 @@ export class CardScanService {
    */
   private loadWorker(): Promise<OcrWorker | null> {
     this.workerPromise ??= (async () => {
-      const { createWorker } = await import('tesseract.js');
+      const { createWorker } = await tesseract();
       const base = new URL('tesseract/', document.baseURI).href;
       const errors: string[] = [];
       for (const [label, corePath] of [
@@ -751,7 +751,7 @@ export class CardScanService {
       .getContext('2d', { willReadFrequently: true })
       ?.getImageData(0, 0, small.width, small.height);
     if (!pixels) return null;
-    const { PSM } = await import('tesseract.js');
+    const { PSM } = await tesseract();
     await worker.setParameters({
       tessedit_pageseg_mode: PSM.SINGLE_LINE,
       tessedit_char_whitelist: '',
@@ -869,7 +869,7 @@ export class CardScanService {
     if (candidates.length < 2) return candidates[0]?.lang ?? null;
     const worker = await this.loadWorker();
     if (!worker) return null;
-    const { PSM } = await import('tesseract.js');
+    const { PSM } = await tesseract();
     await worker.setParameters({
       tessedit_pageseg_mode: PSM.SINGLE_BLOCK,
       tessedit_char_whitelist: '',
@@ -966,7 +966,7 @@ export class CardScanService {
     const worker = await this.loadWorker();
     if (!worker) return none;
     // Jedes Mal setzen: languageFromCard() liest dazwischen Fließtext mit anderen Einstellungen.
-    const { PSM } = await import('tesseract.js');
+    const { PSM } = await tesseract();
     await worker.setParameters({
       tessedit_pageseg_mode: PSM.SINGLE_BLOCK,
       tessedit_char_whitelist: COLLECTOR_CHARS,
@@ -1046,6 +1046,18 @@ export class CardScanService {
  * 0-2, verschiedene Bilder bei rund 30.
  */
 const SAME_ART_MAX = 6;
+
+/**
+ * tesseract.js nachladen. Es ist ein CommonJS-Paket: Im Entwicklungsserver liegen `createWorker`
+ * und `PSM` direkt am Modul, im Produktions-Build nur unter `default`. Mit `const { createWorker }
+ * = await import(...)` war `createWorker` live deshalb undefined - die Texterkennung startete in
+ * keinem Browser, in Tests mit dem Entwicklungsserver lief sie (Scan-Proben vom 04.11.2026:
+ * "TypeError: t is not a function"). Wer den Scanner prüft, prüft deshalb den Produktions-Build.
+ */
+async function tesseract(): Promise<typeof import('tesseract.js')> {
+  const mod: any = await import('tesseract.js');
+  return mod.createWorker ? mod : mod.default;
+}
 
 /** Wie lange das Laden der Texterkennung höchstens dauern darf (Modell ~3 MB, langsames Netz). */
 const OCR_LOAD_TIMEOUT_MS = 45000;
