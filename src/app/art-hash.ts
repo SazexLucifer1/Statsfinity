@@ -38,6 +38,9 @@ export const CARD_ART_BOXES: readonly ArtBox[] = [
   [0.08, 0.11, 0.92, 0.555],
   [0.08, 0.12, 0.92, 0.8],
   [0.05, 0.05, 0.95, 0.93],
+  // Alter Rahmen (bis ~2003): das Bild sitzt höher und schmaler. Scryfalls Scan einer Homelands-
+  // Karte kam mit der ersten Lage auf Abstand 16, mit dieser auf 0 (04.11.2026).
+  [0.1, 0.09, 0.91, 0.54],
 ];
 
 /**
