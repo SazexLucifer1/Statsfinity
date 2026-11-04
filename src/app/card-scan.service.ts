@@ -482,13 +482,18 @@ export class CardScanService {
             : -1,
         );
       }
-      const winner = clearWinner(scores);
+      // Immer die Sprache mit dem höchsten Wert, ohne geforderten Vorsprung: Französisch und
+      // Italienisch kommen oft knapp hinter Deutsch (ähnlich lange Texte), und dann griff die
+      // Ersatzsprache - die meist am weitesten hinten lag. Gemessen an 46 echten Scan-Proben
+      // (05.11.2026): mit Vorsprung 0,05 und Ersatz Englisch 29 richtig, immer der Beste 42 -
+      // unabhängig von der eingestellten Ersatzsprache.
+      const best = scores.indexOf(Math.max(...scores));
       this.lastScan.langScores = languages.map((p, i) => ({
         lang: p.lang,
         score: Math.round(scores[i] * 1000) / 1000,
       }));
-      if (winner !== null) {
-        lang = languages[winner].lang;
+      if (scores[best] > -1) {
+        lang = languages[best].lang;
         this.lastScan.langSource = 'image';
       }
     } else if (lang) {
@@ -518,6 +523,21 @@ export class CardScanService {
     );
     const prints = ((list?.data as any[]) ?? []).map(toCollectionPrint);
     return prints.some((p) => p.scryfallId === print.scryfallId) ? prints : [print, ...prints];
+  }
+
+  /**
+   * Alle Drucke mit demselben Artwork wie dieser, je Set und Nummer einer (bevorzugt in der Sprache
+   * von `print`) - für die Set-Auswahl im Scanner, wenn der Druck falsch erkannt wurde.
+   */
+  async printsOfSameArt(print: CollectionPrint): Promise<CollectionPrint[]> {
+    const all = await this.printsWithArt(print.scryfallId);
+    const bySet = new Map<string, CollectionPrint>();
+    for (const p of [print, ...all]) {
+      const key = `${p.setCode}|${p.collectorNumber}`;
+      const current = bySet.get(key);
+      if (!current || (current.lang !== print.lang && p.lang === print.lang)) bySet.set(key, p);
+    }
+    return [...bySet.values()];
   }
 
   /** Foil am Schimmer im Textkasten, verglichen mit dem Scan unter `scanUrl` (null = unklar). */
