@@ -12,12 +12,15 @@ import { FormsModule } from '@angular/forms';
 import { I18nService } from '../i18n.service';
 import { CollectionService } from '../collection.service';
 import { CardScanService, ScanHit } from '../card-scan.service';
+import { CollectionPrint } from '../collection-coverage';
 import { ArtLanguageService } from '../art-language.service';
 import { ART_LANGUAGES } from '../art-languages';
 import { Icon } from '../ui/icon/icon';
 
 interface RecentScan extends ScanHit {
   key: number;
+  /** Derselbe Druck in allen Sprachen, zum Umstellen (lädt nach dem Treffer). */
+  languages?: CollectionPrint[];
 }
 
 function canToggleFoil(item: ScanHit): boolean {
@@ -172,6 +175,25 @@ export class CardScanner implements OnInit, OnDestroy {
     return canToggleFoil(item);
   }
 
+  /** Andere Sprache für einen Treffer: tauscht den Druck in der Sammlung um. */
+  async changeLanguage(item: RecentScan, lang: string): Promise<void> {
+    const target = item.languages?.find((p) => p.lang === lang);
+    if (!target || target.scryfallId === item.print.scryfallId) return;
+    const foil = item.foil && target.finishes.some((f) => f !== 'nonfoil');
+    const ok = await this.collection.add(target, foil, 1);
+    if (!ok) return;
+    await this.collection.add(item.print, item.foil, -1);
+    this.recent.update((list) =>
+      list.map((r) => (r.key === item.key ? { ...r, print: target, foil } : r)),
+    );
+  }
+
+  private async loadLanguages(key: number, print: CollectionPrint): Promise<void> {
+    const languages = await this.scan.languagesOfPrint(print);
+    if (languages.length < 2) return;
+    this.recent.update((list) => list.map((r) => (r.key === key ? { ...r, languages } : r)));
+  }
+
   async undo(item: RecentScan): Promise<void> {
     await this.collection.add(item.print, item.foil, -1);
     this.recent.update((list) => list.filter((r) => r !== item));
@@ -310,7 +332,9 @@ export class CardScanner implements OnInit, OnDestroy {
       this.lastHitKey = key;
       this.lastHitAt = Date.now();
       this.sawEmpty = false;
-      this.recent.update((list) => [{ ...hit, key: ++this.scanCounter }, ...list].slice(0, 8));
+      const entry = ++this.scanCounter;
+      this.recent.update((list) => [{ ...hit, key: entry }, ...list].slice(0, 8));
+      void this.loadLanguages(entry, hit.print);
       this.status.set('saved');
       this.flash.set(true);
       setTimeout(() => this.flash.set(false), 600);
