@@ -87,10 +87,30 @@
           <li>
             <img [src]="r.print.imageUrl" alt="" />
             <span class="name">{{ r.print.printedName || r.print.cardName }}</span>
-            @if (r.languages; as languages) {
-              <!-- Falsch erkannte Sprache umstellen: tauscht den Druck in der Sammlung um. -->
-              <label class="meta lang-pick">
-                {{ r.print.setCode.toUpperCase() }} ·
+            <!-- Set und Sprache umstellen, wenn falsch erkannt: tauscht den Druck in der Sammlung um. -->
+            <span class="meta pick">
+              @if (r.sets; as sets) {
+                <select
+                  (change)="changeSet(r, $any($event.target).value)"
+                  [attr.aria-label]="i18n.t('collection.scanner.changeSet')"
+                >
+                  @for (p of sets; track p.scryfallId) {
+                    <option
+                      [value]="p.scryfallId"
+                      [selected]="
+                        p.setCode === r.print.setCode &&
+                        p.collectorNumber === r.print.collectorNumber
+                      "
+                    >
+                      {{ p.setCode.toUpperCase() }} {{ p.collectorNumber }}
+                    </option>
+                  }
+                </select>
+              } @else {
+                {{ r.print.setCode.toUpperCase() }}
+              }
+              ·
+              @if (r.languages; as languages) {
                 <select
                   [value]="r.print.lang"
                   (change)="changeLanguage(r, $any($event.target).value)"
@@ -102,12 +122,10 @@
                     </option>
                   }
                 </select>
-              </label>
-            } @else {
-              <span class="meta"
-                >{{ r.print.setCode.toUpperCase() }} · {{ langLabel(r.print.lang) }}</span
-              >
-            }
+              } @else {
+                {{ langLabel(r.print.lang) }}
+              }
+            </span>
             @if (canToggleFoil(r)) {
               <button
                 type="button"

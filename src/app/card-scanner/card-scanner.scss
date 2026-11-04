@@ -122,8 +122,8 @@
     font-size: 0.75rem;
   }
 
-  // Sprache als Auswahl: sieht aus wie der Text daneben, mit Rahmen, damit man sieht, dass es geht.
-  .lang-pick {
+  // Set und Sprache als Auswahl: sieht aus wie Text, mit Rahmen, damit man sieht, dass es geht.
+  .pick {
     opacity: 1;
     display: flex;
     align-items: center;
@@ -134,8 +134,9 @@
       background: rgba(0, 0, 0, 0.45);
       border: 1px solid rgba(255, 255, 255, 0.4);
       border-radius: 999px;
-      padding: 3px 8px;
+      padding: 3px 6px;
       font: inherit;
+      max-width: 34vw;
     }
   }
 
