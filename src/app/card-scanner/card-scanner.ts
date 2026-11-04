@@ -317,7 +317,13 @@ export class CardScanner implements OnInit, OnDestroy {
 
     // Karte weg oder eine andere im Rahmen: der letzte Treffer sperrt nicht mehr.
     if (spread < MIN_CONTRAST) this.sawEmpty = true;
-    if (this.lastHit && (sinceHit > CHANGED || spread < MIN_CONTRAST)) this.lastHit = null;
+    if (this.lastHit && (sinceHit > CHANGED || spread < MIN_CONTRAST)) {
+      this.lastHit = null;
+      // Deutlich anderes Bild seit dem Treffer (Karte weggenommen, Hand im Bild) zählt wie ein
+      // leerer Rahmen: In einer Box mit Wänden wird der Rahmen nie "leer", und eine zweite gleiche
+      // Karte binnen 4 s wurde sonst als dieselbe verschluckt (Rückmeldung des Users, 04.11.2026).
+      this.sawEmpty = true;
+    }
     if (this.lastHit || spread < MIN_CONTRAST || diff > MOTION) return;
     if (Date.now() - this.lastAttempt < RETRY_MS) return;
 
