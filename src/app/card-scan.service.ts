@@ -696,20 +696,20 @@ export class CardScanService {
       tessedit_pageseg_mode: PSM.SINGLE_LINE,
       tessedit_char_whitelist: '',
     });
-    const texts: string[] = [];
-    for (const box of boxes) {
-      const band = scaled(crop(frame, within(box, NAME_BOX)), 1000);
-      texts.push((await worker.recognize(band)).data.text);
-    }
-    this.lastScan.nameText = texts.map((t) => t.trim());
-
     // Fingerabdrücke des Fotos je Kartenlage (Index = Lage), wie im Artwork-Vergleich.
     const perBox = boxes.map((box) =>
       cardArtQueries(pixels.data, pixels.width, pixels.height, 4, box),
     );
+    const texts: string[] = [];
+    this.lastScan.nameText = texts;
     const tried = new Set<string>();
     let requests = 0;
-    for (const text of texts) {
+    // Je Kartenlage lesen und gleich suchen: Ein Treffer in der ersten Lage spart die übrigen
+    // Texterkennungen (je einige hundert Millisekunden auf dem Handy).
+    for (const box of boxes) {
+      const band = scaled(crop(frame, within(box, NAME_BOX)), 1000);
+      const text = (await worker.recognize(band)).data.text;
+      texts.push(text.trim());
       const { fuzzy, words } = nameQueries(text);
       const searches = [
         ...(fuzzy ? [`${API}/cards/named?fuzzy=${encodeURIComponent(fuzzy)}`] : []),
