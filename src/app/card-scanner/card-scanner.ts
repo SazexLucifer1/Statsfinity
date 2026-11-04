@@ -40,6 +40,12 @@ const SEARCH_MARGIN = 0.15;
 const RETRY_MS = 600;
 /** Unter dieser Streuung liegt keine Karte im Rahmen, nur Tisch. */
 const MIN_CONTRAST = 14;
+/**
+ * Helligkeit, bei der die Schwellen oben gelten; dunklere Bilder werden darauf hochgerechnet.
+ * Nicht weiter als bis `MIN_LIGHT` - fast schwarz ist kein Bild mehr, nur Rauschen.
+ */
+const NORMAL_LIGHT = 128;
+const MIN_LIGHT = 20;
 const LANG_KEY = 'statsfinity.scanLang';
 
 /**
@@ -227,9 +233,14 @@ export class CardScanner implements OnInit, OnDestroy {
       if (this.previous) diff += Math.abs(gray[i] - this.previous[i]);
       if (this.lastHit) sinceHit += Math.abs(gray[i] - this.lastHit[i]);
     }
-    spread /= gray.length;
-    diff = this.previous ? diff / gray.length : 255;
-    sinceHit = this.lastHit ? sinceHit / gray.length : 255;
+    // Die Schwellen unten sind bei normalem Licht gemessen (mittlere Helligkeit um 128). Bei wenig
+    // Licht schrumpfen alle Helligkeitsabstände mit dem Bild - eine Karte sah dann aus wie leerer
+    // Tisch, und der Scanner löste gar nicht erst aus. Deshalb relativ zur Helligkeit, aber nur
+    // nach oben: Bei hellem Licht bleibt alles, wie es auf dem iPhone eingestellt wurde.
+    const light = Math.max(1, NORMAL_LIGHT / Math.max(mean, MIN_LIGHT));
+    spread = (spread / gray.length) * light;
+    diff = this.previous ? (diff / gray.length) * light : 255;
+    sinceHit = this.lastHit ? (sinceHit / gray.length) * light : 255;
     this.previous = gray;
 
     // Karte weg oder eine andere im Rahmen: der letzte Treffer sperrt nicht mehr.

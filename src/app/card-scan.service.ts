@@ -32,8 +32,18 @@ import {
 } from './collector-line';
 import { findCardCandidates } from './card-bounds';
 import { foilFromSheen, sheenScore } from './foil-sheen';
-import { CollectionPrint } from './collection-coverage';
+import { CollectionPrint, printImageUrl } from './collection-coverage';
 import { toCollectionPrint } from './collection.service';
+import {
+  LOOK_MASK,
+  TEXT_MASK,
+  bestCorrelation,
+  clearWinner,
+  lookKey,
+  photoEdgeWindows,
+  prepareWindows,
+  scanEdges,
+} from './print-look';
 
 /**
  * Erkennt eine Karte aus einem Kamerabild (card-scanner/), ohne KI-Dienst, alles im Browser:
@@ -51,8 +61,11 @@ import { toCollectionPrint } from './collection.service';
  * groß genug im Bild ist: unscharf und klein wächst der Punkt zum Stern. Bleibt der Stern
  * ungelesen, entscheidet der Regenbogen-Schimmer im Textkasten (foil-sheen.ts).
  *
- * Die Sprache steht nur in der Sammlerzeile. Ohne sie (Karten vor ~2015) kommt sie aus dem
- * großen Kartentext, sonst gilt die im Scanner eingestellte Sprache.
+ * Bleibt die Ecke unlesbar (wenig Licht, kleine Karte im Bild), entscheidet das Aussehen der
+ * ganzen Karte (print-look.ts): erst die Rahmenart (alter/neuer Rahmen, Rand, Showcase …) gegen je
+ * einen Scan, dann die Sprache am Textkasten gegen die Scans dieses Drucks in allen Sprachen. Erst
+ * wenn auch das nichts Klares ergibt, die Sprache aus dem großen Kartentext und zuletzt die im
+ * Scanner eingestellte.
  */
 
 export interface ScanHit {
@@ -89,6 +102,11 @@ const CORNER_BOX = [-0.04, 0.8, 0.6, 1.12] as const;
  */
 const FOIL_MIN_CARD_HEIGHT = 700;
 
+/** Helligkeit, auf die dunkle Bilder für die Kantensuche hochgerechnet werden (wie im Scanner). */
+const NORMAL_LIGHT = 128;
+/** Nicht weiter als bis hier - fast schwarz ist kein Bild mehr, nur Rauschen. */
+const MIN_LIGHT = 20;
+
 @Injectable({ providedIn: 'root' })
 export class CardScanService {
   private readonly scryfall = inject(ScryfallService);
@@ -104,8 +122,12 @@ export class CardScanService {
   private workerPromise: Promise<OcrWorker | null> | null = null;
   private readonly cardCache = new Map<string, any>();
   private readonly artCache = new Map<string, ImageData>();
-  /** Kartenbilder für den Foil-Vergleich, je Adresse. */
+  /** Kartenbilder für den Foil- und den Druckvergleich, je Adresse. */
   private readonly scanCache = new Map<string, ImageData>();
+  /** Rahmenart je Scryfall-ID (lookKey()), gefüllt von printsWithArt(). */
+  private readonly lookOf = new Map<string, string>();
+  /** Artworks, deren Drucke nicht auf eine Seite der Scryfall-Suche passten. */
+  private readonly incompletePrints = new Set<string>();
 
   /** Spiegelt die Karte im Rahmen gerade deutlich (Foil, Hülle, Lampe)? Für den Hinweis im Scanner. */
   readonly glare = signal(false);
@@ -237,14 +259,14 @@ export class CardScanService {
     }
     const detectedFoil = pixelFoil ?? foilFromWords(words);
 
-    // Die Sammlerzeile ist gut 1 mm hoch und auf dem iPhone oft nicht lesbar - dann die Sprache
-    // aus Name, Typzeile und Regeltext der per Artwork erkannten Karte (languageFromText()).
-    if (!cornerPrint && !line.lang && art) {
-      line = { ...line, lang: await this.languageFromCard(frame, art.cardBox, art.match.id) };
-    }
-
     let print: CollectionPrint | null = cornerPrint;
     let via: ScanHit['via'] = 'text';
+    // Die Sammlerzeile ist gut 1 mm hoch und bei wenig Licht oft nicht lesbar - dann entscheidet
+    // das Aussehen der ganzen Karte über Druck und Sprache (print-look.ts).
+    if (!print && art) {
+      print = await this.printByLook(frame, art.cardBox, art.match.id, line, fallbackLang);
+      if (print) via = 'art';
+    }
     if (!print && line.setCode && line.collectorNumber) {
       const byText = await this.cardBy(
         `${API}/cards/${line.setCode}/${line.collectorNumber}${line.lang ? `/${line.lang}` : ''}`,
@@ -274,6 +296,108 @@ export class CardScanService {
     return { print, foil, via };
   }
 
+  /**
+   * Druck und Sprache am Aussehen der ganzen Karte, unter den Drucken mit diesem Artwork. Erst die
+   * Rahmenart gegen je einen Scan (der aus dem Fingerabdruck vertritt seine Art, sonst der
+   * englische), innerhalb der Art bleibt der Druck aus dem Fingerabdruck bzw. ein gelesenes Set mit
+   * Nummer; dann die Sprache am Textkasten gegen diesen Druck in allen Sprachen. Ohne klaren
+   * Vorsprung zählen wie bisher der Kartentext (languageFromCard()) und die eingestellte Sprache.
+   * null, wenn die Drucke nicht zu laden sind - dann wie früher printForArt().
+   */
+  private async printByLook(
+    frame: HTMLCanvasElement,
+    cardBox: ArtBox,
+    artId: string,
+    line: CollectorLine,
+    fallbackLang: string,
+  ): Promise<CollectionPrint | null> {
+    const prints = await this.printsWithArt(artId);
+    if (!prints.length) return null;
+    const same = (a: CollectionPrint, set: string, nr: string) =>
+      a.setCode === set && a.collectorNumber.toLowerCase() === nr.toLowerCase();
+    const fromHash = prints.find((p) => p.scryfallId === artId) ?? prints[0];
+    // Ein gelesenes Set, das es mit diesem Artwork nicht gibt, ist ein Lesefehler - samt der
+    // Sprache, die in derselben Zeile stand (dunkles, verrauschtes Bild: "PRE 3 ES" statt
+    // "MH1 EN"). Nur wenn Scryfall nicht alle Drucke auf einer Seite geliefert hat, kann es das
+    // Set trotzdem geben - dann die direkte Abfrage in identify().
+    if (line.setCode && !prints.some((p) => p.setCode === line.setCode)) {
+      if (this.incompletePrints.has(artId)) return null;
+      line = parseCollectorLine('');
+    }
+    const read =
+      line.setCode && line.collectorNumber
+        ? prints.find((p) => same(p, line.setCode!, line.collectorNumber!))
+        : undefined;
+    if (line.setCode && line.collectorNumber && !read && this.incompletePrints.has(artId)) {
+      return null;
+    }
+
+    let base = read ?? fromHash;
+    const small = frame.width > 900 ? scaled(frame, 900) : frame;
+    const pixels = small
+      .getContext('2d', { willReadFrequently: true })
+      ?.getImageData(0, 0, small.width, small.height);
+    const windows = pixels
+      ? photoEdgeWindows(pixels.data, pixels.width, pixels.height, 4, cardBox)
+      : null;
+
+    if (!read && windows) {
+      // Je Rahmenart ein Vertreter: der Druck aus dem Fingerabdruck, sonst der englische.
+      const looks = new Map<string, CollectionPrint>();
+      for (const p of prints) {
+        const key = this.lookOf.get(p.scryfallId) ?? '';
+        const current = looks.get(key);
+        if (
+          !current ||
+          (current !== fromHash && (p === fromHash || (p.lang === 'en' && current.lang !== 'en')))
+        ) {
+          looks.set(key, p);
+        }
+      }
+      if (looks.size > 1) {
+        const reps = [...looks.values()];
+        const prepared = prepareWindows(windows, LOOK_MASK);
+        const scores: number[] = [];
+        for (const rep of reps) {
+          const scan = await this.scanImage(printImageUrl(rep.scryfallId, 'small'));
+          scores.push(
+            scan
+              ? bestCorrelation(
+                  prepared,
+                  scanEdges(scan.data, scan.width, scan.height, 4),
+                  LOOK_MASK,
+                )
+              : -1,
+          );
+        }
+        const winner = clearWinner(scores);
+        if (winner !== null) base = reps[winner];
+      }
+    }
+
+    const languages = prints.filter((p) => same(p, base.setCode, base.collectorNumber));
+    let lang = line.lang;
+    if (!lang && windows && languages.length > 1) {
+      const prepared = prepareWindows(windows, TEXT_MASK);
+      const scores: number[] = [];
+      for (const p of languages) {
+        const scan = await this.scanImage(printImageUrl(p.scryfallId, 'small'));
+        scores.push(
+          scan
+            ? bestCorrelation(prepared, scanEdges(scan.data, scan.width, scan.height, 4), TEXT_MASK)
+            : -1,
+        );
+      }
+      const winner = clearWinner(scores);
+      if (winner !== null) lang = languages[winner].lang;
+    }
+    lang ??= (await this.languageFromCard(frame, cardBox, artId)) ?? fallbackLang;
+    return (
+      languages.find((p) => p.lang === lang) ??
+      (lang === base.lang ? base : await this.printForArt(base.scryfallId, lang))
+    );
+  }
+
   /** Foil am Schimmer im Textkasten, verglichen mit dem Scan unter `scanUrl` (null = unklar). */
   private async foilFromSheen(
     source: HTMLCanvasElement,
@@ -298,7 +422,7 @@ export class CardScanService {
     );
   }
 
-  /** Scryfalls Kartenbild eines Drucks als Pixel (für foilFromSheen). */
+  /** Scryfalls Kartenbild eines Drucks als Pixel (für foilFromSheen und printByLook). */
   private async scanImage(url: string): Promise<ImageData | null> {
     if (this.scanCache.has(url)) return this.scanCache.get(url)!;
     const pixels = await new Promise<ImageData | null>((resolve) => {
@@ -325,10 +449,18 @@ export class CardScanService {
     const ctx = probe.getContext('2d', { willReadFrequently: true });
     if (!ctx) return [];
     const rgba = ctx.getImageData(0, 0, probe.width, probe.height).data;
-    const gray = new Uint8Array(probe.width * probe.height);
+    const gray = new Float32Array(probe.width * probe.height);
+    let mean = 0;
     for (let i = 0; i < gray.length; i++) {
       gray[i] = 0.299 * rgba[i * 4] + 0.587 * rgba[i * 4 + 1] + 0.114 * rgba[i * 4 + 2];
+      mean += gray[i];
     }
+    mean /= gray.length || 1;
+    // Die Kantensuche verlangt feste Mindestsprünge (bei normalem Licht eingestellt). Bei wenig
+    // Licht sind alle Sprünge kleiner, sie fand die Karte nicht mehr, und der Fingerabdruck
+    // rechnete an der falschen Stelle - deshalb dunkle Bilder auf normale Helligkeit hochrechnen.
+    const light = Math.max(1, NORMAL_LIGHT / Math.max(mean, MIN_LIGHT));
+    if (light > 1) for (let i = 0; i < gray.length; i++) gray[i] *= light;
     return findCardCandidates(gray, probe.width, probe.height);
   }
 
@@ -487,9 +619,12 @@ export class CardScanService {
     const list = await this.cardBy(
       `${API}/cards/search?q=${q}&unique=prints&include_multilingual=true`,
     );
-    return (((list?.data as any[]) ?? []).map(toCollectionPrint) as CollectionPrint[]).filter(
-      (print) => print.illustrationId === illustration,
+    const cards = ((list?.data as any[]) ?? []).filter(
+      (card) => toCollectionPrint(card).illustrationId === illustration,
     );
+    for (const card of cards) this.lookOf.set(card.id, lookKey(card));
+    if (list?.has_more) this.incompletePrints.add(artId);
+    return cards.map(toCollectionPrint);
   }
 
   /**
