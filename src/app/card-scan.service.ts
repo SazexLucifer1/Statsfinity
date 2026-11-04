@@ -583,9 +583,17 @@ export class CardScanService {
    * von `print`) - für die Set-Auswahl im Scanner, wenn der Druck falsch erkannt wurde.
    */
   async printsOfSameArt(print: CollectionPrint): Promise<CollectionPrint[]> {
-    const all = await this.printsWithArt(print.scryfallId);
+    const sameArt = await this.printsWithArt(print.scryfallId);
+    // Danach alle übrigen Drucke der Karte: Hat der Fingerabdruck ein anderes Artwork derselben
+    // Karte getroffen, muss es sich trotzdem korrigieren lassen.
+    const base = await this.cardBy(`${API}/cards/${print.scryfallId}`);
+    const q = base?.oracle_id
+      ? encodeURIComponent(`oracleid:${base.oracle_id} -is:digital include:extras`)
+      : null;
+    const list = q ? await this.cardBy(`${API}/cards/search?q=${q}&unique=prints`) : null;
+    const rest = ((list?.data as any[]) ?? []).map(toCollectionPrint);
     const bySet = new Map<string, CollectionPrint>();
-    for (const p of [print, ...all]) {
+    for (const p of [print, ...sameArt, ...rest]) {
       const key = `${p.setCode}|${p.collectorNumber}`;
       const current = bySet.get(key);
       if (!current || (current.lang !== print.lang && p.lang === print.lang)) bySet.set(key, p);
@@ -913,9 +921,27 @@ export class CardScanService {
     const list = await this.cardBy(
       `${API}/cards/search?q=${q}&unique=prints&include_multilingual=true`,
     );
-    const cards = ((list?.data as any[]) ?? []).filter(
-      (card) => toCollectionPrint(card).illustrationId === illustration,
-    );
+    const all = (list?.data as any[]) ?? [];
+    const cards = all.filter((card) => toCollectionPrint(card).illustrationId === illustration);
+    // Dasselbe Bild unter anderer Artwork-ID: Scryfall führt z. B. Snarling Wolf aus Innistrad
+    // Double Feature (DBL 486, invertierter Rahmen) unter eigener illustration_id, obwohl es das
+    // Bild aus MID ist. Traf der Fingerabdruck den DBL-Eintrag, gab es nur diesen einen Druck - auf
+    // Englisch, ohne Auswahl (Rückmeldung des Users, 04.11.2026). Deshalb auch Drucke desselben
+    // Künstlers, deren Artwork-Fingerabdruck höchstens SAME_ART_MAX vom gefundenen entfernt liegt.
+    const others = new Map<string, any[]>();
+    for (const card of all) {
+      const ill = toCollectionPrint(card).illustrationId;
+      if (!ill || ill === illustration || card.artist !== base.artist) continue;
+      others.set(ill, [...(others.get(ill) ?? []), card]);
+    }
+    if (others.size) {
+      const baseHash = await this.artHashOf(artId);
+      for (const group of others.values()) {
+        const hash = baseHash && (await this.artHashOf(group[0].id));
+        if (baseHash && hash && hammingDistance(baseHash, hash) <= SAME_ART_MAX)
+          cards.push(...group);
+      }
+    }
     for (const card of cards) {
       this.lookOf.set(card.id, lookKey(card));
       if (card.image_status === 'highres_scan' || card.image_status === 'lowres') {
@@ -1013,6 +1039,13 @@ export class CardScanService {
     return card;
   }
 }
+
+/**
+ * Höchster Fingerabdruck-Abstand, bis zu dem zwei Artworks mit verschiedener illustration_id als
+ * dasselbe Bild gelten (printsWithArt()). Scryfalls eigene Ausschnitte desselben Bilds liegen bei
+ * 0-2, verschiedene Bilder bei rund 30.
+ */
+const SAME_ART_MAX = 6;
 
 /** Wie lange das Laden der Texterkennung höchstens dauern darf (Modell ~3 MB, langsames Netz). */
 const OCR_LOAD_TIMEOUT_MS = 45000;
