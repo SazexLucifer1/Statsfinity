@@ -200,6 +200,7 @@ Bei diesen Dateien grundsätzlich `grep`/`Glob` vor `Read`; wenn doch gelesen we
 | 1901   | `src/app/deck-detail-view/deck-detail-view.html` |
 | 1150   | `src/app/scryfall.service.ts`                    |
 | 1006   | `src/app/i18n/deck-view.ts`                      |
+| 1034   | `src/app/card-scan.service.ts`                   |
 
 ### Reihenfolge beim Suchen
 
