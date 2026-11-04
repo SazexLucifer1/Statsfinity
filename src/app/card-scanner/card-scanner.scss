@@ -178,3 +178,11 @@
     line-height: 30px;
   }
 }
+
+// Scan-Proben (nur Developer): kleiner Schalter über der Statuszeile.
+.sample-toggle {
+  display: block;
+  margin: 0 auto var(--sp-2);
+  padding: 4px 12px;
+  font-size: 0.75rem;
+}

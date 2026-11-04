@@ -35,6 +35,21 @@
   </div>
 
   <div class="bottom">
+    @if (samples.canUse()) {
+      <!-- Nur für Developer: Kamerabilder samt Ergebnis speichern (scan-sample.service.ts). -->
+      <button
+        type="button"
+        class="foil-toggle sample-toggle"
+        [class.on]="samples.enabled()"
+        [attr.aria-pressed]="samples.enabled()"
+        (click)="samples.setEnabled(!samples.enabled())"
+      >
+        {{ i18n.t('collection.scanner.samples') }}
+        @if (samples.savedCount() > 0) {
+          · {{ samples.savedCount() }}
+        }
+      </button>
+    }
     <p class="status" aria-live="polite">
       @switch (status()) {
         @case ('starting') {
