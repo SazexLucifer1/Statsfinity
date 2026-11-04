@@ -102,6 +102,14 @@ const CORNER_BOX = [-0.04, 0.8, 0.6, 1.12] as const;
  */
 const FOIL_MIN_CARD_HEIGHT = 700;
 
+/**
+ * Anteil des Rahmens, den die Karte in der dritten Lage-Annahme einnimmt (siehe identify()).
+ * Gemessen an 150 künstlichen Fotos mit der Karte bei 72-100 % des Rahmens: 146 statt 144
+ * erkannt, ohne das Original in der Datei 2 statt 1 falsche Karte; an den drei echten Fotos der
+ * Homelands-Karte 3 statt 0 erkannt (zusammen mit der Lage für den alten Rahmen in art-hash.ts).
+ */
+const GUIDE_CARD_SHARE = 0.8;
+
 /** Helligkeit, auf die dunkle Bilder für die Kantensuche hochgerechnet werden (wie im Scanner). */
 const NORMAL_LIGHT = 128;
 /** Nicht weiter als bis hier - fast schwarz ist kein Bild mehr, nur Rauschen. */
@@ -204,11 +212,15 @@ export class CardScanService {
     fallbackLang: string,
     detail?: HTMLCanvasElement,
   ): Promise<ScanHit | null> {
-    // Zwei Annahmen, wo die Karte liegt: wo die Kantensuche sie findet (card-bounds.ts) und genau
+    // Annahmen, wo die Karte liegt: wo die Kantensuche sie findet (card-bounds.ts) und genau
     // im Rahmen. Die Kantensuche irrt, wenn sich der Kartenrand kaum vom Untergrund abhebt - mit
     // dem Rahmen als zweiter Annahme kann sie nichts verschlechtern, nur verbessern.
     const found = this.findCard(frame);
-    const boxes: ArtBox[] = [...found, guide];
+    // Dritte Annahme: die Karte mittig im Rahmen, aber kleiner (GUIDE_CARD_SHARE). In einer Box mit
+    // weißen Wänden sind deren Schattenkanten kräftiger als der Kartenrand - die Kantensuche fand
+    // dann nur einzelne Seiten der Karte, und die Karte füllte nur gut 80 % des Rahmens, mehr als
+    // die Verschiebungen des Fingerabdrucks abfangen (Homelands-Karte, 04.11.2026).
+    const boxes: ArtBox[] = [...found, guide, shrink(guide, GUIDE_CARD_SHARE)];
 
     const art = await this.matchArt(frame, boxes, guide);
     const artId = art?.match.id ?? null;
@@ -713,6 +725,15 @@ export class CardScanService {
     this.cardCache.set(url, card);
     return card;
   }
+}
+
+/** `box` um seine Mitte auf `share` seiner Breite und Höhe verkleinert. */
+function shrink(box: ArtBox, share: number): ArtBox {
+  const cx = (box[0] + box[2]) / 2;
+  const cy = (box[1] + box[3]) / 2;
+  const hw = ((box[2] - box[0]) * share) / 2;
+  const hh = ((box[3] - box[1]) * share) / 2;
+  return [cx - hw, cy - hh, cx + hw, cy + hh];
 }
 
 /** `part` (Anteile der Karte) als Ausschnitt des Bildes, wenn die Karte bei `card` liegt. */
