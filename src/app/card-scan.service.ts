@@ -95,6 +95,8 @@ export interface ScanDiagnostics {
   langSource?: 'corner' | 'image' | 'text' | 'fallback';
   /** Foil aus Zeichengröße, Wortrahmen und Schimmer. */
   foil?: { pixel: boolean | null; words: boolean | null; sheen: boolean | null };
+  /** Zustand der Texterkennung bei diesem Scan (CardScanService.ocrStatus). */
+  ocr?: string;
   /** Gelesene Namenszeile je Kartenlage und Treffer darüber (matchByName()). */
   nameText?: string[];
   nameHit?: { oracle: string; distance: number; via: string };
@@ -224,29 +226,56 @@ export class CardScanService {
     return this.indexPromise;
   }
 
+  /**
+   * Texterkennung laden. In allen 292 Scan-Proben vom iPhone (04.11.2026) lieferte sie keinen
+   * einzigen Buchstaben, auf denselben Bildern in Chromium dagegen Set, Nummer und Sprache - sie
+   * startete in Safari offenbar gar nicht. Deshalb: Scheitert die automatisch gewählte Fassung
+   * (tesseract.js nimmt je nach Browser die mit SIMD bzw. "relaxed SIMD"), noch einmal mit der
+   * einfachsten ohne Beschleunigung; und jeder Fehler steht in `ocrStatus`, das jede Scan-Probe
+   * mitschreibt - sonst bleibt so ein Ausfall auf dem Handy unsichtbar.
+   */
   private loadWorker(): Promise<OcrWorker | null> {
     this.workerPromise ??= (async () => {
-      try {
-        const { createWorker } = await import('tesseract.js');
-        const base = new URL('tesseract/', document.baseURI).href;
-        const worker = await createWorker('eng', 1, {
-          workerPath: `${base}worker.min.js`,
-          corePath: base,
-          langPath: base.replace(/\/$/, ''),
-          gzip: true,
-          // Ein Worker aus einer blob:-Adresse bräuchte eine Ausnahme in der CSP.
-          workerBlobURL: false,
-        });
-        this.worker = worker;
-        return worker;
-      } catch (e) {
-        console.warn('Texterkennung nicht geladen:', e);
-        this.workerPromise = null;
-        return null;
+      const { createWorker } = await import('tesseract.js');
+      const base = new URL('tesseract/', document.baseURI).href;
+      const errors: string[] = [];
+      for (const [label, corePath] of [
+        ['auto', base],
+        ['ohne SIMD', `${base}tesseract-core-lstm.wasm.js`],
+      ] as const) {
+        try {
+          const worker = await withTimeout(
+            createWorker('eng', 1, {
+              workerPath: `${base}worker.min.js`,
+              corePath,
+              langPath: base.replace(/\/$/, ''),
+              gzip: true,
+              // Ein Worker aus einer blob:-Adresse bräuchte eine Ausnahme in der CSP.
+              workerBlobURL: false,
+              errorHandler: (e: unknown) => errors.push(`${label}: ${describeError(e)}`),
+            }),
+            OCR_LOAD_TIMEOUT_MS,
+          );
+          this.worker = worker;
+          this.ocrStatus = errors.length
+            ? `ok (${label}) nach ${errors.join(' | ')}`
+            : `ok (${label})`;
+          return worker;
+        } catch (e) {
+          errors.push(`${label}: ${describeError(e)}`);
+          console.warn('Texterkennung nicht geladen:', label, e);
+        }
       }
+      this.ocrStatus = `Fehler: ${errors.join(' | ')}`.slice(0, 500);
+      // Nicht bei jedem Scan-Versuch (alle 0,6 s) neu laden und warten - erst nach einer Minute.
+      setTimeout(() => (this.workerPromise = null), 60000);
+      return null;
     })();
     return this.workerPromise;
   }
+
+  /** Zustand der Texterkennung für die Scan-Proben: "ok (…)", "Fehler: …" oder noch nicht geladen. */
+  ocrStatus = 'nicht geladen';
 
   async dispose(): Promise<void> {
     const worker = this.worker;
@@ -279,6 +308,9 @@ export class CardScanService {
 
     this.lastScan = {};
     this.lastCorner = null;
+    // Vor allem anderen laden, damit jede Probe weiß, ob die Texterkennung lief.
+    await this.loadWorker();
+    this.lastScan.ocr = this.ocrStatus;
     // Findet der Fingerabdruck nichts, der Kartenname (matchByName()) - danach geht es weiter wie
     // nach einem Artwork-Treffer.
     const art =
@@ -1014,6 +1046,35 @@ export class CardScanService {
  * 0-2, verschiedene Bilder bei rund 30.
  */
 const SAME_ART_MAX = 6;
+
+/** Wie lange das Laden der Texterkennung höchstens dauern darf (Modell ~3 MB, langsames Netz). */
+const OCR_LOAD_TIMEOUT_MS = 45000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`Zeitüberschreitung nach ${ms} ms`)), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
+function describeError(e: unknown): string {
+  if (e instanceof Error) return `${e.name}: ${e.message}`;
+  if (typeof e === 'string') return e;
+  try {
+    return JSON.stringify(e);
+  } catch {
+    return String(e);
+  }
+}
 
 /** `box` um seine Mitte auf `share` seiner Breite und Höhe verkleinert. */
 function shrink(box: ArtBox, share: number): ArtBox {
