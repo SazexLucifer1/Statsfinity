@@ -78,6 +78,16 @@ export interface ScanHit {
 const API = 'https://api.scryfall.com';
 
 const COLLECTOR_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/•*★ ';
+/**
+ * Zeichen für den Kartentext (languageFromCard()). Ausdrücklich alle statt '': Tesseract wendet die
+ * Liste nur an, wenn sie nicht leer ist - mit '' blieb die der Sammlerzeile stehen, und der
+ * Kartentext wurde nur in Großbuchstaben und Ziffern gelesen. "werden", "Zuges" kamen so nie an,
+ * und die Sprache aus dem Text fiel immer aus (04.11.2026).
+ */
+const TEXT_CHARS =
+  'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789' +
+  'ÄÖÜäöüßÀÂÆÇÈÉÊËÎÏÔŒÙÛŸàâæçèéêëîïôœùûÿÁÍÑÓÚáíñóúÌÒìòÃÕãõ' +
+  ' .,;:!?\'"()[]/+-–—’‘“”„«»•*';
 
 /** Ab diesem Anteil gespiegelter Pixel im Rahmen wird zusätzlich ohne die Flecken gerechnet. */
 const GLARE_MIN = 0.002;
@@ -126,6 +136,11 @@ export class CardScanService {
   private readonly scanCache = new Map<string, ImageData>();
   /** Rahmenart je Scryfall-ID (lookKey()), gefüllt von printsWithArt(). */
   private readonly lookOf = new Map<string, string>();
+  /**
+   * Drucke, von denen Scryfall ein echtes Bild hat. Für viele alte fremdsprachige Drucke gibt es nur
+   * einen Platzhalter: die englische Karte mit dem Aufkleber "Localized Image Not Available".
+   */
+  private readonly realScan = new Set<string>();
   /** Artworks, deren Drucke nicht auf eine Seite der Scryfall-Suche passten. */
   private readonly incompletePrints = new Set<string>();
 
@@ -377,7 +392,15 @@ export class CardScanService {
 
     const languages = prints.filter((p) => same(p, base.setCode, base.collectorNumber));
     let lang = line.lang;
-    if (!lang && windows && languages.length > 1) {
+    // Nur, wenn es jede Sprache als echtes Bild gibt: Ein Platzhalter zeigt den englischen Text,
+    // ein deutsches Foto (Homelands, 04.11.2026) wurde dagegen als Englisch erkannt. Ohne echte
+    // Bilder liest languageFromCard() den Kartentext.
+    if (
+      !lang &&
+      windows &&
+      languages.length > 1 &&
+      languages.every((p) => this.realScan.has(p.scryfallId))
+    ) {
       const prepared = prepareWindows(windows, TEXT_MASK);
       const scores: number[] = [];
       for (const p of languages) {
@@ -396,6 +419,21 @@ export class CardScanService {
       languages.find((p) => p.lang === lang) ??
       (lang === base.lang ? base : await this.printForArt(base.scryfallId, lang))
     );
+  }
+
+  /**
+   * Derselbe Druck (Set und Nummer) in allen Sprachen - für die Auswahl im Scanner, wenn die
+   * Sprache falsch erkannt wurde. Mindestens der Druck selbst.
+   */
+  async languagesOfPrint(print: CollectionPrint): Promise<CollectionPrint[]> {
+    const q = encodeURIComponent(
+      `set:${print.setCode} cn:"${print.collectorNumber.replace(/"/g, '')}" include:extras`,
+    );
+    const list = await this.cardBy(
+      `${API}/cards/search?q=${q}&unique=prints&include_multilingual=true`,
+    );
+    const prints = ((list?.data as any[]) ?? []).map(toCollectionPrint);
+    return prints.some((p) => p.scryfallId === print.scryfallId) ? prints : [print, ...prints];
   }
 
   /** Foil am Schimmer im Textkasten, verglichen mit dem Scan unter `scanUrl` (null = unklar). */
@@ -570,7 +608,7 @@ export class CardScanService {
     const { PSM } = await import('tesseract.js');
     await worker.setParameters({
       tessedit_pageseg_mode: PSM.SINGLE_BLOCK,
-      tessedit_char_whitelist: '',
+      tessedit_char_whitelist: TEXT_CHARS,
     });
     const card = crop(frame, cardBox);
     let text = '';
@@ -622,7 +660,12 @@ export class CardScanService {
     const cards = ((list?.data as any[]) ?? []).filter(
       (card) => toCollectionPrint(card).illustrationId === illustration,
     );
-    for (const card of cards) this.lookOf.set(card.id, lookKey(card));
+    for (const card of cards) {
+      this.lookOf.set(card.id, lookKey(card));
+      if (card.image_status === 'highres_scan' || card.image_status === 'lowres') {
+        this.realScan.add(card.id);
+      }
+    }
     if (list?.has_more) this.incompletePrints.add(artId);
     return cards.map(toCollectionPrint);
   }

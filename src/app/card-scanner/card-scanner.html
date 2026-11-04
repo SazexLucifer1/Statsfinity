@@ -72,9 +72,27 @@
           <li>
             <img [src]="r.print.imageUrl" alt="" />
             <span class="name">{{ r.print.printedName || r.print.cardName }}</span>
-            <span class="meta"
-              >{{ r.print.setCode.toUpperCase() }} · {{ langLabel(r.print.lang) }}</span
-            >
+            @if (r.languages; as languages) {
+              <!-- Falsch erkannte Sprache umstellen: tauscht den Druck in der Sammlung um. -->
+              <label class="meta lang-pick">
+                {{ r.print.setCode.toUpperCase() }} ·
+                <select
+                  [value]="r.print.lang"
+                  (change)="changeLanguage(r, $any($event.target).value)"
+                  [attr.aria-label]="i18n.t('collection.scanner.changeLanguage')"
+                >
+                  @for (p of languages; track p.scryfallId) {
+                    <option [value]="p.lang" [selected]="p.lang === r.print.lang">
+                      {{ langLabel(p.lang) }}
+                    </option>
+                  }
+                </select>
+              </label>
+            } @else {
+              <span class="meta"
+                >{{ r.print.setCode.toUpperCase() }} · {{ langLabel(r.print.lang) }}</span
+              >
+            }
             @if (canToggleFoil(r)) {
               <button
                 type="button"
