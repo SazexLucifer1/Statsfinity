@@ -22,6 +22,8 @@ interface RecentScan extends ScanHit {
   key: number;
   /** Derselbe Druck in allen Sprachen, zum Umstellen (lädt nach dem Treffer). */
   languages?: CollectionPrint[];
+  /** Drucke mit demselben Artwork, je Set einer - zum Umstellen eines falsch erkannten Sets. */
+  sets?: CollectionPrint[];
   /** Gespeicherte Scan-Probe zu diesem Treffer, für Korrekturen (scan-sample.service.ts). */
   sampleId?: string;
 }
@@ -187,7 +189,26 @@ export class CardScanner implements OnInit, OnDestroy {
   /** Andere Sprache für einen Treffer: tauscht den Druck in der Sammlung um. */
   async changeLanguage(item: RecentScan, lang: string): Promise<void> {
     const target = item.languages?.find((p) => p.lang === lang);
-    if (!target || target.scryfallId === item.print.scryfallId) return;
+    if (target) await this.swapPrint(item, target);
+  }
+
+  /** Anderes Set (anderer Druck mit demselben Artwork), möglichst in derselben Sprache. */
+  async changeSet(item: RecentScan, scryfallId: string): Promise<void> {
+    const chosen = item.sets?.find((p) => p.scryfallId === scryfallId);
+    if (!chosen) return;
+    const languages = await this.scan.languagesOfPrint(chosen);
+    const target = languages.find((p) => p.lang === item.print.lang) ?? chosen;
+    await this.swapPrint(item, target);
+    this.recent.update((list) =>
+      list.map((r) =>
+        r.key === item.key ? { ...r, languages: languages.length > 1 ? languages : undefined } : r,
+      ),
+    );
+  }
+
+  /** Tauscht den Druck eines Treffers in der Sammlung um (neuer +1, alter −1). */
+  private async swapPrint(item: RecentScan, target: CollectionPrint): Promise<void> {
+    if (target.scryfallId === item.print.scryfallId) return;
     const foil = item.foil && target.finishes.some((f) => f !== 'nonfoil');
     const ok = await this.collection.add(target, foil, 1);
     if (!ok) return;
@@ -197,15 +218,29 @@ export class CardScanner implements OnInit, OnDestroy {
     );
     void this.samples.correct(item.sampleId, {
       scryfall_id: target.scryfallId,
+      set: target.setCode,
+      number: target.collectorNumber,
       lang: target.lang,
       foil,
     });
   }
 
   private async loadLanguages(key: number, print: CollectionPrint): Promise<void> {
-    const languages = await this.scan.languagesOfPrint(print);
-    if (languages.length < 2) return;
-    this.recent.update((list) => list.map((r) => (r.key === key ? { ...r, languages } : r)));
+    const [languages, sets] = await Promise.all([
+      this.scan.languagesOfPrint(print),
+      this.scan.printsOfSameArt(print),
+    ]);
+    this.recent.update((list) =>
+      list.map((r) =>
+        r.key === key
+          ? {
+              ...r,
+              languages: languages.length > 1 ? languages : undefined,
+              sets: sets.length > 1 ? sets : undefined,
+            }
+          : r,
+      ),
+    );
   }
 
   async undo(item: RecentScan): Promise<void> {
