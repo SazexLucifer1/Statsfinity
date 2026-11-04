@@ -78,16 +78,6 @@ export interface ScanHit {
 const API = 'https://api.scryfall.com';
 
 const COLLECTOR_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/•*★ ';
-/**
- * Zeichen für den Kartentext (languageFromCard()). Ausdrücklich alle statt '': Tesseract wendet die
- * Liste nur an, wenn sie nicht leer ist - mit '' blieb die der Sammlerzeile stehen, und der
- * Kartentext wurde nur in Großbuchstaben und Ziffern gelesen. "werden", "Zuges" kamen so nie an,
- * und die Sprache aus dem Text fiel immer aus (04.11.2026).
- */
-const TEXT_CHARS =
-  'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789' +
-  'ÄÖÜäöüßÀÂÆÇÈÉÊËÎÏÔŒÙÛŸàâæçèéêëîïôœùûÿÁÍÑÓÚáíñóúÌÒìòÃÕãõ' +
-  ' .,;:!?\'"()[]/+-–—’‘“”„«»•*';
 
 /** Ab diesem Anteil gespiegelter Pixel im Rahmen wird zusätzlich ohne die Flecken gerechnet. */
 const GLARE_MIN = 0.002;
@@ -608,7 +598,7 @@ export class CardScanService {
     const { PSM } = await import('tesseract.js');
     await worker.setParameters({
       tessedit_pageseg_mode: PSM.SINGLE_BLOCK,
-      tessedit_char_whitelist: TEXT_CHARS,
+      tessedit_char_whitelist: '',
     });
     const card = crop(frame, cardBox);
     let text = '';
