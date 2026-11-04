@@ -68,6 +68,33 @@ import {
  * Scanner eingestellte.
  */
 
+/**
+ * Zwischenwerte des letzten identify() - für die Scan-Proben (scan-sample.service.ts), mit denen
+ * sich Änderungen am Scanner später gegen echte Kamerabilder nachmessen lassen. Reine Anzeige- und
+ * Messdaten, der Ablauf liest nichts davon.
+ */
+export interface ScanDiagnostics {
+  /** Artwork-Treffer: Scryfall-ID, Abstand, Abstand des Zweiten, Kartenlage (Anteile). */
+  art?: { id: string; distance: number; runnerUp: number; cardBox: ArtBox } | null;
+  /** Gelesener Text der Ecke je Aufbereitung. */
+  cornerText?: string[];
+  /** Daraus gelesene Sammlerzeile. */
+  line?: CollectorLine;
+  /** Druck, den die Ecke unter den Drucken mit diesem Artwork gewählt hat. */
+  cornerPrint?: string | null;
+  /** Rahmenvergleich: Vertreter je Rahmenart mit Wert (print-look.ts). */
+  look?: { set: string; nr: string; lang: string; score: number }[];
+  /** Sprachvergleich am Textkasten. */
+  langScores?: { lang: string; score: number }[];
+  /** Woher die Sprache kam. */
+  langSource?: 'corner' | 'image' | 'text' | 'fallback';
+  /** Foil aus Zeichengröße, Wortrahmen und Schimmer. */
+  foil?: { pixel: boolean | null; words: boolean | null; sheen: boolean | null };
+  /** Weg zum Ergebnis. */
+  path?: 'corner' | 'look' | 'text' | 'artFallback' | 'none';
+  glare?: boolean;
+}
+
 export interface ScanHit {
   print: CollectionPrint;
   foil: boolean;
@@ -144,6 +171,11 @@ export class CardScanService {
 
   /** Spiegelt die Karte im Rahmen gerade deutlich (Foil, Hülle, Lampe)? Für den Hinweis im Scanner. */
   readonly glare = signal(false);
+
+  /** Zwischenwerte des letzten identify() (siehe ScanDiagnostics). */
+  lastScan: ScanDiagnostics = {};
+  /** Ausschnitt der Ecke, den die Texterkennung zuletzt gelesen hat (volle Kameraauflösung). */
+  lastCorner: HTMLCanvasElement | null = null;
 
   /** Lädt Fingerabdrücke und Texterkennung (beim Öffnen des Scanners, parallel zur Kamera). */
   async prepare(): Promise<void> {
@@ -227,8 +259,18 @@ export class CardScanService {
     // die Verschiebungen des Fingerabdrucks abfangen (Homelands-Karte, 04.11.2026).
     const boxes: ArtBox[] = [...found, guide, shrink(guide, GUIDE_CARD_SHARE)];
 
+    this.lastScan = {};
+    this.lastCorner = null;
     const art = await this.matchArt(frame, boxes, guide);
     const artId = art?.match.id ?? null;
+    this.lastScan.glare = this.glare();
+    this.lastScan.art = art && {
+      id: art.match.id,
+      distance: art.match.distance,
+      runnerUp: art.match.runnerUp,
+      cardBox: art.cardBox,
+    };
+    const cornerText: string[] = [];
 
     // Die ergiebigere Lesung gewinnt: Set + Nummer zählen doppelt (eindeutiger Druck), die
     // Sprache einfach (reicht zusammen mit dem Artwork für die richtige Fassung).
@@ -242,10 +284,12 @@ export class CardScanService {
       // diesem Artwork sind bekannt - die Texterkennung muss nur noch zwischen ihnen entscheiden.
       const source = detail ?? frame;
       const corner = crop(source, within(art.cardBox, CORNER_BOX));
+      this.lastCorner = corner;
       const prints = await this.printsWithArt(art.match.id);
       const largeEnough = (art.cardBox[3] - art.cardBox[1]) * source.height >= FOIL_MIN_CARD_HEIGHT;
       for (const variant of ['contrast', 'stretch'] as const) {
         const read = await this.readCollectorLine(corner, variant);
+        cornerText.push(read.text);
         const parsed = parseCollectorLine(read.text);
         if (score(parsed) > score(line)) {
           line = parsed;
@@ -266,6 +310,7 @@ export class CardScanService {
           crop(frame, within(box, COLLECTOR_BOX)),
           'contrast',
         );
+        cornerText.push(read.text);
         const parsed = parseCollectorLine(read.text);
         if (score(parsed) > score(line)) {
           line = parsed;
@@ -275,6 +320,12 @@ export class CardScanService {
       }
     }
     const detectedFoil = pixelFoil ?? foilFromWords(words);
+    this.lastScan.cornerText = cornerText;
+    this.lastScan.line = line;
+    this.lastScan.cornerPrint =
+      cornerPrint && `${cornerPrint.setCode} ${cornerPrint.collectorNumber} ${cornerPrint.lang}`;
+    this.lastScan.path = cornerPrint ? 'corner' : 'none';
+    if (cornerPrint) this.lastScan.langSource = 'corner';
 
     let print: CollectionPrint | null = cornerPrint;
     let via: ScanHit['via'] = 'text';
@@ -282,7 +333,10 @@ export class CardScanService {
     // das Aussehen der ganzen Karte über Druck und Sprache (print-look.ts).
     if (!print && art) {
       print = await this.printByLook(frame, art.cardBox, art.match.id, line, fallbackLang);
-      if (print) via = 'art';
+      if (print) {
+        via = 'art';
+        this.lastScan.path = 'look';
+      }
     }
     if (!print && line.setCode && line.collectorNumber) {
       const byText = await this.cardBy(
@@ -293,23 +347,32 @@ export class CardScanService {
         const artCard = artId ? await this.cardBy(`${API}/cards/${artId}`) : null;
         const artIll = artCard ? toCollectionPrint(artCard).illustrationId : null;
         // Gegenprobe: Ein sicherer Artwork-Treffer mit anderem Bild heißt, der Text war verlesen.
-        if (!artIll || artIll === textPrint.illustrationId) print = textPrint;
+        if (!artIll || artIll === textPrint.illustrationId) {
+          print = textPrint;
+          this.lastScan.path = 'text';
+          this.lastScan.langSource = line.lang ? 'corner' : 'fallback';
+        }
       }
     }
     if (!print && artId) {
       print = await this.printForArt(artId, line.lang ?? fallbackLang);
       via = 'art';
+      this.lastScan.path = 'artFallback';
+      this.lastScan.langSource = line.lang ? 'corner' : 'fallback';
     }
     if (!print) return null;
 
     const canNonfoil = print.finishes.includes('nonfoil');
     const canFoil = print.finishes.some((f) => f !== 'nonfoil');
     let foil = !canNonfoil ? true : !canFoil ? false : (detectedFoil ?? false);
+    let sheen: boolean | null = null;
     // Den Stern liest die Kamera oft nicht (zu klein, Spiegelung) - dann der Regenbogen-Schimmer
     // im Textkasten, verglichen mit Scryfalls Scan desselben Drucks (foil-sheen.ts).
     if (!foil && canFoil && art) {
-      foil = (await this.foilFromSheen(detail ?? frame, art.cardBox, print.imageUrl)) ?? false;
+      sheen = await this.foilFromSheen(detail ?? frame, art.cardBox, print.imageUrl);
+      foil = sheen ?? false;
     }
+    this.lastScan.foil = { pixel: pixelFoil, words: foilFromWords(words), sheen };
     return { print, foil, via };
   }
 
@@ -388,6 +451,12 @@ export class CardScanService {
           );
         }
         const winner = clearWinner(scores);
+        this.lastScan.look = reps.map((r, i) => ({
+          set: r.setCode,
+          nr: r.collectorNumber,
+          lang: r.lang,
+          score: Math.round(scores[i] * 1000) / 1000,
+        }));
         if (winner !== null) base = reps[winner];
       }
     }
@@ -414,9 +483,22 @@ export class CardScanService {
         );
       }
       const winner = clearWinner(scores);
-      if (winner !== null) lang = languages[winner].lang;
+      this.lastScan.langScores = languages.map((p, i) => ({
+        lang: p.lang,
+        score: Math.round(scores[i] * 1000) / 1000,
+      }));
+      if (winner !== null) {
+        lang = languages[winner].lang;
+        this.lastScan.langSource = 'image';
+      }
+    } else if (lang) {
+      this.lastScan.langSource = 'corner';
     }
-    lang ??= (await this.languageFromCard(frame, cardBox, artId)) ?? fallbackLang;
+    if (!lang) {
+      lang = await this.languageFromCard(frame, cardBox, artId);
+      this.lastScan.langSource = lang ? 'text' : 'fallback';
+      lang ??= fallbackLang;
+    }
     return (
       languages.find((p) => p.lang === lang) ??
       (lang === base.lang ? base : await this.printForArt(base.scryfallId, lang))

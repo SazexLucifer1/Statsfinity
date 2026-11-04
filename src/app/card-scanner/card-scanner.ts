@@ -12,6 +12,7 @@ import { FormsModule } from '@angular/forms';
 import { I18nService } from '../i18n.service';
 import { CollectionService } from '../collection.service';
 import { CardScanService, ScanHit } from '../card-scan.service';
+import { ScanSampleService } from '../scan-sample.service';
 import { CollectionPrint } from '../collection-coverage';
 import { ArtLanguageService } from '../art-language.service';
 import { ART_LANGUAGES } from '../art-languages';
@@ -21,7 +22,12 @@ interface RecentScan extends ScanHit {
   key: number;
   /** Derselbe Druck in allen Sprachen, zum Umstellen (lädt nach dem Treffer). */
   languages?: CollectionPrint[];
+  /** Gespeicherte Scan-Probe zu diesem Treffer, für Korrekturen (scan-sample.service.ts). */
+  sampleId?: string;
 }
+
+/** Ohne Treffer höchstens alle so viele ms eine Scan-Probe - der Scanner versucht es alle 0,6 s. */
+const MISS_SAMPLE_MS = 5000;
 
 function canToggleFoil(item: ScanHit): boolean {
   const finishes = item.print.finishes;
@@ -69,6 +75,8 @@ const LANG_KEY = 'statsfinity.scanLang';
 export class CardScanner implements OnInit, OnDestroy {
   readonly i18n = inject(I18nService);
   readonly scan = inject(CardScanService);
+  readonly samples = inject(ScanSampleService);
+  private lastMissSample = 0;
   private readonly collection = inject(CollectionService);
   private readonly artLanguage = inject(ArtLanguageService);
 
@@ -169,6 +177,7 @@ export class CardScanner implements OnInit, OnDestroy {
     this.recent.update((list) =>
       list.map((r) => (r.key === item.key ? { ...r, foil: !r.foil } : r)),
     );
+    void this.samples.correct(item.sampleId, { foil: !item.foil });
   }
 
   canToggleFoil(item: RecentScan): boolean {
@@ -186,6 +195,11 @@ export class CardScanner implements OnInit, OnDestroy {
     this.recent.update((list) =>
       list.map((r) => (r.key === item.key ? { ...r, print: target, foil } : r)),
     );
+    void this.samples.correct(item.sampleId, {
+      scryfall_id: target.scryfallId,
+      lang: target.lang,
+      foil,
+    });
   }
 
   private async loadLanguages(key: number, print: CollectionPrint): Promise<void> {
@@ -197,6 +211,7 @@ export class CardScanner implements OnInit, OnDestroy {
   async undo(item: RecentScan): Promise<void> {
     await this.collection.add(item.print, item.foil, -1);
     this.recent.update((list) => list.filter((r) => r !== item));
+    void this.samples.correct(item.sampleId, { removed: true });
   }
 
   langLabel(code: string): string {
@@ -310,6 +325,10 @@ export class CardScanner implements OnInit, OnDestroy {
       const found = await this.scan.identify(frame, guide, this.fallbackLang(), detail);
       if (!found) {
         this.status.set(this.scan.glare() ? 'glare' : 'notFound');
+        if (this.samples.enabled() && Date.now() - this.lastMissSample > MISS_SAMPLE_MS) {
+          this.lastMissSample = Date.now();
+          void this.samples.save(frame, guide, this.scan.lastCorner, null, this.scan.lastScan);
+        }
         return;
       }
       const hit =
@@ -335,6 +354,16 @@ export class CardScanner implements OnInit, OnDestroy {
       const entry = ++this.scanCounter;
       this.recent.update((list) => [{ ...hit, key: entry }, ...list].slice(0, 8));
       void this.loadLanguages(entry, hit.print);
+      if (this.samples.enabled()) {
+        void this.samples
+          .save(frame, guide, this.scan.lastCorner, hit, this.scan.lastScan)
+          .then((sampleId) => {
+            if (!sampleId) return;
+            this.recent.update((list) =>
+              list.map((r) => (r.key === entry ? { ...r, sampleId } : r)),
+            );
+          });
+      }
       this.status.set('saved');
       this.flash.set(true);
       setTimeout(() => this.flash.set(false), 600);
