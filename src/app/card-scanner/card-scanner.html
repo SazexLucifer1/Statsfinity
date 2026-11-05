@@ -20,6 +20,16 @@
     >
       ★ {{ i18n.t('collection.scanner.foilMode') }}
     </button>
+    <button
+      type="button"
+      class="foil-toggle sound-toggle"
+      [class.on]="sound()"
+      [attr.aria-pressed]="sound()"
+      [attr.aria-label]="i18n.t('collection.scanner.sound')"
+      (click)="toggleSound()"
+    >
+      <app-icon [name]="sound() ? 'volume' : 'volume-off'" />
+    </button>
     <label class="lang">
       <span>{{ i18n.t('collection.scanner.fallbackLang') }}</span>
       <select

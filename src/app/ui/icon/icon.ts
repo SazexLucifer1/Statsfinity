@@ -92,5 +92,7 @@ export type IconName =
   | 'unlock'
   | 'user'
   | 'users'
+  | 'volume'
+  | 'volume-off'
   | 'warning'
   | 'wrench';
