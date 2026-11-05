@@ -53,7 +53,7 @@ const none: CollectionFilters = {
   cmc: 'all',
   colors: EMPTY_COLOR_SELECTION,
   type: 'all',
-  effect: 'all',
+  effect: { keys: new Set<string>(), mode: 'all' },
   keyword: 'all',
   usage: 'all',
 };
@@ -104,7 +104,9 @@ describe('filterCollection', () => {
       filterCollection(items, { ...none, type: 'Kreatur' }).map((i) => i.entry.cardName),
     ).toEqual(['Llanowar Elves']);
     expect(
-      filterCollection(items, { ...none, effect: 'removal' }).map((i) => i.entry.cardName),
+      filterCollection(items, { ...none, effect: { keys: new Set(['removal']), mode: 'all' } }).map(
+        (i) => i.entry.cardName,
+      ),
     ).toEqual(['Swords to Plowshares']);
     expect(
       filterCollection(items, { ...none, colors: { colors: ['W'], mode: 'exact' } }),

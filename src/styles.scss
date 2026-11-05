@@ -1316,3 +1316,13 @@ h3 {
     padding: 14px 16px;
   }
 }
+
+// Kopf der Effekt-Kacheln in der Deck-Analyse: Titel links, "Kacheln anpassen" rechts. Hier statt
+// in deck-detail-view.scss, weil die Komponentendatei am 12-kB-Stilbudget steht.
+.effect-tiles-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}

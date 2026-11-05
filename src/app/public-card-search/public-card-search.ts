@@ -11,8 +11,15 @@ import {
 import { CardDataService } from '../card-data.service';
 import { CardPreviewService } from '../card-preview.service';
 import { I18nService } from '../i18n.service';
+import { EffectFilter } from '../ui/effect-filter/effect-filter';
 import { CardImage } from '../card-image/card-image';
-import { CARD_EFFECT_FILTERS } from '../card-effect-filters';
+import {
+  CARD_EFFECT_FILTERS,
+  EMPTY_EFFECT_SELECTION,
+  EffectSelection,
+  effectSelectionActive,
+  effectSelectionQuery,
+} from '../card-effect-filters';
 import { ColorFilter } from '../ui/color-filter/color-filter';
 import { ColorSelection, EMPTY_COLOR_SELECTION } from '../color-filter-match';
 import { CmcFilter, CmcFilterValue } from '../ui/cmc-filter/cmc-filter';
@@ -29,7 +36,7 @@ import { PrintSearch } from '../ui/print-search/print-search';
  */
 @Component({
   selector: 'app-public-card-search',
-  imports: [FormsModule, CardImage, ColorFilter, CmcFilter, RarityFilter, PrintSearch],
+  imports: [FormsModule, CardImage, ColorFilter, CmcFilter, RarityFilter, EffectFilter, PrintSearch],
   templateUrl: './public-card-search.html',
   styleUrl: './public-card-search.scss',
 })
@@ -61,7 +68,7 @@ export class PublicCardSearch {
   readonly cmcFilter = signal<CmcFilterValue>('all');
   readonly rarityFilter = signal<ReadonlySet<string>>(new Set());
   readonly colorFilter = signal<ColorSelection>(EMPTY_COLOR_SELECTION);
-  readonly effectFilter = signal<'all' | string>('all');
+  readonly effectFilter = signal<EffectSelection>(EMPTY_EFFECT_SELECTION);
   readonly keywordFilter = signal<'all' | string>('all');
   readonly sortMode = signal<'name' | 'cmc'>('name');
 
@@ -157,7 +164,7 @@ export class PublicCardSearch {
       this.cmcFilter() !== 'all' ||
       this.rarityFilter().size > 0 ||
       this.colorFilter().colors.length > 0 ||
-      this.effectFilter() !== 'all' ||
+      effectSelectionActive(this.effectFilter()) ||
       this.keywordFilter() !== 'all'
     );
   }
@@ -169,7 +176,7 @@ export class PublicCardSearch {
     this.cmcFilter.set('all');
     this.rarityFilter.set(new Set());
     this.colorFilter.set(EMPTY_COLOR_SELECTION);
-    this.effectFilter.set('all');
+    this.effectFilter.set(EMPTY_EFFECT_SELECTION);
     this.keywordFilter.set('all');
     this.gridResults.set([]);
   }
@@ -206,7 +213,7 @@ export class PublicCardSearch {
     this.runFilterSearch();
   }
 
-  setEffectFilter(value: string): void {
+  setEffectFilter(value: EffectSelection): void {
     this.effectFilter.set(value);
     this.runFilterSearch();
   }
@@ -238,8 +245,7 @@ export class PublicCardSearch {
       creatureType: this.creatureTypeFilter().trim() || undefined,
       colors: this.colorFilter(),
       cmc: this.cmcFilter() === 'all' ? null : (this.cmcFilter() as number),
-      effectQuery:
-        this.effectFilter() === 'all' ? undefined : this.effectFilters.find((f) => f.value === this.effectFilter())?.query,
+      effectQuery: effectSelectionQuery(this.effectFilter()),
       keyword: this.keywordFilter() === 'all' ? undefined : this.keywordFilter(),
       rarities: this.rarityFilter(),
       print: this.printSearch(),

@@ -14,6 +14,13 @@ import { CollectionService, PrintInfo } from '../collection.service';
 import { CardDataService, SpellbookCardFlags } from '../card-data.service';
 import { CardPreviewService } from '../card-preview.service';
 import { DeckEffectsService } from '../deck-effects.service';
+import {
+  EMPTY_EFFECT_SELECTION,
+  EffectSelection,
+  effectSelectionQuery,
+  matchesEffectSelection,
+} from '../card-effect-filters';
+import { EffectFilter } from '../ui/effect-filter/effect-filter';
 import { ScryfallCard, ScryfallService } from '../scryfall.service';
 import { DeckFormat, SCRYFALL_FORMAT } from '../models';
 import { collectionKey, printImageUrl } from '../collection-coverage';
@@ -76,7 +83,7 @@ const FLAG_EFFECTS: Record<string, keyof SpellbookCardFlags> = {
  */
 @Component({
   selector: 'app-cube-card-picker',
-  imports: [FormsModule, CmcFilter, ColorFilter, RarityFilter, Icon],
+  imports: [FormsModule, CmcFilter, ColorFilter, RarityFilter, EffectFilter, Icon],
   templateUrl: './cube-card-picker.html',
   styleUrl: './cube-card-picker.scss',
 })
@@ -102,7 +109,7 @@ export class CubeCardPicker {
   readonly cmc = signal<'all' | number>('all');
   readonly colors = signal(EMPTY_COLOR_SELECTION);
   readonly rarities = signal<ReadonlySet<string>>(new Set());
-  readonly effect = signal('all');
+  readonly effect = signal<EffectSelection>(EMPTY_EFFECT_SELECTION);
   readonly keyword = signal('all');
   readonly order = signal<'name' | 'cmc'>('name');
   readonly limit = signal(PAGE);
@@ -201,7 +208,7 @@ export class CubeCardPicker {
       if (type !== 'all' && typeSection(c.typeLine) !== type) return false;
       if (cmc !== 'all' && (c.cmc === null || cmcBucket(c.cmc) !== cmc)) return false;
       if (colors.colors.length && !matchesColorSelection(c.colorIdentity, colors)) return false;
-      if (eff !== 'all' && !c.effects.has(eff)) return false;
+      if (!matchesEffectSelection(eff, (k) => c.effects.has(k))) return false;
       if (keyword !== 'all' && !c.keywords.some((k) => k.toLowerCase() === keyword)) return false;
       if (rarities.size) {
         // Ein eigener Druck in dieser Seltenheit reicht; noch nicht geladen bleibt sichtbar.
@@ -276,7 +283,7 @@ export class CubeCardPicker {
       cmc: 'all' | number;
       colors: typeof EMPTY_COLOR_SELECTION;
       rarities: ReadonlySet<string>;
-      effect: string;
+      effect: EffectSelection;
       keyword: string;
       order: 'name' | 'cmc';
       format: DeckFormat | null;
@@ -292,11 +299,7 @@ export class CubeCardPicker {
         cmc: args.cmc === 'all' ? null : args.cmc,
         colors: args.colors,
         rarities: args.rarities,
-        effectQuery:
-          args.effect === 'all'
-            ? undefined
-            : this.effectsService.effectFilters.find((f) => f.value === args.effect)?.query ||
-              undefined,
+        effectQuery: effectSelectionQuery(args.effect),
         keyword: args.keyword === 'all' ? undefined : args.keyword,
         order: args.order,
         format: args.format,
@@ -388,7 +391,7 @@ export class CubeCardPicker {
     this.cmc.set('all');
     this.colors.set(EMPTY_COLOR_SELECTION);
     this.rarities.set(new Set());
-    this.effect.set('all');
+    this.effect.set(EMPTY_EFFECT_SELECTION);
     this.keyword.set('all');
   }
 }

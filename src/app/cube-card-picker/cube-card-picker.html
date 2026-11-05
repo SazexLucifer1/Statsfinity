@@ -13,12 +13,7 @@
         <option [ngValue]="t">{{ typeLabel(t) }}</option>
       }
     </select>
-    <select class="glass-input small" [ngModel]="effect()" (ngModelChange)="effect.set($event)">
-      <option [ngValue]="'all'">{{ i18n.t('deckView.effectAll') }}</option>
-      @for (f of effectOptions(); track f.value) {
-        <option [ngValue]="f.value">{{ effectsService.effectFilterLabel(f.value) }}</option>
-      }
-    </select>
+    <app-effect-filter [value]="effect()" [options]="effectOptions()" (valueChange)="effect.set($event)" />
     <select class="glass-input small" [ngModel]="keyword()" (ngModelChange)="keyword.set($event)">
       <option [ngValue]="'all'">{{ i18n.t('deckView.abilityAll') }}</option>
       @for (k of effectsService.keywordFilters; track k.value) {

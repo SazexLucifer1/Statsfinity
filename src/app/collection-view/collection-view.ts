@@ -26,6 +26,8 @@ import { CardPreviewService } from '../card-preview.service';
 import { CardDataService, SpellbookCardFlags } from '../card-data.service';
 import { ScryfallCard, ScryfallService, ScryfallSet } from '../scryfall.service';
 import { DeckEffectsService } from '../deck-effects.service';
+import { EMPTY_EFFECT_SELECTION, EffectSelection } from '../card-effect-filters';
+import { EffectFilter } from '../ui/effect-filter/effect-filter';
 import { ART_LANGUAGES } from '../art-languages';
 import { EMPTY_COLOR_SELECTION } from '../color-filter-match';
 import { colorComboLabel } from '../color-combo-names';
@@ -58,6 +60,7 @@ const FLAG_EFFECTS: Record<string, keyof SpellbookCardFlags> = {
 @Component({
   selector: 'app-collection-view',
   imports: [
+    EffectFilter,
     FormsModule,
     DecimalPipe,
     Icon,
@@ -120,7 +123,7 @@ export class CollectionView {
   readonly cmc = signal<'all' | number>('all');
   readonly colors = signal(EMPTY_COLOR_SELECTION);
   readonly type = signal('all');
-  readonly effect = signal('all');
+  readonly effect = signal<EffectSelection>(EMPTY_EFFECT_SELECTION);
   readonly keyword = signal('all');
   readonly usage = signal<CollectionFilters['usage']>('all');
 
@@ -431,7 +434,7 @@ export class CollectionView {
     this.langs.update((set) => toggled(set, code));
   }
 
-  setEffect(value: string): void {
+  setEffect(value: EffectSelection): void {
     this.effect.set(value);
   }
 
@@ -443,7 +446,7 @@ export class CollectionView {
     this.cmc.set('all');
     this.colors.set(EMPTY_COLOR_SELECTION);
     this.type.set('all');
-    this.effect.set('all');
+    this.effect.set(EMPTY_EFFECT_SELECTION);
     this.keyword.set('all');
     this.usage.set('all');
   }

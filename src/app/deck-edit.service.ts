@@ -15,6 +15,12 @@ import { ColorSelection, EMPTY_COLOR_SELECTION } from './color-filter-match';
 import { DeckViewerState } from './deck-viewer-state.service';
 import { DeckVariantService } from './deck-variant.service';
 import { DeckEffectsService } from './deck-effects.service';
+import {
+  EMPTY_EFFECT_SELECTION,
+  EffectSelection,
+  effectSelectionActive,
+  effectSelectionQuery,
+} from './card-effect-filters';
 import type { GameChangerEntry } from './deck-viewer.service';
 
 /**
@@ -39,7 +45,7 @@ export class DeckEditService {
   readonly addCardColorFilter = signal<ColorSelection>(EMPTY_COLOR_SELECTION);
   readonly addCardCmcFilter = signal<'all' | number>('all');
   readonly addCardRarityFilter = signal<ReadonlySet<string>>(new Set());
-  readonly addCardEffectFilter = signal('all');
+  readonly addCardEffectFilter = signal<EffectSelection>(EMPTY_EFFECT_SELECTION);
   readonly addCardKeywordFilter = signal('all');
   /** Künstler, Artwork, Flavortext und Lore - wie in der Kartensuche. Ein Treffer bringt sein Artwork mit ins Deck. */
   readonly addCardPrintSearch = signal<PrintSearch>(EMPTY_PRINT_SEARCH);
@@ -466,7 +472,7 @@ export class DeckEditService {
     this.triggerAddCardSearch();
   }
 
-  setAddCardEffectFilter(value: string): void {
+  setAddCardEffectFilter(value: EffectSelection): void {
     this.addCardEffectFilter.set(value);
     this.triggerAddCardSearch();
   }
@@ -505,7 +511,7 @@ export class DeckEditService {
       colors.colors.length === 0 &&
       cmc === 'all' &&
       rarities.size === 0 &&
-      effect === 'all' &&
+      !effectSelectionActive(effect) &&
       keyword === 'all' &&
       !printSearchActive(print)
     ) {
@@ -527,10 +533,7 @@ export class DeckEditService {
         creatureType: creatureType.trim() || undefined,
         colors,
         cmc: cmc === 'all' ? null : cmc,
-        effectQuery:
-          effect === 'all'
-            ? undefined
-            : this.effects.effectFilters.find((f) => f.value === effect)?.query,
+        effectQuery: effectSelectionQuery(effect),
         keyword: keyword === 'all' ? undefined : keyword,
         rarities,
         print,
@@ -618,7 +621,7 @@ export class DeckEditService {
     this.addCardColorFilter.set(EMPTY_COLOR_SELECTION);
     this.addCardCmcFilter.set('all');
     this.addCardRarityFilter.set(new Set());
-    this.addCardEffectFilter.set('all');
+    this.addCardEffectFilter.set(EMPTY_EFFECT_SELECTION);
     this.addCardKeywordFilter.set('all');
     this.addCardPrintSearch.set(EMPTY_PRINT_SEARCH);
     this.addCardSortMode.set('name');

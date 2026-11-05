@@ -78,10 +78,12 @@ export class CardDataService {
   }
 
   /**
-   * Höchstens 75 Namen je Abfrage: bis zu 12 Zeilen je Name bleiben unter der 1000-Zeilen-Grenze
-   * von PostgREST.
+   * 75 Namen je Abfrage, innerhalb eines Blocks seitenweise (siehe effectCategories()) - bei rund
+   * 70 Kategorien reicht die Blockgröße allein nicht mehr unter die 1000-Zeilen-Grenze.
    */
   private static readonly NAMEN_PRO_ABFRAGE = 75;
+  /** PostgREST liefert höchstens 1000 Zeilen je Anfrage. */
+  private static readonly ZEILEN_PRO_SEITE = 1000;
 
   /**
    * Je Kategorie-Key die zutreffenden Namen. Bei Fehler eine leere Map - der Aufrufer fällt dann
@@ -93,23 +95,31 @@ export class CardDataService {
     if (keys.length === 0) return result;
 
     for (const block of chunk(keys, CardDataService.NAMEN_PRO_ABFRAGE)) {
-      const { data, error } = await supabase
-        .from('scryfall_card_effects')
-        .select('category, front_name_normalized')
-        .in('front_name_normalized', block);
+      // Seitenweise: Seit es rund 70 Kategorien gibt (05.11.2026), kann ein Block mehr als die
+      // 1000 Zeilen haben, bei denen PostgREST still abschneidet.
+      for (let from = 0; ; from += CardDataService.ZEILEN_PRO_SEITE) {
+        const { data, error } = await supabase
+          .from('scryfall_card_effects')
+          .select('category, front_name_normalized')
+          .in('front_name_normalized', block)
+          .order('category')
+          .order('front_name_normalized')
+          .range(from, from + CardDataService.ZEILEN_PRO_SEITE - 1);
 
-      if (error) {
-        console.warn(
-          'Effekt-Kategorien konnten nicht geladen werden, Rückfall auf Scryfall:',
-          error.message,
-        );
-        return new Map();
-      }
+        if (error) {
+          console.warn(
+            'Effekt-Kategorien konnten nicht geladen werden, Rückfall auf Scryfall:',
+            error.message,
+          );
+          return new Map();
+        }
 
-      for (const row of data ?? []) {
-        const menge = result.get(row.category) ?? new Set<string>();
-        menge.add(row.front_name_normalized);
-        result.set(row.category, menge);
+        for (const row of data ?? []) {
+          const menge = result.get(row.category) ?? new Set<string>();
+          menge.add(row.front_name_normalized);
+          result.set(row.category, menge);
+        }
+        if ((data ?? []).length < CardDataService.ZEILEN_PRO_SEITE) break;
       }
     }
 

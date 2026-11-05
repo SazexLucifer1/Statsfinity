@@ -48,7 +48,7 @@ jobs:
       - name: Sync Scryfall data
         env:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: node scripts/sync-scryfall-bulk.js ${{ inputs.force && '--force' || '' }}
+        run: node --experimental-strip-types scripts/sync-scryfall-bulk.js ${{ inputs.force && '--force' || '' }}
 
       # Teil 4: Artwork-Fingerabdrücke für den Kartenscanner (eine Datei im Storage-Bucket
       # card-art-hashes, siehe sql/sammlung-2026-10-17.sql). Inkrementell - nach den ersten paar

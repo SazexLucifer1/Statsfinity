@@ -789,16 +789,11 @@
               [value]="viewer.edit.addCardColorFilter()"
               (valueChange)="viewer.edit.setAddCardColorFilter($event)"
             />
-            <select
-              class="glass-input small"
-              [ngModel]="viewer.edit.addCardEffectFilter()"
-              (ngModelChange)="viewer.edit.setAddCardEffectFilter($event)"
-            >
-              <option [ngValue]="'all'">{{ viewer.i18n.t('deckView.effectAll') }}</option>
-              @for (f of viewer.effects.effectFilters; track f.value) {
-                <option [ngValue]="f.value">{{ viewer.effects.effectFilterLabel(f.value) }}</option>
-              }
-            </select>
+            <app-effect-filter
+              [value]="viewer.edit.addCardEffectFilter()"
+              [options]="scryfallEffectFilters"
+              (valueChange)="viewer.edit.setAddCardEffectFilter($event)"
+            />
             <select
               class="glass-input small"
               [ngModel]="viewer.edit.addCardKeywordFilter()"
@@ -1142,23 +1137,35 @@
               </section>
 
               <section class="analysis-section analysis-section-wide">
-                <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.effectCategoriesTitle') }}</h4>
+                <div class="effect-tiles-head">
+                  <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.effectCategoriesTitle') }}</h4>
+                  @if (viewer.state.canEditViewingDeck() && viewer.effects.tilesAvailable()) {
+                    <app-effect-filter
+                      [value]="tileSelection()"
+                      [showMode]="false"
+                      [triggerLabel]="viewer.i18n.t('deckView.effectTilesEdit')"
+                      [heading]="viewer.i18n.t('deckView.effectTilesHeading')"
+                      [clearLabel]="viewer.i18n.t('deckView.effectTilesDefault')"
+                      (valueChange)="setTiles($event)"
+                    />
+                  }
+                </div>
                 @if (viewer.effects.effectCategoryCountsBusy()) {
                   @if (viewer.effects.effectCategoryProgress(); as progress) {
                     <p class="hint">{{ viewer.i18n.t('deckView.loadingEffectCategoriesProgress', { done: progress.done, total: progress.total }) }}</p>
                   } @else {
                     <p class="hint">{{ viewer.i18n.t('deckView.loadingEffectCategories') }}</p>
                   }
-                } @else if (viewer.effects.effectCategoryStats(); as stats) {
+                } @else if (viewer.effects.displayedEffectStats(); as stats) {
                   <p class="hint">{{ viewer.i18n.t('deckView.effectCategoriesHint') }}</p>
                   <div class="stat-tiles">
                     @for (stat of stats; track stat.key) {
                       <button
                         class="stat-tile stat-tile-button"
-                        [disabled]="stat.count === 0"
+                        [disabled]="!stat.count"
                         (click)="viewer.effects.openEffectCategoryPopup(viewer.i18n.t(stat.labelKey), stat.cards)"
                       >
-                        <span class="stat-value">{{ stat.count }}</span>
+                        <span class="stat-value">{{ stat.count ?? '…' }}</span>
                         <span class="stat-label">{{ viewer.i18n.t(stat.labelKey) }}</span>
                       </button>
                     }
@@ -1345,16 +1352,10 @@
             <option [ngValue]="k.value">{{ viewer.effects.keywordFilterLabel(k.value) }}</option>
           }
         </select>
-        <select
-          class="glass-input small"
-          [ngModel]="viewer.effectFilter()"
-          (ngModelChange)="viewer.setEffectFilter($event)"
-        >
-          <option [ngValue]="'all'">{{ viewer.i18n.t('deckView.effectAll') }}</option>
-          @for (f of viewer.effects.effectFilters; track f.value) {
-            <option [ngValue]="f.value">{{ viewer.effects.effectFilterLabel(f.value) }}</option>
-          }
-        </select>
+        <app-effect-filter
+          [value]="viewer.effectFilter()"
+          (valueChange)="viewer.setEffectFilter($event)"
+        />
         @if (viewer.hasActiveCardFilters()) {
           <button class="glass-chip small" (click)="viewer.resetCardFilters()">{{ viewer.i18n.t('deckView.resetFilters') }}</button>
         }

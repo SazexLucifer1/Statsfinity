@@ -321,39 +321,21 @@ async function syncKarten() {
 // =====================================================================================
 
 /**
- * WÖRTLICH aus EFFECT_TAG_CATEGORIES in src/app/deck-viewer.service.ts übernommen - key und
- * query müssen zeichengleich bleiben. Genau darin liegt der Trick dieser Lösung: Scryfalls
- * otag:-Suche ist hierarchisch (eine Karte mit Unter-Tag matcht auch das Eltern-Tag) und einige
- * Kategorien sind gar keine Tag-Abfragen ("o:create o:token", "keyword:proliferate", "-t:land").
- * Weil hier dieselbe Abfrage an dieselbe Suchmaschine geht, kommen garantiert dieselben Zahlen
- * heraus wie bei der bisherigen Live-Abfrage aus dem Browser.
+ * Dieselbe Liste wie in der App: src/app/card-effect-filters.ts (Kartensuche, Deck-Filter,
+ * Sammlung, Cube) - direkt geladen statt abgeschrieben (Node 22 entfernt die Typangaben selbst,
+ * der Workflow startet zur Sicherheit mit --experimental-strip-types). Die zwölf Kategorien der
+ * Analyse-Kacheln (EFFECT_TAG_CATEGORIES in deck-effects.service.ts) stehen dort mit
+ * zeichengleicher Abfrage. Scryfalls otag:-Suche ist hierarchisch (eine Karte mit Unter-Tag
+ * matcht auch das Eltern-Tag), einige Kategorien sind gar keine Tag-Abfragen ("o:create o:token",
+ * "keyword:proliferate", "-t:land") - weil hier dieselbe Abfrage an dieselbe Suchmaschine geht,
+ * kommen dieselben Zahlen heraus wie bei einer Live-Abfrage aus dem Browser.
  *
- * Ändert sich dort eine Abfrage, muss sie hier nachgezogen werden - sonst zeigt die App Zahlen
- * zu einer Abfrage, die es nicht mehr gibt.
+ * Seit 05.11.2026 rund 70 statt 12 Kategorien (Effekt-Filter mit Mehrfachauswahl) - der Teil
+ * dauert damit einige Minuten länger.
  */
-const EFFEKT_KATEGORIEN = [
-  { key: 'removal', query: 'otag:removal' },
-  {
-    key: 'counterspell',
-    query: 'otag:counterspell',
-  },
-  { key: 'boardwipe', query: 'otag:board-wipe' },
-  {
-    key: 'ramp',
-    query: 'otag:ramp -t:land',
-  },
-  { key: 'draw', query: 'otag:draw' },
-  { key: 'tokens', query: 'o:create o:token' },
-  { key: 'lifegain', query: 'otag:lifegain' },
-  { key: 'counters', query: 'o:"+1/+1 counter"' },
-  { key: 'proliferate', query: 'keyword:proliferate' },
-  {
-    key: 'reanimate',
-    query: 'otag:reanimate',
-  },
-  { key: 'sacrifice', query: 'otag:sacrifice-outlet' },
-  { key: 'extracombat', query: 'otag:extra-combat' },
-];
+const EFFEKT_KATEGORIEN = require('../src/app/card-effect-filters.ts').CARD_EFFECT_FILTERS.map(
+  (f) => ({ key: f.value, query: f.query }),
+);
 
 /** Scryfall liefert pro Ergebnisseite höchstens so viele Treffer - gilt für JSON wie für CSV. */
 const TREFFER_PRO_SEITE = 175;

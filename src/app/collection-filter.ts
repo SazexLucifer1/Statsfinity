@@ -2,6 +2,7 @@ import type { CollectionEntry } from './collection-coverage';
 import { TYPE_ORDER, cmcBucket, typeSection } from './deck-analyse';
 import { ColorSelection, matchesColorSelection } from './color-filter-match';
 import { sortColors } from './color-combo-names';
+import { EffectSelection, matchesEffectSelection } from './card-effect-filters';
 
 /**
  * Filtern, Sortieren und Gruppieren der Sammlung (collection-view/). Reine Funktionen, damit sie
@@ -45,7 +46,7 @@ export interface CollectionFilters {
   colors: ColorSelection;
   /** Typ-Abschnitt wie in der Deck-Ansicht ("Kreatur", "Land", ...) oder 'all'. */
   type: string;
-  effect: string;
+  effect: EffectSelection;
   keyword: string;
   usage: 'all' | 'used' | 'free';
 }
@@ -84,7 +85,7 @@ export function filterCollection(
     if (f.colors.colors.length && !matchesColorSelection(item.colorIdentity, f.colors))
       return false;
     if (f.type !== 'all' && typeSection(item.typeLine) !== f.type) return false;
-    if (f.effect !== 'all' && !item.effects.has(f.effect)) return false;
+    if (!matchesEffectSelection(f.effect, (k) => item.effects.has(k))) return false;
     if (f.keyword !== 'all' && !item.keywords.some((k) => k.toLowerCase() === f.keyword))
       return false;
     if (f.usage === 'used' && item.inDecks === 0) return false;
@@ -102,7 +103,7 @@ export function activeFilterCount(f: CollectionFilters): number {
     f.cmc !== 'all',
     f.colors.colors.length > 0,
     f.type !== 'all',
-    f.effect !== 'all',
+    f.effect.keys.size > 0,
     f.keyword !== 'all',
     f.usage !== 'all',
   ].filter(Boolean).length;

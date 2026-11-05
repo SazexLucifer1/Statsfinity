@@ -36,17 +36,32 @@ import { PrintSearch } from '../ui/print-search/print-search';
 import { BracketBadge } from '../ui/bracket-badge/bracket-badge';
 import { ManaSymbol } from '../ui/mana-symbol/mana-symbol';
 import { Icon } from '../ui/icon/icon';
+import { EffectFilter } from '../ui/effect-filter/effect-filter';
+import { CARD_EFFECT_FILTERS, EffectSelection } from '../card-effect-filters';
 import { DeckSocial } from '../deck-social/deck-social';
 import { BanlistService } from '../banlist.service';
 
 @Component({
   selector: 'app-deck-detail-view',
-  imports: [CurrencyPipe, DatePipe, DecimalPipe, NgTemplateOutlet, PercentPipe, FormsModule, CardImage, DeckCheck, DeckComments, DeckManualRecord, DeckPerformance, DeckCollection, DeckVariants, DeckVariantCompare, CardThumb, DeckPrimer, DeckSocial, DeckSteckbrief, BarChart, OverflowMenu, ColorFilter, CmcFilter, RarityFilter, PrintSearch, BracketBadge, ManaSymbol, Icon],
+  imports: [CurrencyPipe, DatePipe, DecimalPipe, NgTemplateOutlet, PercentPipe, FormsModule, CardImage, DeckCheck, DeckComments, DeckManualRecord, DeckPerformance, DeckCollection, DeckVariants, DeckVariantCompare, CardThumb, DeckPrimer, DeckSocial, DeckSteckbrief, BarChart, OverflowMenu, ColorFilter, CmcFilter, RarityFilter, EffectFilter, PrintSearch, BracketBadge, ManaSymbol, Icon],
   templateUrl: './deck-detail-view.html',
   styleUrls: ['./deck-detail-view.scss', './deck-detail-view.bracket.scss'],
 })
 export class DeckDetailView {
   readonly viewer = inject(DeckViewerService);
+  /** Karten hinzufügen sucht live bei Scryfall - dort gibt es nur Kategorien mit Abfrage. */
+  readonly scryfallEffectFilters = CARD_EFFECT_FILTERS;
+
+  /** Eigene Effekt-Kacheln des Decks als Auswahl fürs Popup (ohne eigene: die Standard-Kacheln). */
+  readonly tileSelection = computed<EffectSelection>(() => ({
+    keys: new Set(this.viewer.effects.customTiles() ?? this.viewer.effects.defaultTileKeys()),
+    mode: 'all',
+  }));
+
+  setTiles(selection: EffectSelection): void {
+    const deck = this.viewer.state.viewingDeck();
+    if (deck) void this.viewer.effects.saveTiles(deck.id, [...selection.keys]);
+  }
 
   private readonly deckService = inject(DeckService);
   private readonly importService = inject(DeckImportService);
