@@ -116,6 +116,8 @@ export interface ScanHit {
    * Scanner meldet deshalb nur sichere Treffer mit dem Erfolgston.
    */
   sure: boolean;
+  /** Foil ist sicher entschieden; false, wenn nur ein Hinweis Foil meldete (dann "kein Foil"). */
+  foilSure: boolean;
 }
 
 const API = 'https://api.scryfall.com';
@@ -378,7 +380,6 @@ export class CardScanService {
         if (score(line) === 3) break;
       }
     }
-    const detectedFoil = pixelFoil ?? foilFromWords(words);
     this.lastScan.cornerText = cornerText;
     this.lastScan.line = line;
     this.lastScan.cornerPrint =
@@ -423,17 +424,29 @@ export class CardScanService {
 
     const canNonfoil = print.finishes.includes('nonfoil');
     const canFoil = print.finishes.some((f) => f !== 'nonfoil');
-    let foil = !canNonfoil ? true : !canFoil ? false : (detectedFoil ?? false);
+    // Foil nur, wenn beide Hinweise aus der Ecke zustimmen (Größe des Zeichens in Pixeln und das
+    // Zeichen im gelesenen Text). Gemessen an 214 Treffern mit laufender Texterkennung
+    // (05.11.2026): Ein Hinweis allein lag 15-mal daneben (17 Fehler), beide zusammen nie
+    // (8 übersehene Foils). Meldet nur einer Foil - oder nur der Regenbogen-Schimmer, der zweimal
+    // von zweimal irrte -, bleibt es "kein Foil", aber unsicher: dann kommt der Prüf-Ton.
+    const wordsFoil = foilFromWords(words);
+    let foil: boolean;
+    let foilSure = true;
     let sheen: boolean | null = null;
-    // Den Stern liest die Kamera oft nicht (zu klein, Spiegelung) - dann der Regenbogen-Schimmer
-    // im Textkasten, verglichen mit Scryfalls Scan desselben Drucks (foil-sheen.ts).
-    if (!foil && canFoil && art) {
-      sheen = await this.foilFromSheen(detail ?? frame, art.cardBox, print.imageUrl);
-      foil = sheen ?? false;
+    if (!canNonfoil || !canFoil) {
+      foil = !canNonfoil;
+    } else {
+      foil = pixelFoil === true && wordsFoil === true;
+      const hinted = pixelFoil === true || wordsFoil === true;
+      if (hinted && !foil) foilSure = false;
+      if (!hinted && art) {
+        sheen = await this.foilFromSheen(detail ?? frame, art.cardBox, print.imageUrl);
+        if (sheen) foilSure = false;
+      }
     }
-    this.lastScan.foil = { pixel: pixelFoil, words: foilFromWords(words), sheen };
+    this.lastScan.foil = { pixel: pixelFoil, words: wordsFoil, sheen };
     const sure = this.lastScan.path === 'corner' || this.lastScan.path === 'text';
-    return { print, foil, via, sure };
+    return { print, foil, via, sure, foilSure };
   }
 
   /**
