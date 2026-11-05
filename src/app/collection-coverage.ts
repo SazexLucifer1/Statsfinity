@@ -31,6 +31,11 @@ export interface CollectionPrint {
   imageUrl: string;
   /** Scryfalls finishes: "nonfoil", "foil", "etched". */
   finishes: string[];
+  /**
+   * Nur gesetzt, wenn `lang` eine Sprache ist, in der Scryfall diesen Druck nicht führt: die
+   * Sprache des Drucks bei Scryfall (Bild und Preis kommen von dort). Siehe collection.service.ts.
+   */
+  printLang?: string;
 }
 
 /** Eine Karte in einem eigenen Deck (aus collection_deck_usage()). */

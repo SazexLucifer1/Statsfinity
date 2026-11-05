@@ -28,6 +28,19 @@ interface RecentScan extends ScanHit {
   sampleId?: string;
 }
 
+/**
+ * Derselbe Druck in einer anderen Sprache, die Scryfall dafür nicht führt: Druck-ID, Bild und Preis
+ * bleiben, nur `lang` wechselt. `printLang` hält fest, in welcher Sprache der Druck bei Scryfall
+ * steht.
+ */
+function withLang(print: CollectionPrint, lang: string): CollectionPrint {
+  return { ...print, lang, printLang: print.printLang ?? print.lang };
+}
+
+function isUnlisted(print: CollectionPrint): boolean {
+  return !!print.printLang && print.printLang !== print.lang;
+}
+
 /** Nach so vielen Fehlversuchen in Folge bei liegender Karte kommt einmal der Achtungston. */
 const MISS_ALERT = 3;
 const SOUND_KEY = 'scannerSound';
@@ -204,10 +217,31 @@ export class CardScanner implements OnInit, OnDestroy {
     return canToggleFoil(item);
   }
 
-  /** Andere Sprache für einen Treffer: tauscht den Druck in der Sammlung um. */
+  /**
+   * Andere Sprache für einen Treffer: tauscht den Druck in der Sammlung um. Jede Sprache ist
+   * wählbar, auch wenn Scryfall den Druck darin nicht kennt (Wunsch des Users, 05.11.2026: das
+   * stimmt oft nicht) - dann bleibt Scryfalls Druck für Bild und Preis, nur die Sprache wechselt
+   * (bevorzugt der englische Druck desselben Sets).
+   */
   async changeLanguage(item: RecentScan, lang: string): Promise<void> {
-    const target = item.languages?.find((p) => p.lang === lang);
-    if (target) await this.swapPrint(item, target);
+    const known = item.languages ?? [item.print];
+    const target =
+      known.find((p) => p.lang === lang) ??
+      withLang(
+        known.find((p) => p.lang === 'en') ??
+          known.find((p) => p.scryfallId === item.print.scryfallId) ??
+          item.print,
+        lang,
+      );
+    await this.swapPrint(item, target);
+  }
+
+  /** Alle Sprachen zur Auswahl - nicht nur die, die Scryfall für diesen Druck kennt. */
+  readonly allLanguages = ART_LANGUAGES.map((l) => l.code);
+
+  /** Steht der Treffer in einer Sprache, in der Scryfall diesen Druck nicht führt? */
+  unlistedLang(item: RecentScan): boolean {
+    return isUnlisted(item.print);
   }
 
   /** Anderes Set (anderer Druck mit demselben Artwork), möglichst in derselben Sprache. */
@@ -215,18 +249,17 @@ export class CardScanner implements OnInit, OnDestroy {
     const chosen = item.sets?.find((p) => p.scryfallId === scryfallId);
     if (!chosen) return;
     const languages = await this.scan.languagesOfPrint(chosen);
-    const target = languages.find((p) => p.lang === item.print.lang) ?? chosen;
+    // Die gewählte Sprache bleibt, auch wenn Scryfall das neue Set darin nicht kennt.
+    const target =
+      languages.find((p) => p.lang === item.print.lang) ??
+      withLang(languages.find((p) => p.lang === 'en') ?? chosen, item.print.lang);
     await this.swapPrint(item, target);
-    this.recent.update((list) =>
-      list.map((r) =>
-        r.key === item.key ? { ...r, languages: languages.length > 1 ? languages : undefined } : r,
-      ),
-    );
+    this.recent.update((list) => list.map((r) => (r.key === item.key ? { ...r, languages } : r)));
   }
 
   /** Tauscht den Druck eines Treffers in der Sammlung um (neuer +1, alter −1). */
   private async swapPrint(item: RecentScan, target: CollectionPrint): Promise<void> {
-    if (target.scryfallId === item.print.scryfallId) return;
+    if (target.scryfallId === item.print.scryfallId && target.lang === item.print.lang) return;
     const foil = item.foil && target.finishes.some((f) => f !== 'nonfoil');
     const ok = await this.collection.add(target, foil, 1);
     if (!ok) return;
@@ -240,6 +273,8 @@ export class CardScanner implements OnInit, OnDestroy {
       number: target.collectorNumber,
       lang: target.lang,
       foil,
+      // Sprache, die Scryfall für diesen Druck nicht führt: Bild und ID sind dann die eines anderen.
+      lang_unlisted: isUnlisted(target) || undefined,
     });
   }
 
@@ -253,7 +288,7 @@ export class CardScanner implements OnInit, OnDestroy {
         r.key === key
           ? {
               ...r,
-              languages: languages.length > 1 ? languages : undefined,
+              languages,
               sets: sets.length > 1 ? sets : undefined,
             }
           : r,

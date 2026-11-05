@@ -311,6 +311,8 @@ export const profile = {
     'collection.scanner.toggleFoil': 'Foil umschalten',
     'collection.scanner.changeLanguage': 'Sprache ändern',
     'collection.scanner.changeSet': 'Set ändern',
+    'collection.scanner.langUnlisted':
+      'Als {{lang}} gespeichert - Scryfall kennt diesen Druck nicht auf {{lang}}, Bild und Preis vom {{image}}-Druck.',
     'collection.scanner.sound': 'Töne: hell = sicher erkannt, tief = bitte prüfen',
     'collection.scanner.samples': 'Scans zur Verbesserung speichern',
     'collection.open': 'Sammlung öffnen',
@@ -802,6 +804,8 @@ export const profile = {
     'collection.scanner.toggleFoil': 'Toggle foil',
     'collection.scanner.changeLanguage': 'Change language',
     'collection.scanner.changeSet': 'Change set',
+    'collection.scanner.langUnlisted':
+      'Saved as {{lang}} - Scryfall does not list this print in {{lang}}, image and price from the {{image}} print.',
     'collection.scanner.sound': 'Sounds: high = recognized for sure, low = please check',
     'collection.scanner.samples': 'Save scans to improve recognition',
     'collection.open': 'Open collection',

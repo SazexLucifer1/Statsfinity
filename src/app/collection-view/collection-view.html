@@ -317,7 +317,7 @@
       }
       @if (mode() === 'grid') {
         <div class="grid">
-          @for (item of section.items; track item.entry.scryfallId + item.entry.foil) {
+          @for (item of section.items; track item.entry.scryfallId + item.entry.foil + item.entry.lang) {
             <div class="tile" [class.foil]="item.entry.foil">
               <button
                 type="button"
@@ -383,7 +383,7 @@
         </div>
       } @else {
         <ul class="list">
-          @for (item of section.items; track item.entry.scryfallId + item.entry.foil) {
+          @for (item of section.items; track item.entry.scryfallId + item.entry.foil + item.entry.lang) {
             <li>
               <button
                 type="button"
@@ -570,7 +570,7 @@
         · {{ detailValue() | number: '1.2-2' }} €
       </p>
       <div class="detail-grid">
-        @for (item of detailItems(); track item.entry.scryfallId + item.entry.foil) {
+        @for (item of detailItems(); track item.entry.scryfallId + item.entry.foil + item.entry.lang) {
           <div class="tile" [class.foil]="item.entry.foil">
             <button type="button" class="tile-image" (click)="openPreview(item.entry)">
               <img [src]="image(item.entry)" [alt]="item.entry.cardName" loading="lazy" />
