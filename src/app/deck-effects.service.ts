@@ -6,6 +6,7 @@ import { CardDataService } from './card-data.service';
 import { normalizeCardName, sleep } from './array-utils';
 import type { GameChangerEntry, EffectCategoryStat } from './deck-viewer.service';
 import { DeckAnalysisService } from './deck-analysis.service';
+import { ALL_EFFECT_FILTERS, CardEffectFilter } from './card-effect-filters';
 
 /**
  * Effekt-Kategorien der Deck-Analyse (Entfernung, Rampe, ...): zuerst aus dem eigenen Kartenbestand, Scryfall nur für unbekannte Karten.
@@ -224,39 +225,8 @@ export class DeckEffectsService {
    * Keywords unten: Lifelink ist eine Eigenschaft, kein Effekt wie otag:lifegain.
    */
   // Gleiche Keys und Abfragen wie EFFECT_TAG_CATEGORIES, damit Filter und Kacheln einen Cache
-  // teilen. query '' = lokale Quelle (LOCAL_EFFECT_FILTERS).
-  readonly effectFilters: { value: string; label: string; query: string }[] = [
-    { value: 'tokens', label: 'Marken erzeugen', query: 'o:create o:token' },
-    { value: 'draw', label: 'Kartenziehen', query: 'otag:draw' },
-    { value: 'removal', label: 'Entfernung', query: 'otag:removal' },
-    {
-      value: 'counterspell',
-      label: 'Konter',
-      query: 'otag:counterspell',
-    },
-    { value: 'boardwipe', label: 'Bretträumung', query: 'otag:board-wipe' },
-    {
-      value: 'ramp',
-      label: 'Rampe',
-      query: 'otag:ramp -t:land',
-    },
-    { value: 'lifegain', label: 'Lebenspunkte gewinnen', query: 'otag:lifegain' },
-    { value: 'counters', label: '+1/+1-Zähler', query: 'o:"+1/+1 counter"' },
-    { value: 'proliferate', label: 'Proliferate', query: 'keyword:proliferate' },
-    { value: 'protection', label: 'Schutz gewähren', query: 'otag:protection' },
-    {
-      value: 'reanimate',
-      label: 'Wiederbelebung',
-      query: 'otag:reanimate',
-    },
-    { value: 'recursion', label: 'Rekursion', query: 'otag:recursion' },
-    { value: 'mill', label: 'Mahlen (Mill)', query: 'otag:mill' },
-    { value: 'tutor', label: 'Tutor', query: '' },
-    { value: 'sacrifice', label: 'Opfern', query: 'otag:sacrifice-outlet' },
-    { value: 'extraturn', label: 'Extra-Runde', query: '' },
-    { value: 'extracombat', label: 'Extra-Kampfphase', query: 'otag:extra-combat' },
-    { value: 'mld', label: 'Mass Land Denial', query: '' },
-  ];
+  // teilen. query '' = lokale Quelle (tutor/extraturn/mld). Liste in card-effect-filters.ts.
+  readonly effectFilters: readonly CardEffectFilter[] = ALL_EFFECT_FILTERS;
 
   effectFilterLabel(value: string): string {
     return this.i18n.t(`effectFilter.${value}`);

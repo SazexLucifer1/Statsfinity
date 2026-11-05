@@ -36,12 +36,7 @@
 
     <app-color-filter [value]="colorFilter()" (valueChange)="setColorFilter($event)" />
 
-    <select class="glass-input small" [ngModel]="effectFilter()" (ngModelChange)="setEffectFilter($event)">
-      <option [ngValue]="'all'">{{ i18n.t('deckView.effectAll') }}</option>
-      @for (f of effectFilters; track f.value) {
-        <option [ngValue]="f.value">{{ effectFilterLabel(f.value) }}</option>
-      }
-    </select>
+    <app-effect-filter [value]="effectFilter()" [options]="effectFilters" (valueChange)="setEffectFilter($event)" />
 
     <select class="glass-input small" [ngModel]="keywordFilter()" (ngModelChange)="setKeywordFilter($event)">
       <option [ngValue]="'all'">{{ i18n.t('deckView.abilityAll') }}</option>

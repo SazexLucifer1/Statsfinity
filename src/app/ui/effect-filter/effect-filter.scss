@@ -1,0 +1,114 @@
+:host {
+  display: block;
+}
+
+.effect-filter-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+
+  // Aktiver Filter wie die übrigen Filter-Chips (.glass-chip.active): hellblau.
+  &.active {
+    border-color: rgba(125, 211, 252, 0.8);
+  }
+}
+
+.effect-filter-summary {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.effect-filter-caret {
+  flex: 0 0 auto;
+  opacity: 0.7;
+}
+
+// Breiter als das übliche Sheet (300px): rund 70 Einträge, ab Tablet in zwei Spalten.
+.effect-filter-sheet {
+  max-width: 640px;
+}
+
+.effect-filter-heading {
+  margin: 0;
+  text-align: center;
+}
+
+.effect-filter-mode {
+  display: flex;
+  flex-wrap: nowrap;
+
+  button {
+    flex: 1 1 0;
+  }
+}
+
+.effect-filter-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.effect-filter-group h4 {
+  margin: 0 0 var(--sp-1);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+}
+
+.effect-filter-options {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px var(--sp-2);
+
+  @media (min-width: 560px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.effect-filter-option {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  &.checked {
+    background: rgba(125, 211, 252, 0.14);
+  }
+
+  input {
+    flex: 0 0 auto;
+  }
+}
+
+.effect-filter-empty {
+  margin: 0;
+  text-align: center;
+  opacity: 0.7;
+}
+
+// Bleibt beim Scrollen der langen Liste unten sichtbar.
+.effect-filter-actions {
+  position: sticky;
+  bottom: -20px;
+  display: flex;
+  gap: var(--sp-2);
+  margin: 0 -20px -20px;
+  padding: var(--sp-3) 20px 20px;
+  background: rgba(20, 16, 38, 0.98);
+
+  button {
+    flex: 1 1 0;
+  }
+}

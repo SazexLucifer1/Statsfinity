@@ -36,6 +36,12 @@ import { DeckEffectsService } from './deck-effects.service';
 import { DeckEdhrecService } from './deck-edhrec.service';
 import { DeckVariantService } from './deck-variant.service';
 import { DeckEditService } from './deck-edit.service';
+import {
+  EMPTY_EFFECT_SELECTION,
+  EffectSelection,
+  effectSelectionActive,
+  matchesEffectSelection,
+} from './card-effect-filters';
 
 /** Wie viele Deckkarten Mana dieser Farbe erzeugen können (Manaquellen-Verteilung). */
 export interface ManaSourceCount {
@@ -481,9 +487,14 @@ export class DeckViewerService {
   readonly creatureTypeFilter = signal<'all' | string>('all');
   readonly colorFilter = signal<ColorSelection>(EMPTY_COLOR_SELECTION);
   readonly keywordFilter = signal('all');
-  readonly effectFilter = signal('all');
-  /** Ergebnis der letzten Effekt-Abfrage (lowercase Kartennamen) - null solange kein Effekt-Filter aktiv oder noch nicht geladen. */
-  readonly effectMatchNames = signal<Set<string> | null>(null);
+  readonly effectFilter = signal<EffectSelection>(EMPTY_EFFECT_SELECTION);
+  /**
+   * Treffer je gewählter Effekt-Kategorie (normalisierte Vorderseiten-Namen) - null solange kein
+   * Effekt-Filter aktiv oder noch nicht geladen.
+   */
+  readonly effectMatchNames = signal<Map<string, Set<string>> | null>(null);
+  /** Gegen überholte Antworten, wenn die Auswahl während des Ladens erneut wechselt. */
+  private effectFilterRun = 0;
   readonly effectFilterBusy = signal(false);
 
   /** Kreaturtypen (Untertypen nach dem Gedankenstrich), die tatsächlich im Deck vorkommen - für das Filter-Dropdown. */
@@ -527,11 +538,14 @@ export class DeckViewerService {
     }
 
     const effect = this.effectFilter();
-    if (effect !== 'all') {
+    if (effectSelectionActive(effect)) {
       const matches = this.effectMatchNames();
+      if (!matches) return false;
       // Vorderseiten-Name + normalisiert - genau wie classifyCards() seine Ergebnis-Keys bildet
       // (siehe loadEffectMatches()), sonst würden Doppelkarten hier nie matchen.
-      if (!matches?.has(normalizeCardName(card.cardName.split(' // ')[0].trim()))) return false;
+      const name = normalizeCardName(card.cardName.split(' // ')[0].trim());
+      if (!matchesEffectSelection(effect, (key) => matches.get(key)?.has(name) ?? false))
+        return false;
     }
 
     return true;
@@ -566,7 +580,7 @@ export class DeckViewerService {
       this.creatureTypeFilter() !== 'all' ||
       this.colorFilter().colors.length > 0 ||
       this.keywordFilter() !== 'all' ||
-      this.effectFilter() !== 'all',
+      effectSelectionActive(this.effectFilter()),
   );
 
   resetCardFilters(): void {
@@ -576,11 +590,13 @@ export class DeckViewerService {
     this.creatureTypeFilter.set('all');
     this.colorFilter.set(EMPTY_COLOR_SELECTION);
     this.keywordFilter.set('all');
-    this.effectFilter.set('all');
+    this.effectFilter.set(EMPTY_EFFECT_SELECTION);
     this.effectMatchNames.set(null);
+    this.effectFilterRun++;
+    this.effectFilterBusy.set(false);
   }
 
-  setEffectFilter(value: string): void {
+  setEffectFilter(value: EffectSelection): void {
     this.effectFilter.set(value);
     this.loadEffectMatches();
   }
@@ -597,29 +613,36 @@ export class DeckViewerService {
 
   /** Effekt-Kategorien sind kein Feld auf der Karte, sondern nur über eine Scryfall-Suche abfragbar - deshalb async statt wie die übrigen Filter rein lokal. */
   private async loadEffectMatches(): Promise<void> {
-    const effect = this.effectFilter();
-    if (DeckViewerService.LOCAL_EFFECT_FILTERS.has(effect)) {
-      const entries =
-        effect === 'tutor'
-          ? this.analysis.tutorCards()
-          : effect === 'extraturn'
-            ? this.analysis.extraTurnCards()
-            : this.analysis.massLandDenialCards();
-      this.effectMatchNames.set(this.toNormalizedNameSet(entries));
-      this.effectFilterBusy.set(false);
-      return;
-    }
-    const tagQuery = this.effects.effectFilters.find((f) => f.value === effect)?.query;
-    if (!tagQuery) {
+    const run = ++this.effectFilterRun;
+    const selection = this.effectFilter();
+    if (!effectSelectionActive(selection)) {
       this.effectMatchNames.set(null);
+      this.effectFilterBusy.set(false);
       return;
     }
     this.effectFilterBusy.set(true);
     const names = this.state.viewingDeckCards().map((c) => c.cardName);
-    // classifyCards() teilt sich den Cache mit den Analyse-Kacheln - Filter und Kacheln zeigen so
-    // dieselben Karten.
-    const matched = await this.scryfall.classifyCards(effect, tagQuery, names);
-    this.effectMatchNames.set(matched);
+    const result = new Map<string, Set<string>>();
+    for (const key of selection.keys) {
+      if (DeckViewerService.LOCAL_EFFECT_FILTERS.has(key)) {
+        const entries =
+          key === 'tutor'
+            ? this.analysis.tutorCards()
+            : key === 'extraturn'
+              ? this.analysis.extraTurnCards()
+              : this.analysis.massLandDenialCards();
+        result.set(key, this.toNormalizedNameSet(entries));
+        continue;
+      }
+      const tagQuery = this.effects.effectFilters.find((f) => f.value === key)?.query;
+      if (!tagQuery) continue;
+      // classifyCards() teilt sich den Cache mit den Analyse-Kacheln - Filter und Kacheln zeigen
+      // so dieselben Karten. Nacheinander statt parallel wegen Scryfalls Rate-Limit.
+      result.set(key, await this.scryfall.classifyCards(key, tagQuery, names));
+      if (run !== this.effectFilterRun) return;
+    }
+    if (run !== this.effectFilterRun) return;
+    this.effectMatchNames.set(result);
     this.effectFilterBusy.set(false);
   }
 

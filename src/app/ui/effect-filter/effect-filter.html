@@ -1,0 +1,96 @@
+<button
+  #trigger
+  type="button"
+  class="glass-input small effect-filter-trigger"
+  [class.active]="value().keys.size > 0"
+  (click)="openMenu()"
+  [attr.aria-label]="i18n.t('effectFilter.title')"
+  [attr.aria-expanded]="open()"
+  aria-haspopup="dialog"
+>
+  <span class="effect-filter-summary">{{ summary() }}</span>
+  <span class="effect-filter-caret" aria-hidden="true">▾</span>
+</button>
+
+<ng-template cdkPortal>
+  <div class="options-menu-overlay" (click)="close()">
+    <div
+      class="options-menu-sheet effect-filter-sheet"
+      cdkTrapFocus
+      role="dialog"
+      [attr.aria-label]="i18n.t('effectFilter.title')"
+      (click)="$event.stopPropagation()"
+      (keydown.escape)="close()"
+    >
+      <h3 class="effect-filter-heading">{{ i18n.t('effectFilter.title') }}</h3>
+
+      <input
+        type="search"
+        class="glass-input small"
+        [value]="search()"
+        (input)="search.set($any($event.target).value)"
+        [placeholder]="i18n.t('effectFilter.searchPlaceholder')"
+      />
+
+      <div class="segmented effect-filter-mode" role="radiogroup">
+        <button
+          type="button"
+          role="radio"
+          [class.active]="draft().mode === 'all'"
+          [attr.aria-checked]="draft().mode === 'all'"
+          (click)="setMode('all')"
+        >
+          {{ i18n.t('effectFilter.modeAll') }}
+        </button>
+        <button
+          type="button"
+          role="radio"
+          [class.active]="draft().mode === 'any'"
+          [attr.aria-checked]="draft().mode === 'any'"
+          (click)="setMode('any')"
+        >
+          {{ i18n.t('effectFilter.modeAny') }}
+        </button>
+      </div>
+
+      <div class="effect-filter-list">
+        @for (g of groups(); track g.group) {
+          <section class="effect-filter-group">
+            <h4>{{ i18n.t('effectFilter.group.' + g.group) }}</h4>
+            <div class="effect-filter-options">
+              @for (f of g.items; track f.value) {
+                <label class="effect-filter-option" [class.checked]="isChecked(f.value)">
+                  <input
+                    type="checkbox"
+                    [checked]="isChecked(f.value)"
+                    (change)="toggle(f.value)"
+                  />
+                  <span>{{ label(f.value) }}</span>
+                </label>
+              }
+            </div>
+          </section>
+        } @empty {
+          <p class="effect-filter-empty">{{ i18n.t('effectFilter.noMatch') }}</p>
+        }
+      </div>
+
+      <div class="effect-filter-actions">
+        <button
+          type="button"
+          class="glass-button"
+          (click)="clear()"
+          [disabled]="draft().keys.size === 0"
+        >
+          {{ i18n.t('effectFilter.clear') }}
+        </button>
+        <button type="button" class="glass-button primary" (click)="close()">
+          {{ i18n.t('effectFilter.apply') }}
+          @if (draft().keys.size > 0) {
+            ({{ draft().keys.size }})
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+</ng-template>

@@ -239,16 +239,7 @@
                 <option [ngValue]="t">{{ sectionLabelFor(t) }}</option>
               }
             </select>
-            <select
-              class="glass-input small"
-              [ngModel]="effect()"
-              (ngModelChange)="setEffect($event)"
-            >
-              <option ngValue="all">{{ i18n.t('deckView.effectAll') }}</option>
-              @for (f of effects.effectFilters; track f.value) {
-                <option [ngValue]="f.value">{{ effects.effectFilterLabel(f.value) }}</option>
-              }
-            </select>
+            <app-effect-filter [value]="effect()" (valueChange)="setEffect($event)" />
             <select
               class="glass-input small"
               [ngModel]="keyword()"
