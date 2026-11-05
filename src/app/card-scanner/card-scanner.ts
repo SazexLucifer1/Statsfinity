@@ -129,11 +129,11 @@ export class CardScanner implements OnInit, OnDestroy {
   private lastHit: Float32Array | null = null;
   private lastAttempt = 0;
   /**
-   * Gegen Doppelzählung bei starkem Zittern: derselbe Druck zählt kurz nach dem letzten Treffer
-   * nur, wenn der Rahmen dazwischen leer war (Karte weggenommen).
+   * Gegen Doppelzählung: derselbe Druck zählt nach dem letzten Treffer nur, wenn der Rahmen
+   * dazwischen leer war oder deutlich bewegt wurde (Karte weggenommen bzw. getauscht). Langsames
+   * Verrutschen zählt nicht - das hat am 05.11.2026 17 von 22 gelöschten Treffern verdoppelt.
    */
   private lastHitKey: string | null = null;
-  private lastHitAt = 0;
   private sawEmpty = false;
   private readonly small = document.createElement('canvas');
   /** Der Ausschnitt in voller Kameraauflösung, für die Nahaufnahme der Ecke - wiederverwendet,
@@ -390,15 +390,14 @@ export class CardScanner implements OnInit, OnDestroy {
       this.missStreak = 0;
       this.missAlerted = false;
     }
+    // Rahmen leer oder deutliche Bewegung seit dem Treffer (Karte weggenommen, Hand im Bild): Eine
+    // gleiche Karte danach ist eine neue. In einer Box mit Wänden wird der Rahmen nie "leer", die
+    // zweite gleiche Karte wurde deshalb verschluckt (04.11.2026). Bloßes Verrutschen der liegenden
+    // Karte reicht dagegen nicht: Das zählte sie ein zweites Mal - 17 der 22 gelöschten Treffer
+    // der nächsten Testrunde waren solche Doppelten, meist 2-3 s nach dem ersten (05.11.2026).
+    if (spread < MIN_CONTRAST || diff > MOTION) this.sawEmpty = true;
     // Karte weg oder eine andere im Rahmen: der letzte Treffer sperrt nicht mehr.
-    if (spread < MIN_CONTRAST) this.sawEmpty = true;
-    if (this.lastHit && (sinceHit > CHANGED || spread < MIN_CONTRAST)) {
-      this.lastHit = null;
-      // Deutlich anderes Bild seit dem Treffer (Karte weggenommen, Hand im Bild) zählt wie ein
-      // leerer Rahmen: In einer Box mit Wänden wird der Rahmen nie "leer", und eine zweite gleiche
-      // Karte binnen 4 s wurde sonst als dieselbe verschluckt (Rückmeldung des Users, 04.11.2026).
-      this.sawEmpty = true;
-    }
+    if (this.lastHit && (sinceHit > CHANGED || spread < MIN_CONTRAST)) this.lastHit = null;
     if (this.lastHit || spread < MIN_CONTRAST || diff > MOTION) return;
     if (Date.now() - this.lastAttempt < RETRY_MS) return;
 
@@ -457,8 +456,10 @@ export class CardScanner implements OnInit, OnDestroy {
         this.foilMode() && found.print.finishes.some((f) => f !== 'nonfoil')
           ? { ...found, foil: true }
           : found;
-      const key = `${hit.print.scryfallId}|${hit.foil}`;
-      if (key === this.lastHitKey && !this.sawEmpty && Date.now() - this.lastHitAt < 4000) {
+      // Nur der Druck, nicht Foil: Schwankt die Foil-Erkennung zwischen zwei Versuchen, ist es
+      // trotzdem dieselbe Karte. Und ohne Zeitgrenze - eine liegende Karte bleibt dieselbe.
+      const key = hit.print.scryfallId;
+      if (key === this.lastHitKey && !this.sawEmpty) {
         this.lastHit = gray;
         this.status.set('saved');
         return;
@@ -471,13 +472,12 @@ export class CardScanner implements OnInit, OnDestroy {
       }
       this.lastHit = gray;
       this.lastHitKey = key;
-      this.lastHitAt = Date.now();
       this.sawEmpty = false;
       this.missStreak = 0;
       this.missAlerted = false;
-      // Hell = Ecke gelesen, Set und Sprache stimmen fast immer; tief = nur über das Bild erkannt,
-      // Set und Sprache in der Liste prüfen.
-      this.beep(hit.sure ? 'ok' : 'check');
+      // Hell = Ecke gelesen und Foil eindeutig; tief = nur über das Bild erkannt oder Foil unklar,
+      // in der Liste prüfen. Im Foil-Stapel entscheidet der Schalter, nicht die Erkennung.
+      this.beep(hit.sure && (this.foilMode() || hit.foilSure) ? 'ok' : 'check');
       const entry = ++this.scanCounter;
       this.recent.update((list) => [{ ...hit, key: entry }, ...list].slice(0, 8));
       void this.loadLanguages(entry, hit.print);
