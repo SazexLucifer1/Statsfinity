@@ -167,9 +167,28 @@ export class CollectionService {
     }
   }
 
-  quantityOf(scryfallId: string, foil: boolean): number {
+  /**
+   * Die Sprache gehört zum Schlüssel einer Zeile, nicht nur die Druck-ID: Scryfall kennt viele
+   * Drucke nicht in jeder Sprache, in der es sie gibt (Wunsch des Users, 05.11.2026). Eine deutsche
+   * Karte, die Scryfall nur englisch führt, steht dann mit der englischen Druck-ID und `lang` "de"
+   * da - neben einer englischen desselben Drucks (sql/sammlung-sprache-frei-2026-11-05.sql).
+   * `lang` weggelassen = die Sprache des Drucks.
+   */
+  quantityOf(scryfallId: string, foil: boolean, lang?: string): number {
+    return this.entries()?.find((e) => this.sameRow(e, scryfallId, foil, lang))?.quantity ?? 0;
+  }
+
+  /**
+   * false, solange die Migration fehlt (Primärschlüssel noch ohne Sprache): Dann gilt wie früher
+   * eine Zeile je Druck und Foil, und eine andere Sprache überschreibt die vorhandene Zeile.
+   */
+  private langInKey = true;
+
+  private sameRow(e: CollectionEntry, scryfallId: string, foil: boolean, lang?: string): boolean {
     return (
-      this.entries()?.find((e) => e.scryfallId === scryfallId && e.foil === foil)?.quantity ?? 0
+      e.scryfallId === scryfallId &&
+      e.foil === foil &&
+      (!this.langInKey || lang === undefined || e.lang === lang)
     );
   }
 
@@ -178,7 +197,7 @@ export class CollectionService {
     await this.ensureLoaded();
     const uid = this.auth.currentUser()?.id;
     if (!uid || !this.available()) return false;
-    const current = this.quantityOf(print.scryfallId, foil);
+    const current = this.quantityOf(print.scryfallId, foil, print.lang);
     return this.setQuantity(print, foil, Math.min(999, current + delta));
   }
 
@@ -190,16 +209,18 @@ export class CollectionService {
     const uid = this.auth.currentUser()?.id;
     if (!uid) return false;
     const before = this.entries() ?? [];
-    const existing = before.find((e) => e.scryfallId === print.scryfallId && e.foil === foil);
+    const existing = before.find((e) => this.sameRow(e, print.scryfallId, foil, print.lang));
 
     if (quantity <= 0) {
       this.entries.set(before.filter((e) => e !== existing));
-      const { error } = await supabase
+      let query = supabase
         .from('collection_cards')
         .delete()
         .eq('user_id', uid)
         .eq('scryfall_id', print.scryfallId)
         .eq('foil', foil);
+      if (this.langInKey) query = query.eq('lang', existing?.lang ?? print.lang);
+      const { error } = await query;
       if (error) {
         console.error('Konnte Karte nicht aus der Sammlung nehmen:', error);
         this.entries.set(before);
@@ -225,7 +246,7 @@ export class CollectionService {
     this.entries.set(
       existing ? before.map((e) => (e === existing ? entry : e)) : [entry, ...before],
     );
-    const { error } = await supabase.from('collection_cards').upsert({
+    const row = {
       user_id: uid,
       scryfall_id: entry.scryfallId,
       foil,
@@ -235,7 +256,18 @@ export class CollectionService {
       collector_number: entry.collectorNumber,
       illustration_id: entry.illustrationId,
       quantity,
-    });
+    };
+    let { error } = await supabase
+      .from('collection_cards')
+      .upsert(row, this.langInKey ? { onConflict: 'user_id,scryfall_id,foil,lang' } : undefined);
+    // 42P10: kein passender Schlüssel - die Migration mit der Sprache im Schlüssel fehlt noch.
+    if (error?.code === '42P10' && this.langInKey) {
+      console.warn(
+        'Sprache noch nicht im Schlüssel der Sammlung - sql/sammlung-sprache-frei-2026-11-05.sql ausführen.',
+      );
+      this.langInKey = false;
+      ({ error } = await supabase.from('collection_cards').upsert(row));
+    }
     if (error) {
       if (isMissingMigration(error)) this.available.set(false);
       console.error('Konnte Sammlung nicht speichern:', error);
@@ -386,7 +418,9 @@ export class CollectionService {
   }
 
   /** Preise der englischen Drucke für fremdsprachige (gleiches Set, gleiche Nummer). */
-  private async englishPrices(prints: { id: string; set: string; number: string }[]): Promise<void> {
+  private async englishPrices(
+    prints: { id: string; set: string; number: string }[],
+  ): Promise<void> {
     for (let i = 0; i < prints.length; i += 75) {
       const chunk = prints.slice(i, i + 75);
       // Set + Nummer ohne Sprache liefert bei Scryfall den englischen Druck.

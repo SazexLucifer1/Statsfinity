@@ -91,6 +91,8 @@ export interface ScanDiagnostics {
   look?: { set: string; nr: string; lang: string; score: number }[];
   /** Sprachvergleich am Textkasten. */
   langScores?: { lang: string; score: number }[];
+  /** Sprache aus der Ecke, die Scryfall für diesen Druck nicht führt (withCornerLang()). */
+  langUnlisted?: boolean;
   /** Woher die Sprache kam. */
   langSource?: 'corner' | 'image' | 'text' | 'fallback';
   /** Foil aus Zeichengröße, Wortrahmen und Schimmer. */
@@ -421,6 +423,7 @@ export class CardScanService {
       this.lastScan.langSource = line.lang ? 'corner' : 'fallback';
     }
     if (!print) return null;
+    print = await this.withCornerLang(print, line);
 
     const canNonfoil = print.finishes.includes('nonfoil');
     const canFoil = print.finishes.some((f) => f !== 'nonfoil');
@@ -1024,6 +1027,31 @@ export class CardScanService {
       }
     }
     return { text: data.text ?? '', words, gray, width: crop.width, height: crop.height };
+  }
+
+  /**
+   * Die in der Ecke gelesene Sprache gilt, auch wenn Scryfall den Druck darin nicht führt (Wunsch
+   * des Users, 05.11.2026). Gemessen an 737 Scan-Proben: Las die Ecke das richtige Set, stimmte die
+   * gelesene Sprache in allen Fällen - bis auf 17-mal "DE", gespeichert als Englisch, weil Scryfall
+   * z. B. die MID-Drucke 298-305 nicht auf Deutsch kennt (bei ELD 311 und HOB 132 fehlte nur die
+   * Antwort von Scryfall im Moment des Scans). Dann bleibt Scryfalls Druck für Bild und Preis, nur
+   * `lang` wechselt (`printLang` hält die Sprache des Drucks fest, collection.service.ts).
+   */
+  private async withCornerLang(
+    print: CollectionPrint,
+    line: CollectorLine,
+  ): Promise<CollectionPrint> {
+    const lang = line.lang;
+    if (!lang || lang === print.lang || line.setCode !== print.setCode) return print;
+    const exact = await this.cardBy(
+      `${API}/cards/${print.setCode}/${encodeURIComponent(print.collectorNumber)}/${lang}`,
+    );
+    if (exact) {
+      const found = toCollectionPrint(exact);
+      if (found.illustrationId === print.illustrationId) return found;
+    }
+    this.lastScan.langUnlisted = true;
+    return { ...print, lang, printLang: print.lang };
   }
 
   /** Der Druck mit diesem Artwork in der gewünschten Sprache - sonst der aus dem Fingerabdruck. */
