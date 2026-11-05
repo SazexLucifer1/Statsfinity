@@ -7,10 +7,16 @@ import { normalizeCardName, sleep } from './array-utils';
 import type { GameChangerEntry, EffectCategoryStat } from './deck-viewer.service';
 import { DeckAnalysisService } from './deck-analysis.service';
 import { ALL_EFFECT_FILTERS, CardEffectFilter } from './card-effect-filters';
+import { supabase } from './supabase.client';
 
 /**
  * Effekt-Kategorien der Deck-Analyse (Entfernung, Rampe, ...): zuerst aus dem eigenen Kartenbestand, Scryfall nur für unbekannte Karten.
  */
+/** Abfrage je Effekt-Schlüssel (nur Kategorien mit Scryfall-Abfrage). */
+const CARD_EFFECT_QUERY = new Map(
+  ALL_EFFECT_FILTERS.filter((f) => f.query).map((f) => [f.value, f.query] as const),
+);
+
 @Injectable({ providedIn: 'root' })
 export class DeckEffectsService {
   private readonly cardData = inject(CardDataService);
@@ -154,6 +160,8 @@ export class DeckEffectsService {
    * unbekannte Karten (frische Spoiler) und bei DB-Ausfall.
    */
   async loadEffectCategoryCounts(cards: DeckCard[]): Promise<void> {
+    this.tileCards = cards;
+    void this.loadCustomTileCounts();
     this.effectCategoryCountsBusy.set(true);
     const names = [
       ...new Set(cards.filter((c) => !c.isMaybeboard && !c.isToken).map((c) => c.cardName)),
@@ -213,9 +221,142 @@ export class DeckEffectsService {
 
   reset(): void {
     this.tagBasedEffectStats.set(null);
+    this.customTiles.set(null);
+    this.customTileStats.set(new Map());
+    this.customTileRun++;
+    this.tileLoadRun++;
+    this.tileCards = [];
     this.effectCategoryCountsBusy.set(false);
     this.effectCategoryProgress.set(null);
     this.effectCategoryPopup.set(null);
+  }
+
+  // --- Eigene Kacheln je Deck (Wunsch des Users, 05.11.2026) ---------------------------------
+  //
+  // Standard bleiben die 15 Kacheln oben. Der Besitzer kann je Deck eine eigene Auswahl aus
+  // allen Effekt-Tags festlegen (decks.effect_tiles, sql/deck-effekt-kacheln-2026-11-05.sql,
+  // null = Standard). Das ändert NUR die Anzeige: Deck-Check und Power-Wert lesen weiter
+  // effectCategoryStats() mit den Standard-Kategorien.
+
+  /** Spalte vorhanden? Fehlt die Migration, verschwindet der Knopf beim ersten 42703/PGRST204. */
+  readonly tilesAvailable = signal(true);
+  /** Gespeicherte Auswahl des geöffneten Decks - null = Standard-Kacheln. */
+  readonly customTiles = signal<string[] | null>(null);
+  /** Zahlen der gewählten Kacheln, die nicht zu den Standard-Kacheln gehören. */
+  private readonly customTileStats = signal<Map<string, EffectCategoryStat>>(new Map());
+  private tileCards: DeckCard[] = [];
+  private customTileRun = 0;
+  /** Eigener Zähler fürs Laden der Auswahl - das Zählen erhöht customTileRun ständig. */
+  private tileLoadRun = 0;
+
+  /** Schlüssel der Standard-Kacheln, in ihrer Reihenfolge. */
+  readonly defaultTileKeys = computed(() => [
+    ...DeckEffectsService.EFFECT_TAG_CATEGORIES.map((c) => c.key),
+    'tutor',
+    'extraturn',
+    'mld',
+  ]);
+
+  /**
+   * Was die Analyse als Kacheln zeigt: ohne eigene Auswahl die Standard-Kacheln, sonst die
+   * gewählten - Standard-Kacheln in ihrer gewohnten Reihenfolge vorn, die übrigen in der
+   * Reihenfolge der Tag-Liste. Eine noch ladende Kachel hat count null.
+   */
+  readonly displayedEffectStats = computed<(EffectCategoryStat | { key: string; labelKey: string; count: null; cards: [] })[] | null>(() => {
+    const base = this.effectCategoryStats();
+    const chosen = this.customTiles();
+    if (!base || !chosen) return base;
+    const extra = this.customTileStats();
+    const order = [...this.defaultTileKeys(), ...ALL_EFFECT_FILTERS.map((f) => f.value)];
+    return [...new Set(order)]
+      .filter((key) => chosen.includes(key))
+      .map(
+        (key) =>
+          base.find((b) => b.key === key) ??
+          extra.get(key) ?? { key, labelKey: `effectFilter.${key}`, count: null, cards: [] },
+      );
+  });
+
+  /** Gespeicherte Auswahl laden; die Zahlen dazu folgen, sobald die Karten da sind. */
+  async loadTiles(deckId: string): Promise<void> {
+    if (!this.tilesAvailable()) return;
+    const run = this.tileLoadRun;
+    const { data, error } = await supabase
+      .from('decks')
+      .select('effect_tiles')
+      .eq('id', deckId)
+      .maybeSingle();
+    if (run !== this.tileLoadRun) return;
+    if (error) {
+      if (!this.tileColumnMissing(error)) console.error('Konnte Effekt-Kacheln nicht laden:', error);
+      return;
+    }
+    const raw = (data as { effect_tiles?: string[] | null } | null)?.effect_tiles ?? null;
+    const known = new Set(ALL_EFFECT_FILTERS.map((f) => f.value));
+    const keys = raw?.filter((k) => known.has(k)) ?? null;
+    this.customTiles.set(keys && keys.length ? keys : null);
+    void this.loadCustomTileCounts();
+  }
+
+  /**
+   * Neue Auswahl speichern (nur der Besitzer, das Update-Recht entscheidet). Leer oder gleich
+   * dem Standard = null, damit spätere Änderungen am Standard auch hier ankommen.
+   */
+  async saveTiles(deckId: string, keys: readonly string[]): Promise<void> {
+    const defaults = this.defaultTileKeys();
+    const isDefault =
+      keys.length === 0 || (keys.length === defaults.length && defaults.every((k) => keys.includes(k)));
+    const value = isDefault ? null : [...keys];
+    this.customTiles.set(value);
+    void this.loadCustomTileCounts();
+    if (!this.tilesAvailable()) return;
+    // Wie bei Primer und Spielweise: updated_at bleibt stehen.
+    const { error } = await supabase.from('decks').update({ effect_tiles: value }).eq('id', deckId);
+    if (error && !this.tileColumnMissing(error))
+      console.error('Konnte Effekt-Kacheln nicht speichern:', error);
+  }
+
+  /**
+   * Zählt die gewählten Kacheln außerhalb des Standards - live über Scryfall mit demselben
+   * Sitzungs-Cache wie der Effekt-Filter der Kartenliste, damit Kachel und Filter dieselben
+   * Karten zeigen (und neue Tags nicht erst nach dem Nachtlauf zählen).
+   */
+  private async loadCustomTileCounts(): Promise<void> {
+    const run = ++this.customTileRun;
+    const chosen = this.customTiles();
+    const cards = this.tileCards;
+    if (!chosen || cards.length === 0) return;
+    const defaults = new Set(this.defaultTileKeys());
+    const counted = cards.filter((c) => !c.isMaybeboard && !c.isToken);
+    const names = [...new Set(counted.map((c) => c.cardName))];
+    const next = new Map<string, EffectCategoryStat>();
+    for (const key of chosen) {
+      if (defaults.has(key)) continue;
+      const query = CARD_EFFECT_QUERY.get(key);
+      if (!query) continue;
+      const matched = await this.scryfall.classifyCards(key, query, names);
+      if (run !== this.customTileRun) return;
+      const entries = counted
+        .filter((c) => matched.has(normalizeCardName(c.cardName.split(' // ')[0].trim())))
+        .map((c) => ({ cardName: c.cardName, quantity: c.quantity }));
+      next.set(key, {
+        key,
+        labelKey: `effectFilter.${key}`,
+        count: entries.reduce((sum, c) => sum + c.quantity, 0),
+        cards: entries,
+      });
+      this.customTileStats.set(new Map(next));
+    }
+  }
+
+  private tileColumnMissing(error: { code?: string; message?: string }): boolean {
+    if (error.code !== '42703' && error.code !== 'PGRST204') return false;
+    if (!(error.message ?? '').includes('effect_tiles')) return false;
+    console.warn(
+      'Spalte decks.effect_tiles fehlt noch - sql/deck-effekt-kacheln-2026-11-05.sql ausführen.',
+    );
+    this.tilesAvailable.set(false);
+    return true;
   }
 
   private readonly i18n = inject(I18nService);

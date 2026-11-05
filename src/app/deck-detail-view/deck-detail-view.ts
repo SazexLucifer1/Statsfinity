@@ -37,7 +37,7 @@ import { BracketBadge } from '../ui/bracket-badge/bracket-badge';
 import { ManaSymbol } from '../ui/mana-symbol/mana-symbol';
 import { Icon } from '../ui/icon/icon';
 import { EffectFilter } from '../ui/effect-filter/effect-filter';
-import { CARD_EFFECT_FILTERS } from '../card-effect-filters';
+import { CARD_EFFECT_FILTERS, EffectSelection } from '../card-effect-filters';
 import { DeckSocial } from '../deck-social/deck-social';
 import { BanlistService } from '../banlist.service';
 
@@ -51,6 +51,17 @@ export class DeckDetailView {
   readonly viewer = inject(DeckViewerService);
   /** Karten hinzufügen sucht live bei Scryfall - dort gibt es nur Kategorien mit Abfrage. */
   readonly scryfallEffectFilters = CARD_EFFECT_FILTERS;
+
+  /** Eigene Effekt-Kacheln des Decks als Auswahl fürs Popup (ohne eigene: die Standard-Kacheln). */
+  readonly tileSelection = computed<EffectSelection>(() => ({
+    keys: new Set(this.viewer.effects.customTiles() ?? this.viewer.effects.defaultTileKeys()),
+    mode: 'all',
+  }));
+
+  setTiles(selection: EffectSelection): void {
+    const deck = this.viewer.state.viewingDeck();
+    if (deck) void this.viewer.effects.saveTiles(deck.id, [...selection.keys]);
+  }
 
   private readonly deckService = inject(DeckService);
   private readonly importService = inject(DeckImportService);

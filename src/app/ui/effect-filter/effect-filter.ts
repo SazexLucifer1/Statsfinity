@@ -49,6 +49,17 @@ export class EffectFilter implements OnDestroy {
    * (CARD_EFFECT_FILTERS), lokal filternde Stellen alle (ALL_EFFECT_FILTERS).
    */
   readonly options = input<readonly CardEffectFilter[]>(ALL_EFFECT_FILTERS);
+  /**
+   * Umschalter "alle / mindestens einer" zeigen - aus, wo die Auswahl kein Filter ist (eigene
+   * Effekt-Kacheln der Deck-Analyse).
+   */
+  readonly showMode = input(true);
+  /** Feste Beschriftung des Knopfes statt der Zusammenfassung, z. B. "Kacheln anpassen". */
+  readonly triggerLabel = input('');
+  /** Überschrift des Popups; leer = "Effekte". */
+  readonly heading = input('');
+  /** Beschriftung des Leeren-Knopfes; leer = "Zurücksetzen". */
+  readonly clearLabel = input('');
 
   readonly open = signal(false);
   /** Entwurf im offenen Popup - übernommen erst beim Schließen. */
@@ -79,6 +90,7 @@ export class EffectFilter implements OnDestroy {
 
   /** Beschriftung des Knopfes: "Alle Effekte", ein Name oder "3 Effekte · alle". */
   readonly summary = computed(() => {
+    if (this.triggerLabel()) return this.triggerLabel();
     const keys = [...this.value().keys];
     if (keys.length === 0) return this.i18n.t('deckView.effectAll');
     if (keys.length === 1) return this.label(keys[0]);

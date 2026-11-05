@@ -11,6 +11,16 @@
   text-align: left;
   cursor: pointer;
 
+  // Als einfacher Knopf (feste Beschriftung): so breit wie der Text, ohne Pfeil.
+  &.as-button {
+    width: auto;
+    justify-content: center;
+
+    .effect-filter-caret {
+      display: none;
+    }
+  }
+
   // Aktiver Filter wie die übrigen Filter-Chips (.glass-chip.active): hellblau.
   &.active {
     border-color: rgba(125, 211, 252, 0.8);

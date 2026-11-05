@@ -2,7 +2,8 @@
   #trigger
   type="button"
   class="glass-input small effect-filter-trigger"
-  [class.active]="value().keys.size > 0"
+  [class.as-button]="!!triggerLabel()"
+  [class.active]="value().keys.size > 0 && !triggerLabel()"
   (click)="openMenu()"
   [attr.aria-label]="i18n.t('effectFilter.title')"
   [attr.aria-expanded]="open()"
@@ -18,11 +19,11 @@
       class="options-menu-sheet effect-filter-sheet"
       cdkTrapFocus
       role="dialog"
-      [attr.aria-label]="i18n.t('effectFilter.title')"
+      [attr.aria-label]="heading() || i18n.t('effectFilter.title')"
       (click)="$event.stopPropagation()"
       (keydown.escape)="close()"
     >
-      <h3 class="effect-filter-heading">{{ i18n.t('effectFilter.title') }}</h3>
+      <h3 class="effect-filter-heading">{{ heading() || i18n.t('effectFilter.title') }}</h3>
 
       <input
         type="search"
@@ -32,26 +33,28 @@
         [placeholder]="i18n.t('effectFilter.searchPlaceholder')"
       />
 
-      <div class="segmented effect-filter-mode" role="radiogroup">
-        <button
-          type="button"
-          role="radio"
-          [class.active]="draft().mode === 'all'"
-          [attr.aria-checked]="draft().mode === 'all'"
-          (click)="setMode('all')"
-        >
-          {{ i18n.t('effectFilter.modeAll') }}
-        </button>
-        <button
-          type="button"
-          role="radio"
-          [class.active]="draft().mode === 'any'"
-          [attr.aria-checked]="draft().mode === 'any'"
-          (click)="setMode('any')"
-        >
-          {{ i18n.t('effectFilter.modeAny') }}
-        </button>
-      </div>
+      @if (showMode()) {
+        <div class="segmented effect-filter-mode" role="radiogroup">
+          <button
+            type="button"
+            role="radio"
+            [class.active]="draft().mode === 'all'"
+            [attr.aria-checked]="draft().mode === 'all'"
+            (click)="setMode('all')"
+          >
+            {{ i18n.t('effectFilter.modeAll') }}
+          </button>
+          <button
+            type="button"
+            role="radio"
+            [class.active]="draft().mode === 'any'"
+            [attr.aria-checked]="draft().mode === 'any'"
+            (click)="setMode('any')"
+          >
+            {{ i18n.t('effectFilter.modeAny') }}
+          </button>
+        </div>
+      }
 
       <div class="effect-filter-list">
         @for (g of groups(); track g.group) {
@@ -82,7 +85,7 @@
           (click)="clear()"
           [disabled]="draft().keys.size === 0"
         >
-          {{ i18n.t('effectFilter.clear') }}
+          {{ clearLabel() || i18n.t('effectFilter.clear') }}
         </button>
         <button type="button" class="glass-button primary" (click)="close()">
           {{ i18n.t('effectFilter.apply') }}

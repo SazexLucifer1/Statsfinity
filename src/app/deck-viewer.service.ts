@@ -1094,6 +1094,8 @@ export class DeckViewerService {
     this.showCardPrices.set(false);
     this.cardSortMode.set('type');
     this.effects.reset();
+    // Nach reset(): eigene Effekt-Kacheln des Decks (null = Standard).
+    void this.effects.loadTiles(deck.id);
     this.deckStatsScope.set('mine');
 
     const [cards, log, gameStats] = await Promise.all([

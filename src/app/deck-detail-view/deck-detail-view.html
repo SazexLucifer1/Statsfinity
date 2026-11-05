@@ -1137,23 +1137,35 @@
               </section>
 
               <section class="analysis-section analysis-section-wide">
-                <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.effectCategoriesTitle') }}</h4>
+                <div class="effect-tiles-head">
+                  <h4 class="deck-section-title">{{ viewer.i18n.t('deckView.effectCategoriesTitle') }}</h4>
+                  @if (viewer.state.canEditViewingDeck() && viewer.effects.tilesAvailable()) {
+                    <app-effect-filter
+                      [value]="tileSelection()"
+                      [showMode]="false"
+                      [triggerLabel]="viewer.i18n.t('deckView.effectTilesEdit')"
+                      [heading]="viewer.i18n.t('deckView.effectTilesHeading')"
+                      [clearLabel]="viewer.i18n.t('deckView.effectTilesDefault')"
+                      (valueChange)="setTiles($event)"
+                    />
+                  }
+                </div>
                 @if (viewer.effects.effectCategoryCountsBusy()) {
                   @if (viewer.effects.effectCategoryProgress(); as progress) {
                     <p class="hint">{{ viewer.i18n.t('deckView.loadingEffectCategoriesProgress', { done: progress.done, total: progress.total }) }}</p>
                   } @else {
                     <p class="hint">{{ viewer.i18n.t('deckView.loadingEffectCategories') }}</p>
                   }
-                } @else if (viewer.effects.effectCategoryStats(); as stats) {
+                } @else if (viewer.effects.displayedEffectStats(); as stats) {
                   <p class="hint">{{ viewer.i18n.t('deckView.effectCategoriesHint') }}</p>
                   <div class="stat-tiles">
                     @for (stat of stats; track stat.key) {
                       <button
                         class="stat-tile stat-tile-button"
-                        [disabled]="stat.count === 0"
+                        [disabled]="!stat.count"
                         (click)="viewer.effects.openEffectCategoryPopup(viewer.i18n.t(stat.labelKey), stat.cards)"
                       >
-                        <span class="stat-value">{{ stat.count }}</span>
+                        <span class="stat-value">{{ stat.count ?? '…' }}</span>
                         <span class="stat-label">{{ viewer.i18n.t(stat.labelKey) }}</span>
                       </button>
                     }
