@@ -24,7 +24,14 @@ import {
 } from '../collection-filter';
 import { CardPreviewService } from '../card-preview.service';
 import { CardDataService, SpellbookCardFlags } from '../card-data.service';
-import { ScryfallCard, ScryfallService, ScryfallSet } from '../scryfall.service';
+import {
+  EMPTY_PRINT_SEARCH,
+  PrintSearch as PrintSearchValue,
+  ScryfallCard,
+  ScryfallService,
+  ScryfallSet,
+  printSearchActive,
+} from '../scryfall.service';
 import { DeckEffectsService } from '../deck-effects.service';
 import { EMPTY_EFFECT_SELECTION, EffectSelection } from '../card-effect-filters';
 import { EffectFilter } from '../ui/effect-filter/effect-filter';
@@ -39,6 +46,9 @@ import { RarityFilter } from '../ui/rarity-filter/rarity-filter';
 import { ColorFilter } from '../ui/color-filter/color-filter';
 import { MultiSelect } from '../ui/multi-select/multi-select';
 import { CardScanner } from '../card-scanner/card-scanner';
+import { PrintSearch } from '../ui/print-search/print-search';
+import { CollectionStats } from '../collection-stats/collection-stats';
+import { CollectionCardEditor } from '../collection-card-editor/collection-card-editor';
 
 const PAGE = 60;
 /** Effekte ohne eigene Kategorie im Nacht-Cache - die kommen aus den Spellbook-Merkmalen. */
@@ -70,6 +80,9 @@ const FLAG_EFFECTS: Record<string, keyof SpellbookCardFlags> = {
     ColorFilter,
     MultiSelect,
     CardScanner,
+    PrintSearch,
+    CollectionStats,
+    CollectionCardEditor,
   ],
   templateUrl: './collection-view.html',
   styleUrl: './collection-view.scss',
@@ -107,6 +120,8 @@ export class CollectionView {
   private readonly requestedIds = new Set<string>();
 
   // Ansicht
+  /** Reiter der Seite: Karten oder Statistik über die gefilterten Karten. */
+  readonly page = signal<'cards' | 'stats'>('cards');
   readonly mode = signal<'grid' | 'list'>('grid');
   readonly sort = signal<CollectionSort>('added');
   readonly group = signal<CollectionGroup>('none');
@@ -126,6 +141,15 @@ export class CollectionView {
   readonly effect = signal<EffectSelection>(EMPTY_EFFECT_SELECTION);
   readonly keyword = signal('all');
   readonly usage = signal<CollectionFilters['usage']>('all');
+  readonly creatureType = signal('');
+  readonly legendary = signal(false);
+  readonly rulesText = signal('');
+  /** Künstler, Artwork, Flavortext, Lore - wie im Deck-Editor, Treffer live von Scryfall. */
+  readonly printSearch = signal<PrintSearchValue>(EMPTY_PRINT_SEARCH);
+  readonly printMatch = signal<{ ids: Set<string>; illustrations: Set<string> } | null>(null);
+  readonly printSearchBusy = signal(false);
+  readonly printSearchFailed = signal(false);
+  private printSearchTimer: ReturnType<typeof setTimeout> | null = null;
 
   readonly filters = computed<CollectionFilters>(() => ({
     search: this.search(),
@@ -143,6 +167,10 @@ export class CollectionView {
     effect: this.effect(),
     keyword: this.keyword(),
     usage: this.usage(),
+    creatureType: this.creatureType(),
+    legendary: this.legendary(),
+    rulesText: this.rulesText(),
+    printMatch: printSearchActive(this.printSearch()) ? this.printMatch() : null,
   }));
   readonly filterCount = computed(() => activeFilterCount(this.filters()));
 
@@ -178,6 +206,7 @@ export class CollectionView {
         cmc: card?.cmc ?? null,
         colorIdentity: card?.colorIdentity ?? [],
         keywords: card?.keywords ?? [],
+        oracleText: [card?.oracleText, card?.backOracleText].filter(Boolean).join('\n') || null,
         effects,
         rarity: info?.rarity ?? null,
         setName: info?.setName ?? this.sets().get(entry.setCode)?.name ?? null,
@@ -188,8 +217,10 @@ export class CollectionView {
     });
   });
 
+  /** Gefiltert, aber nicht zusammengefasst - Grundlage des Statistik-Reiters. */
+  readonly statItems = computed(() => filterCollection(this.items(), this.filters()));
   readonly filtered = computed(() => {
-    const list = filterCollection(this.items(), this.filters());
+    const list = this.statItems();
     return sortCollection(this.merge() ? mergePrints(list) : list, this.sort());
   });
   readonly sections = computed(() => groupCollection(this.filtered(), this.group()));
@@ -348,8 +379,20 @@ export class CollectionView {
    */
   open(item: CollectionItem): void {
     if (this.merge()) this.detailName.set(item.entry.cardName);
+    else if (this.editable()) this.editEntry.set(item.entry);
     else this.openPreview(item.entry);
   }
+
+  /** Eintrag im Bearbeiten-Blatt (Foil, Sprache, Druck, Anzahl). */
+  readonly editEntry = signal<CollectionEntry | null>(null);
+  /** Im Detailfenster der zusammengefassten Ansicht: eigene Sammlung bearbeiten, sonst Vorschau. */
+  openDetailItem(item: CollectionItem): void {
+    if (this.editable()) {
+      this.detailName.set(null);
+      this.editEntry.set(item.entry);
+    } else this.openPreview(item.entry);
+  }
+  readonly setLabelFn = (code: string): string => this.setLabel(code);
 
   /** Karte, deren Drucke gerade im Detailfenster stehen. */
   readonly detailName = signal<string | null>(null);
@@ -438,6 +481,26 @@ export class CollectionView {
     this.effect.set(value);
   }
 
+  /** Druck-Suche mit kurzer Pause nach dem Tippen, dann eine Anfrage an Scryfall. */
+  setPrintSearch(value: PrintSearchValue): void {
+    this.printSearch.set(value);
+    if (this.printSearchTimer) clearTimeout(this.printSearchTimer);
+    if (!printSearchActive(value)) {
+      this.printMatch.set(null);
+      this.printSearchBusy.set(false);
+      this.printSearchFailed.set(false);
+      return;
+    }
+    this.printSearchBusy.set(true);
+    this.printSearchTimer = setTimeout(async () => {
+      const match = await this.scryfall.printSearchMatches(value);
+      if (this.printSearch() !== value) return;
+      this.printSearchBusy.set(false);
+      this.printSearchFailed.set(match === null);
+      this.printMatch.set(match);
+    }, 500);
+  }
+
   resetFilters(): void {
     this.langs.set(new Set());
     this.setFilter.set(new Set(this.setOptions()));
@@ -449,6 +512,10 @@ export class CollectionView {
     this.effect.set(EMPTY_EFFECT_SELECTION);
     this.keyword.set('all');
     this.usage.set('all');
+    this.creatureType.set('');
+    this.legendary.set(false);
+    this.rulesText.set('');
+    this.setPrintSearch(EMPTY_PRINT_SEARCH);
   }
 
   // --- Bearbeiten -------------------------------------------------------------------------

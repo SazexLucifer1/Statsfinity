@@ -1,0 +1,89 @@
+.editor {
+  display: grid;
+  gap: var(--sp-4);
+}
+
+.head {
+  display: flex;
+  gap: var(--sp-5);
+  align-items: flex-start;
+}
+
+.image {
+  flex: 0 0 120px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+
+  img {
+    display: block;
+    width: 100%;
+    border-radius: 6px;
+  }
+}
+
+.head-info {
+  display: grid;
+  gap: var(--sp-2);
+  min-width: 0;
+
+  h3 {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+}
+
+h4 {
+  margin: var(--sp-3) 0 0;
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+.hint {
+  margin: 0;
+  font-size: 0.8rem;
+  opacity: 0.7;
+
+  &.error {
+    color: var(--danger-strong);
+    opacity: 1;
+  }
+}
+
+.qty {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+
+  strong {
+    min-width: 2ch;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .icon-button {
+    color: inherit;
+  }
+}
+
+.field {
+  display: grid;
+  gap: var(--sp-2);
+  font-size: 0.85rem;
+
+  select {
+    width: 100%;
+  }
+}
+
+.segmented button:disabled {
+  opacity: 0.4;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  margin-top: var(--sp-3);
+}

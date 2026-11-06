@@ -1,0 +1,55 @@
+:host {
+  display: grid;
+  gap: var(--sp-5);
+}
+
+// Ab dem Tablet zwei Kästen je Reihe, gleich hoch wie im Statistik-Tab.
+@media (min-width: 768px) {
+  :host {
+    grid-template-columns: 1fr 1fr;
+    align-items: stretch;
+  }
+
+  section:first-child,
+  .hint:only-child {
+    grid-column: 1 / -1;
+  }
+}
+
+section {
+  margin: 0;
+}
+
+h3 {
+  margin: 0 0 var(--sp-4);
+  font-size: 1rem;
+}
+
+.hint {
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+.played {
+  display: grid;
+  gap: var(--sp-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: grid;
+    gap: var(--sp-2);
+  }
+}
+
+.played-head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-3);
+
+  strong {
+    font-size: 1.2rem;
+    font-variant-numeric: tabular-nums;
+  }
+}

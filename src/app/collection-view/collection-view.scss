@@ -435,3 +435,13 @@
 .merge-toggle button {
   padding-inline: var(--sp-3);
 }
+
+// Reiter Karten | Statistik über die volle Breite, damit er nicht wie ein Filter aussieht.
+.page-toggle {
+  display: flex;
+  margin-bottom: var(--sp-4);
+
+  button {
+    flex: 1;
+  }
+}

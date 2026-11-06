@@ -656,6 +656,38 @@ export class ScryfallService {
   }
 
   /**
+   * Druck-Suche (Künstler, Artwork, Flavortext, Lore) für Stellen, die lokal filtern (Sammlung):
+   * Scryfall liefert die passenden Artworks (unique=art), verglichen wird danach über Druck-ID und
+   * illustration_id - so passt auch ein fremdsprachiger Druck mit demselben Bild. Höchstens
+   * `maxPages` Seiten zu 175; null = Anfrage gescheitert (Filter dann nicht anwenden).
+   */
+  async printSearchMatches(
+    search: PrintSearch,
+    maxPages = 8
+  ): Promise<{ ids: Set<string>; illustrations: Set<string> } | null> {
+    const parts = printSearchQuery(search);
+    if (!parts.length) return { ids: new Set(), illustrations: new Set() };
+    const q = encodeURIComponent([...parts, 'game:paper', 'include:extras'].join(' '));
+    let url: string | null = `${API}/cards/search?q=${q}&unique=art`;
+    const ids = new Set<string>();
+    const illustrations = new Set<string>();
+    for (let page = 0; url && page < maxPages; page++) {
+      const res = await this.fetchWithRetry(url);
+      // 404 = keine Treffer, das ist eine Antwort und kein Fehler.
+      if (res?.status === 404) break;
+      if (!res?.ok) return page === 0 ? null : { ids, illustrations };
+      const data = await res.json();
+      for (const c of (data.data as any[]) ?? []) {
+        ids.add(c.id);
+        const ill = c.illustration_id ?? c.card_faces?.[0]?.illustration_id;
+        if (ill) illustrations.add(ill);
+      }
+      url = data.has_more ? data.next_page : null;
+    }
+    return { ids, illustrations };
+  }
+
+  /**
    * Blättern durch ALLE Karten (Cube-Builder, cube-view/): wie searchCards(), aber auch ohne jeden
    * Filter (dann alle Papierkarten) und seitenweise - Scryfall liefert 175 je Seite.
    */

@@ -1,0 +1,124 @@
+<div class="options-menu-overlay" (click)="closed.emit()">
+  <div class="options-menu-sheet wide editor" (click)="$event.stopPropagation()">
+    <div class="head">
+      <button
+        type="button"
+        class="image"
+        (click)="openPreview()"
+        [attr.aria-label]="entry().cardName"
+      >
+        <img [src]="image()" [alt]="entry().cardName" />
+      </button>
+      <div class="head-info">
+        <h3>{{ entry().cardName }}</h3>
+        <p class="hint">
+          {{ entry().setCode.toUpperCase() }} #{{ entry().collectorNumber }} ·
+          {{ entry().lang.toUpperCase() }}
+          @if (entry().foil) {
+            · ★
+          }
+        </p>
+        <div class="qty">
+          <button
+            type="button"
+            class="icon-button"
+            (click)="changeQuantity(-1)"
+            [attr.aria-label]="i18n.t('collection.less')"
+          >
+            −
+          </button>
+          <strong>{{ current()?.quantity ?? 0 }}</strong>
+          <button
+            type="button"
+            class="icon-button"
+            (click)="changeQuantity(1)"
+            [attr.aria-label]="i18n.t('collection.more')"
+          >
+            +
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <h4>{{ i18n.t('collection.edit.change') }}</h4>
+    <label class="field">
+      <span>{{ i18n.t('collection.edit.print') }}</span>
+      <select
+        class="glass-input small"
+        [ngModel]="variantKey()"
+        (ngModelChange)="variantKey.set($event)"
+      >
+        @for (v of variants(); track v.key) {
+          <option [ngValue]="v.key">{{ v.label }}</option>
+        }
+      </select>
+    </label>
+    @if (prints() === null) {
+      <p class="hint">{{ i18n.t('collection.loadingPrints') }}</p>
+    }
+    <label class="field">
+      <span>{{ i18n.t('collection.edit.language') }}</span>
+      <select class="glass-input small" [ngModel]="lang()" (ngModelChange)="lang.set($event)">
+        @for (l of languages; track l.code) {
+          <option [ngValue]="l.code">{{ l.label }} ({{ l.code.toUpperCase() }})</option>
+        }
+      </select>
+    </label>
+    @if (unlisted()) {
+      <p class="hint">{{ i18n.t('collection.edit.unlisted') }}</p>
+    }
+    <div class="field">
+      <span>{{ i18n.t('collection.foil') }}</span>
+      <div class="segmented">
+        <button
+          type="button"
+          [class.active]="!foil()"
+          [disabled]="!canNonfoil()"
+          (click)="foil.set(false)"
+        >
+          {{ i18n.t('collection.noFoil') }}
+        </button>
+        <button
+          type="button"
+          [class.active]="foil()"
+          [disabled]="!canFoil()"
+          (click)="foil.set(true)"
+        >
+          ★ {{ i18n.t('collection.foil') }}
+        </button>
+      </div>
+    </div>
+    @if (counts().length > 1) {
+      <label class="field">
+        <span>{{ i18n.t('collection.edit.copies') }}</span>
+        <select class="glass-input small" [ngModel]="count()" (ngModelChange)="count.set($event)">
+          @for (n of counts(); track n) {
+            <option [ngValue]="n">
+              {{ n === counts().length ? i18n.t('collection.edit.allCopies', { count: n }) : n }}
+            </option>
+          }
+        </select>
+      </label>
+    }
+    @if (failed()) {
+      <p class="hint error">{{ i18n.t('collection.edit.failed') }}</p>
+    }
+
+    <div class="actions">
+      <button
+        type="button"
+        class="glass-button primary"
+        [disabled]="!changed() || busy()"
+        (click)="apply()"
+      >
+        {{ i18n.t('collection.edit.apply') }}
+      </button>
+      <button type="button" class="glass-button danger" (click)="remove()">
+        {{ i18n.t('collection.edit.remove') }}
+      </button>
+      <button type="button" class="glass-button" (click)="closed.emit()">
+        {{ i18n.t('common.close') }}
+      </button>
+    </div>
+  </div>
+</div>
