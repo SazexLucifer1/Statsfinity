@@ -160,7 +160,7 @@ export class DeckAnalysisService {
     return total;
   });
 
-  /** Preise der im Deck gewählten Drucke (erst scryfall_print_info, sonst live, siehe CollectionService.printInfo()). */
+  /** Preise der im Deck gewählten Drucke (erst scryfall_prints, sonst live, siehe CollectionService.printInfo()). */
   async loadSelectedPrintPrices(cards: DeckCard[]): Promise<void> {
     const ids = [
       ...new Set(

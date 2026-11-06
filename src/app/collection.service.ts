@@ -32,6 +32,42 @@ export interface PrintInfo {
   priceFromEnglish: boolean;
 }
 
+/**
+ * Reihenfolge der Bits in scryfall_prints.legal_mask (sql/druck-cache-alle-drucke-2026-11-06.sql).
+ * GLEICH HALTEN mit LEGALITY_FORMATS in scripts/sync-scryfall-bulk.js.
+ */
+const LEGALITY_FORMATS = [
+  'standard',
+  'future',
+  'historic',
+  'timeless',
+  'gladiator',
+  'pioneer',
+  'explorer',
+  'modern',
+  'legacy',
+  'pauper',
+  'vintage',
+  'penny',
+  'commander',
+  'oathbreaker',
+  'standardbrawl',
+  'brawl',
+  'alchemy',
+  'paupercommander',
+  'duel',
+  'oldschool',
+  'premodern',
+  'predh',
+];
+
+/** "legal" für jedes gesetzte Bit, sonst "not_legal" (restricted zählt beim Schreiben als legal). */
+function legalitiesFromMask(mask: number): Record<string, string> {
+  return Object.fromEntries(
+    LEGALITY_FORMATS.map((format, bit) => [format, mask & (1 << bit) ? 'legal' : 'not_legal']),
+  );
+}
+
 const SELECT =
   'scryfall_id, foil, card_name, lang, set_code, collector_number, illustration_id, quantity, added_at';
 const API = 'https://api.scryfall.com';
@@ -162,7 +198,9 @@ export class CollectionService {
         else console.error('Konnte Sammlung nicht laden:', error);
         return null;
       }
-      all.push(...(data ?? []).map(fromRow));
+      const entries = (data ?? []).map(fromRow);
+      for (const e of entries) this.rememberPrintKey(e);
+      all.push(...entries);
       if (!data || data.length < 1000) return all;
     }
   }
@@ -242,6 +280,7 @@ export class CollectionService {
           quantity,
           addedAt: new Date().toISOString(),
         };
+    this.rememberPrintKey(entry);
     // Sofort anzeigen, beim Fehler zurückrollen - beim Scannen soll nichts auf die Datenbank warten.
     this.entries.set(
       existing ? before.map((e) => (e === existing ? entry : e)) : [entry, ...before],
@@ -339,14 +378,23 @@ export class CollectionService {
 
   /**
    * Angaben je Druck (Seltenheit, Setname, Preis normal und Foil, illustration_id, Legalitäten) -
-   * zuerst aus scryfall_print_info, die der Nachtlauf für jeden Sammlungsdruck aus Scryfalls
-   * default_cards füllt (sql/karten-cache-ausbau-2026-10-22.sql). Nur was dort fehlt (heute neu
-   * hinzugefügt, Drucke außerhalb der Sammlungen), live gebündelt zu je 75 über
-   * /cards/collection. Alles im Sitzungs-Cache; die Sammlungs-Tabelle selbst bleibt klein.
+   * zuerst aus scryfall_prints, die der Nachtlauf mit ALLEN Drucken aus Scryfalls default_cards
+   * füllt (sql/druck-cache-alle-drucke-2026-11-06.sql): erst über die Druck-ID, dann über Set und
+   * Nummer (fremdsprachige Drucke stehen dort nicht, bekommen aber die Angaben samt Preis des
+   * englischen Drucks). Nur was dort fehlt (Sets, die erst heute erschienen sind), live gebündelt
+   * zu je 75 über /cards/collection. Alles im Sitzungs-Cache.
    */
   private readonly printInfoCache = new Map<string, PrintInfo | null>();
   /** false, sobald die Tabelle fehlt (Migration noch nicht gelaufen) - dann nur Scryfall. */
   private printInfoTableAvailable = true;
+  /** "set/nummer" je Druck-ID aus den geladenen Sammlungen - für den Weg über den englischen Druck. */
+  private readonly printKeys = new Map<string, string>();
+
+  private rememberPrintKey(e: CollectionEntry): void {
+    if (e.setCode && e.collectorNumber)
+      this.printKeys.set(e.scryfallId, `${e.setCode}/${e.collectorNumber}`.toLowerCase());
+  }
+
   async printInfo(
     ids: string[],
     onProgress?: (done: number, total: number) => void,
@@ -391,29 +439,47 @@ export class CollectionService {
   }
 
   private async printInfoFromTable(ids: string[]): Promise<void> {
-    if (!this.printInfoTableAvailable) return;
+    if (!this.printInfoTableAvailable || ids.length === 0) return;
+    const columns =
+      'scryfall_id, print_key, rarity, set_name, illustration_id, eur, eur_foil, legal_mask';
+    const toInfo = (row: any, fromEnglish: boolean): PrintInfo => ({
+      illustrationId: row.illustration_id ?? null,
+      rarity: row.rarity ?? null,
+      setName: row.set_name ?? null,
+      eur: row.eur == null ? null : Number(row.eur),
+      eurFoil: row.eur_foil == null ? null : Number(row.eur_foil),
+      legalities: legalitiesFromMask(row.legal_mask ?? 0),
+      priceFromEnglish: fromEnglish && (row.eur != null || row.eur_foil != null),
+    });
+    // 1. Über die Druck-ID.
     for (let i = 0; i < ids.length; i += 200) {
       const { data, error } = await supabase
-        .from('scryfall_print_info')
-        .select(
-          'scryfall_id, rarity, set_name, illustration_id, eur, eur_foil, legalities, price_from_english',
-        )
+        .from('scryfall_prints')
+        .select(columns)
         .in('scryfall_id', ids.slice(i, i + 200));
       if (error) {
         if (['42P01', 'PGRST205'].includes(error.code ?? '')) this.printInfoTableAvailable = false;
         return;
       }
-      for (const row of data ?? []) {
-        this.printInfoCache.set(row.scryfall_id, {
-          illustrationId: row.illustration_id ?? null,
-          rarity: row.rarity ?? null,
-          setName: row.set_name ?? null,
-          eur: row.eur == null ? null : Number(row.eur),
-          eurFoil: row.eur_foil == null ? null : Number(row.eur_foil),
-          legalities: row.legalities ?? {},
-          priceFromEnglish: !!row.price_from_english,
-        });
-      }
+      for (const row of data ?? []) this.printInfoCache.set(row.scryfall_id, toInfo(row, false));
+    }
+    // 2. Fremdsprachige Drucke über Set und Nummer des englischen.
+    const byKey = new Map<string, string[]>();
+    for (const id of ids) {
+      const key = this.printKeys.get(id);
+      if (!key || this.printInfoCache.has(id)) continue;
+      byKey.set(key, [...(byKey.get(key) ?? []), id]);
+    }
+    const keys = [...byKey.keys()];
+    for (let i = 0; i < keys.length; i += 200) {
+      const { data, error } = await supabase
+        .from('scryfall_prints')
+        .select(columns)
+        .in('print_key', keys.slice(i, i + 200));
+      if (error) return;
+      for (const row of data ?? [])
+        for (const id of byKey.get(row.print_key) ?? [])
+          this.printInfoCache.set(id, toInfo(row, row.scryfall_id !== id));
     }
   }
 
