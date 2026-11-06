@@ -1,0 +1,191 @@
+@if (stats(); as s) {
+  @if (s.copies === 0) {
+    <p class="hint">{{ i18n.t('collection.noMatch') }}</p>
+  } @else {
+    <section class="glass-card">
+      <app-info-toggle [label]="i18n.t('collection.stats.infoAria')">
+        <h3 info-title>{{ i18n.t('collection.stats.overview') }}</h3>
+        {{ i18n.t('collection.stats.info') }}
+      </app-info-toggle>
+      <div class="stat-tiles">
+        <div class="stat-tile">
+          <span class="stat-value">{{ s.copies }}</span>
+          <span class="stat-label">{{ i18n.t('collection.cards') }}</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-value">{{ s.distinct }}</span>
+          <span class="stat-label">{{ i18n.t('collection.distinct') }}</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-value">{{ s.value | number: '1.0-0' }} €</span>
+          <span class="stat-label">{{ i18n.t('collection.value') }}</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-value">{{
+            s.avgPrice === null ? '—' : (s.avgPrice | number: '1.2-2') + ' €'
+          }}</span>
+          <span class="stat-label">{{ i18n.t('collection.stats.avgPrice') }}</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-value">{{
+            s.medianPrice === null ? '—' : (s.medianPrice | number: '1.2-2') + ' €'
+          }}</span>
+          <span class="stat-label">{{ i18n.t('collection.stats.medianPrice') }}</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-value">{{
+            s.avgCmc === null ? '—' : (s.avgCmc | number: '1.2-2')
+          }}</span>
+          <span class="stat-label">{{ i18n.t('collection.stats.avgCmc') }}</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-value">{{ foilPercent() }} %</span>
+          <span class="stat-label">{{ i18n.t('collection.stats.foilShare') }}</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-value">{{ s.sets }}</span>
+          <span class="stat-label">{{ i18n.t('collection.stats.sets') }}</span>
+        </div>
+      </div>
+      @if (s.unpricedCopies > 0) {
+        <p class="hint">{{ i18n.t('collection.stats.unpriced', { count: s.unpricedCopies }) }}</p>
+      }
+    </section>
+
+    @if (usageKnown()) {
+      <section class="glass-card">
+        <app-info-toggle [label]="i18n.t('collection.stats.infoAria')">
+          <h3 info-title>{{ i18n.t('collection.stats.played') }}</h3>
+          {{ i18n.t('collection.stats.playedInfo') }}
+        </app-info-toggle>
+        <ul class="played">
+          <li>
+            <div class="played-head">
+              <span>{{ i18n.t('collection.stats.playedDistinct') }}</span>
+              <strong>{{ playedDistinctPercent() }} %</strong>
+            </div>
+            <app-meter [value]="playedDistinctPercent()" [thick]="true" />
+            <span class="hint">{{ s.usage.distinctPlayed }} / {{ s.distinct }}</span>
+          </li>
+          <li>
+            <div class="played-head">
+              <span>{{ i18n.t('collection.stats.playedCopies') }}</span>
+              <strong>{{ playedCopiesPercent() }} %</strong>
+            </div>
+            <app-meter [value]="playedCopiesPercent()" [thick]="true" />
+            <span class="hint">{{ s.usage.copiesPlayed }} / {{ s.copies }}</span>
+          </li>
+          <li>
+            <div class="played-head">
+              <span>{{ i18n.t('collection.stats.playedValue') }}</span>
+              <strong>{{ playedValuePercent() }} %</strong>
+            </div>
+            <app-meter [value]="playedValuePercent()" [thick]="true" />
+            <span class="hint"
+              >{{ s.usage.valuePlayed | number: '1.0-0' }} € / {{ s.value | number: '1.0-0' }} € ·
+              {{
+                i18n.t('collection.stats.freeValue', {
+                  value: (s.value - s.usage.valuePlayed | number: '1.0-0') ?? '',
+                })
+              }}</span
+            >
+          </li>
+        </ul>
+      </section>
+    }
+
+    <section class="glass-card">
+      <h3>{{ i18n.t('collection.stats.colors') }}</h3>
+      <app-bar-chart [data]="colorChart()" [labelWidth]="colorLabelWidth()" />
+    </section>
+    <section class="glass-card">
+      <h3>{{ i18n.t('collection.stats.curve') }}</h3>
+      <app-bar-chart [data]="curveChart()" orientation="vertical" />
+    </section>
+    <section class="glass-card">
+      <h3>{{ i18n.t('collection.stats.types') }}</h3>
+      <app-bar-chart [data]="typeChart()" labelWidth="7rem" />
+    </section>
+    <section class="glass-card">
+      <h3>{{ i18n.t('collection.rarityLabel') }}</h3>
+      <app-bar-chart [data]="rarityChart()" labelWidth="7rem" />
+    </section>
+    @if (priceChart().length) {
+      <section class="glass-card">
+        <h3>{{ i18n.t('collection.stats.priceTiers') }}</h3>
+        <app-bar-chart [data]="priceChart()" labelWidth="7rem" />
+      </section>
+    }
+    <section class="glass-card">
+      <h3>{{ i18n.t('collection.stats.topSets') }}</h3>
+      <app-bar-chart [data]="setChart()" labelWidth="9rem" />
+    </section>
+    @if (langChart().length > 1) {
+      <section class="glass-card">
+        <h3>{{ i18n.t('collection.languages') }}</h3>
+        <app-bar-chart [data]="langChart()" labelWidth="3rem" />
+      </section>
+    }
+
+    <section class="glass-card">
+      <h3>{{ i18n.t('collection.stats.mostValuable') }}</h3>
+      <ul class="stat-list">
+        @for (r of s.mostValuable; track r.item.entry.cardName) {
+          <li class="stat-list-row">
+            <app-card-thumb [name]="r.item.entry.cardName" [imageUrl]="image(r)" />
+            <div class="stat-list-main">
+              <span class="stat-list-name">{{ r.item.entry.cardName }}</span>
+              <span class="stat-list-meta"
+                >{{ r.item.entry.setCode.toUpperCase() }}
+                @if (r.item.entry.foil) {
+                  ★
+                }
+              </span>
+            </div>
+            <span class="stat-list-value">{{ r.amount | number: '1.2-2' }} €</span>
+          </li>
+        }
+      </ul>
+    </section>
+    @if (usageKnown()) {
+      @if (s.mostValuableFree.length) {
+        <section class="glass-card">
+          <app-info-toggle [label]="i18n.t('collection.stats.infoAria')">
+            <h3 info-title>{{ i18n.t('collection.stats.mostValuableFree') }}</h3>
+            {{ i18n.t('collection.stats.mostValuableFreeInfo') }}
+          </app-info-toggle>
+          <ul class="stat-list">
+            @for (r of s.mostValuableFree; track r.item.entry.cardName) {
+              <li class="stat-list-row">
+                <app-card-thumb [name]="r.item.entry.cardName" [imageUrl]="image(r)" />
+                <div class="stat-list-main">
+                  <span class="stat-list-name">{{ r.item.entry.cardName }}</span>
+                  <span class="stat-list-meta">{{ r.item.entry.setCode.toUpperCase() }}</span>
+                </div>
+                <span class="stat-list-value">{{ r.amount | number: '1.2-2' }} €</span>
+              </li>
+            }
+          </ul>
+        </section>
+      }
+      @if (s.mostPlayed.length) {
+        <section class="glass-card">
+          <h3>{{ i18n.t('collection.stats.mostPlayed') }}</h3>
+          <ul class="stat-list">
+            @for (r of s.mostPlayed; track r.item.entry.cardName) {
+              <li class="stat-list-row">
+                <app-card-thumb [name]="r.item.entry.cardName" [imageUrl]="image(r)" />
+                <div class="stat-list-main">
+                  <span class="stat-list-name">{{ r.item.entry.cardName }}</span>
+                </div>
+                <span class="stat-list-value">{{
+                  i18n.t('collection.inDecks', { count: r.amount })
+                }}</span>
+              </li>
+            }
+          </ul>
+        </section>
+      }
+    }
+  }
+}

@@ -63,6 +63,16 @@
           <strong>{{ i18n.t('collection.filters') }}</strong>
           <span>{{ i18n.t('collection.info.filters') }}</span>
         </li>
+        @if (editable()) {
+          <li>
+            <strong>{{ i18n.t('collection.info.editTitle') }}</strong>
+            <span>{{ i18n.t('collection.info.edit') }}</span>
+          </li>
+        }
+        <li>
+          <strong>{{ i18n.t('collection.pageStats') }}</strong>
+          <span>{{ i18n.t('collection.info.stats') }}</span>
+        </li>
         <li>
           <strong><app-icon name="camera" /> {{ i18n.t('collection.scan') }}</strong>
           <span>{{ i18n.t('collection.info.scan') }}</span>
@@ -107,6 +117,15 @@
       <p class="hint">{{ i18n.t('collection.empty') }}</p>
     </section>
   } @else {
+    <!-- Karten oder Statistik über dieselben Filter (Wunsch des Users, 06.11.2026). -->
+    <div class="segmented page-toggle">
+      <button type="button" [class.active]="page() === 'cards'" (click)="page.set('cards')">
+        {{ i18n.t('collection.pageCards') }}
+      </button>
+      <button type="button" [class.active]="page() === 'stats'" (click)="page.set('stats')">
+        {{ i18n.t('collection.pageStats') }}
+      </button>
+    </div>
     <section class="glass-card toolbar">
       <input
         class="glass-input"
@@ -116,14 +135,16 @@
         (ngModelChange)="search.set($event)"
       />
       <div class="toolbar-row">
-        <div class="segmented">
-          <button type="button" [class.active]="mode() === 'grid'" (click)="mode.set('grid')">
-            {{ i18n.t('collection.viewGrid') }}
-          </button>
-          <button type="button" [class.active]="mode() === 'list'" (click)="mode.set('list')">
-            {{ i18n.t('collection.viewList') }}
-          </button>
-        </div>
+        @if (page() === 'cards') {
+          <div class="segmented">
+            <button type="button" [class.active]="mode() === 'grid'" (click)="mode.set('grid')">
+              {{ i18n.t('collection.viewGrid') }}
+            </button>
+            <button type="button" [class.active]="mode() === 'list'" (click)="mode.set('list')">
+              {{ i18n.t('collection.viewList') }}
+            </button>
+          </div>
+        }
         <button
           type="button"
           class="glass-chip small"
@@ -137,42 +158,44 @@
           }
         </button>
       </div>
-      <div class="toolbar-row">
-        <select
-          class="glass-input small"
-          [ngModel]="sort()"
-          (ngModelChange)="sort.set($event)"
-          [attr.aria-label]="i18n.t('collection.sort')"
-        >
-          <option ngValue="added">{{ i18n.t('collection.sortAdded') }}</option>
-          <option ngValue="name">{{ i18n.t('collection.sortName') }}</option>
-          <option ngValue="set">{{ i18n.t('collection.sortSet') }}</option>
-          <option ngValue="cmc">{{ i18n.t('collection.sortCmc') }}</option>
-          <option ngValue="price">{{ i18n.t('collection.sortPrice') }}</option>
-        </select>
-        <select
-          class="glass-input small"
-          [ngModel]="group()"
-          (ngModelChange)="group.set($event)"
-          [attr.aria-label]="i18n.t('collection.group')"
-        >
-          <option ngValue="none">{{ i18n.t('collection.groupNone') }}</option>
-          <option ngValue="set">{{ i18n.t('collection.groupSet') }}</option>
-          <option ngValue="color">{{ i18n.t('collection.groupColor') }}</option>
-          <option ngValue="type">{{ i18n.t('collection.groupType') }}</option>
-          <option ngValue="rarity">{{ i18n.t('collection.groupRarity') }}</option>
-        </select>
-        <!-- Jeder Druck einzeln oder eine Kachel je Karte; zusammengefasst zeigt ein Tipp die
+      @if (page() === 'cards') {
+        <div class="toolbar-row">
+          <select
+            class="glass-input small"
+            [ngModel]="sort()"
+            (ngModelChange)="sort.set($event)"
+            [attr.aria-label]="i18n.t('collection.sort')"
+          >
+            <option ngValue="added">{{ i18n.t('collection.sortAdded') }}</option>
+            <option ngValue="name">{{ i18n.t('collection.sortName') }}</option>
+            <option ngValue="set">{{ i18n.t('collection.sortSet') }}</option>
+            <option ngValue="cmc">{{ i18n.t('collection.sortCmc') }}</option>
+            <option ngValue="price">{{ i18n.t('collection.sortPrice') }}</option>
+          </select>
+          <select
+            class="glass-input small"
+            [ngModel]="group()"
+            (ngModelChange)="group.set($event)"
+            [attr.aria-label]="i18n.t('collection.group')"
+          >
+            <option ngValue="none">{{ i18n.t('collection.groupNone') }}</option>
+            <option ngValue="set">{{ i18n.t('collection.groupSet') }}</option>
+            <option ngValue="color">{{ i18n.t('collection.groupColor') }}</option>
+            <option ngValue="type">{{ i18n.t('collection.groupType') }}</option>
+            <option ngValue="rarity">{{ i18n.t('collection.groupRarity') }}</option>
+          </select>
+          <!-- Jeder Druck einzeln oder eine Kachel je Karte; zusammengefasst zeigt ein Tipp die
              Verteilung der Drucke (Wunsch des Users, 19.10.2026). -->
-        <div class="segmented merge-toggle">
-          <button [class.active]="!merge()" (click)="merge.set(false)">
-            {{ i18n.t('collection.viewEach') }}
-          </button>
-          <button [class.active]="merge()" (click)="merge.set(true)">
-            {{ i18n.t('collection.mergePrints') }}
-          </button>
+          <div class="segmented merge-toggle">
+            <button [class.active]="!merge()" (click)="merge.set(false)">
+              {{ i18n.t('collection.viewEach') }}
+            </button>
+            <button [class.active]="merge()" (click)="merge.set(true)">
+              {{ i18n.t('collection.mergePrints') }}
+            </button>
+          </div>
         </div>
-      </div>
+      }
 
       @if (filtersOpen()) {
         <div class="filters">
@@ -250,6 +273,39 @@
                 <option [ngValue]="k.value">{{ effects.keywordFilterLabel(k.value) }}</option>
               }
             </select>
+            <input
+              class="glass-input small"
+              type="search"
+              [placeholder]="i18n.t('deckView.creatureTypePlaceholder')"
+              [ngModel]="creatureType()"
+              (ngModelChange)="creatureType.set($event)"
+            />
+            <button
+              type="button"
+              class="glass-chip small"
+              [class.active]="legendary()"
+              (click)="legendary.set(!legendary())"
+            >
+              {{ i18n.t('collection.legendary') }}
+            </button>
+          </div>
+          <div class="filter-block">
+            <span class="filter-label">{{ i18n.t('collection.rulesText') }}</span>
+            <input
+              class="glass-input small"
+              type="search"
+              [placeholder]="i18n.t('collection.rulesTextPlaceholder')"
+              [ngModel]="rulesText()"
+              (ngModelChange)="rulesText.set($event)"
+            />
+          </div>
+          <div class="filter-block">
+            <app-print-search [value]="printSearch()" (valueChange)="setPrintSearch($event)" />
+            @if (printSearchBusy()) {
+              <p class="hint">{{ i18n.t('collection.printSearchBusy') }}</p>
+            } @else if (printSearchFailed()) {
+              <p class="hint">{{ i18n.t('collection.printSearchFailed') }}</p>
+            }
           </div>
           @if (editable()) {
             <div class="filter-block">
@@ -284,161 +340,175 @@
       }
     </section>
 
-    <p class="result-line">
-      {{
-        i18n.t('collection.resultLine', {
-          cards: filteredCards(),
-          value: (filteredValue() | number: '1.2-2') ?? '',
-        })
-      }}
-    </p>
+    @if (page() === 'stats') {
+      <app-collection-stats
+        [items]="statItems()"
+        [usageKnown]="editable()"
+        [setLabel]="setLabelFn"
+      />
+    } @else {
+      <p class="result-line">
+        {{
+          i18n.t('collection.resultLine', {
+            cards: filteredCards(),
+            value: (filteredValue() | number: '1.2-2') ?? '',
+          })
+        }}
+      </p>
 
-    @for (section of visibleSections(); track section.key) {
-      @if (group() !== 'none') {
-        <h4 class="section-title">
-          <span>{{ sectionLabel(section) }}</span>
-          <span class="section-meta">
-            {{ section.cards }}
-            @if (setProgress(section); as progress) {
-              · {{ progress }}
-            }
-            · {{ sectionValue(section) | number: '1.2-2' }} €
-          </span>
-        </h4>
-      }
-      @if (mode() === 'grid') {
-        <div class="grid">
-          @for (item of section.items; track item.entry.scryfallId + item.entry.foil + item.entry.lang) {
-            <div class="tile" [class.foil]="item.entry.foil">
-              <button
-                type="button"
-                class="tile-image"
-                (click)="open(item)"
-                [attr.aria-label]="item.entry.cardName"
-              >
-                <img [src]="image(item.entry)" [alt]="item.entry.cardName" loading="lazy" />
-                <span class="badge qty">×{{ item.entry.quantity }}</span>
-                @if (merge()) {
-                  @if ((item.printCount ?? 1) > 1) {
-                    <span class="badge lang">{{
-                      i18n.t('collection.printCount', { count: item.printCount ?? 1 })
-                    }}</span>
+      @for (section of visibleSections(); track section.key) {
+        @if (group() !== 'none') {
+          <h4 class="section-title">
+            <span>{{ sectionLabel(section) }}</span>
+            <span class="section-meta">
+              {{ section.cards }}
+              @if (setProgress(section); as progress) {
+                · {{ progress }}
+              }
+              · {{ sectionValue(section) | number: '1.2-2' }} €
+            </span>
+          </h4>
+        }
+        @if (mode() === 'grid') {
+          <div class="grid">
+            @for (
+              item of section.items;
+              track item.entry.scryfallId + item.entry.foil + item.entry.lang
+            ) {
+              <div class="tile" [class.foil]="item.entry.foil">
+                <button
+                  type="button"
+                  class="tile-image"
+                  (click)="open(item)"
+                  [attr.aria-label]="item.entry.cardName"
+                >
+                  <img [src]="image(item.entry)" [alt]="item.entry.cardName" loading="lazy" />
+                  <span class="badge qty">×{{ item.entry.quantity }}</span>
+                  @if (merge()) {
+                    @if ((item.printCount ?? 1) > 1) {
+                      <span class="badge lang">{{
+                        i18n.t('collection.printCount', { count: item.printCount ?? 1 })
+                      }}</span>
+                    }
+                  } @else {
+                    <span class="badge lang"
+                      >{{ item.entry.lang.toUpperCase() }}
+                      @if (item.entry.foil) {
+                        ★
+                      }
+                    </span>
                   }
-                } @else {
-                  <span class="badge lang"
-                    >{{ item.entry.lang.toUpperCase() }}
-                    @if (item.entry.foil) {
-                      ★
+                </button>
+                <div class="tile-meta">
+                  <!-- Preis links, Deck-Symbol mit Zahl rechts, beides in einer Zeile. Was die
+                     Zeichen bedeuten, erklärt das ⓘ im Kopf. -->
+                  <span class="price">
+                    @if (item.price !== null) {
+                      {{ item.priceFromEnglish ? '≈' : '' }}{{ item.price | number: '1.2-2' }} €
                     }
                   </span>
-                }
-              </button>
-              <div class="tile-meta">
-                <!-- Preis links, Deck-Symbol mit Zahl rechts, beides in einer Zeile. Was die
-                     Zeichen bedeuten, erklärt das ⓘ im Kopf. -->
-                <span class="price">
-                  @if (item.price !== null) {
-                    {{ item.priceFromEnglish ? '≈' : '' }}{{ item.price | number: '1.2-2' }} €
-                  }
-                </span>
-                @if (item.inDecks > 0) {
-                  <span
-                    class="in-decks"
-                    [attr.aria-label]="i18n.t('collection.inDecks', { count: item.inDecks })"
-                    ><app-icon name="deck" />{{ item.inDecks }}</span
-                  >
-                }
-              </div>
-              @if (editable() && !merge()) {
-                <div class="qty">
-                  <button
-                    type="button"
-                    class="icon-button"
-                    (click)="change(item, -1)"
-                    [attr.aria-label]="i18n.t('collection.less')"
-                  >
-                    −
-                  </button>
-                  <button
-                    type="button"
-                    class="icon-button"
-                    (click)="change(item, 1)"
-                    [attr.aria-label]="i18n.t('collection.more')"
-                  >
-                    +
-                  </button>
-                </div>
-              }
-            </div>
-          }
-        </div>
-      } @else {
-        <ul class="list">
-          @for (item of section.items; track item.entry.scryfallId + item.entry.foil + item.entry.lang) {
-            <li>
-              <button
-                type="button"
-                class="thumb"
-                (click)="open(item)"
-                [attr.aria-label]="item.entry.cardName"
-              >
-                <img [src]="image(item.entry)" alt="" loading="lazy" />
-              </button>
-              <div class="info">
-                <span class="name">{{ item.entry.cardName }}</span>
-                <span class="meta">
-                  {{ item.entry.setCode.toUpperCase() }} #{{ item.entry.collectorNumber }} ·
-                  {{ item.entry.lang.toUpperCase() }}
-                  @if (item.entry.foil) {
-                    · <span class="foil-mark">★</span>
-                  }
-                  @if (item.price !== null) {
-                    · {{ item.priceFromEnglish ? '≈ ' : '' }}{{ item.price | number: '1.2-2' }} €
-                  }
                   @if (item.inDecks > 0) {
-                    ·
                     <span
                       class="in-decks"
                       [attr.aria-label]="i18n.t('collection.inDecks', { count: item.inDecks })"
                       ><app-icon name="deck" />{{ item.inDecks }}</span
                     >
                   }
-                </span>
-              </div>
-              @if (editable() && !merge()) {
-                <div class="qty">
-                  <button
-                    type="button"
-                    class="icon-button"
-                    (click)="change(item, -1)"
-                    [attr.aria-label]="i18n.t('collection.less')"
-                  >
-                    −
-                  </button>
-                  <span>{{ item.entry.quantity }}</span>
-                  <button
-                    type="button"
-                    class="icon-button"
-                    (click)="change(item, 1)"
-                    [attr.aria-label]="i18n.t('collection.more')"
-                  >
-                    +
-                  </button>
                 </div>
-              } @else {
-                <span class="qty readonly">×{{ item.entry.quantity }}</span>
-              }
-            </li>
-          }
-        </ul>
+                @if (editable() && !merge()) {
+                  <div class="qty">
+                    <button
+                      type="button"
+                      class="icon-button"
+                      (click)="change(item, -1)"
+                      [attr.aria-label]="i18n.t('collection.less')"
+                    >
+                      −
+                    </button>
+                    <button
+                      type="button"
+                      class="icon-button"
+                      (click)="change(item, 1)"
+                      [attr.aria-label]="i18n.t('collection.more')"
+                    >
+                      +
+                    </button>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        } @else {
+          <ul class="list">
+            @for (
+              item of section.items;
+              track item.entry.scryfallId + item.entry.foil + item.entry.lang
+            ) {
+              <li>
+                <button
+                  type="button"
+                  class="thumb"
+                  (click)="open(item)"
+                  [attr.aria-label]="item.entry.cardName"
+                >
+                  <img [src]="image(item.entry)" alt="" loading="lazy" />
+                </button>
+                <div class="info">
+                  <span class="name">{{ item.entry.cardName }}</span>
+                  <span class="meta">
+                    {{ item.entry.setCode.toUpperCase() }} #{{ item.entry.collectorNumber }} ·
+                    {{ item.entry.lang.toUpperCase() }}
+                    @if (item.entry.foil) {
+                      · <span class="foil-mark">★</span>
+                    }
+                    @if (item.price !== null) {
+                      · {{ item.priceFromEnglish ? '≈ ' : '' }}{{ item.price | number: '1.2-2' }} €
+                    }
+                    @if (item.inDecks > 0) {
+                      ·
+                      <span
+                        class="in-decks"
+                        [attr.aria-label]="i18n.t('collection.inDecks', { count: item.inDecks })"
+                        ><app-icon name="deck" />{{ item.inDecks }}</span
+                      >
+                    }
+                  </span>
+                </div>
+                @if (editable() && !merge()) {
+                  <div class="qty">
+                    <button
+                      type="button"
+                      class="icon-button"
+                      (click)="change(item, -1)"
+                      [attr.aria-label]="i18n.t('collection.less')"
+                    >
+                      −
+                    </button>
+                    <span>{{ item.entry.quantity }}</span>
+                    <button
+                      type="button"
+                      class="icon-button"
+                      (click)="change(item, 1)"
+                      [attr.aria-label]="i18n.t('collection.more')"
+                    >
+                      +
+                    </button>
+                  </div>
+                } @else {
+                  <span class="qty readonly">×{{ item.entry.quantity }}</span>
+                }
+              </li>
+            }
+          </ul>
+        }
+      } @empty {
+        <p class="hint">{{ i18n.t('collection.noMatch') }}</p>
       }
-    } @empty {
-      <p class="hint">{{ i18n.t('collection.noMatch') }}</p>
-    }
-    @if (hiddenCount() > 0) {
-      <button type="button" class="glass-button more" (click)="showMore()">
-        {{ i18n.t('collection.showMore', { count: hiddenCount() }) }}
-      </button>
+      @if (hiddenCount() > 0) {
+        <button type="button" class="glass-button more" (click)="showMore()">
+          {{ i18n.t('collection.showMore', { count: hiddenCount() }) }}
+        </button>
+      }
     }
   }
 </div>
@@ -561,9 +631,12 @@
         · {{ detailValue() | number: '1.2-2' }} €
       </p>
       <div class="detail-grid">
-        @for (item of detailItems(); track item.entry.scryfallId + item.entry.foil + item.entry.lang) {
+        @for (
+          item of detailItems();
+          track item.entry.scryfallId + item.entry.foil + item.entry.lang
+        ) {
           <div class="tile" [class.foil]="item.entry.foil">
-            <button type="button" class="tile-image" (click)="openPreview(item.entry)">
+            <button type="button" class="tile-image" (click)="openDetailItem(item)">
               <img [src]="image(item.entry)" [alt]="item.entry.cardName" loading="lazy" />
               <span class="badge qty">×{{ item.entry.quantity }}</span>
               <span class="badge lang"
@@ -609,4 +682,8 @@
       </button>
     </div>
   </div>
+}
+
+@if (editEntry(); as entry) {
+  <app-collection-card-editor [entry]="entry" (closed)="editEntry.set(null)" />
 }

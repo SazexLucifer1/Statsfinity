@@ -151,3 +151,22 @@ describe('Sortieren, Zusammenfassen, Gruppieren, Wert', () => {
     expect(collectionValue(items)).toBeCloseTo(1.5 * 2 + 20 + 2 + 25);
   });
 });
+
+describe('filterCollection: Filter wie im Deck-Editor', () => {
+  it('Kreaturentyp, Legendär, Regeltext und Druck-Suche', () => {
+    const elf = {
+      ...item('Llanowar Elves', { typeLine: 'Creature — Elf Druid' }),
+      oracleText: '{T}: Add {G}.',
+    };
+    const legend = {
+      ...item('Gilraen', { typeLine: 'Legendary Creature — Human' }),
+      oracleText: 'Whenever you draw a card, scry 1.',
+    };
+    expect(filterCollection([elf, legend], { ...none, creatureType: 'elf' })).toEqual([elf]);
+    expect(filterCollection([elf, legend], { ...none, legendary: true })).toEqual([legend]);
+    expect(filterCollection([elf, legend], { ...none, rulesText: 'card draw' })).toEqual([legend]);
+    const printMatch = { ids: new Set([elf.entry.scryfallId]), illustrations: new Set<string>() };
+    expect(filterCollection([elf, legend], { ...none, printMatch })).toEqual([elf]);
+    expect(activeFilterCount({ ...none, legendary: true, rulesText: 'x' })).toBe(2);
+  });
+});

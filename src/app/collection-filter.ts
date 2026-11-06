@@ -21,6 +21,8 @@ export interface CollectionItem {
   cmc: number | null;
   colorIdentity: readonly string[];
   keywords: readonly string[];
+  /** Regeltext aus dem Nacht-Cache (englisch), null = unbekannt. */
+  oracleText?: string | null;
   /** Effekt-Kategorien (Schlüssel wie in CARD_EFFECT_FILTERS bzw. tutor/extraturn/mld). */
   effects: ReadonlySet<string>;
   /** Je Druck von Scryfall: "common", "uncommon", "rare", "mythic", ... */
@@ -49,6 +51,17 @@ export interface CollectionFilters {
   effect: EffectSelection;
   keyword: string;
   usage: 'all' | 'used' | 'free';
+  /** Untertyp wie im Deck-Editor ("Elf", "Equipment"), Teil der Typzeile; leer = egal. */
+  creatureType?: string;
+  /** Nur legendäre Karten. */
+  legendary?: boolean;
+  /** Wörter, die im Regeltext stehen müssen (englisch, wie Scryfall). */
+  rulesText?: string;
+  /**
+   * Treffer der Druck-Suche (Künstler, Artwork, Flavortext, Lore) von Scryfall: Druck-IDs und
+   * illustration_ids. null = Druck-Suche nicht aktiv.
+   */
+  printMatch?: { ids: ReadonlySet<string>; illustrations: ReadonlySet<string> } | null;
 }
 
 export const RARITIES = ['common', 'uncommon', 'rare', 'mythic', 'special', 'bonus'] as const;
@@ -90,8 +103,26 @@ export function filterCollection(
       return false;
     if (f.usage === 'used' && item.inDecks === 0) return false;
     if (f.usage === 'free' && item.inDecks > 0) return false;
+    if (f.legendary && !/\bLegendary\b/.test(item.typeLine ?? '')) return false;
+    const sub = (f.creatureType ?? '').trim().toLowerCase();
+    if (sub && !(item.typeLine ?? '').toLowerCase().includes(sub)) return false;
+    if (!rulesTextMatches(item.oracleText, f.rulesText)) return false;
+    if (
+      f.printMatch &&
+      !f.printMatch.ids.has(e.scryfallId) &&
+      !(e.illustrationId && f.printMatch.illustrations.has(e.illustrationId))
+    )
+      return false;
     return true;
   });
+}
+
+/** Jedes Wort muss im Regeltext vorkommen (Reihenfolge egal), wie Scryfalls o:-Glieder. */
+function rulesTextMatches(oracle: string | null | undefined, query: string | undefined): boolean {
+  const words = (query ?? '').toLowerCase().split(/\s+/).filter(Boolean);
+  if (!words.length) return true;
+  const text = (oracle ?? '').toLowerCase();
+  return words.every((w) => text.includes(w));
 }
 
 export function activeFilterCount(f: CollectionFilters): number {
@@ -106,6 +137,10 @@ export function activeFilterCount(f: CollectionFilters): number {
     f.effect.keys.size > 0,
     f.keyword !== 'all',
     f.usage !== 'all',
+    !!f.creatureType?.trim(),
+    !!f.legendary,
+    !!f.rulesText?.trim(),
+    !!f.printMatch,
   ].filter(Boolean).length;
 }
 

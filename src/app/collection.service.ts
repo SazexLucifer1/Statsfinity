@@ -316,6 +316,29 @@ export class CollectionService {
     return true;
   }
 
+  /**
+   * Exemplare eines Eintrags auf einen anderen Druck, eine andere Sprache oder Foil umstellen
+   * (Bearbeiten-Blatt der Sammlung, Wunsch des Users 06.11.2026: beim Scannen oder Eintragen
+   * falsch erkannt). Erst das Ziel hochzählen, dann die Quelle herunter - scheitert das Ziel,
+   * bleibt alles, wie es war.
+   */
+  async moveCopies(
+    entry: CollectionEntry,
+    target: CollectionPrint,
+    foil: boolean,
+    count: number,
+  ): Promise<boolean> {
+    const n = Math.min(count, entry.quantity);
+    if (n <= 0) return false;
+    const sameId = target.scryfallId === entry.scryfallId && foil === entry.foil;
+    if (sameId && target.lang === entry.lang) return true;
+    // Ohne Sprache im Schlüssel wären Quelle und Ziel dieselbe Zeile.
+    if (sameId && !this.langInKey) return false;
+    const ok = await this.add(target, foil, n);
+    if (!ok) return false;
+    return this.setQuantity(entry, entry.foil, entry.quantity - n);
+  }
+
   /** Karten aller eigenen Decks (für "brauchst du in mehreren Decks"). */
   async ensureDeckUsage(force = false): Promise<void> {
     if (!this.auth.currentUser() || !this.available()) return;
