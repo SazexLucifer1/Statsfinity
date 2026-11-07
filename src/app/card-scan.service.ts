@@ -393,6 +393,17 @@ export class CardScanService {
     let via: ScanHit['via'] = 'text';
     // Die Sammlerzeile ist gut 1 mm hoch und bei wenig Licht oft nicht lesbar - dann entscheidet
     // das Aussehen der ganzen Karte über Druck und Sprache (print-look.ts).
+    // Ecke voll gelesen, aber nicht unter den Drucken mit diesem Artwork: Bei Karten mit sehr
+    // vielen Drucken (Rampant Growth) liefert Scryfall die nicht alle auf einer Seite, dann fehlt
+    // der gelesene Druck dort. Statt des unsicheren Bildvergleichs den gelesenen Druck direkt
+    // nachschlagen und am Artwork gegenprüfen (Messung 07.11.2026, siehe printFromLine()).
+    if (!print && art && line.setCode && line.collectorNumber) {
+      print = await this.printFromLine(line, art.match.id);
+      if (print) {
+        this.lastScan.path = 'text';
+        this.lastScan.langSource = line.lang ? 'corner' : 'fallback';
+      }
+    }
     if (!print && art) {
       print = await this.printByLook(frame, art.cardBox, art.match.id, line, fallbackLang);
       if (print) {
@@ -400,20 +411,11 @@ export class CardScanService {
         this.lastScan.path = 'look';
       }
     }
-    if (!print && line.setCode && line.collectorNumber) {
-      const byText = await this.cardBy(
-        `${API}/cards/${line.setCode}/${line.collectorNumber}${line.lang ? `/${line.lang}` : ''}`,
-      );
-      if (byText) {
-        const textPrint = toCollectionPrint(byText);
-        const artCard = artId ? await this.cardBy(`${API}/cards/${artId}`) : null;
-        const artIll = artCard ? toCollectionPrint(artCard).illustrationId : null;
-        // Gegenprobe: Ein sicherer Artwork-Treffer mit anderem Bild heißt, der Text war verlesen.
-        if (!artIll || artIll === textPrint.illustrationId) {
-          print = textPrint;
-          this.lastScan.path = 'text';
-          this.lastScan.langSource = line.lang ? 'corner' : 'fallback';
-        }
+    if (!print && !art && line.setCode && line.collectorNumber) {
+      print = await this.printFromLine(line, artId);
+      if (print) {
+        this.lastScan.path = 'text';
+        this.lastScan.langSource = line.lang ? 'corner' : 'fallback';
       }
     }
     if (!print && artId) {
@@ -430,8 +432,8 @@ export class CardScanService {
     // Foil nur, wenn beide Hinweise aus der Ecke zustimmen (Größe des Zeichens in Pixeln und das
     // Zeichen im gelesenen Text). Gemessen an 214 Treffern mit laufender Texterkennung
     // (05.11.2026): Ein Hinweis allein lag 15-mal daneben (17 Fehler), beide zusammen nie
-    // (8 übersehene Foils). Meldet nur einer Foil - oder nur der Regenbogen-Schimmer, der zweimal
-    // von zweimal irrte -, bleibt es "kein Foil", aber unsicher: dann kommt der Prüf-Ton.
+    // (8 übersehene Foils). Meldet nur einer Foil, bleibt es "kein Foil" - wann dann der Prüf-Ton
+    // kommt, steht unten.
     const wordsFoil = foilFromWords(words);
     let foil: boolean;
     let foilSure = true;
@@ -440,11 +442,16 @@ export class CardScanService {
       foil = !canNonfoil;
     } else {
       foil = pixelFoil === true && wordsFoil === true;
-      const hinted = pixelFoil === true || wordsFoil === true;
-      if (hinted && !foil) foilSure = false;
-      if (!hinted && art) {
+      // Prüf-Ton nur, wenn ein Hinweis Foil meldet und der andere gar nichts messen konnte. Sagt
+      // der andere ausdrücklich "kein Foil", war es keins: gemessen an 1.140 Treffern
+      // (05.-07.11.2026) Pixel ja/Text nein 0 von 16 Foil, Text ja/Pixel nein 1 von 7 - aber
+      // Pixel ja/Text ohne Aussage 9 von 52, Text ja/Pixel ohne Aussage 3 von 17. Der Schimmer
+      // allein lag 2 von 2 daneben und gibt deshalb keinen Prüf-Ton mehr.
+      if (!foil && (pixelFoil === true || wordsFoil === true)) {
+        foilSure = pixelFoil !== null && wordsFoil !== null;
+      }
+      if (pixelFoil !== true && wordsFoil !== true && art) {
         sheen = await this.foilFromSheen(detail ?? frame, art.cardBox, print.imageUrl);
-        if (sheen) foilSure = false;
       }
     }
     this.lastScan.foil = { pixel: pixelFoil, words: wordsFoil, sheen };
@@ -843,6 +850,34 @@ export class CardScanService {
       });
     }
     return best;
+  }
+
+  /**
+   * Der Druck aus der gelesenen Sammlerzeile (Set, Nummer, Sprache), gegengeprüft am Artwork:
+   * gleiche Karte und gleiches Bild (gleiche illustration_id oder Fingerabdruck höchstens
+   * SAME_ART_MAX entfernt). Kennt Scryfall den Druck in der gelesenen Sprache nicht, der Druck ohne
+   * Sprache - die gelesene setzt danach withCornerLang().
+   * Gemessen an 95 Treffern über den Bildvergleich (05.-07.11.2026): 46-mal war die Ecke voll
+   * gelesen, 32-mal richtig; die 14 falschen Lesungen gibt es entweder nicht ("SOS 1686",
+   * "A0K 81") oder sie haben ein anderes Bild ("MID 6", "AFR 5") und fallen hier heraus.
+   */
+  private async printFromLine(
+    line: CollectorLine,
+    artId: string | null,
+  ): Promise<CollectionPrint | null> {
+    const base = `${API}/cards/${line.setCode}/${encodeURIComponent(line.collectorNumber ?? '')}`;
+    const card =
+      (line.lang ? await this.cardBy(`${base}/${line.lang}`) : null) ?? (await this.cardBy(base));
+    if (!card) return null;
+    const found = toCollectionPrint(card);
+    if (!artId) return found;
+    const artCard = await this.cardBy(`${API}/cards/${artId}`);
+    if (!artCard) return null;
+    if (artCard.oracle_id !== card.oracle_id) return null;
+    if (found.illustrationId && found.illustrationId === toCollectionPrint(artCard).illustrationId)
+      return found;
+    const [a, b] = await Promise.all([this.artHashOf(artId), this.artHashOf(card.id)]);
+    return a && b && hammingDistance(a, b) <= SAME_ART_MAX ? found : null;
   }
 
   /** Fingerabdruck eines Artworks, gerechnet wie im Nachtlauf (art_crop, ganzes Bild). */
