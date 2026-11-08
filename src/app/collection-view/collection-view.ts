@@ -2,7 +2,13 @@ import { Component, computed, effect, inject, signal, untracked } from '@angular
 import { FormsModule } from '@angular/forms';
 import { DecimalPipe } from '@angular/common';
 import { I18nService } from '../i18n.service';
-import { CollectionService, PrintInfo, entryPrice } from '../collection.service';
+import {
+  CollectionService,
+  PRICE_BASES,
+  PriceBasis,
+  PrintInfo,
+  entryPrice,
+} from '../collection.service';
 import {
   CollectionEntry,
   CollectionPrint,
@@ -191,6 +197,7 @@ export class CollectionView {
     const flags = this.flags();
     const prints = this.prints();
     const used = this.usedByName();
+    const basis = this.collection.priceBasis();
     return this.entries().map((entry) => {
       const card = details.get(entry.cardName.toLowerCase());
       const key = collectionKey(entry.cardName);
@@ -200,7 +207,7 @@ export class CollectionView {
       for (const [effect, field] of Object.entries(FLAG_EFFECTS))
         if (flag?.[field]) effects.add(effect);
       const info = prints.get(entry.scryfallId);
-      const price = entryPrice(info, entry.foil, entry.condition);
+      const price = entryPrice(info, entry.foil, entry.condition, 'normal', basis);
       return {
         entry,
         typeLine: card?.typeLine ?? null,
@@ -248,6 +255,11 @@ export class CollectionView {
    * Gesamtanzeige schaltet um, die Preise der Kacheln bleiben.
    */
   readonly valueMode = signal<'normal' | 'low'>('normal');
+  readonly priceBases = PRICE_BASES;
+
+  setPriceBasis(basis: PriceBasis): void {
+    void this.collection.setPriceBasis(basis);
+  }
   readonly totalValue = computed(() => collectionValue(this.items(), this.valueMode()));
   readonly filteredCards = computed(() =>
     this.filtered().reduce((s, i) => s + i.entry.quantity, 0),

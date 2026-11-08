@@ -772,6 +772,13 @@ async function ladeCardmarketPreise() {
         cm_avg7_foil: cmPreis(p['avg7-foil']),
         cm_low: cmPreis(p.low),
         cm_low_foil: cmPreis(p['low-foil']),
+        // Wählbare Preisbasis der Sammlung (sql/sammlung-preisbasis-2026-11-08.sql).
+        cm_avg1: cmPreis(p.avg1),
+        cm_avg1_foil: cmPreis(p['avg1-foil']),
+        cm_avg30: cmPreis(p.avg30),
+        cm_avg30_foil: cmPreis(p['avg30-foil']),
+        cm_trend: cmPreis(p.trend),
+        cm_trend_foil: cmPreis(p['trend-foil']),
       });
     }
     // Wie bei Scryfall: lieber gestern behalten als eine halb gelesene Datei schreiben.
@@ -790,7 +797,20 @@ function cmPreis(wert) {
   return typeof wert === 'number' && wert > 0 ? wert : null;
 }
 
-const LEERE_CM_PREISE = { cm_avg7: null, cm_avg7_foil: null, cm_low: null, cm_low_foil: null };
+/** Spalten je Migration - fehlt eine Migration, schreibt der Lauf ohne ihre Spalten weiter. */
+const CM_SPALTEN = [
+  {
+    migration: 'sql/sammlung-preisbasis-2026-11-08.sql',
+    spalten: ['cm_avg1', 'cm_avg1_foil', 'cm_avg30', 'cm_avg30_foil', 'cm_trend', 'cm_trend_foil'],
+  },
+  {
+    migration: 'sql/cardmarket-preise-zustand-2026-11-08.sql',
+    spalten: ['cm_avg7', 'cm_avg7_foil', 'cm_low', 'cm_low_foil'],
+  },
+];
+const LEERE_CM_PREISE = Object.fromEntries(
+  CM_SPALTEN.flatMap((g) => g.spalten).map((spalte) => [spalte, null]),
+);
 
 function kompakterDruck(data, print_key, cardmarket) {
   const preis = (wert) => {
@@ -831,12 +851,14 @@ async function schreibeDrucke(drucke) {
     let { error } = await supabase
       .from('scryfall_prints')
       .upsert(rows.slice(i, i + 1000), { onConflict: 'scryfall_id' });
-    // Cardmarket-Spalten fehlen (Migration noch nicht gelaufen): ohne sie weiter.
-    if (error && i === 0 && ['PGRST204', '42703'].includes(error.code)) {
-      console.log(
-        'Cardmarket-Spalten fehlen - sql/cardmarket-preise-zustand-2026-11-08.sql ausführen.',
+    // Cardmarket-Spalten fehlen (Migration noch nicht gelaufen): ohne sie weiter, die neueste
+    // Migration zuerst.
+    for (const gruppe of CM_SPALTEN) {
+      if (!(error && i === 0 && ['PGRST204', '42703'].includes(error.code))) break;
+      console.log(`Cardmarket-Spalten fehlen - ${gruppe.migration} ausführen.`);
+      rows = rows.map((row) =>
+        Object.fromEntries(Object.entries(row).filter(([k]) => !gruppe.spalten.includes(k))),
       );
-      rows = rows.map(({ cm_avg7, cm_avg7_foil, cm_low, cm_low_foil, ...rest }) => rest);
       ({ error } = await supabase
         .from('scryfall_prints')
         .upsert(rows.slice(i, i + 1000), { onConflict: 'scryfall_id' }));

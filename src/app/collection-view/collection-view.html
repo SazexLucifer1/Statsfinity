@@ -106,12 +106,25 @@
         [class.active]="valueMode() === 'normal'"
         (click)="valueMode.set('normal')"
       >
-        {{ i18n.t('collection.valueNormal') }}
+        {{ i18n.t('collection.basis.' + collection.priceBasis()) }}
       </button>
       <button type="button" [class.active]="valueMode() === 'low'" (click)="valueMode.set('low')">
         {{ i18n.t('collection.valueLow') }}
       </button>
     </div>
+    <!-- Welcher Cardmarket-Wert als Preis gilt (für alle Sprachen gleich), je Konto gespeichert. -->
+    <label class="basis-select">
+      <span>{{ i18n.t('collection.basisLabel') }}</span>
+      <select
+        class="glass-input small"
+        [ngModel]="collection.priceBasis()"
+        (ngModelChange)="setPriceBasis($event)"
+      >
+        @for (b of priceBases; track b) {
+          <option [ngValue]="b">{{ i18n.t('collection.basis.' + b) }}</option>
+        }
+      </select>
+    </label>
     @if (priceProgress(); as p) {
       <p class="hint">{{ i18n.t('collection.loadingPrices', { done: p.done, total: p.total }) }}</p>
     }
