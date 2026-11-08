@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CollectionItem } from './collection-filter';
 import { collectionStats, priceTier } from './collection-stats';
+import { entryPrice } from './collection.service';
 
 function item(
   cardName: string,
@@ -69,5 +70,34 @@ describe('collectionStats', () => {
     expect(priceTier(0.5)).toBe(1);
     expect(priceTier(9.99)).toBe(2);
     expect(priceTier(50)).toBe(4);
+  });
+});
+
+describe('entryPrice', () => {
+  const info = {
+    illustrationId: null,
+    rarity: null,
+    setName: null,
+    eur: 4.66,
+    eurFoil: null,
+    legalities: {},
+    priceFromEnglish: false,
+    cmAvg7: 4,
+    cmAvg7Foil: 9,
+    cmLow: 1.5,
+    cmLowFoil: 6,
+  };
+  it('Near Mint = avg7, Played = low, Foil-Werte bei Foil', () => {
+    expect(entryPrice(info, false).price).toBe(4);
+    expect(entryPrice(info, true).price).toBe(9);
+    expect(entryPrice(info, false, 'pl').price).toBe(1.5);
+    expect(entryPrice(info, true, 'pl').price).toBe(6);
+    expect(entryPrice(info, false, 'nm', 'low').price).toBe(1.5);
+  });
+  it('ohne avg7 der Trendpreis, nicht das günstigste Angebot', () => {
+    expect(entryPrice({ ...info, cmAvg7: null, cmAvg7Foil: null }, false).price).toBe(4.66);
+    expect(entryPrice({ ...info, cmAvg7: null, cmAvg7Foil: null, eur: null }, false).price).toBe(
+      1.5,
+    );
   });
 });

@@ -14,6 +14,9 @@
         <p class="hint">
           {{ entry().setCode.toUpperCase() }} #{{ entry().collectorNumber }} ·
           {{ entry().lang.toUpperCase() }}
+          @if (entry().condition === 'pl') {
+            · PL
+          }
           @if (entry().foil) {
             · ★
           }
@@ -88,6 +91,19 @@
         </button>
       </div>
     </div>
+    @if (collection.conditionAvailable()) {
+      <div class="field">
+        <span>{{ i18n.t('collection.edit.condition') }}</span>
+        <div class="segmented">
+          <button type="button" [class.active]="condition() === 'nm'" (click)="condition.set('nm')">
+            {{ i18n.t('collection.condition.nm') }}
+          </button>
+          <button type="button" [class.active]="condition() === 'pl'" (click)="condition.set('pl')">
+            {{ i18n.t('collection.condition.pl') }}
+          </button>
+        </div>
+      </div>
+    }
     @if (counts().length > 1) {
       <label class="field">
         <span>{{ i18n.t('collection.edit.copies') }}</span>
