@@ -104,6 +104,8 @@ export interface ScanDiagnostics {
   /** Gelesene Namenszeile je Kartenlage und Treffer darüber (matchByName()). */
   nameText?: string[];
   nameHit?: { oracle: string; distance: number; via: string };
+  /** Altes Artwork, das es nur in einem Set gibt (onlyPrintOfOldArt()). */
+  onlyPrint?: boolean;
   /** Weg zum Ergebnis. */
   path?: 'corner' | 'look' | 'text' | 'artFallback' | 'none';
   glare?: boolean;
@@ -458,8 +460,31 @@ export class CardScanService {
       }
     }
     this.lastScan.foil = { pixel: pixelFoil, words: wordsFoil, sheen };
-    const sure = this.lastScan.path === 'corner' || this.lastScan.path === 'text';
+    const sure =
+      this.lastScan.path === 'corner' ||
+      this.lastScan.path === 'text' ||
+      (art !== null && (await this.onlyPrintOfOldArt(print, art.match.id)));
     return { print, foil, via, sure, foilSure };
+  }
+
+  /**
+   * Alte Karten (Rahmen bis 2014) haben unten links keine Sammlerzeile - sie gehen immer über den
+   * Bildvergleich und bekamen deshalb immer den Prüf-Ton, obwohl sie meist stimmten (Rückmeldung
+   * des Users, 08.11.2026). Gibt es das Artwork nur in einem einzigen Set und wurde die Sprache
+   * gelesen (nicht die eingestellte Ersatzsprache), steht der Druck fest: Erfolgston (Entscheidung
+   * des Users). Gemessen an 76 Scans alter Karten (06.-08.11.2026): Das traf auf 23 zu, davon 19
+   * richtig - die übrigen hatten meist eine falsche Sprache; ohne diese Bedingung waren nur 49 von 76
+   * richtig. Die Nummer unten mittig ist auf Kamerabildern praktisch nie lesbar (4 von 59).
+   */
+  private async onlyPrintOfOldArt(print: CollectionPrint, artId: string): Promise<boolean> {
+    if (this.lastScan.langSource === 'fallback') return false;
+    const card = await this.cardBy(`${API}/cards/${print.scryfallId}`);
+    if (!card || !OLD_FRAMES.has(card.frame)) return false;
+    const prints = await this.printsWithArt(artId);
+    if (!prints.length || this.incompletePrints.has(artId)) return false;
+    const sets = new Set(prints.map((p) => `${p.setCode}|${p.collectorNumber}`));
+    this.lastScan.onlyPrint = sets.size === 1;
+    return sets.size === 1;
   }
 
   /**
@@ -1135,6 +1160,9 @@ export class CardScanService {
  * 0-2, verschiedene Bilder bei rund 30.
  */
 const SAME_ART_MAX = 6;
+
+/** Scryfalls Rahmen ohne Sammlerzeile unten links (bis M15 im Jahr 2014). */
+const OLD_FRAMES = new Set(['1993', '1997', '2003']);
 
 /**
  * tesseract.js nachladen. Es ist ein CommonJS-Paket: Im Entwicklungsserver liegen `createWorker`
