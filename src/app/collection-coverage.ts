@@ -16,7 +16,14 @@ export interface CollectionEntry {
   illustrationId: string | null;
   quantity: number;
   addedAt: string;
+  /**
+   * Zustand: Near Mint (Standard, Scanner) oder Played (Preis = Cardmarket-Tiefstpreis). Fehlt bei
+   * Zeilen ohne die Migration sql/cardmarket-preise-zustand-2026-11-08.sql - gilt dann als NM.
+   */
+  condition?: CardCondition;
 }
+
+export type CardCondition = 'nm' | 'pl';
 
 /** Ein Druck, wie Scryfall ihn liefert - Grundlage zum Hinzufügen. */
 export interface CollectionPrint {

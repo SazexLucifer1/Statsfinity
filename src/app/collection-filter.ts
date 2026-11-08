@@ -30,6 +30,11 @@ export interface CollectionItem {
   setName: string | null;
   /** Preis eines Exemplars in EUR (Foil-Preis bei Foil), null = unbekannt. */
   price: number | null;
+  /**
+   * Mindestpreis eines Exemplars: Cardmarkets günstigstes Angebot (über alle Zustände). Für den
+   * umschaltbaren Mindestwert der ganzen Sammlung; fehlt er, zählt `price`.
+   */
+  lowPrice?: number | null;
   /** true = Preis des englischen Drucks (für fremdsprachige Drucke kennt Scryfall keinen). */
   priceFromEnglish?: boolean;
   /** Nur nach mergePrints(): so viele verschiedene Drucke (Set, Sprache, Foil) stecken darin. */
@@ -182,19 +187,26 @@ export function mergePrints(items: readonly CollectionItem[]): CollectionItem[] 
     prev.priceFromEnglish = prev.priceFromEnglish || item.priceFromEnglish;
     const total = prev.entry.quantity + item.entry.quantity;
     const value = itemValue(prev) + itemValue(item);
+    const lowValue = itemValue(prev, 'low') + itemValue(item, 'low');
     prev.entry.quantity = total;
     // Durchschnittspreis je Exemplar, damit Anzahl × Preis den Gesamtwert ergibt.
     prev.price = prev.price === null && item.price === null ? null : value / total;
+    prev.lowPrice = lowValue / total;
   }
   return [...byName.values()];
 }
 
-export function itemValue(item: CollectionItem): number {
-  return (item.price ?? 0) * item.entry.quantity;
+/** Wert eines Eintrags; 'low' = mit dem günstigsten Angebot (Mindestwert), ohne ihn der Preis. */
+export function itemValue(item: CollectionItem, mode: 'normal' | 'low' = 'normal'): number {
+  const price = mode === 'low' ? (item.lowPrice ?? item.price) : item.price;
+  return (price ?? 0) * item.entry.quantity;
 }
 
-export function collectionValue(items: readonly CollectionItem[]): number {
-  return items.reduce((sum, item) => sum + itemValue(item), 0);
+export function collectionValue(
+  items: readonly CollectionItem[],
+  mode: 'normal' | 'low' = 'normal',
+): number {
+  return items.reduce((sum, item) => sum + itemValue(item, mode), 0);
 }
 
 export type CollectionGroup = 'none' | 'set' | 'color' | 'type' | 'rarity';

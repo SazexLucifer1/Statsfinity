@@ -636,6 +636,7 @@ async function syncCommanderNamen() {
  */
 async function syncPreise() {
   console.log('--- Teil 5: Preise ---');
+  const cardmarket = await ladeCardmarketPreise();
   const eintrag = await fetchJson(`${API}/bulk-data/default_cards`);
   const res = await fetch(eintrag.jsonl_download_uri, {
     headers: { 'User-Agent': HEADERS['User-Agent'] },
@@ -661,7 +662,8 @@ async function syncPreise() {
     if (!data.digital && data.id && data.set && data.collector_number) {
       const key = `${data.set}/${data.collector_number}`.toLowerCase();
       // default_cards hat je Druck eine Zeile; sollte es doch zwei geben, gewinnt die englische.
-      if (!drucke.has(key) || data.lang === 'en') drucke.set(key, kompakterDruck(data, key));
+      if (!drucke.has(key) || data.lang === 'en')
+        drucke.set(key, kompakterDruck(data, key, cardmarket));
     }
     if (!data.name || data.digital || UEBERSPRUNGENE_LAYOUTS.has(data.layout)) continue;
     const name = normalizedFrontName(data.name);
@@ -745,7 +747,52 @@ const LEGALITY_FORMATS = [
   'predh',
 ];
 
-function kompakterDruck(data, print_key) {
+/**
+ * Cardmarkets öffentliche Preisdatei (Magic, ~27 MB, einmal täglich neu): je Cardmarket-Produkt
+ * Durchschnitte und günstigstes Angebot. Die App nimmt avg7 als Preis einer Sammlungskarte und low
+ * für Karten im Zustand "Played" (Wunsch des Users, 08.11.2026; sql/cardmarket-preise-zustand-
+ * 2026-11-08.sql). Ein Produkt umfasst alle Sprachen eines Drucks. Scheitert der Download, gibt es
+ * null zurück - dann schreibt der Lauf die Cardmarket-Spalten gar nicht und die Werte von gestern
+ * bleiben stehen.
+ */
+const CARDMARKET_PREISE =
+  'https://downloads.s3.cardmarket.com/productCatalog/priceGuide/price_guide_1.json';
+
+async function ladeCardmarketPreise() {
+  try {
+    const res = await fetch(CARDMARKET_PREISE, {
+      headers: { 'User-Agent': HEADERS['User-Agent'] },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const preise = new Map();
+    for (const p of data.priceGuides ?? []) {
+      preise.set(p.idProduct, {
+        cm_avg7: cmPreis(p.avg7),
+        cm_avg7_foil: cmPreis(p['avg7-foil']),
+        cm_low: cmPreis(p.low),
+        cm_low_foil: cmPreis(p['low-foil']),
+      });
+    }
+    // Wie bei Scryfall: lieber gestern behalten als eine halb gelesene Datei schreiben.
+    if (preise.size < 50000) throw new Error(`nur ${preise.size} Produkte`);
+    console.log(`  Cardmarket-Preise: ${preise.size} Produkte (Stand ${data.createdAt}).`);
+    return preise;
+  } catch (err) {
+    console.warn(
+      `Cardmarket-Preisdatei nicht geladen (${err.message}) - Spalten bleiben unverändert.`,
+    );
+    return null;
+  }
+}
+
+function cmPreis(wert) {
+  return typeof wert === 'number' && wert > 0 ? wert : null;
+}
+
+const LEERE_CM_PREISE = { cm_avg7: null, cm_avg7_foil: null, cm_low: null, cm_low_foil: null };
+
+function kompakterDruck(data, print_key, cardmarket) {
   const preis = (wert) => {
     const zahl = parseFloat(wert);
     return zahl > 0 ? zahl : null;
@@ -764,6 +811,8 @@ function kompakterDruck(data, print_key) {
     eur: preis(data.prices?.eur),
     eur_foil: preis(data.prices?.eur_foil),
     legal_mask,
+    // Ohne Preisdatei gar nicht schreiben (Upsert lässt fehlende Spalten unangetastet).
+    ...(cardmarket ? (cardmarket.get(data.cardmarket_id) ?? LEERE_CM_PREISE) : {}),
   };
 }
 
@@ -777,11 +826,21 @@ async function schreibeDrucke(drucke) {
   const start = new Date().toISOString();
   // Doppelte IDs unter verschiedenen Nummern würden den Upsert-Block sprengen.
   const nachId = new Map(drucke.map((d) => [d.scryfall_id, { ...d, synced_at: start }]));
-  const rows = [...nachId.values()];
+  let rows = [...nachId.values()];
   for (let i = 0; i < rows.length; i += 1000) {
-    const { error } = await supabase
+    let { error } = await supabase
       .from('scryfall_prints')
       .upsert(rows.slice(i, i + 1000), { onConflict: 'scryfall_id' });
+    // Cardmarket-Spalten fehlen (Migration noch nicht gelaufen): ohne sie weiter.
+    if (error && i === 0 && ['PGRST204', '42703'].includes(error.code)) {
+      console.log(
+        'Cardmarket-Spalten fehlen - sql/cardmarket-preise-zustand-2026-11-08.sql ausführen.',
+      );
+      rows = rows.map(({ cm_avg7, cm_avg7_foil, cm_low, cm_low_foil, ...rest }) => rest);
+      ({ error } = await supabase
+        .from('scryfall_prints')
+        .upsert(rows.slice(i, i + 1000), { onConflict: 'scryfall_id' }));
+    }
     if (error) {
       if (i === 0 && ['42P01', 'PGRST205'].includes(error.code)) {
         console.log(

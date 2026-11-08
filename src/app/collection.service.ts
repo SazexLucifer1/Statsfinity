@@ -3,6 +3,7 @@ import { supabase } from './supabase.client';
 import { AuthService } from './auth.service';
 import { ScryfallService } from './scryfall.service';
 import {
+  CardCondition,
   CollectionEntry,
   CollectionPrint,
   DeckUsage,
@@ -30,6 +31,43 @@ export interface PrintInfo {
   legalities: Record<string, string>;
   /** true = Preis des englischen Drucks (Scryfall führt für andere Sprachen keine Preise). */
   priceFromEnglish: boolean;
+  /**
+   * Cardmarket aus der täglichen Preisdatei (sql/cardmarket-preise-zustand-2026-11-08.sql):
+   * Durchschnitt der letzten 7 Tage und günstigstes Angebot, je normal und Foil. Ein
+   * Cardmarket-Produkt umfasst alle Sprachen - kein „≈“ nötig. Fehlt ohne Migration/Nachtlauf.
+   */
+  cmAvg7?: number | null;
+  cmAvg7Foil?: number | null;
+  cmLow?: number | null;
+  cmLowFoil?: number | null;
+}
+
+/**
+ * Preis eines Exemplars (Wunsch des Users, 08.11.2026):
+ *  - Near Mint = Cardmarket-Durchschnitt der letzten 7 Tage (avg7). Gab es in 7 Tagen keinen
+ *    Verkauf (bei ~17 % der Produkte), gilt Scryfalls Preis - das ist Cardmarkets Trendpreis.
+ *  - Played = Cardmarkets günstigstes Angebot (low, über alle Zustände).
+ *  - `mode` 'low' bewertet jede Karte mit dem günstigsten Angebot (Mindestwert der Sammlung).
+ * Foil nimmt den Foil-Wert, ohne ihn den normalen. Ohne Cardmarket-Spalten bleibt Scryfalls Preis.
+ */
+export function entryPrice(
+  info: PrintInfo | null | undefined,
+  foil: boolean,
+  condition: CardCondition = 'nm',
+  mode: 'normal' | 'low' = 'normal',
+): { price: number | null; fromEnglish: boolean } {
+  if (!info) return { price: null, fromEnglish: false };
+  const pick = (normal?: number | null, foilValue?: number | null) =>
+    (foil ? (foilValue ?? normal) : (normal ?? foilValue)) ?? null;
+  const low = pick(info.cmLow, info.cmLowFoil);
+  const avg7 = pick(info.cmAvg7, info.cmAvg7Foil);
+  const trend = pick(info.eur, info.eurFoil);
+  if (condition === 'pl' || mode === 'low') {
+    if (low !== null) return { price: low, fromEnglish: false };
+  }
+  if (avg7 !== null) return { price: avg7, fromEnglish: false };
+  if (trend !== null) return { price: trend, fromEnglish: info.priceFromEnglish };
+  return { price: low, fromEnglish: false };
 }
 
 /**
@@ -70,6 +108,8 @@ function legalitiesFromMask(mask: number): Record<string, string> {
 
 const SELECT =
   'scryfall_id, foil, card_name, lang, set_code, collector_number, illustration_id, quantity, added_at';
+/** Mit Zustand (sql/cardmarket-preise-zustand-2026-11-08.sql); ohne Migration SELECT allein. */
+const SELECT_CONDITION = `${SELECT}, condition`;
 const API = 'https://api.scryfall.com';
 
 export function toCollectionPrint(c: any): CollectionPrint {
@@ -99,7 +139,12 @@ function fromRow(row: any): CollectionEntry {
     illustrationId: row.illustration_id ?? null,
     quantity: row.quantity,
     addedAt: row.added_at,
+    condition: row.condition === 'pl' ? 'pl' : 'nm',
   };
+}
+
+function conditionOf(print: CollectionPrint | CollectionEntry): CardCondition {
+  return 'condition' in print && print.condition === 'pl' ? 'pl' : 'nm';
 }
 
 function isMissingMigration(error: { code?: string } | null): boolean {
@@ -187,12 +232,19 @@ export class CollectionService {
     const all: CollectionEntry[] = [];
     // In Seiten zu 1000 - so viele liefert PostgREST höchstens auf einmal.
     for (let from = 0; ; from += 1000) {
-      const { data, error } = await supabase
-        .from('collection_cards')
-        .select(SELECT)
-        .eq('user_id', userId)
-        .order('added_at', { ascending: false })
-        .range(from, from + 999);
+      const page = () =>
+        supabase
+          .from('collection_cards')
+          .select(this.conditionAvailable() ? SELECT_CONDITION : SELECT)
+          .eq('user_id', userId)
+          .order('added_at', { ascending: false })
+          .range(from, from + 999);
+      let { data, error } = await page();
+      // Spalte condition fehlt: Migration noch nicht gelaufen - ohne Zustand weiter.
+      if (error?.code === '42703' && this.conditionAvailable()) {
+        this.conditionAvailable.set(false);
+        ({ data, error } = await page());
+      }
       if (error) {
         if (isMissingMigration(error)) this.available.set(false);
         else console.error('Konnte Sammlung nicht laden:', error);
@@ -212,9 +264,23 @@ export class CollectionService {
    * da - neben einer englischen desselben Drucks (sql/sammlung-sprache-frei-2026-11-05.sql).
    * `lang` weggelassen = die Sprache des Drucks.
    */
-  quantityOf(scryfallId: string, foil: boolean, lang?: string): number {
-    return this.entries()?.find((e) => this.sameRow(e, scryfallId, foil, lang))?.quantity ?? 0;
+  quantityOf(
+    scryfallId: string,
+    foil: boolean,
+    lang?: string,
+    condition: CardCondition = 'nm',
+  ): number {
+    return (
+      this.entries()?.find((e) => this.sameRow(e, scryfallId, foil, lang, condition))?.quantity ?? 0
+    );
   }
+
+  /**
+   * false, solange die Spalte `condition` fehlt (sql/cardmarket-preise-zustand-2026-11-08.sql):
+   * dann gibt es keinen Zustand, alles gilt als Near Mint, und das Bearbeiten-Blatt zeigt keine
+   * Auswahl.
+   */
+  readonly conditionAvailable = signal(true);
 
   /**
    * false, solange die Migration fehlt (Primärschlüssel noch ohne Sprache): Dann gilt wie früher
@@ -222,32 +288,51 @@ export class CollectionService {
    */
   private langInKey = true;
 
-  private sameRow(e: CollectionEntry, scryfallId: string, foil: boolean, lang?: string): boolean {
+  private sameRow(
+    e: CollectionEntry,
+    scryfallId: string,
+    foil: boolean,
+    lang?: string,
+    condition: CardCondition = 'nm',
+  ): boolean {
     return (
       e.scryfallId === scryfallId &&
       e.foil === foil &&
-      (!this.langInKey || lang === undefined || e.lang === lang)
+      (!this.langInKey || lang === undefined || e.lang === lang) &&
+      (!this.conditionAvailable() || (e.condition ?? 'nm') === condition)
     );
   }
 
-  /** Ändert die Anzahl eines Drucks um `delta`; bei 0 verschwindet die Zeile. */
-  async add(print: CollectionPrint | CollectionEntry, foil: boolean, delta = 1): Promise<boolean> {
+  /**
+   * Ändert die Anzahl eines Drucks um `delta`; bei 0 verschwindet die Zeile. Ohne `condition` gilt
+   * der Zustand des Eintrags bzw. Near Mint - so trägt der Scanner immer NM ein (Wunsch des Users,
+   * 08.11.2026: Vorder- und Rückseite sieht er nicht).
+   */
+  async add(
+    print: CollectionPrint | CollectionEntry,
+    foil: boolean,
+    delta = 1,
+    condition: CardCondition = conditionOf(print),
+  ): Promise<boolean> {
     await this.ensureLoaded();
     const uid = this.auth.currentUser()?.id;
     if (!uid || !this.available()) return false;
-    const current = this.quantityOf(print.scryfallId, foil, print.lang);
-    return this.setQuantity(print, foil, Math.min(999, current + delta));
+    const current = this.quantityOf(print.scryfallId, foil, print.lang, condition);
+    return this.setQuantity(print, foil, Math.min(999, current + delta), condition);
   }
 
   async setQuantity(
     print: CollectionPrint | CollectionEntry,
     foil: boolean,
     quantity: number,
+    condition: CardCondition = conditionOf(print),
   ): Promise<boolean> {
     const uid = this.auth.currentUser()?.id;
     if (!uid) return false;
     const before = this.entries() ?? [];
-    const existing = before.find((e) => this.sameRow(e, print.scryfallId, foil, print.lang));
+    const existing = before.find((e) =>
+      this.sameRow(e, print.scryfallId, foil, print.lang, condition),
+    );
 
     if (quantity <= 0) {
       this.entries.set(before.filter((e) => e !== existing));
@@ -258,6 +343,7 @@ export class CollectionService {
         .eq('scryfall_id', print.scryfallId)
         .eq('foil', foil);
       if (this.langInKey) query = query.eq('lang', existing?.lang ?? print.lang);
+      if (this.conditionAvailable()) query = query.eq('condition', condition);
       const { error } = await query;
       if (error) {
         console.error('Konnte Karte nicht aus der Sammlung nehmen:', error);
@@ -279,13 +365,14 @@ export class CollectionService {
           illustrationId: print.illustrationId,
           quantity,
           addedAt: new Date().toISOString(),
+          condition,
         };
     this.rememberPrintKey(entry);
     // Sofort anzeigen, beim Fehler zurückrollen - beim Scannen soll nichts auf die Datenbank warten.
     this.entries.set(
       existing ? before.map((e) => (e === existing ? entry : e)) : [entry, ...before],
     );
-    const row = {
+    const row: Record<string, unknown> = {
       user_id: uid,
       scryfall_id: entry.scryfallId,
       foil,
@@ -296,9 +383,23 @@ export class CollectionService {
       illustration_id: entry.illustrationId,
       quantity,
     };
-    let { error } = await supabase
-      .from('collection_cards')
-      .upsert(row, this.langInKey ? { onConflict: 'user_id,scryfall_id,foil,lang' } : undefined);
+    const save = () =>
+      supabase.from('collection_cards').upsert(
+        this.conditionAvailable() ? { ...row, condition } : row,
+        this.langInKey
+          ? {
+              onConflict: this.conditionAvailable()
+                ? 'user_id,scryfall_id,foil,lang,condition'
+                : 'user_id,scryfall_id,foil,lang',
+            }
+          : undefined,
+      );
+    let { error } = await save();
+    // Zustand fehlt in Tabelle oder Schlüssel: Migration noch nicht gelaufen - ohne Zustand weiter.
+    if (this.conditionAvailable() && ['42703', 'PGRST204', '42P10'].includes(error?.code ?? '')) {
+      this.conditionAvailable.set(false);
+      ({ error } = await save());
+    }
     // 42P10: kein passender Schlüssel - die Migration mit der Sprache im Schlüssel fehlt noch.
     if (error?.code === '42P10' && this.langInKey) {
       console.warn(
@@ -327,14 +428,16 @@ export class CollectionService {
     target: CollectionPrint,
     foil: boolean,
     count: number,
+    condition: CardCondition = conditionOf(entry),
   ): Promise<boolean> {
     const n = Math.min(count, entry.quantity);
     if (n <= 0) return false;
     const sameId = target.scryfallId === entry.scryfallId && foil === entry.foil;
-    if (sameId && target.lang === entry.lang) return true;
+    const sameCondition = !this.conditionAvailable() || condition === conditionOf(entry);
+    if (sameId && target.lang === entry.lang && sameCondition) return true;
     // Ohne Sprache im Schlüssel wären Quelle und Ziel dieselbe Zeile.
-    if (sameId && !this.langInKey) return false;
-    const ok = await this.add(target, foil, n);
+    if (sameId && sameCondition && !this.langInKey) return false;
+    const ok = await this.add(target, foil, n, condition);
     if (!ok) return false;
     return this.setQuantity(entry, entry.foil, entry.quantity - n);
   }
@@ -410,6 +513,8 @@ export class CollectionService {
   private readonly printInfoCache = new Map<string, PrintInfo | null>();
   /** false, sobald die Tabelle fehlt (Migration noch nicht gelaufen) - dann nur Scryfall. */
   private printInfoTableAvailable = true;
+  /** false, sobald die Cardmarket-Spalten fehlen - dann nur Scryfalls Preis. */
+  private cardmarketColumns = true;
   /** "set/nummer" je Druck-ID aus den geladenen Sammlungen - für den Weg über den englischen Druck. */
   private readonly printKeys = new Map<string, string>();
 
@@ -463,8 +568,12 @@ export class CollectionService {
 
   private async printInfoFromTable(ids: string[]): Promise<void> {
     if (!this.printInfoTableAvailable || ids.length === 0) return;
-    const columns =
+    const base =
       'scryfall_id, print_key, rarity, set_name, illustration_id, eur, eur_foil, legal_mask';
+    // Cardmarket-Spalten nur, solange es sie gibt (sql/cardmarket-preise-zustand-2026-11-08.sql).
+    const columns = (): string =>
+      this.cardmarketColumns ? `${base}, cm_avg7, cm_avg7_foil, cm_low, cm_low_foil` : base;
+    const num = (v: unknown) => (v == null ? null : Number(v));
     const toInfo = (row: any, fromEnglish: boolean): PrintInfo => ({
       illustrationId: row.illustration_id ?? null,
       rarity: row.rarity ?? null,
@@ -473,18 +582,29 @@ export class CollectionService {
       eurFoil: row.eur_foil == null ? null : Number(row.eur_foil),
       legalities: legalitiesFromMask(row.legal_mask ?? 0),
       priceFromEnglish: fromEnglish && (row.eur != null || row.eur_foil != null),
+      cmAvg7: num(row.cm_avg7),
+      cmAvg7Foil: num(row.cm_avg7_foil),
+      cmLow: num(row.cm_low),
+      cmLowFoil: num(row.cm_low_foil),
     });
     // 1. Über die Druck-ID.
     for (let i = 0; i < ids.length; i += 200) {
-      const { data, error } = await supabase
-        .from('scryfall_prints')
-        .select(columns)
-        .in('scryfall_id', ids.slice(i, i + 200));
+      const query = () =>
+        supabase
+          .from('scryfall_prints')
+          .select(columns())
+          .in('scryfall_id', ids.slice(i, i + 200));
+      let { data, error } = await query();
+      if (error?.code === '42703' && this.cardmarketColumns) {
+        this.cardmarketColumns = false;
+        ({ data, error } = await query());
+      }
       if (error) {
         if (['42P01', 'PGRST205'].includes(error.code ?? '')) this.printInfoTableAvailable = false;
         return;
       }
-      for (const row of data ?? []) this.printInfoCache.set(row.scryfall_id, toInfo(row, false));
+      for (const row of (data ?? []) as any[])
+        this.printInfoCache.set(row.scryfall_id, toInfo(row, false));
     }
     // 2. Fremdsprachige Drucke über Set und Nummer des englischen.
     const byKey = new Map<string, string[]>();
@@ -497,10 +617,10 @@ export class CollectionService {
     for (let i = 0; i < keys.length; i += 200) {
       const { data, error } = await supabase
         .from('scryfall_prints')
-        .select(columns)
+        .select(columns())
         .in('print_key', keys.slice(i, i + 200));
       if (error) return;
-      for (const row of data ?? [])
+      for (const row of (data ?? []) as any[])
         for (const id of byKey.get(row.print_key) ?? [])
           this.printInfoCache.set(id, toInfo(row, row.scryfall_id !== id));
     }
