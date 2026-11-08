@@ -690,3 +690,23 @@ export function nameQueries(text: string): { fuzzy: string | null; words: string
   for (const w of words) if (w.length >= (words.length >= 2 ? 6 : 5)) queries.push(w);
   return { fuzzy: line.length >= 4 ? line : null, words: [...new Set(queries)] };
 }
+
+/**
+ * Promos drucken statt ihres Sets "PRM" und eine eigene Nummer ("P 0010 / PRM ★ EN"), Scryfall
+ * führt sie aber unter dem Promo-Set ("pmei 2026-2") - Set und Nummer passen dann nie
+ * (Rückmeldung des Users, 08.11.2026: Wild Growth von Pat Lewis). Unter den Promo-Drucken mit
+ * diesem Artwork gilt der in der gelesenen Sprache, wenn es genau einen gibt. Promo-Sets erkennt
+ * man bei Scryfall am "p" vor einem dreistelligen Kürzel; The List ("plst") druckt das
+ * Original-Set und zählt nicht.
+ */
+export function promoFromLine<T extends CornerCandidate>(
+  line: CollectorLine,
+  prints: readonly T[],
+): T | null {
+  if (line.setCode !== 'prm' || !line.lang) return null;
+  const promos = prints.filter(
+    (p) => /^p[a-z0-9]{3}$/.test(p.setCode) && p.setCode !== 'plst' && p.lang === line.lang,
+  );
+  const distinct = new Set(promos.map((p) => `${p.setCode}|${p.collectorNumber}`));
+  return distinct.size === 1 ? promos[0] : null;
+}
