@@ -13,6 +13,7 @@ import {
   cardArtQueries,
   cardArtQueriesWithoutGlare,
   CARD_ART_BOXES,
+  SAGA_ART_BOXES,
   ART_VERIFY_MIN,
   artMatchCertainty,
   artQueryBox,
@@ -718,8 +719,10 @@ export class CardScanService {
     const withoutGlare = glare >= GLARE_MIN;
     // Erst die Karten; nur ohne sicheren Treffer die Marken - mit eigenen Lagen gegen ihre eigene,
     // kleine Datei, damit die zusätzliche Lage keine Zufallstreffer unter echten Karten erzeugt.
+    // Dazwischen die Sagas: Ihr Bild steht rechts hochkant (SAGA_ART_BOXES), dieselbe Datei.
     const tries: [ArtHashIndex | null, readonly ArtBox[]][] = [
       [this.index, CARD_ART_BOXES],
+      [this.index, SAGA_ART_BOXES],
       [this.tokenIndex, TOKEN_ART_BOXES],
     ];
     for (const [index, artBoxes] of tries) {

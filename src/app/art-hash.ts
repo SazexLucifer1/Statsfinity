@@ -44,6 +44,16 @@ export const CARD_ART_BOXES: readonly ArtBox[] = [
 ];
 
 /**
+ * Sagas (seit Dominaria): Das Bild steht hochkant in der rechten Hälfte, links die Kapitel -
+ * Scryfalls art_crop einer Saga ist genau dieser Ausschnitt. Eigene Liste statt fünfte Lage in
+ * `CARD_ART_BOXES`, geprüft erst, wenn dort nichts sicher passt (card-scan.service.ts): Gemessen an
+ * "Azusas viele Reisen" (NEO 172, 08.11.2026) erkannten die vier Lagen 0 von 68 Scans; als
+ * fünfte Lage 56, aber 2 von 300 bisher richtig erkannten Karten fielen weg, weil ein Zufallstreffer
+ * der neuen Lage näher lag und die Nachprüfung nicht bestand.
+ */
+export const SAGA_ART_BOXES: readonly ArtBox[] = [[0.5, 0.11, 0.92, 0.83]];
+
+/**
  * Lagen für Marken (Tokens), gegen eine eigene, kleine Datei (`TOKEN_ART_HASH_FILE`): normaler
  * Rahmen (Monarch & Co.), Vollbild ohne Regeltext und Marken MIT Regeltext - dort reicht das Bild
  * bis knapp über den Textkasten, gemessen an 24 Marken von 2007 bis 2027 (20.10.2026); keine der
