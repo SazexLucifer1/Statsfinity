@@ -446,14 +446,6 @@
   }
 }
 
-// Gesamtwert: normal oder Mindestwert (jede Karte zum günstigsten Angebot).
-.value-toggle {
-  display: flex;
-  width: fit-content;
-  margin: var(--sp-3) auto 0;
-  font-size: 0.8rem;
-}
-
 .basis-select {
   display: flex;
   align-items: center;
@@ -469,4 +461,20 @@
   select {
     width: auto;
   }
+}
+
+// Eigener Preis der Karte (Bearbeiten-Blatt) statt der Einstellung der Sammlung.
+.own-price,
+.own-price-sample {
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+.card-prices-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+  font-size: 0.8rem;
 }

@@ -39,6 +39,10 @@
           <span>{{ i18n.t('collection.info.priceEnglish') }}</span>
         </li>
         <li>
+          <span class="sample"><span class="own-price-sample">0.02 €</span></span>
+          <span>{{ i18n.t('collection.info.ownPrice') }}</span>
+        </li>
+        <li>
           <span class="sample"><span class="badge-sample lang">PL</span></span>
           <span>{{ i18n.t('collection.info.played') }}</span>
         </li>
@@ -94,23 +98,8 @@
       </div>
       <div>
         <strong>{{ totalValue() | number: '1.2-2' }} €</strong>
-        <span>{{
-          valueMode() === 'low' ? i18n.t('collection.valueLow') : i18n.t('collection.value')
-        }}</span>
+        <span>{{ i18n.t('collection.value') }}</span>
       </div>
-    </div>
-    <!-- Gesamtwert normal oder als Mindestwert (jede Karte zum günstigsten Angebot). -->
-    <div class="segmented value-toggle">
-      <button
-        type="button"
-        [class.active]="valueMode() === 'normal'"
-        (click)="valueMode.set('normal')"
-      >
-        {{ i18n.t('collection.basis.' + collection.priceBasis()) }}
-      </button>
-      <button type="button" [class.active]="valueMode() === 'low'" (click)="valueMode.set('low')">
-        {{ i18n.t('collection.valueLow') }}
-      </button>
     </div>
     <!-- Welcher Cardmarket-Wert als Preis gilt (für alle Sprachen gleich), je Konto gespeichert. -->
     <label class="basis-select">
@@ -125,6 +114,18 @@
         }
       </select>
     </label>
+    <!-- Eigene Preise einzelner Karten (Bearbeiten-Blatt) beachten oder überall die Einstellung
+         oben nehmen - frei umschaltbar (Wunsch des Users, 08.11.2026). -->
+    @if (collection.cardBasisAvailable() && ownPriceCount() > 0) {
+      <label class="card-prices-toggle">
+        <input
+          type="checkbox"
+          [ngModel]="collection.useCardPrices()"
+          (ngModelChange)="collection.setUseCardPrices($event)"
+        />
+        {{ i18n.t('collection.useCardPrices', { count: ownPriceCount() }) }}
+      </label>
+    }
     @if (priceProgress(); as p) {
       <p class="hint">{{ i18n.t('collection.loadingPrices', { done: p.done, total: p.total }) }}</p>
     }
@@ -437,7 +438,7 @@
                 <div class="tile-meta">
                   <!-- Preis links, Deck-Symbol mit Zahl rechts, beides in einer Zeile. Was die
                      Zeichen bedeuten, erklärt das ⓘ im Kopf. -->
-                  <span class="price">
+                  <span class="price" [class.own-price]="item.ownPrice">
                     @if (item.price !== null) {
                       {{ item.priceFromEnglish ? '≈' : '' }}{{ item.price | number: '1.2-2' }} €
                     }
@@ -500,7 +501,11 @@
                       · PL
                     }
                     @if (item.price !== null) {
-                      · {{ item.priceFromEnglish ? '≈ ' : '' }}{{ item.price | number: '1.2-2' }} €
+                      ·
+                      <span [class.own-price]="item.ownPrice"
+                        >{{ item.priceFromEnglish ? '≈ ' : ''
+                        }}{{ item.price | number: '1.2-2' }} €</span
+                      >
                     }
                     @if (item.inDecks > 0) {
                       ·
@@ -690,7 +695,7 @@
             <div class="tile-meta">
               <span>{{ item.entry.setCode.toUpperCase() }} #{{ item.entry.collectorNumber }}</span>
               @if (item.price !== null) {
-                <span
+                <span [class.own-price]="item.ownPrice"
                   >{{ item.priceFromEnglish ? '≈ ' : '' }}{{ item.price | number: '1.2-2' }} €</span
                 >
               }

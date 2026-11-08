@@ -198,6 +198,7 @@ export class CollectionView {
     const prints = this.prints();
     const used = this.usedByName();
     const basis = this.collection.priceBasis();
+    const useCardPrices = this.collection.useCardPrices();
     return this.entries().map((entry) => {
       const card = details.get(entry.cardName.toLowerCase());
       const key = collectionKey(entry.cardName);
@@ -207,7 +208,8 @@ export class CollectionView {
       for (const [effect, field] of Object.entries(FLAG_EFFECTS))
         if (flag?.[field]) effects.add(effect);
       const info = prints.get(entry.scryfallId);
-      const price = entryPrice(info, entry.foil, entry.condition, 'normal', basis);
+      const cardBasis = useCardPrices ? (entry.priceBasis ?? null) : null;
+      const price = entryPrice(info, entry.foil, entry.condition, basis, cardBasis);
       return {
         entry,
         typeLine: card?.typeLine ?? null,
@@ -219,7 +221,7 @@ export class CollectionView {
         rarity: info?.rarity ?? null,
         setName: info?.setName ?? this.sets().get(entry.setCode)?.name ?? null,
         price: price.price,
-        lowPrice: entryPrice(info, entry.foil, entry.condition, 'low').price,
+        ownPrice: cardBasis !== null,
         priceFromEnglish: price.fromEnglish,
         inDecks: used.get(key) ?? 0,
       };
@@ -254,13 +256,16 @@ export class CollectionView {
    * als Mindestwert: jede Karte zum günstigsten Angebot (Wunsch des Users, 08.11.2026). Nur die
    * Gesamtanzeige schaltet um, die Preise der Kacheln bleiben.
    */
-  readonly valueMode = signal<'normal' | 'low'>('normal');
   readonly priceBases = PRICE_BASES;
 
   setPriceBasis(basis: PriceBasis): void {
     void this.collection.setPriceBasis(basis);
   }
-  readonly totalValue = computed(() => collectionValue(this.items(), this.valueMode()));
+  readonly totalValue = computed(() => collectionValue(this.items()));
+  /** Wie viele Einträge einen eigenen Preis haben - nur dann zeigt der Kopf den Schalter. */
+  readonly ownPriceCount = computed(
+    () => this.entries().filter((e) => (e.priceBasis ?? null) !== null).length,
+  );
   readonly filteredCards = computed(() =>
     this.filtered().reduce((s, i) => s + i.entry.quantity, 0),
   );
