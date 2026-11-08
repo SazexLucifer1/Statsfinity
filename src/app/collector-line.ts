@@ -242,11 +242,17 @@ function oneOff(a: string, b: string): boolean {
 
 /**
  * Foil oder nicht, aus den PIXELN zwischen Set-Kürzel und Sprache - die Texterkennung lässt das
- * Zeichen oft weg, klebt es an ein Wort ("PRM*EN") oder liest Punkt und Stern gleich. Gemessen
- * wird die Höhe des größten hellen bzw. dunklen Flecks (je nach Schriftfarbe) in der Lücke,
- * bezogen auf die Buchstabenhöhe: der Punkt • ist 0,37 bis 0,46 davon, der Stern ★ 0,67 bis
- * 0,81 (gemessen an 78 Scryfall-Scans, verkleinert und unscharf wie aus der Kamera). `gray` ist das Bild, auf dem `words` erkannt wurden.
- * null = keine Lücke gefunden oder nicht eindeutig.
+ * Zeichen oft weg, klebt es an ein Wort ("PRM*EN") oder liest Punkt und Stern gleich. Vermessen
+ * werden alle hellen bzw. dunklen Flecken (je nach Schriftfarbe) in der Lücke, bezogen auf die
+ * Buchstabenhöhe: Der Punkt • ist ein kleiner runder, fast voller Fleck (Höhe und Breite 0,28 bis
+ * 0,5), der Stern ★ ein einzelner Fleck von 0,6 bis 0,9 Höhe und ähnlicher Breite.
+ *
+ * Liegt in der Lücke ein Punkt, ist es kein Foil - auch wenn daneben ein größerer Fleck liegt.
+ * Bis 08.11.2026 zählte nur der größte Fleck, und das war beim Punkt oft ein angeschnittener
+ * Buchstabe daneben ("M21 • DE": Höhe 0,8 wie ein Stern). Gemessen an 156 Ecken aus Scan-Proben,
+ * von Hand als ★ oder • abgelesen: vorher 25 von 114 Punkten als Stern, jetzt keiner; Sterne
+ * erkannt 37 von 42. `gray` ist das Bild, auf dem `words` erkannt wurden. null = keine Lücke
+ * gefunden oder nicht eindeutig.
  */
 export function foilFromPixels(
   gray: Uint8Array,
@@ -254,31 +260,51 @@ export function foilFromPixels(
   height: number,
   words: readonly OcrWord[],
 ): boolean | null {
-  const ratio = symbolHeight(gray, width, height, words);
-  if (ratio === null) return null;
-  // Über FOIL_STAR_MAX ist es kein Zeichen, sondern ein Buchstabe, die Lücke lag also daneben.
-  if (ratio >= FOIL_STAR_MIN && ratio <= FOIL_STAR_MAX) return true;
-  if (ratio <= FOIL_DOT_MAX) return false;
-  return null;
+  const blobs = symbolBlobs(gray, width, height, words);
+  if (!blobs.length) return null;
+  if (blobs.some(isDot)) return false;
+  const biggest = blobs.reduce((a, b) => (b.count > a.count ? b : a));
+  // Mehrere buchstabengroße Flecken: Die Lücke lag zwischen Buchstaben, nicht am Zeichen.
+  if (blobs.filter((b) => b.h >= FOIL_STAR_MIN && b.w >= 0.4).length > 1) return null;
+  if (isStar(biggest)) return true;
+  // Höher als ein Punkt, aber kein Stern: ein Buchstabe, die Lücke lag also daneben.
+  return biggest.h <= FOIL_DOT_MAX ? false : null;
 }
 
-/** Höhe des Zeichens in Buchstabenhöhen, null ohne Lücke oder Fleck (siehe foilFromPixels). */
-export function symbolHeight(
+/** Ein Fleck in der Lücke zwischen Set-Kürzel und Sprache, in Buchstabenhöhen. */
+interface SymbolBlob {
+  h: number;
+  w: number;
+  /** Anteil gefüllter Pixel im umgebenden Rechteck: Punkt fast voll, Stern etwa halb. */
+  fill: number;
+  count: number;
+}
+
+function isDot(b: SymbolBlob): boolean {
+  return b.h >= 0.2 && b.h <= FOIL_DOT_MAX && b.w >= 0.18 && b.w <= 0.55 && b.fill >= 0.55;
+}
+
+function isStar(b: SymbolBlob): boolean {
+  return b.h >= FOIL_STAR_MIN && b.h <= FOIL_STAR_MAX && b.w >= 0.58 && b.w <= 0.95;
+}
+
+/** Alle Flecken in der Lücke, die nicht an deren Seiten anstoßen (siehe foilFromPixels). */
+function symbolBlobs(
   gray: Uint8Array,
   width: number,
   height: number,
   words: readonly OcrWord[],
-): number | null {
+): SymbolBlob[] {
   const gap = symbolGap(words);
-  if (!gap) return null;
+  if (!gap) return [];
   const { x0, x1, letters } = gap;
   const h = letters.y1 - letters.y0;
-  if (h < 4 || x1 - x0 < 1) return null;
+  if (h < 4 || x1 - x0 < 1) return [];
   const y0 = Math.max(0, Math.floor(letters.y0 - 0.2 * h));
   const y1 = Math.min(height, Math.ceil(letters.y1 + 0.2 * h));
   const gx0 = Math.max(0, Math.floor(x0));
   const gx1 = Math.min(width, Math.ceil(x1));
-  if (gx1 <= gx0 || y1 <= y0) return null;
+  if (gx1 <= gx0 || y1 <= y0) return [];
 
   // Schwelle und Schriftfarbe aus den Buchstaben daneben: Schrift ist dort die Minderheit.
   const hist = new Array<number>(256).fill(0);
@@ -294,15 +320,13 @@ export function symbolHeight(
     total += hist[v];
     if (v > threshold) above += hist[v];
   }
-  if (total === 0) return null;
+  if (total === 0) return [];
   const brightText = above < total / 2;
   const isInk = (v: number) => (brightText ? v > threshold : v <= threshold);
 
-  // Größter zusammenhängender Fleck in der Lücke.
   const w = gx1 - gx0;
   const seen = new Uint8Array(w * (y1 - y0));
-  let tallest = 0;
-  let biggest = 0;
+  const blobs: SymbolBlob[] = [];
   for (let y = y0; y < y1; y++) {
     for (let x = gx0; x < gx1; x++) {
       const i = (y - y0) * w + (x - gx0);
@@ -341,19 +365,18 @@ export function symbolHeight(
       }
       // Was an den Seiten der Lücke anstößt, ist ein angeschnittener Buchstabe daneben.
       if (left === 0 || right === w - 1) continue;
-      if (count > biggest) {
-        biggest = count;
-        tallest = bottom - top + 1;
-      }
+      const bh = bottom - top + 1;
+      const bw = right - left + 1;
+      blobs.push({ h: bh / h, w: bw / h, fill: count / (bh * bw), count });
     }
   }
-  return biggest === 0 ? null : tallest / h;
+  return blobs;
 }
 
 /** Ab dieser Höhe (in Buchstabenhöhen) ist das Zeichen ein Stern, bis zu dieser ein Punkt. */
-export const FOIL_STAR_MIN = 0.6;
-export const FOIL_STAR_MAX = 0.9;
-export const FOIL_DOT_MAX = 0.54;
+export const FOIL_STAR_MIN = 0.58;
+export const FOIL_STAR_MAX = 0.92;
+export const FOIL_DOT_MAX = 0.52;
 
 /** Wo zwischen Set-Kürzel und Sprache das Zeichen sitzen muss, samt Buchstaben daneben. */
 function symbolGap(
@@ -383,7 +406,7 @@ function symbolGap(
       // Der Wortrahmen der Sprache schließt das Zeichen oft mit ein ("DE" doppelt so breit wie
       // zwei Buchstaben) - die Buchstaben beginnen erst knapp zwei Zeichenbreiten vor dem Ende.
       // Die Lücke reicht deshalb ein Stück in beide Wörter hinein; angeschnittene Buchstaben
-      // zählen in symbolHeight() nicht.
+      // zählen in symbolBlobs() nicht.
       const setCharW = (p.x1 - p.x0) / Math.max(1, prev.text.length);
       const x1 = Math.max(raw.length === 3 ? b.x0 + charW : b.x0, b.x1 - 1.8 * setCharW);
       const letters = {

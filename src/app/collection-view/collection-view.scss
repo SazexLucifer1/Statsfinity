@@ -445,3 +445,11 @@
     flex: 1;
   }
 }
+
+// Gesamtwert: normal oder Mindestwert (jede Karte zum günstigsten Angebot).
+.value-toggle {
+  display: flex;
+  width: fit-content;
+  margin: var(--sp-3) auto 0;
+  font-size: 0.8rem;
+}

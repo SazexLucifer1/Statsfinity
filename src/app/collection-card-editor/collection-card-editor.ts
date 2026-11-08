@@ -2,7 +2,12 @@ import { Component, computed, effect, inject, input, output, signal } from '@ang
 import { FormsModule } from '@angular/forms';
 import { I18nService } from '../i18n.service';
 import { CollectionService } from '../collection.service';
-import { CollectionEntry, CollectionPrint, printImageUrl } from '../collection-coverage';
+import {
+  CardCondition,
+  CollectionEntry,
+  CollectionPrint,
+  printImageUrl,
+} from '../collection-coverage';
 import { CardPreviewService } from '../card-preview.service';
 import { ART_LANGUAGES } from '../art-languages';
 
@@ -20,7 +25,7 @@ import { ART_LANGUAGES } from '../art-languages';
 })
 export class CollectionCardEditor {
   readonly i18n = inject(I18nService);
-  private readonly collection = inject(CollectionService);
+  readonly collection = inject(CollectionService);
   private readonly preview = inject(CardPreviewService);
 
   readonly entry = input.required<CollectionEntry>();
@@ -33,6 +38,8 @@ export class CollectionCardEditor {
   readonly variantKey = signal('');
   readonly lang = signal('en');
   readonly foil = signal(false);
+  /** Zustand - nur hier von Hand, der Scanner trägt immer Near Mint ein. */
+  readonly condition = signal<CardCondition>('nm');
   readonly count = signal(1);
   readonly busy = signal(false);
   readonly failed = signal(false);
@@ -43,8 +50,13 @@ export class CollectionCardEditor {
     return (
       this.collection
         .entries()
-        ?.find((x) => x.scryfallId === e.scryfallId && x.foil === e.foil && x.lang === e.lang) ??
-      null
+        ?.find(
+          (x) =>
+            x.scryfallId === e.scryfallId &&
+            x.foil === e.foil &&
+            x.lang === e.lang &&
+            (x.condition ?? 'nm') === (e.condition ?? 'nm'),
+        ) ?? null
     );
   });
 
@@ -85,7 +97,12 @@ export class CollectionCardEditor {
   readonly changed = computed(() => {
     const e = this.entry();
     const t = this.target();
-    return t.scryfallId !== e.scryfallId || t.lang !== e.lang || this.foil() !== e.foil;
+    return (
+      t.scryfallId !== e.scryfallId ||
+      t.lang !== e.lang ||
+      this.foil() !== e.foil ||
+      this.condition() !== (e.condition ?? 'nm')
+    );
   });
   readonly counts = computed(() =>
     Array.from({ length: this.current()?.quantity ?? 0 }, (_, i) => i + 1),
@@ -97,6 +114,7 @@ export class CollectionCardEditor {
       this.variantKey.set(`${e.setCode}|${e.collectorNumber}`.toLowerCase());
       this.lang.set(e.lang);
       this.foil.set(e.foil);
+      this.condition.set(e.condition ?? 'nm');
       this.count.set(e.quantity);
       this.prints.set(null);
       void this.collection.printsOf(e.cardName).then((list) => {
@@ -131,7 +149,13 @@ export class CollectionCardEditor {
     if (!c || !this.changed()) return;
     this.busy.set(true);
     this.failed.set(false);
-    const ok = await this.collection.moveCopies(c, this.target(), this.foil(), this.count());
+    const ok = await this.collection.moveCopies(
+      c,
+      this.target(),
+      this.foil(),
+      this.count(),
+      this.condition(),
+    );
     this.busy.set(false);
     if (ok) this.closed.emit();
     else this.failed.set(true);
