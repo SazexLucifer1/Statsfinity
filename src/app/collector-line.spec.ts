@@ -7,6 +7,7 @@ import {
   nameQueries,
   OcrWord,
   parseCollectorLine,
+  promoFromLine,
 } from './collector-line';
 
 describe('parseCollectorLine', () => {
@@ -283,5 +284,31 @@ describe('nameQueries', () => {
   it('wirft Rauschen aus Großbuchstaben weg', () => {
     expect(nameQueries('EEE EE RRR').words).toEqual([]);
     expect(nameQueries('').fuzzy).toBeNull();
+  });
+});
+
+describe('promoFromLine', () => {
+  // Wild Growth von Pat Lewis: gedruckt "P 0010 / PRM ★ EN", bei Scryfall pmei 2026-2.
+  const prints = [
+    { setCode: '5ed', collectorNumber: '342', lang: 'en' },
+    { setCode: '6ed', collectorNumber: '268', lang: 'de' },
+    { setCode: 'pmei', collectorNumber: '2022-2', lang: 'ja' },
+    { setCode: 'pmei', collectorNumber: '2026-2', lang: 'en' },
+    { setCode: 'pip', collectorNumber: '208', lang: 'en' },
+    { setCode: 'plst', collectorNumber: 'C18-165', lang: 'en' },
+  ];
+
+  it('nimmt den einzigen Promo-Druck in der gelesenen Sprache', () => {
+    const line = parseCollectorLine('P 0010 P\nPRM *EN PAT LEWIS');
+    expect(promoFromLine(line, prints)?.collectorNumber).toBe('2026-2');
+  });
+
+  it('entscheidet nicht ohne PRM, ohne Sprache oder bei mehreren Promos', () => {
+    expect(promoFromLine(parseCollectorLine('5ED * EN PAT LEWIS'), prints)).toBeNull();
+    expect(
+      promoFromLine({ setCode: 'prm', collectorNumber: '10', lang: null, foilMark: false }, prints),
+    ).toBeNull();
+    const twice = [...prints, { setCode: 'pres', collectorNumber: '7', lang: 'en' }];
+    expect(promoFromLine(parseCollectorLine('P 0010 P\nPRM *EN'), twice)).toBeNull();
   });
 });

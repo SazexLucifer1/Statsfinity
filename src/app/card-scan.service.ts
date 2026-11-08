@@ -35,6 +35,7 @@ import {
   matchCornerText,
   nameQueries,
   parseCollectorLine,
+  promoFromLine,
 } from './collector-line';
 import { findCardCandidates } from './card-bounds';
 import { foilFromSheen, sheenScore } from './foil-sheen';
@@ -366,6 +367,7 @@ export class CardScanService {
         }
         if (cornerPrint && (pixelFoil !== null || !largeEnough)) break;
       }
+      cornerPrint ??= promoFromLine(line, prints);
     } else {
       // Ohne Artwork: Texterkennung kostet je Versuch spürbar Zeit, nur die wahrscheinlichste
       // Lage und der Rahmen.

@@ -112,7 +112,8 @@
                         p.collectorNumber === r.print.collectorNumber
                       "
                     >
-                      {{ p.setCode.toUpperCase() }} {{ p.collectorNumber }}
+                      {{ p.setCode.toUpperCase() }} {{ p.collectorNumber
+                      }}{{ p.setName ? ' · ' + p.setName : '' }}
                     </option>
                   }
                 </select>
