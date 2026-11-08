@@ -44,14 +44,20 @@ export const CARD_ART_BOXES: readonly ArtBox[] = [
 ];
 
 /**
- * Sagas (seit Dominaria): Das Bild steht hochkant in der rechten Hälfte, links die Kapitel -
- * Scryfalls art_crop einer Saga ist genau dieser Ausschnitt. Eigene Liste statt fünfte Lage in
- * `CARD_ART_BOXES`, geprüft erst, wenn dort nichts sicher passt (card-scan.service.ts): Gemessen an
- * "Azusas viele Reisen" (NEO 172, 08.11.2026) erkannten die vier Lagen 0 von 68 Scans; als
- * fünfte Lage 56, aber 2 von 300 bisher richtig erkannten Karten fielen weg, weil ein Zufallstreffer
- * der neuen Lage näher lag und die Nachprüfung nicht bestand.
+ * Karten mit hochkant stehendem Bild: Sagas (seit Dominaria) haben es in der rechten Hälfte,
+ * links die Kapitel; Klassen (seit AFR, z. B. "Klasse der Druiden") spiegelverkehrt links, rechts
+ * die Stufen. Scryfalls art_crop ist genau dieser Ausschnitt. Vermessen an Scryfalls Scans
+ * (08.11.2026): alle 79 Saga-Seiten (auch Rückseiten wie FIN "Summon") rechts, 35 von 37 Klassen
+ * links (die zwei übrigen sind Sonderdrucke). Eigene Liste statt weiterer Lagen in
+ * `CARD_ART_BOXES`, geprüft erst, wenn dort nichts sicher passt (card-scan.service.ts): Gemessen an "Azusas viele Reisen" (NEO 172) erkannten die
+ * vier Lagen 0 von 68 Scans, mit der Saga-Lage 56; als fünfte normale Lage fielen aber 2 von 300
+ * bisher richtig erkannten Karten weg, weil ein Zufallstreffer der neuen Lage näher lag und die
+ * Nachprüfung nicht bestand.
  */
-export const SAGA_ART_BOXES: readonly ArtBox[] = [[0.5, 0.11, 0.92, 0.83]];
+export const SIDE_ART_BOXES: readonly ArtBox[] = [
+  [0.5, 0.11, 0.92, 0.83],
+  [0.08, 0.11, 0.5, 0.84],
+];
 
 /**
  * Lagen für Marken (Tokens), gegen eine eigene, kleine Datei (`TOKEN_ART_HASH_FILE`): normaler
