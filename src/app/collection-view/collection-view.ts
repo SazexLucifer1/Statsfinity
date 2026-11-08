@@ -2,7 +2,7 @@ import { Component, computed, effect, inject, signal, untracked } from '@angular
 import { FormsModule } from '@angular/forms';
 import { DecimalPipe } from '@angular/common';
 import { I18nService } from '../i18n.service';
-import { CollectionService, PrintInfo } from '../collection.service';
+import { CollectionService, PrintInfo, entryPrice } from '../collection.service';
 import {
   CollectionEntry,
   CollectionPrint,
@@ -200,6 +200,7 @@ export class CollectionView {
       for (const [effect, field] of Object.entries(FLAG_EFFECTS))
         if (flag?.[field]) effects.add(effect);
       const info = prints.get(entry.scryfallId);
+      const price = entryPrice(info, entry.foil, entry.condition);
       return {
         entry,
         typeLine: card?.typeLine ?? null,
@@ -210,8 +211,9 @@ export class CollectionView {
         effects,
         rarity: info?.rarity ?? null,
         setName: info?.setName ?? this.sets().get(entry.setCode)?.name ?? null,
-        price: (entry.foil ? (info?.eurFoil ?? info?.eur) : (info?.eur ?? info?.eurFoil)) ?? null,
-        priceFromEnglish: info?.priceFromEnglish ?? false,
+        price: price.price,
+        lowPrice: entryPrice(info, entry.foil, entry.condition, 'low').price,
+        priceFromEnglish: price.fromEnglish,
         inDecks: used.get(key) ?? 0,
       };
     });
@@ -240,7 +242,13 @@ export class CollectionView {
 
   readonly totalCards = computed(() => this.entries().reduce((sum, e) => sum + e.quantity, 0));
   readonly distinctCards = computed(() => new Set(this.entries().map((e) => e.cardName)).size);
-  readonly totalValue = computed(() => collectionValue(this.items()));
+  /**
+   * Gesamtwert normal (Near Mint = Cardmarket 7-Tage-Schnitt, Played = günstigstes Angebot) oder
+   * als Mindestwert: jede Karte zum günstigsten Angebot (Wunsch des Users, 08.11.2026). Nur die
+   * Gesamtanzeige schaltet um, die Preise der Kacheln bleiben.
+   */
+  readonly valueMode = signal<'normal' | 'low'>('normal');
+  readonly totalValue = computed(() => collectionValue(this.items(), this.valueMode()));
   readonly filteredCards = computed(() =>
     this.filtered().reduce((s, i) => s + i.entry.quantity, 0),
   );
