@@ -262,6 +262,13 @@ describe('foilFromPixels', () => {
     expect(foilFromPixels(star.gray, 200, 60, merged)).toBe(true);
   });
 
+  it('nimmt den Punkt, auch wenn daneben ein Stück Buchstabe in der Lücke liegt', () => {
+    // iPhone: "M21 • DE" - der größte Fleck war die angeschnittene "1", hoch wie ein Stern.
+    const dot = line(8);
+    for (let y = 22; y < 38; y++) for (let x = 64; x < 68; x++) dot.gray[y * 200 + x] = 230;
+    expect(foilFromPixels(dot.gray, 200, 60, dot.words)).toBe(false);
+  });
+
   it('findet den Stern auch im Wortrahmen der Sprache', () => {
     const star = line(15);
     // iPhone: "FRA DE", der Rahmen von "DE" beginnt schon vor dem Stern.

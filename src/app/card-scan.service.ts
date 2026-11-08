@@ -432,11 +432,13 @@ export class CardScanService {
 
     const canNonfoil = print.finishes.includes('nonfoil');
     const canFoil = print.finishes.some((f) => f !== 'nonfoil');
-    // Foil nur, wenn beide Hinweise aus der Ecke zustimmen (Größe des Zeichens in Pixeln und das
-    // Zeichen im gelesenen Text). Gemessen an 214 Treffern mit laufender Texterkennung
-    // (05.11.2026): Ein Hinweis allein lag 15-mal daneben (17 Fehler), beide zusammen nie
-    // (8 übersehene Foils). Meldet nur einer Foil, bleibt es "kein Foil" - wann dann der Prüf-Ton
-    // kommt, steht unten.
+    // Foil entscheidet das Zeichen in Pixeln (foilFromPixels()): Seit es den Punkt auch neben
+    // einem angeschnittenen Buchstaben erkennt (08.11.2026), hielt es an 156 von Hand abgelesenen
+    // Ecken keinen einzigen von 114 Punkten für einen Stern und fand 37 von 42 Sternen. Vorher
+    // brauchte es zusätzlich den Stern im gelesenen Text - der fehlte aber bei mehr als der Hälfte
+    // der Foils, die dann still als normal gespeichert wurden. Konnte die Pixel-Messung nichts
+    // sagen und meldet nur der Text einen Stern (3 von 6 waren Foils), bleibt es "kein Foil" mit
+    // Prüf-Ton.
     const wordsFoil = foilFromWords(words);
     let foil: boolean;
     let foilSure = true;
@@ -444,15 +446,10 @@ export class CardScanService {
     if (!canNonfoil || !canFoil) {
       foil = !canNonfoil;
     } else {
-      foil = pixelFoil === true && wordsFoil === true;
-      // Prüf-Ton nur, wenn ein Hinweis Foil meldet und der andere gar nichts messen konnte. Sagt
-      // der andere ausdrücklich "kein Foil", war es keins: gemessen an 1.140 Treffern
-      // (05.-07.11.2026) Pixel ja/Text nein 0 von 16 Foil, Text ja/Pixel nein 1 von 7 - aber
-      // Pixel ja/Text ohne Aussage 9 von 52, Text ja/Pixel ohne Aussage 3 von 17. Der Schimmer
-      // allein lag 2 von 2 daneben und gibt deshalb keinen Prüf-Ton mehr.
-      if (!foil && (pixelFoil === true || wordsFoil === true)) {
-        foilSure = pixelFoil !== null && wordsFoil !== null;
-      }
+      foil = pixelFoil === true;
+      if (pixelFoil === null && wordsFoil === true) foilSure = false;
+      // Nur noch als Messwert für die Scan-Proben: Der Schimmer lag 19-mal bei normalen Karten
+      // daneben und nie bei einem Foil richtig (06.-08.11.2026).
       if (pixelFoil !== true && wordsFoil !== true && art) {
         sheen = await this.foilFromSheen(detail ?? frame, art.cardBox, print.imageUrl);
       }
