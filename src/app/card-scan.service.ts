@@ -104,6 +104,8 @@ export interface ScanDiagnostics {
   /** Gelesene Namenszeile je Kartenlage und Treffer darüber (matchByName()). */
   nameText?: string[];
   nameHit?: { oracle: string; distance: number; via: string };
+  /** Altes Artwork, das es nur in einem Set gibt (onlyPrintOfOldArt()). */
+  onlyPrint?: boolean;
   /** Weg zum Ergebnis. */
   path?: 'corner' | 'look' | 'text' | 'artFallback' | 'none';
   glare?: boolean;
@@ -432,11 +434,13 @@ export class CardScanService {
 
     const canNonfoil = print.finishes.includes('nonfoil');
     const canFoil = print.finishes.some((f) => f !== 'nonfoil');
-    // Foil nur, wenn beide Hinweise aus der Ecke zustimmen (Größe des Zeichens in Pixeln und das
-    // Zeichen im gelesenen Text). Gemessen an 214 Treffern mit laufender Texterkennung
-    // (05.11.2026): Ein Hinweis allein lag 15-mal daneben (17 Fehler), beide zusammen nie
-    // (8 übersehene Foils). Meldet nur einer Foil, bleibt es "kein Foil" - wann dann der Prüf-Ton
-    // kommt, steht unten.
+    // Foil entscheidet das Zeichen in Pixeln (foilFromPixels()): Seit es den Punkt auch neben
+    // einem angeschnittenen Buchstaben erkennt (08.11.2026), hielt es an 156 von Hand abgelesenen
+    // Ecken keinen einzigen von 114 Punkten für einen Stern und fand 37 von 42 Sternen. Vorher
+    // brauchte es zusätzlich den Stern im gelesenen Text - der fehlte aber bei mehr als der Hälfte
+    // der Foils, die dann still als normal gespeichert wurden. Konnte die Pixel-Messung nichts
+    // sagen und meldet nur der Text einen Stern (3 von 6 waren Foils), bleibt es "kein Foil" mit
+    // Prüf-Ton.
     const wordsFoil = foilFromWords(words);
     let foil: boolean;
     let foilSure = true;
@@ -444,22 +448,40 @@ export class CardScanService {
     if (!canNonfoil || !canFoil) {
       foil = !canNonfoil;
     } else {
-      foil = pixelFoil === true && wordsFoil === true;
-      // Prüf-Ton nur, wenn ein Hinweis Foil meldet und der andere gar nichts messen konnte. Sagt
-      // der andere ausdrücklich "kein Foil", war es keins: gemessen an 1.140 Treffern
-      // (05.-07.11.2026) Pixel ja/Text nein 0 von 16 Foil, Text ja/Pixel nein 1 von 7 - aber
-      // Pixel ja/Text ohne Aussage 9 von 52, Text ja/Pixel ohne Aussage 3 von 17. Der Schimmer
-      // allein lag 2 von 2 daneben und gibt deshalb keinen Prüf-Ton mehr.
-      if (!foil && (pixelFoil === true || wordsFoil === true)) {
-        foilSure = pixelFoil !== null && wordsFoil !== null;
-      }
+      foil = pixelFoil === true;
+      if (pixelFoil === null && wordsFoil === true) foilSure = false;
+      // Nur noch als Messwert für die Scan-Proben: Der Schimmer lag 19-mal bei normalen Karten
+      // daneben und nie bei einem Foil richtig (06.-08.11.2026).
       if (pixelFoil !== true && wordsFoil !== true && art) {
         sheen = await this.foilFromSheen(detail ?? frame, art.cardBox, print.imageUrl);
       }
     }
     this.lastScan.foil = { pixel: pixelFoil, words: wordsFoil, sheen };
-    const sure = this.lastScan.path === 'corner' || this.lastScan.path === 'text';
+    const sure =
+      this.lastScan.path === 'corner' ||
+      this.lastScan.path === 'text' ||
+      (art !== null && (await this.onlyPrintOfOldArt(print, art.match.id)));
     return { print, foil, via, sure, foilSure };
+  }
+
+  /**
+   * Alte Karten (Rahmen bis 2014) haben unten links keine Sammlerzeile - sie gehen immer über den
+   * Bildvergleich und bekamen deshalb immer den Prüf-Ton, obwohl sie meist stimmten (Rückmeldung
+   * des Users, 08.11.2026). Gibt es das Artwork nur in einem einzigen Set und wurde die Sprache
+   * gelesen (nicht die eingestellte Ersatzsprache), steht der Druck fest: Erfolgston (Entscheidung
+   * des Users). Gemessen an 76 Scans alter Karten (06.-08.11.2026): Das traf auf 23 zu, davon 19
+   * richtig - die übrigen hatten meist eine falsche Sprache; ohne diese Bedingung waren nur 49 von 76
+   * richtig. Die Nummer unten mittig ist auf Kamerabildern praktisch nie lesbar (4 von 59).
+   */
+  private async onlyPrintOfOldArt(print: CollectionPrint, artId: string): Promise<boolean> {
+    if (this.lastScan.langSource === 'fallback') return false;
+    const card = await this.cardBy(`${API}/cards/${print.scryfallId}`);
+    if (!card || !OLD_FRAMES.has(card.frame)) return false;
+    const prints = await this.printsWithArt(artId);
+    if (!prints.length || this.incompletePrints.has(artId)) return false;
+    const sets = new Set(prints.map((p) => `${p.setCode}|${p.collectorNumber}`));
+    this.lastScan.onlyPrint = sets.size === 1;
+    return sets.size === 1;
   }
 
   /**
@@ -1135,6 +1157,9 @@ export class CardScanService {
  * 0-2, verschiedene Bilder bei rund 30.
  */
 const SAME_ART_MAX = 6;
+
+/** Scryfalls Rahmen ohne Sammlerzeile unten links (bis M15 im Jahr 2014). */
+const OLD_FRAMES = new Set(['1993', '1997', '2003']);
 
 /**
  * tesseract.js nachladen. Es ist ein CommonJS-Paket: Im Entwicklungsserver liegen `createWorker`
