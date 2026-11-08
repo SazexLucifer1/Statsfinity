@@ -21,6 +21,11 @@ export interface CollectionEntry {
    * Zeilen ohne die Migration sql/cardmarket-preise-zustand-2026-11-08.sql - gilt dann als NM.
    */
   condition?: CardCondition;
+  /**
+   * Eigener Preis dieser Karte ('avg7' | 'trend' | 'avg30' | 'avg1' | 'low', siehe PriceBasis in
+   * collection.service.ts), null = wie die Sammlung. sql/sammlung-kartenpreise-2026-11-08.sql.
+   */
+  priceBasis?: 'avg7' | 'trend' | 'avg30' | 'avg1' | 'low' | null;
 }
 
 export type CardCondition = 'nm' | 'pl';

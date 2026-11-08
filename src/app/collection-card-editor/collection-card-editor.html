@@ -43,6 +43,33 @@
       </div>
     </div>
 
+    <!-- Eigener Preis dieser Karte, gespeichert sofort; gilt, solange im Kopf der Sammlung
+         „Eigene Kartenpreise“ an ist. -->
+    @if (collection.cardBasisAvailable() && current(); as c) {
+      <label class="field">
+        <span>{{ i18n.t('collection.edit.price') }}</span>
+        <select
+          class="glass-input small"
+          [ngModel]="c.priceBasis ?? null"
+          (ngModelChange)="setPriceBasis($event)"
+        >
+          <option [ngValue]="null">
+            {{
+              i18n.t('collection.edit.priceLikeCollection', {
+                basis: i18n.t('collection.basis.' + collection.priceBasis()),
+              })
+            }}
+          </option>
+          @for (b of priceBases; track b) {
+            <option [ngValue]="b">{{ i18n.t('collection.basis.' + b) }}</option>
+          }
+        </select>
+      </label>
+      @if (c.priceBasis && !collection.useCardPrices()) {
+        <p class="hint">{{ i18n.t('collection.edit.cardPricesOff') }}</p>
+      }
+    }
+
     <h4>{{ i18n.t('collection.edit.change') }}</h4>
     <label class="field">
       <span>{{ i18n.t('collection.edit.print') }}</span>

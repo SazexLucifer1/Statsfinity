@@ -50,48 +50,48 @@ export interface PrintInfo {
 }
 
 /**
- * Welcher Cardmarket-Wert als Preis einer Near-Mint-Karte gilt (Einstellung je Konto, Wunsch des
- * Users 08.11.2026). Alle gelten für alle Sprachen gemeinsam - Preise je Sprache kennt weder
- * Cardmarkets Preisdatei noch Scryfall.
+ * Welcher Cardmarket-Wert als Preis gilt (Wunsch des Users, 08.11.2026): für die ganze Sammlung
+ * (Einstellung je Konto) oder je Karte. 'low' ist das günstigste Angebot ("ab"-Preis). Alle Werte
+ * gelten für alle Sprachen gemeinsam - Preise je Sprache kennt weder Cardmarkets Preisdatei noch
+ * Scryfall.
  */
-export type PriceBasis = 'avg7' | 'trend' | 'avg30' | 'avg1';
-export const PRICE_BASES: readonly PriceBasis[] = ['avg7', 'trend', 'avg30', 'avg1'];
+export type PriceBasis = 'avg7' | 'trend' | 'avg30' | 'avg1' | 'low';
+export const PRICE_BASES: readonly PriceBasis[] = ['avg7', 'trend', 'avg30', 'avg1', 'low'];
 
 /**
- * Preis eines Exemplars (Wunsch des Users, 08.11.2026):
- *  - Near Mint = der gewählte Cardmarket-Wert (`basis`, Standard Durchschnitt der letzten 7 Tage).
- *    Fehlt er (z. B. kein Verkauf in 7 Tagen, bei ~17 % der Produkte), gilt der Trendpreis -
- *    Cardmarkets eigener bzw. Scryfalls Preis, der derselbe Wert ist.
- *  - Played = Cardmarkets günstigstes Angebot (low, über alle Zustände).
- *  - `mode` 'low' bewertet jede Karte mit dem günstigsten Angebot (Mindestwert der Sammlung).
- * Foil nimmt den Foil-Wert, ohne ihn den normalen. Ohne Cardmarket-Spalten bleibt Scryfalls Preis.
+ * Preis eines Exemplars (Wunsch des Users, 08.11.2026). Es gilt, in dieser Reihenfolge:
+ *  1. der eigene Preis der Karte (`cardBasis`, nur wenn eigene Kartenpreise eingeschaltet sind),
+ *  2. bei Zustand Played das günstigste Angebot,
+ *  3. die Einstellung der Sammlung (`basis`, Standard Durchschnitt der letzten 7 Tage).
+ * Fehlt der gewählte Wert (z. B. kein Verkauf in 7 Tagen, bei ~17 % der Produkte), gilt der
+ * Trendpreis - Cardmarkets eigener bzw. Scryfalls Preis, der derselbe Wert ist -, zuletzt das
+ * günstigste Angebot. Foil nimmt den Foil-Wert, ohne ihn den normalen. Ohne Cardmarket-Spalten
+ * bleibt Scryfalls Preis.
  */
 export function entryPrice(
   info: PrintInfo | null | undefined,
   foil: boolean,
   condition: CardCondition = 'nm',
-  mode: 'normal' | 'low' = 'normal',
   basis: PriceBasis = 'avg7',
+  cardBasis: PriceBasis | null = null,
 ): { price: number | null; fromEnglish: boolean } {
   if (!info) return { price: null, fromEnglish: false };
   const pick = (normal?: number | null, foilValue?: number | null) =>
     (foil ? (foilValue ?? normal) : (normal ?? foilValue)) ?? null;
-  const low = pick(info.cmLow, info.cmLowFoil);
+  const effective = cardBasis ?? (condition === 'pl' ? 'low' : basis);
   const chosen = {
     avg7: () => pick(info.cmAvg7, info.cmAvg7Foil),
     trend: () => pick(info.cmTrend, info.cmTrendFoil),
     avg30: () => pick(info.cmAvg30, info.cmAvg30Foil),
     avg1: () => pick(info.cmAvg1, info.cmAvg1Foil),
-  }[basis]();
-  const cmTrend = pick(info.cmTrend, info.cmTrendFoil);
-  const trend = pick(info.eur, info.eurFoil);
-  if (condition === 'pl' || mode === 'low') {
-    if (low !== null) return { price: low, fromEnglish: false };
-  }
+    low: () => pick(info.cmLow, info.cmLowFoil),
+  }[effective]();
   if (chosen !== null) return { price: chosen, fromEnglish: false };
+  const cmTrend = pick(info.cmTrend, info.cmTrendFoil);
   if (cmTrend !== null) return { price: cmTrend, fromEnglish: false };
+  const trend = pick(info.eur, info.eurFoil);
   if (trend !== null) return { price: trend, fromEnglish: info.priceFromEnglish };
-  return { price: low, fromEnglish: false };
+  return { price: pick(info.cmLow, info.cmLowFoil), fromEnglish: false };
 }
 
 /**
@@ -140,6 +140,8 @@ const SELECT =
   'scryfall_id, foil, card_name, lang, set_code, collector_number, illustration_id, quantity, added_at';
 /** Mit Zustand (sql/cardmarket-preise-zustand-2026-11-08.sql); ohne Migration SELECT allein. */
 const SELECT_CONDITION = `${SELECT}, condition`;
+/** Mit eigenem Preis je Karte (sql/sammlung-kartenpreise-2026-11-08.sql). */
+const SELECT_CARD_BASIS = `${SELECT_CONDITION}, price_basis`;
 const API = 'https://api.scryfall.com';
 
 export function toCollectionPrint(c: any): CollectionPrint {
@@ -170,6 +172,7 @@ function fromRow(row: any): CollectionEntry {
     quantity: row.quantity,
     addedAt: row.added_at,
     condition: row.condition === 'pl' ? 'pl' : 'nm',
+    priceBasis: isPriceBasis(row.price_basis) ? row.price_basis : null,
   };
 }
 
@@ -179,18 +182,28 @@ function isPriceBasis(value: unknown): value is PriceBasis {
   return PRICE_BASES.includes(value as PriceBasis);
 }
 
-function readStoredBasis(): PriceBasis {
+const CARD_PRICES_KEY = 'collectionCardPrices';
+
+function readStored(key: string): string | null {
   try {
-    const value = localStorage.getItem(BASIS_KEY);
-    return isPriceBasis(value) ? value : 'avg7';
+    return localStorage.getItem(key);
   } catch {
-    return 'avg7';
+    return null;
   }
 }
 
-function storeBasis(basis: PriceBasis): void {
+function readStoredBasis(): PriceBasis {
+  const value = readStored(BASIS_KEY);
+  return isPriceBasis(value) ? value : 'avg7';
+}
+
+function readStoredFlag(): boolean {
+  return readStored(CARD_PRICES_KEY) !== 'false';
+}
+
+function storeValue(key: string, value: string): void {
   try {
-    localStorage.setItem(BASIS_KEY, basis);
+    localStorage.setItem(key, value);
   } catch {
     // privater Modus - gilt dann nur für diese Sitzung
   }
@@ -289,12 +302,22 @@ export class CollectionService {
       const page = () =>
         supabase
           .from('collection_cards')
-          .select(this.conditionAvailable() ? SELECT_CONDITION : SELECT)
+          .select(
+            this.cardBasisAvailable()
+              ? SELECT_CARD_BASIS
+              : this.conditionAvailable()
+                ? SELECT_CONDITION
+                : SELECT,
+          )
           .eq('user_id', userId)
           .order('added_at', { ascending: false })
           .range(from, from + 999);
       let { data, error } = await page();
-      // Spalte condition fehlt: Migration noch nicht gelaufen - ohne Zustand weiter.
+      // Spalte price_basis bzw. condition fehlt: Migration noch nicht gelaufen - ohne weiter.
+      if (error?.code === '42703' && this.cardBasisAvailable()) {
+        this.cardBasisAvailable.set(false);
+        ({ data, error } = await page());
+      }
       if (error?.code === '42703' && this.conditionAvailable()) {
         this.conditionAvailable.set(false);
         ({ data, error } = await page());
@@ -342,39 +365,111 @@ export class CollectionService {
    * Migration wenigstens auf dem Gerät bleibt.
    */
   readonly priceBasis = signal<PriceBasis>(readStoredBasis());
+  /**
+   * Ob Karten mit eigenem Preis (CollectionEntry.priceBasis) ihn behalten - aus, dann gilt die
+   * Einstellung der Sammlung für alle (Wunsch des Users, 08.11.2026: frei umschaltbar).
+   */
+  readonly useCardPrices = signal<boolean>(readStoredFlag());
+  /** false, solange collection_cards.price_basis fehlt - dann kein eigener Preis je Karte. */
+  readonly cardBasisAvailable = signal(true);
   private basisColumnAvailable = true;
+  private cardPricesColumnAvailable = true;
 
   private async loadPriceBasis(uid: string): Promise<void> {
     if (!this.basisColumnAvailable) return;
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('collection_price_basis')
-      .eq('id', uid)
-      .maybeSingle();
+    const query = () =>
+      supabase
+        .from('profiles')
+        .select(
+          this.cardPricesColumnAvailable
+            ? 'collection_price_basis, collection_card_prices'
+            : 'collection_price_basis',
+        )
+        .eq('id', uid)
+        .maybeSingle();
+    let { data, error } = await query();
+    if (error?.code === '42703' && this.cardPricesColumnAvailable) {
+      this.cardPricesColumnAvailable = false;
+      ({ data, error } = await query());
+    }
     if (error) {
       if (error.code === '42703') this.basisColumnAvailable = false;
       return;
     }
-    const basis = (data as { collection_price_basis?: string } | null)?.collection_price_basis;
-    if (isPriceBasis(basis)) {
-      this.priceBasis.set(basis);
-      storeBasis(basis);
+    const row = data as {
+      collection_price_basis?: string;
+      collection_card_prices?: boolean;
+    } | null;
+    if (isPriceBasis(row?.collection_price_basis)) {
+      this.priceBasis.set(row.collection_price_basis);
+      storeValue(BASIS_KEY, row.collection_price_basis);
+    }
+    if (typeof row?.collection_card_prices === 'boolean') {
+      this.useCardPrices.set(row.collection_card_prices);
+      storeValue(CARD_PRICES_KEY, String(row.collection_card_prices));
     }
   }
 
   async setPriceBasis(basis: PriceBasis): Promise<void> {
     this.priceBasis.set(basis);
-    storeBasis(basis);
+    storeValue(BASIS_KEY, basis);
+    if (!this.basisColumnAvailable) return;
+    await this.saveProfileSetting({ collection_price_basis: basis }, () => {
+      this.basisColumnAvailable = false;
+    });
+  }
+
+  async setUseCardPrices(on: boolean): Promise<void> {
+    this.useCardPrices.set(on);
+    storeValue(CARD_PRICES_KEY, String(on));
+    if (!this.cardPricesColumnAvailable) return;
+    await this.saveProfileSetting({ collection_card_prices: on }, () => {
+      this.cardPricesColumnAvailable = false;
+    });
+  }
+
+  /**
+   * Schreibt eine Einstellung ins Profil. Fehlt die Spalte oder kennt die Prüfregel den Wert noch
+   * nicht ('low' vor sql/sammlung-kartenpreise-2026-11-08.sql, Fehler 23514), bleibt sie nur auf
+   * dem Gerät.
+   */
+  private async saveProfileSetting(
+    values: Record<string, unknown>,
+    onMissingColumn: () => void,
+  ): Promise<void> {
     const uid = this.auth.currentUser()?.id;
-    if (!uid || !this.basisColumnAvailable) return;
-    const { error } = await supabase
-      .from('profiles')
-      .update({ collection_price_basis: basis })
-      .eq('id', uid);
+    if (!uid) return;
+    const { error } = await supabase.from('profiles').update(values).eq('id', uid);
+    if (!error || error.code === '23514') return;
+    if (['42703', 'PGRST204'].includes(error.code ?? '')) onMissingColumn();
+    else console.error('Konnte Einstellung der Sammlung nicht speichern:', error);
+  }
+
+  /** Eigener Preis einer Karte (null = wie die Sammlung). Gilt für genau diesen Eintrag. */
+  async setEntryPriceBasis(entry: CollectionEntry, basis: PriceBasis | null): Promise<boolean> {
+    const uid = this.auth.currentUser()?.id;
+    if (!uid || !this.cardBasisAvailable()) return false;
+    const before = this.entries() ?? [];
+    const condition = conditionOf(entry);
+    const isRow = (e: CollectionEntry) =>
+      this.sameRow(e, entry.scryfallId, entry.foil, entry.lang, condition);
+    this.entries.set(before.map((e) => (isRow(e) ? { ...e, priceBasis: basis } : e)));
+    let query = supabase
+      .from('collection_cards')
+      .update({ price_basis: basis })
+      .eq('user_id', uid)
+      .eq('scryfall_id', entry.scryfallId)
+      .eq('foil', entry.foil);
+    if (this.langInKey) query = query.eq('lang', entry.lang);
+    if (this.conditionAvailable()) query = query.eq('condition', condition);
+    const { error } = await query;
     if (error) {
-      if (['42703', 'PGRST204'].includes(error.code ?? '')) this.basisColumnAvailable = false;
-      else console.error('Konnte Preisbasis nicht speichern:', error);
+      if (['42703', 'PGRST204'].includes(error.code ?? '')) this.cardBasisAvailable.set(false);
+      else console.error('Konnte Kartenpreis nicht speichern:', error);
+      this.entries.set(before);
+      return false;
     }
+    return true;
   }
 
   /**

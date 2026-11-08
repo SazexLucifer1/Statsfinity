@@ -1,7 +1,7 @@
 import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { I18nService } from '../i18n.service';
-import { CollectionService } from '../collection.service';
+import { CollectionService, PRICE_BASES, PriceBasis } from '../collection.service';
 import {
   CardCondition,
   CollectionEntry,
@@ -40,6 +40,7 @@ export class CollectionCardEditor {
   readonly foil = signal(false);
   /** Zustand - nur hier von Hand, der Scanner trägt immer Near Mint ein. */
   readonly condition = signal<CardCondition>('nm');
+  readonly priceBases = PRICE_BASES;
   readonly count = signal(1);
   readonly busy = signal(false);
   readonly failed = signal(false);
@@ -159,6 +160,12 @@ export class CollectionCardEditor {
     this.busy.set(false);
     if (ok) this.closed.emit();
     else this.failed.set(true);
+  }
+
+  /** Eigener Preis dieser Karte (null = wie die Sammlung), sofort gespeichert. */
+  setPriceBasis(basis: PriceBasis | null): void {
+    const c = this.current();
+    if (c) void this.collection.setEntryPriceBasis(c, basis);
   }
 
   async remove(): Promise<void> {
