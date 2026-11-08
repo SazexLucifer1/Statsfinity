@@ -94,6 +94,15 @@ describe('entryPrice', () => {
     expect(entryPrice(info, true, 'pl').price).toBe(6);
     expect(entryPrice(info, false, 'nm', 'low').price).toBe(1.5);
   });
+  it('gewählte Preisbasis, ohne Wert der Trendpreis von Cardmarket', () => {
+    const more = { ...info, cmAvg30: 3.5, cmAvg1: 5, cmTrend: 4.5, cmTrendFoil: 10 };
+    expect(entryPrice(more, false, 'nm', 'normal', 'avg30').price).toBe(3.5);
+    expect(entryPrice(more, false, 'nm', 'normal', 'avg1').price).toBe(5);
+    expect(entryPrice(more, true, 'nm', 'normal', 'trend').price).toBe(10);
+    expect(entryPrice({ ...more, cmAvg1: null }, false, 'nm', 'normal', 'avg1').price).toBe(4.5);
+    // Played und Mindestwert bleiben beim günstigsten Angebot.
+    expect(entryPrice(more, false, 'pl', 'normal', 'avg30').price).toBe(1.5);
+  });
   it('ohne avg7 der Trendpreis, nicht das günstigste Angebot', () => {
     expect(entryPrice({ ...info, cmAvg7: null, cmAvg7Foil: null }, false).price).toBe(4.66);
     expect(entryPrice({ ...info, cmAvg7: null, cmAvg7Foil: null, eur: null }, false).price).toBe(

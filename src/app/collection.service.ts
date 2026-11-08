@@ -40,12 +40,28 @@ export interface PrintInfo {
   cmAvg7Foil?: number | null;
   cmLow?: number | null;
   cmLowFoil?: number | null;
+  /** Weitere Werte für die wählbare Preisbasis (sql/sammlung-preisbasis-2026-11-08.sql). */
+  cmAvg1?: number | null;
+  cmAvg1Foil?: number | null;
+  cmAvg30?: number | null;
+  cmAvg30Foil?: number | null;
+  cmTrend?: number | null;
+  cmTrendFoil?: number | null;
 }
 
 /**
+ * Welcher Cardmarket-Wert als Preis einer Near-Mint-Karte gilt (Einstellung je Konto, Wunsch des
+ * Users 08.11.2026). Alle gelten für alle Sprachen gemeinsam - Preise je Sprache kennt weder
+ * Cardmarkets Preisdatei noch Scryfall.
+ */
+export type PriceBasis = 'avg7' | 'trend' | 'avg30' | 'avg1';
+export const PRICE_BASES: readonly PriceBasis[] = ['avg7', 'trend', 'avg30', 'avg1'];
+
+/**
  * Preis eines Exemplars (Wunsch des Users, 08.11.2026):
- *  - Near Mint = Cardmarket-Durchschnitt der letzten 7 Tage (avg7). Gab es in 7 Tagen keinen
- *    Verkauf (bei ~17 % der Produkte), gilt Scryfalls Preis - das ist Cardmarkets Trendpreis.
+ *  - Near Mint = der gewählte Cardmarket-Wert (`basis`, Standard Durchschnitt der letzten 7 Tage).
+ *    Fehlt er (z. B. kein Verkauf in 7 Tagen, bei ~17 % der Produkte), gilt der Trendpreis -
+ *    Cardmarkets eigener bzw. Scryfalls Preis, der derselbe Wert ist.
  *  - Played = Cardmarkets günstigstes Angebot (low, über alle Zustände).
  *  - `mode` 'low' bewertet jede Karte mit dem günstigsten Angebot (Mindestwert der Sammlung).
  * Foil nimmt den Foil-Wert, ohne ihn den normalen. Ohne Cardmarket-Spalten bleibt Scryfalls Preis.
@@ -55,17 +71,25 @@ export function entryPrice(
   foil: boolean,
   condition: CardCondition = 'nm',
   mode: 'normal' | 'low' = 'normal',
+  basis: PriceBasis = 'avg7',
 ): { price: number | null; fromEnglish: boolean } {
   if (!info) return { price: null, fromEnglish: false };
   const pick = (normal?: number | null, foilValue?: number | null) =>
     (foil ? (foilValue ?? normal) : (normal ?? foilValue)) ?? null;
   const low = pick(info.cmLow, info.cmLowFoil);
-  const avg7 = pick(info.cmAvg7, info.cmAvg7Foil);
+  const chosen = {
+    avg7: () => pick(info.cmAvg7, info.cmAvg7Foil),
+    trend: () => pick(info.cmTrend, info.cmTrendFoil),
+    avg30: () => pick(info.cmAvg30, info.cmAvg30Foil),
+    avg1: () => pick(info.cmAvg1, info.cmAvg1Foil),
+  }[basis]();
+  const cmTrend = pick(info.cmTrend, info.cmTrendFoil);
   const trend = pick(info.eur, info.eurFoil);
   if (condition === 'pl' || mode === 'low') {
     if (low !== null) return { price: low, fromEnglish: false };
   }
-  if (avg7 !== null) return { price: avg7, fromEnglish: false };
+  if (chosen !== null) return { price: chosen, fromEnglish: false };
+  if (cmTrend !== null) return { price: cmTrend, fromEnglish: false };
   if (trend !== null) return { price: trend, fromEnglish: info.priceFromEnglish };
   return { price: low, fromEnglish: false };
 }
@@ -106,6 +130,12 @@ function legalitiesFromMask(mask: number): Record<string, string> {
   );
 }
 
+/** Cardmarket-Spalten je Migration, die neueste zuerst. */
+const CM_COLUMN_GROUPS = [
+  'cm_avg1, cm_avg1_foil, cm_avg30, cm_avg30_foil, cm_trend, cm_trend_foil',
+  'cm_avg7, cm_avg7_foil, cm_low, cm_low_foil',
+];
+
 const SELECT =
   'scryfall_id, foil, card_name, lang, set_code, collector_number, illustration_id, quantity, added_at';
 /** Mit Zustand (sql/cardmarket-preise-zustand-2026-11-08.sql); ohne Migration SELECT allein. */
@@ -141,6 +171,29 @@ function fromRow(row: any): CollectionEntry {
     addedAt: row.added_at,
     condition: row.condition === 'pl' ? 'pl' : 'nm',
   };
+}
+
+const BASIS_KEY = 'collectionPriceBasis';
+
+function isPriceBasis(value: unknown): value is PriceBasis {
+  return PRICE_BASES.includes(value as PriceBasis);
+}
+
+function readStoredBasis(): PriceBasis {
+  try {
+    const value = localStorage.getItem(BASIS_KEY);
+    return isPriceBasis(value) ? value : 'avg7';
+  } catch {
+    return 'avg7';
+  }
+}
+
+function storeBasis(basis: PriceBasis): void {
+  try {
+    localStorage.setItem(BASIS_KEY, basis);
+  } catch {
+    // privater Modus - gilt dann nur für diese Sitzung
+  }
 }
 
 function conditionOf(print: CollectionPrint | CollectionEntry): CardCondition {
@@ -214,6 +267,7 @@ export class CollectionService {
     const uid = this.auth.currentUser()?.id;
     if (!uid || !this.available() || this.loadedFor === uid || this.loading()) return;
     this.loading.set(true);
+    void this.loadPriceBasis(uid);
     const rows = await this.fetchAll(uid);
     this.loading.set(false);
     if (rows) {
@@ -281,6 +335,47 @@ export class CollectionService {
    * Auswahl.
    */
   readonly conditionAvailable = signal(true);
+
+  /**
+   * Preisbasis der Sammlung (Einstellung im Kopf der Sammlung). Gespeichert in
+   * profiles.collection_price_basis und zusätzlich im localStorage, damit sie sofort gilt und ohne
+   * Migration wenigstens auf dem Gerät bleibt.
+   */
+  readonly priceBasis = signal<PriceBasis>(readStoredBasis());
+  private basisColumnAvailable = true;
+
+  private async loadPriceBasis(uid: string): Promise<void> {
+    if (!this.basisColumnAvailable) return;
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('collection_price_basis')
+      .eq('id', uid)
+      .maybeSingle();
+    if (error) {
+      if (error.code === '42703') this.basisColumnAvailable = false;
+      return;
+    }
+    const basis = (data as { collection_price_basis?: string } | null)?.collection_price_basis;
+    if (isPriceBasis(basis)) {
+      this.priceBasis.set(basis);
+      storeBasis(basis);
+    }
+  }
+
+  async setPriceBasis(basis: PriceBasis): Promise<void> {
+    this.priceBasis.set(basis);
+    storeBasis(basis);
+    const uid = this.auth.currentUser()?.id;
+    if (!uid || !this.basisColumnAvailable) return;
+    const { error } = await supabase
+      .from('profiles')
+      .update({ collection_price_basis: basis })
+      .eq('id', uid);
+    if (error) {
+      if (['42703', 'PGRST204'].includes(error.code ?? '')) this.basisColumnAvailable = false;
+      else console.error('Konnte Preisbasis nicht speichern:', error);
+    }
+  }
 
   /**
    * false, solange die Migration fehlt (Primärschlüssel noch ohne Sprache): Dann gilt wie früher
@@ -513,8 +608,8 @@ export class CollectionService {
   private readonly printInfoCache = new Map<string, PrintInfo | null>();
   /** false, sobald die Tabelle fehlt (Migration noch nicht gelaufen) - dann nur Scryfall. */
   private printInfoTableAvailable = true;
-  /** false, sobald die Cardmarket-Spalten fehlen - dann nur Scryfalls Preis. */
-  private cardmarketColumns = true;
+  /** Wie viele Gruppen aus CM_COLUMN_GROUPS es gibt (von hinten gezählt); 0 = nur Scryfalls Preis. */
+  private cardmarketColumns = CM_COLUMN_GROUPS.length;
   /** "set/nummer" je Druck-ID aus den geladenen Sammlungen - für den Weg über den englischen Druck. */
   private readonly printKeys = new Map<string, string>();
 
@@ -570,9 +665,12 @@ export class CollectionService {
     if (!this.printInfoTableAvailable || ids.length === 0) return;
     const base =
       'scryfall_id, print_key, rarity, set_name, illustration_id, eur, eur_foil, legal_mask';
-    // Cardmarket-Spalten nur, solange es sie gibt (sql/cardmarket-preise-zustand-2026-11-08.sql).
+    // Cardmarket-Spalten nur, solange es sie gibt - je fehlender Migration eine Gruppe weniger
+    // (sql/sammlung-preisbasis-2026-11-08.sql, sql/cardmarket-preise-zustand-2026-11-08.sql).
     const columns = (): string =>
-      this.cardmarketColumns ? `${base}, cm_avg7, cm_avg7_foil, cm_low, cm_low_foil` : base;
+      [base, ...CM_COLUMN_GROUPS.slice(CM_COLUMN_GROUPS.length - this.cardmarketColumns)].join(
+        ', ',
+      );
     const num = (v: unknown) => (v == null ? null : Number(v));
     const toInfo = (row: any, fromEnglish: boolean): PrintInfo => ({
       illustrationId: row.illustration_id ?? null,
@@ -586,6 +684,12 @@ export class CollectionService {
       cmAvg7Foil: num(row.cm_avg7_foil),
       cmLow: num(row.cm_low),
       cmLowFoil: num(row.cm_low_foil),
+      cmAvg1: num(row.cm_avg1),
+      cmAvg1Foil: num(row.cm_avg1_foil),
+      cmAvg30: num(row.cm_avg30),
+      cmAvg30Foil: num(row.cm_avg30_foil),
+      cmTrend: num(row.cm_trend),
+      cmTrendFoil: num(row.cm_trend_foil),
     });
     // 1. Über die Druck-ID.
     for (let i = 0; i < ids.length; i += 200) {
@@ -595,8 +699,8 @@ export class CollectionService {
           .select(columns())
           .in('scryfall_id', ids.slice(i, i + 200));
       let { data, error } = await query();
-      if (error?.code === '42703' && this.cardmarketColumns) {
-        this.cardmarketColumns = false;
+      while (error?.code === '42703' && this.cardmarketColumns > 0) {
+        this.cardmarketColumns--;
         ({ data, error } = await query());
       }
       if (error) {
