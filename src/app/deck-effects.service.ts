@@ -262,7 +262,9 @@ export class DeckEffectsService {
    * gewählten - Standard-Kacheln in ihrer gewohnten Reihenfolge vorn, die übrigen in der
    * Reihenfolge der Tag-Liste. Eine noch ladende Kachel hat count null.
    */
-  readonly displayedEffectStats = computed<(EffectCategoryStat | { key: string; labelKey: string; count: null; cards: [] })[] | null>(() => {
+  readonly displayedEffectStats = computed<
+    (EffectCategoryStat | { key: string; labelKey: string; count: null; cards: [] })[] | null
+  >(() => {
     const base = this.effectCategoryStats();
     const chosen = this.customTiles();
     if (!base || !chosen) return base;
@@ -288,7 +290,8 @@ export class DeckEffectsService {
       .maybeSingle();
     if (run !== this.tileLoadRun) return;
     if (error) {
-      if (!this.tileColumnMissing(error)) console.error('Konnte Effekt-Kacheln nicht laden:', error);
+      if (!this.tileColumnMissing(error))
+        console.error('Konnte Effekt-Kacheln nicht laden:', error);
       return;
     }
     const raw = (data as { effect_tiles?: string[] | null } | null)?.effect_tiles ?? null;
@@ -305,7 +308,8 @@ export class DeckEffectsService {
   async saveTiles(deckId: string, keys: readonly string[]): Promise<void> {
     const defaults = this.defaultTileKeys();
     const isDefault =
-      keys.length === 0 || (keys.length === defaults.length && defaults.every((k) => keys.includes(k)));
+      keys.length === 0 ||
+      (keys.length === defaults.length && defaults.every((k) => keys.includes(k)));
     const value = isDefault ? null : [...keys];
     this.customTiles.set(value);
     void this.loadCustomTileCounts();
@@ -317,9 +321,11 @@ export class DeckEffectsService {
   }
 
   /**
-   * Zählt die gewählten Kacheln außerhalb des Standards - live über Scryfall mit demselben
-   * Sitzungs-Cache wie der Effekt-Filter der Kartenliste, damit Kachel und Filter dieselben
-   * Karten zeigen (und neue Tags nicht erst nach dem Nachtlauf zählen).
+   * Zählt die gewählten Kacheln außerhalb des Standards - wie die Standard-Kacheln aus dem
+   * Nacht-Cache (`scryfall_card_effects` enthält alle Kategorien aus card-effect-filters.ts),
+   * Scryfall nur für Karten, die der Cache nicht kennt. Vorher lief jede Kachel live über
+   * Scryfall, je Kachel mehrere Anfragen nacheinander: bei gedrosselten Anfragen blieben die
+   * Kacheln dauerhaft bei "…" stehen (Rückmeldung des Users, 10.11.2026).
    */
   private async loadCustomTileCounts(): Promise<void> {
     const run = ++this.customTileRun;
@@ -327,25 +333,45 @@ export class DeckEffectsService {
     const cards = this.tileCards;
     if (!chosen || cards.length === 0) return;
     const defaults = new Set(this.defaultTileKeys());
+    const keys = chosen.filter((key) => !defaults.has(key) && CARD_EFFECT_QUERY.has(key));
+    if (keys.length === 0) return;
     const counted = cards.filter((c) => !c.isMaybeboard && !c.isToken);
     const names = [...new Set(counted.map((c) => c.cardName))];
-    const next = new Map<string, EffectCategoryStat>();
-    for (const key of chosen) {
-      if (defaults.has(key)) continue;
-      const query = CARD_EFFECT_QUERY.get(key);
-      if (!query) continue;
-      const matched = await this.scryfall.classifyCards(key, query, names);
-      if (run !== this.customTileRun) return;
+    const frontKey = (name: string) => normalizeCardName(name.split(' // ')[0].trim());
+
+    const [ausDatenbank, bekannt] = await Promise.all([
+      this.cardData.effectCategories(names),
+      this.cardData.knownCardNames(names),
+    ]);
+    if (run !== this.customTileRun) return;
+    const matchedByKey = new Map(
+      keys.map((key) => [key, new Set(ausDatenbank.get(key) ?? [])] as const),
+    );
+
+    const statFor = (key: string): EffectCategoryStat => {
+      const matched = matchedByKey.get(key)!;
       const entries = counted
-        .filter((c) => matched.has(normalizeCardName(c.cardName.split(' // ')[0].trim())))
+        .filter((c) => matched.has(frontKey(c.cardName)))
         .map((c) => ({ cardName: c.cardName, quantity: c.quantity }));
-      next.set(key, {
+      return {
         key,
         labelKey: `effectFilter.${key}`,
         count: entries.reduce((sum, c) => sum + c.quantity, 0),
         cards: entries,
-      });
-      this.customTileStats.set(new Map(next));
+      };
+    };
+    const publish = () => this.customTileStats.set(new Map(keys.map((key) => [key, statFor(key)])));
+    publish();
+
+    // Nur Karten, die der Abgleich nicht kennt (frische Spoiler), gehen noch an Scryfall - im
+    // Normalfall keine. Die Zahlen oben stehen dann schon und werden nur nachgebessert.
+    const unbekannt = names.filter((name) => !bekannt.has(frontKey(name)));
+    if (unbekannt.length === 0) return;
+    for (const key of keys) {
+      const frisch = await this.scryfall.classifyCards(key, CARD_EFFECT_QUERY.get(key)!, unbekannt);
+      if (run !== this.customTileRun) return;
+      for (const name of frisch) matchedByKey.get(key)!.add(name);
+      publish();
     }
   }
 
