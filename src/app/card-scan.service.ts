@@ -160,6 +160,12 @@ const FOIL_MIN_CARD_HEIGHT = 700;
  * Homelands-Karte 3 statt 0 erkannt (zusammen mit der Lage für den alten Rahmen in art-hash.ts).
  */
 const GUIDE_CARD_SHARE = 0.8;
+/**
+ * Sprache am Bild: Liegt die beste Sprache höchstens so weit vor der eingestellten Sprache oder
+ * Englisch, gilt diese. Alle Fehler der Proben lagen 0,001-0,016 dahinter, richtige seltene
+ * Sprachen gab es keine (15.11.2026).
+ */
+const COMMON_LANG_MARGIN = 0.03;
 
 /** Namenszeile auf der Karte (Anteile), großzügig, weil die Kartenlage nur ungefähr stimmt. */
 const NAME_BOX = [0.04, 0.025, 0.85, 0.12] as const;
@@ -595,7 +601,21 @@ export class CardScanService {
       // Ersatzsprache - die meist am weitesten hinten lag. Gemessen an 46 echten Scan-Proben
       // (05.11.2026): mit Vorsprung 0,05 und Ersatz Englisch 29 richtig, immer der Beste 42 -
       // unabhängig von der eingestellten Ersatzsprache.
-      const best = scores.indexOf(Math.max(...scores));
+      let best = scores.indexOf(Math.max(...scores));
+      // Liegt eine seltene Sprache nur knapp vor der eingestellten oder Englisch, gilt diese
+      // (15.11.2026, 32 Proben seit 08.11.: alle 5 Fehler waren es/fr/pt/zhs knapp vor de/en,
+      // keine einzige echte Karte in diesen Sprachen - mit der Regel 30 statt 27 richtig).
+      if (![fallbackLang, 'en'].includes(languages[best].lang)) {
+        const near = languages
+          .map((_, i) => i)
+          .filter(
+            (i) =>
+              [fallbackLang, 'en'].includes(languages[i].lang) &&
+              scores[best] - scores[i] <= COMMON_LANG_MARGIN,
+          )
+          .sort((a, b) => scores[b] - scores[a]);
+        if (near.length) best = near[0];
+      }
       this.lastScan.langScores = languages.map((p, i) => ({
         lang: p.lang,
         score: Math.round(scores[i] * 1000) / 1000,
