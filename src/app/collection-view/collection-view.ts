@@ -1,6 +1,6 @@
 import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { DecimalPipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { I18nService } from '../i18n.service';
 import {
   CollectionService,
@@ -79,6 +79,7 @@ const FLAG_EFFECTS: Record<string, keyof SpellbookCardFlags> = {
     EffectFilter,
     FormsModule,
     DecimalPipe,
+    DatePipe,
     Icon,
     InfoToggle,
     CmcFilter,
@@ -367,24 +368,48 @@ export class CollectionView {
     );
     names.forEach((n) => this.requestedNames.add(n));
     ids.forEach((id) => this.requestedIds.add(id));
-    if (names.length) {
-      const [cards, effects] = await Promise.all([
-        this.cardData.findCardsBulk(names),
-        this.cardData.effectCategories(names),
-      ]);
-      this.details.update((map) => new Map([...map, ...cards]));
-      this.effectNames.update((map) => {
-        const next = new Map<string, ReadonlySet<string>>(map);
-        for (const [category, set] of effects)
-          next.set(category, new Set([...(map.get(category) ?? []), ...set]));
-        return next;
-      });
-    }
-    if (ids.length) {
-      const info = await this.collection.printInfo(ids, (done, total) =>
+    // Kartendaten und Preise nebeneinander - die Preise warteten früher auf die Kartendaten.
+    await Promise.all([
+      names.length ? this.loadDetails(names) : null,
+      ids.length
+        ? this.collection
+            .storedPrintInfo(ids, (done, total) =>
+              this.priceProgress.set(done < total ? { done, total } : null),
+            )
+            .then((info) => this.prints.update((map) => new Map([...map, ...info])))
+        : null,
+    ]);
+  }
+
+  private async loadDetails(names: string[]): Promise<void> {
+    const [cards, effects] = await Promise.all([
+      this.cardData.findCardsBulk(names),
+      this.cardData.effectCategories(names),
+    ]);
+    this.details.update((map) => new Map([...map, ...cards]));
+    this.effectNames.update((map) => {
+      const next = new Map<string, ReadonlySet<string>>(map);
+      for (const [category, set] of effects)
+        next.set(category, new Set([...(map.get(category) ?? []), ...set]));
+      return next;
+    });
+  }
+
+  /** Preise sind auf dem Gerät gespeichert (storedPrintInfo()); nur dieser Knopf lädt sie neu. */
+  readonly refreshingPrices = signal(false);
+  async refreshPrices(): Promise<void> {
+    if (this.refreshingPrices()) return;
+    this.refreshingPrices.set(true);
+    try {
+      const ids = [...new Set(this.entries().map((e) => e.scryfallId))];
+      ids.forEach((id) => this.requestedIds.add(id));
+      const info = await this.collection.refreshStoredPrintInfo(ids, (done, total) =>
         this.priceProgress.set(done < total ? { done, total } : null),
       );
       this.prints.update((map) => new Map([...map, ...info]));
+    } finally {
+      this.priceProgress.set(null);
+      this.refreshingPrices.set(false);
     }
   }
 
