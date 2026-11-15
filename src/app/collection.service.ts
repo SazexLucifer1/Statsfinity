@@ -10,6 +10,7 @@ import {
   collectionKey,
   printImageUrl,
 } from './collection-coverage';
+import { readStoredPrintInfo, writeStoredPrintInfo } from './print-info-store';
 
 /**
  * Kartensammlung (Profil -> Reiter "Sammlung", Scanner, Abgleich in der Deck-Ansicht).
@@ -754,6 +755,62 @@ export class CollectionService {
     await this.englishPrices(withoutPrice);
     onProgress?.(open.length, open.length);
     return new Map(ids.map((id) => [id, this.printInfoCache.get(id) ?? null]));
+  }
+
+  /**
+   * Druck-Angaben für die Sammlung, gespeichert auf dem Gerät (print-info-store.ts): Beim Öffnen
+   * kommen sie sofort aus dem Speicher, geladen wird nur, was dort fehlt (neue Karten). Neu geladen
+   * wird alles nur über den Knopf „Preise neu laden“ (refreshStoredPrintInfo(), Wunsch des Users,
+   * 15.11.2026). Bewusst NUR für die Sammlung - Deck-Ansicht und Cube fragen weiter printInfo().
+   * Nicht gefundene Drucke (null) werden nicht gespeichert, sonst bliebe ein Netzfehler für immer.
+   */
+  readonly storedPricesAt = signal<number | null>(null);
+  private storedLoad: Promise<Map<string, PrintInfo>> | null = null;
+
+  private loadStored(): Promise<Map<string, PrintInfo>> {
+    this.storedLoad ??= readStoredPrintInfo<PrintInfo>().then((s) => {
+      this.storedPricesAt.set(s?.savedAt ?? null);
+      return new Map(s?.entries ?? []);
+    });
+    return this.storedLoad;
+  }
+
+  private saveStored(stored: Map<string, PrintInfo>): Promise<void> {
+    return writeStoredPrintInfo({
+      savedAt: this.storedPricesAt() ?? Date.now(),
+      entries: [...stored],
+    });
+  }
+
+  async storedPrintInfo(
+    ids: string[],
+    onProgress?: (done: number, total: number) => void,
+  ): Promise<Map<string, PrintInfo | null>> {
+    const stored = await this.loadStored();
+    const missing = [...new Set(ids)].filter((id) => !stored.has(id));
+    if (missing.length) {
+      const fresh = await this.printInfo(missing, onProgress);
+      for (const [id, info] of fresh) if (info) stored.set(id, info);
+      if (this.storedPricesAt() == null) this.storedPricesAt.set(Date.now());
+      void this.saveStored(stored);
+    }
+    return new Map(ids.map((id) => [id, stored.get(id) ?? null]));
+  }
+
+  /** Alle angegebenen Drucke frisch laden und den Gerätespeicher damit ersetzen. */
+  async refreshStoredPrintInfo(
+    ids: string[],
+    onProgress?: (done: number, total: number) => void,
+  ): Promise<Map<string, PrintInfo | null>> {
+    const unique = [...new Set(ids)];
+    for (const id of unique) this.printInfoCache.delete(id);
+    const fresh = await this.printInfo(unique, onProgress);
+    const stored = new Map<string, PrintInfo>();
+    for (const [id, info] of fresh) if (info) stored.set(id, info);
+    this.storedLoad = Promise.resolve(stored);
+    this.storedPricesAt.set(Date.now());
+    await this.saveStored(stored);
+    return fresh;
   }
 
   private async printInfoFromTable(ids: string[]): Promise<void> {

@@ -126,6 +126,22 @@
         {{ i18n.t('collection.useCardPrices', { count: ownPriceCount() }) }}
       </label>
     }
+    <!-- Preise liegen auf dem Gerät, neu geladen nur über diesen Knopf (Wunsch des Users, 15.11.2026). -->
+    <div class="price-refresh">
+      @if (collection.storedPricesAt(); as at) {
+        <span>{{
+          i18n.t('collection.pricesFrom', { date: (at | date: 'dd.MM.yyyy, HH:mm') ?? '' })
+        }}</span>
+      }
+      <button
+        type="button"
+        class="glass-button small"
+        [disabled]="refreshingPrices() || entries().length === 0"
+        (click)="refreshPrices()"
+      >
+        {{ i18n.t('collection.refreshPrices') }}
+      </button>
+    </div>
     @if (priceProgress(); as p) {
       <p class="hint">{{ i18n.t('collection.loadingPrices', { done: p.done, total: p.total }) }}</p>
     }

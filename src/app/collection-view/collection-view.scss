@@ -478,3 +478,17 @@
   margin-top: var(--sp-2);
   font-size: 0.8rem;
 }
+
+.price-refresh {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+  font-size: 0.8rem;
+
+  span {
+    opacity: 0.7;
+  }
+}
