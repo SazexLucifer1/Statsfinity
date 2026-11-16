@@ -265,11 +265,27 @@ export class DeckEditService {
   readonly artworkOptions = signal<ScryfallPrinting[]>([]);
   readonly artworkPickerBusy = signal(false);
   readonly artworkPickerError = signal<string | null>(null);
+  /** Suchfeld der Artwork-Auswahl: Set-Kürzel (unten links auf der Karte), Setname, Nummer oder Jahr. */
+  readonly artworkFilter = signal('');
+  readonly filteredArtworkOptions = computed(() => {
+    const words = this.artworkFilter().trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const options = this.artworkOptions();
+    if (words.length === 0) return options;
+    return options.filter((o) => {
+      const code = o.setCode.toLowerCase();
+      const name = o.setName.toLowerCase();
+      const nr = o.collectorNumber.toLowerCase();
+      const year = o.releasedAt?.slice(0, 4) ?? '';
+      // Jedes Wort muss passen: "sld 255" = Secret Lair, Nummer 255.
+      return words.every((w) => code === w || name.includes(w) || nr === w || year === w || code.startsWith(w));
+    });
+  });
 
   async openArtworkPicker(card: DeckCard): Promise<void> {
     if (!this.state.canEditViewingDeck()) return;
     this.artworkPickerCard.set(card);
     this.artworkOptions.set([]);
+    this.artworkFilter.set('');
     this.artworkPickerError.set(null);
     this.artworkPickerBusy.set(true);
     const printings = await this.scryfall.getPrintings(card.cardName, {
@@ -286,6 +302,7 @@ export class DeckEditService {
   closeArtworkPicker(): void {
     this.artworkPickerCard.set(null);
     this.artworkOptions.set([]);
+    this.artworkFilter.set('');
     this.tagEditorCard.set(null);
     this.tagEditorNewTag.set('');
     this.artworkPickerError.set(null);

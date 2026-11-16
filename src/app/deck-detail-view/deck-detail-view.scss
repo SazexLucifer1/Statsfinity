@@ -731,65 +731,6 @@
   text-align: center;
 }
 
-.artwork-picker-sheet {
-  width: min(94vw, 480px);
-  max-width: 480px;
-  max-height: 88dvh;
-  overflow-y: auto;
-}
-
-.artwork-upload-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  margin: 8px 0;
-
-  input[type='file'] {
-    display: none;
-  }
-}
-
-.artwork-picker-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  margin: 10px 0;
-}
-
-.artwork-picker-tile {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 0;
-  border: 1px solid var(--glass-border);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.06);
-  cursor: pointer;
-  overflow: hidden;
-  text-align: center;
-
-  img {
-    width: 100%;
-    aspect-ratio: 63 / 88;
-    object-fit: cover;
-    display: block;
-  }
-
-  .hint {
-    padding: 2px 4px 6px;
-  }
-
-  &:active {
-    background: rgba(255, 255, 255, 0.14);
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: default;
-  }
-}
-
 .tag-editor-sheet {
   width: min(94vw, 480px);
   max-width: 480px;

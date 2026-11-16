@@ -57,6 +57,8 @@ export interface ScryfallPrinting {
   id: string;
   setName: string;
   setCode: string;
+  /** Sammlernummer, z. B. "255" - für die Suche in der Artwork-Auswahl. */
+  collectorNumber: string;
   releasedAt: string | null;
   imageUrl: string | null;
 }
@@ -981,6 +983,7 @@ export class ScryfallService {
         id: c.id as string,
         setName: c.set_name as string,
         setCode: c.set as string,
+        collectorNumber: (c.collector_number as string | undefined) ?? '',
         releasedAt: (c.released_at as string | undefined) ?? null,
         imageUrl: c.image_uris?.normal ?? c.card_faces?.[0]?.image_uris?.normal ?? null,
       }))

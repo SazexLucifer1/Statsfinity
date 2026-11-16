@@ -48,8 +48,8 @@ Die Shell `src/app/app.ts` / `app.html` schaltet per `@if` zwischen rund 22 Komp
 | Sonstige Bausteine | `card-image/`, `partner-card-image/`, `comment-inbox/`, `deck-comments/`, `deck-primer/`, `deck-social/`, `deck-steckbrief/`, `deck-list/`, `commander-stat-list/`, `deck-check/`, `deck-manual-record/`, `deck-matchups/`, `deck-performance/`, `favorite-commander-editor/`, `friend-status/`, `friends-panel/`, `friends-stats/`, `personal-stats/`, `match-insights/`, `performance-stats/`, `player-avatar/`, `profile-rank/`, `ranked-badges/`, `precon-browser/`, `public-card-search/`, `public-deck-browser/`, `tournament-history/`, `player-match-history/`, `legal-footer/`, `login-required/`, `global-stats/` |
 
 Jede Komponente ist ein Trio `name/name.ts` + `name.html` + `name.scss`. Zwei Ausnahmen, beide
-wegen des harten Style-Budgets von 12 kB: `deck-detail-view` hat ein zweites Stylesheet
-`deck-detail-view.bracket.scss` (alles zum Bracket), `ingame-tracker` ein zweites
+wegen des harten Style-Budgets von 12 kB: `deck-detail-view` hat zwei weitere Stylesheets,
+`deck-detail-view.bracket.scss` (alles zum Bracket) und `deck-detail-view.artwork.scss` (Artwork-Auswahl mit Suchfeld), `ingame-tracker` ein zweites
 `ingame-tracker.overlays.scss` (Sieger-Dialog, Hintergrundwahl, Auslosung, Spieler-Sheet).
 
 ### Wiederverwendbare UI-Bausteine — hier zuerst nachsehen

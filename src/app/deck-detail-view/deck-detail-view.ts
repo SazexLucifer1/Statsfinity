@@ -45,7 +45,11 @@ import { BanlistService } from '../banlist.service';
   selector: 'app-deck-detail-view',
   imports: [CurrencyPipe, DatePipe, DecimalPipe, NgTemplateOutlet, PercentPipe, FormsModule, CardImage, DeckCheck, DeckComments, DeckManualRecord, DeckPerformance, DeckCollection, DeckVariants, DeckVariantCompare, CardThumb, DeckPrimer, DeckSocial, DeckSteckbrief, BarChart, OverflowMenu, ColorFilter, CmcFilter, RarityFilter, EffectFilter, PrintSearch, BracketBadge, ManaSymbol, Icon],
   templateUrl: './deck-detail-view.html',
-  styleUrls: ['./deck-detail-view.scss', './deck-detail-view.bracket.scss'],
+  styleUrls: [
+    './deck-detail-view.scss',
+    './deck-detail-view.bracket.scss',
+    './deck-detail-view.artwork.scss',
+  ],
 })
 export class DeckDetailView {
   readonly viewer = inject(DeckViewerService);
