@@ -127,19 +127,24 @@ export class ScanSampleService {
           .eq('user_id', uid)
           .lt('created_at', OLD_SAMPLES_BEFORE)
           .order('created_at')
-          .limit(100);
+          .limit(50);
         if (error || !data?.length) break;
         const paths = data.flatMap((r) =>
           [r.image_path, r.corner_path].filter((p): p is string => !!p),
         );
         const removed = await supabase.storage.from(BUCKET).remove(paths);
-        if (removed.error) break;
         const gone = new Set((removed.data ?? []).map((o) => o.name));
-        // Ohne Lese-Recht auf die Bilder löscht Supabase still nichts.
-        if (gone.size === 0) return deleted > 0 ? deleted : -1;
+        // Bilder, die schon fehlen, zählen als gelöscht: Bricht ein Durchgang ab, nachdem der
+        // Bucket die Bilder gelöscht hat, aber bevor die Zeilen weg sind (Zeitüberschreitung),
+        // blieben diese Zeilen sonst für immer stehen - und jeder neue Versuch meldete fehlende
+        // Rechte, weil im Bucket nichts mehr zu löschen war (16.11.2026).
+        for (const r of data)
+          if (!gone.has(r.image_path) && !(await this.exists(r.image_path))) gone.add(r.image_path);
         const ids = data.filter((r) => gone.has(r.image_path)).map((r) => r.id);
+        // Nichts gelöscht und alles noch da: Lese- oder Lösch-Recht im Bucket fehlt.
+        if (ids.length === 0) return deleted > 0 ? deleted : -1;
         const { error: rowError } = await supabase.from('scan_samples').delete().in('id', ids);
-        if (rowError || ids.length === 0) break;
+        if (rowError) break;
         deleted += ids.length;
         this.oldCount.update((n) => (n == null ? n : Math.max(0, n - ids.length)));
       }
@@ -147,6 +152,17 @@ export class ScanSampleService {
     } finally {
       this.deleting.set(false);
       void this.countOld();
+    }
+  }
+
+  /** Liegt das Bild noch im Bucket? Über die öffentliche Adresse, ohne Lese-Recht. */
+  private async exists(path: string): Promise<boolean> {
+    try {
+      const url = supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+      const res = await fetch(url, { method: 'HEAD', cache: 'no-store' });
+      return res.ok;
+    } catch {
+      return true;
     }
   }
 
