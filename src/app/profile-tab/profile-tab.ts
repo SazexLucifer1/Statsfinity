@@ -787,20 +787,20 @@ export class ProfileTab {
     });
     // Developer: wie viele alte Scan-Proben sich löschen lassen.
     effect(() => {
-      if (this.scanSamples.canUse() && this.scanSamples.oldCount() === null)
-        void this.scanSamples.countOld();
+      if (this.scanSamples.canUse() && this.scanSamples.sampleCount() === null)
+        void this.scanSamples.countAll();
     });
   }
 
-  async deleteOldScanSamples(): Promise<void> {
-    const count = this.scanSamples.oldCount() ?? 0;
-    if (!(await this.dialog.confirm(this.i18n.t('collection.scanner.deleteOldConfirm', { count }))))
+  async deleteAllScanSamples(): Promise<void> {
+    const count = this.scanSamples.sampleCount() ?? 0;
+    if (!(await this.dialog.confirm(this.i18n.t('collection.scanner.deleteAllConfirm', { count }))))
       return;
-    const n = await this.scanSamples.deleteOld();
+    const n = await this.scanSamples.deleteAll();
     await this.dialog.alert(
       n < 0
-        ? this.i18n.t('collection.scanner.deleteOldBlocked')
-        : this.i18n.t('collection.scanner.deleteOldDone', { count: n }),
+        ? this.i18n.t('collection.scanner.deleteAllBlocked')
+        : this.i18n.t('collection.scanner.deleteAllDone', { count: n }),
     );
   }
 
