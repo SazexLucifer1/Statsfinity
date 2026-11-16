@@ -547,12 +547,12 @@
 
   <!-- Nur Developer: Scan-Proben älterer Scanner-Fassungen löschen (scan-sample.service.ts). Nur die
        Proben, nie die Sammlung. Früher im Scanner, dort störte der Knopf (Wunsch des Users, 16.11.2026). -->
-  @if (scanSamples.canUse() && (scanSamples.oldCount() ?? 0) > 0) {
+  @if (scanSamples.canUse() && (scanSamples.sampleCount() ?? 0) > 0) {
   <section class="glass-card">
     <h2>{{ i18n.t('collection.scanner.samplesTitle') }}</h2>
     <p class="hint">{{ i18n.t('collection.scanner.samplesHint') }}</p>
-    <button class="glass-button" [disabled]="scanSamples.deleting()" (click)="deleteOldScanSamples()">
-      {{ i18n.t('collection.scanner.deleteOldSamples', { count: scanSamples.oldCount() ?? 0 }) }}
+    <button class="glass-button" [disabled]="scanSamples.deleting()" (click)="deleteAllScanSamples()">
+      {{ i18n.t('collection.scanner.deleteAllSamples', { count: scanSamples.sampleCount() ?? 0 }) }}
     </button>
   </section>
   }
