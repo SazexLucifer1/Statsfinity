@@ -166,6 +166,8 @@ export class CardScanner implements OnInit, OnDestroy {
   private scanCounter = 0;
 
   async ngOnInit(): Promise<void> {
+    // Proben speichern ist bei jedem Öffnen erst einmal aus (Wunsch des Users, 16.11.2026).
+    this.samples.setEnabled(false);
     void this.collection.ensureLoaded();
     const prepared = this.scan.prepare();
     try {

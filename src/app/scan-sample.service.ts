@@ -26,7 +26,11 @@ export class ScanSampleService {
 
   /** false, sobald Bucket oder Tabelle fehlen. */
   readonly available = signal(true);
-  readonly enabled = signal(readEnabled());
+  /**
+   * Standard aus, bei jedem Öffnen des Scanners wieder aus (Wunsch des Users, 16.11.2026: nicht
+   * aus Versehen Proben anlegen und über das Speicherlimit kommen) - deshalb nicht gemerkt.
+   */
+  readonly enabled = signal(false);
   /** Den Schalter sehen nur Developer. */
   readonly canUse = computed(
     () => this.available() && this.profiles.profile()?.isDeveloper === true,
@@ -36,11 +40,6 @@ export class ScanSampleService {
 
   setEnabled(on: boolean): void {
     this.enabled.set(on);
-    try {
-      localStorage.setItem(STORAGE_KEY, on ? '1' : '0');
-    } catch {
-      // privater Modus - gilt dann nur für diese Sitzung
-    }
   }
 
   /** Speichert eine Probe; gibt die Zeilen-ID zurück (für spätere Korrekturen) oder null. */
@@ -206,16 +205,7 @@ export class ScanSampleService {
   }
 }
 
-const STORAGE_KEY = 'scanSamplesEnabled';
 const BUCKET = 'scan-samples';
-
-function readEnabled(): boolean {
-  try {
-    return localStorage.getItem(STORAGE_KEY) === '1';
-  } catch {
-    return false;
-  }
-}
 
 function toJpeg(canvas: HTMLCanvasElement, quality: number): Promise<Blob | null> {
   return new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
