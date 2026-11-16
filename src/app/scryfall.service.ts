@@ -964,10 +964,19 @@ export class ScryfallService {
           return `!"${safeName}" lang:en -is:digital include:extras${typeClause}`;
         })();
     const q = encodeURIComponent(query);
-    const res = await this.fetchWithRetry(`${API}/cards/search?q=${q}&unique=prints&order=released&dir=desc`);
-    if (!res?.ok) return [];
-    const data = await res.json();
-    return ((data.data as any[]) ?? [])
+    // Alle Seiten: Scryfall liefert 175 Drucke je Seite, Standardländer haben über 700 - mit nur
+    // der ersten Seite fehlte alles vor Ende 2022 (z. B. die Secret-Lair-Länder von 2021).
+    let url: string | null = `${API}/cards/search?q=${q}&unique=prints&order=released&dir=desc`;
+    const rows: any[] = [];
+    for (let page = 0; url && page < 10; page++) {
+      if (page > 0) await sleep(100);
+      const res = await this.fetchWithRetry(url);
+      if (!res?.ok) break;
+      const data = await res.json();
+      rows.push(...((data.data as any[]) ?? []));
+      url = data.has_more ? data.next_page : null;
+    }
+    return rows
       .map((c) => ({
         id: c.id as string,
         setName: c.set_name as string,
