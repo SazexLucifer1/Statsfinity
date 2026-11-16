@@ -532,9 +532,12 @@
               <span class="hint">{{ entry.displayName }} · {{ entry.createdAt | date: 'dd.MM.yyyy HH:mm' }}</span>
             </div>
             <p class="feedback-message">{{ entry.message }}</p>
+            @if (entry.replyText) {
+              <p class="hint">{{ i18n.t('feedback.reply.sent') }}: {{ entry.replyText }}</p>
+            }
             <button
               class="glass-chip small"
-              (click)="feedback.setStatus(entry.id, entry.status === 'open' ? 'done' : 'open')"
+              (click)="entry.status === 'open' ? feedback.startResolve(entry) : feedback.setStatus(entry.id, 'open')"
             >
               {{ entry.status === 'open' ? i18n.t('feedback.markDone') : i18n.t('feedback.markOpen') }}
             </button>
@@ -543,6 +546,31 @@
       </ul>
     }
   </section>
+  @if (feedback.resolving(); as entry) {
+    <div class="options-menu-overlay" (click)="feedback.cancelResolve()">
+      <div class="options-menu-sheet" (click)="$event.stopPropagation()">
+        <h3>{{ i18n.t('feedback.reply.title') }}</h3>
+        <p class="hint">{{ i18n.t('feedback.reply.hint', { name: entry.displayName }) }}</p>
+        <textarea
+          class="glass-input feedback-reply-text"
+          rows="6"
+          [ngModel]="feedback.replyDraft()"
+          (ngModelChange)="feedback.replyDraft.set($event)"
+        ></textarea>
+        <button
+          class="glass-button primary"
+          [disabled]="feedback.resolveBusy() || !feedback.replyDraft().trim()"
+          (click)="feedback.confirmResolve(true)"
+        >
+          {{ feedback.resolveBusy() ? i18n.t('feedback.reply.sending') : i18n.t('feedback.reply.send') }}
+        </button>
+        <button class="glass-button" [disabled]="feedback.resolveBusy()" (click)="feedback.confirmResolve(false)">
+          {{ i18n.t('feedback.reply.withoutMessage') }}
+        </button>
+        <button class="glass-button" (click)="feedback.cancelResolve()">{{ i18n.t('dialog.cancel') }}</button>
+      </div>
+    </div>
+  }
   }
 
   <!-- Nur Developer: Scan-Proben älterer Scanner-Fassungen löschen (scan-sample.service.ts). Nur die

@@ -109,6 +109,12 @@
   overflow: hidden;
   overflow-wrap: anywhere;
   opacity: 0.85;
+
+  // Antwort auf Feedback: ganz zeigen, es gibt dahinter nichts zu öffnen.
+  &.full {
+    display: block;
+    white-space: pre-wrap;
+  }
 }
 
 // Zwischenüberschrift, sobald neben Kommentaren auch Freundesanfragen im Postfach stehen.

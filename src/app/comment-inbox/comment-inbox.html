@@ -18,7 +18,10 @@
               <button class="comment-inbox-person" (click)="openProfile(f.otherId)">
                 <app-player-avatar [url]="f.avatarUrl" />
                 <span class="comment-inbox-subject">
-                  <span class="comment-inbox-dot" [attr.aria-label]="i18n.t('inbox.unreadAria')"></span>
+                  <span
+                    class="comment-inbox-dot"
+                    [attr.aria-label]="i18n.t('inbox.unreadAria')"
+                  ></span>
                   {{ i18n.t('inbox.subjectFriendRequest', { name: f.displayName }) }}
                 </span>
               </button>
@@ -30,6 +33,42 @@
                   {{ i18n.t('profile.friends.decline') }}
                 </button>
               </div>
+            </li>
+          }
+        </ul>
+        @if (inbox.verfuegbar() && !feedback.hasReplies()) {
+          <h4 class="comment-inbox-section">{{ i18n.t('inbox.comments') }}</h4>
+        }
+      }
+      @if (feedback.hasReplies()) {
+        <!-- Antworten des Entwicklers auf eigenes Feedback (sql/feedback-antwort-2026-11-16.sql). -->
+        <h4 class="comment-inbox-section">{{ i18n.t('inbox.feedbackReplies') }}</h4>
+        <ul class="comment-inbox-list">
+          @for (reply of feedback.replies(); track reply.id) {
+            <li>
+              <button
+                class="comment-inbox-entry"
+                [class.ungelesen]="!reply.gelesen"
+                (click)="readReply(reply)"
+              >
+                <app-icon name="mail" />
+                <span class="comment-inbox-main">
+                  <span class="comment-inbox-subject">
+                    @if (!reply.gelesen) {
+                      <span
+                        class="comment-inbox-dot"
+                        [attr.aria-label]="i18n.t('inbox.unreadAria')"
+                      ></span>
+                    }
+                    {{ i18n.t('inbox.subjectFeedbackReply') }}
+                  </span>
+                  <span class="comment-inbox-body full">{{ reply.replyText }}</span>
+                  <span class="hint comment-inbox-body">{{
+                    i18n.t('inbox.yourFeedback', { message: reply.message })
+                  }}</span>
+                  <span class="hint">{{ reply.repliedAt | date: 'dd.MM.yyyy HH:mm' }}</span>
+                </span>
+              </button>
             </li>
           }
         </ul>

@@ -98,7 +98,8 @@ export class App {
   readonly inbox = inject(DeckCommentInboxService);
   private readonly friends = inject(FriendsService);
   readonly profileBadgeCount = computed(
-    () => this.inbox.unreadCount() + this.friends.incoming().length,
+    () =>
+      this.inbox.unreadCount() + this.friends.incoming().length + this.feedback.replyUnreadCount(),
   );
 
   /** Nur injiziert, damit der Dienst überhaupt existiert: er hängt sich an den Tab-Wechsel und holt
