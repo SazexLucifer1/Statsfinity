@@ -70,6 +70,13 @@ function canToggleFoil(item: ScanHit): boolean {
 const MOTION = 22;
 /** Abstand zum Bild des letzten Treffers, ab dem eine andere Karte (oder keine) im Rahmen liegt. */
 const CHANGED = 25;
+/**
+ * Derselbe Druck so kurz nach dem letzten Treffer zählt nur, wenn der Rahmen dazwischen wirklich
+ * leer war - eine einzelne Bewegung reicht dann nicht. Gemessen an den Proben seit 08.11.2026:
+ * 26 gleiche Treffer unter 3 s, 12 davon von Hand gelöscht; andere Karten folgten nur in 12 von
+ * 510 Fällen so schnell (Kartenwechsel dauert meist 4-6 s).
+ */
+const SAME_PRINT_MS = 3000;
 /** Suchbereich um den Rahmen herum, je Seite in Anteilen der Rahmengröße. */
 const SEARCH_MARGIN = 0.15;
 /** Frühestens so oft ein neuer Versuch, solange die Karte nicht erkannt wird. */
@@ -108,6 +115,23 @@ export class CardScanner implements OnInit, OnDestroy {
   private readonly artLanguage = inject(ArtLanguageService);
 
   readonly closed = output<void>();
+
+  /** Alte Scan-Proben löschen: erster Tipp fragt nach, zweiter löscht (Dialoge liegen unter dem Scanner). */
+  readonly confirmDelete = signal(false);
+  readonly sampleNote = signal<string | null>(null);
+  async deleteOldSamples(): Promise<void> {
+    if (!this.confirmDelete()) {
+      this.confirmDelete.set(true);
+      return;
+    }
+    this.confirmDelete.set(false);
+    const n = await this.samples.deleteOld();
+    this.sampleNote.set(
+      n < 0
+        ? this.i18n.t('collection.scanner.deleteOldBlocked')
+        : this.i18n.t('collection.scanner.deleteOldDone', { count: n }),
+    );
+  }
   readonly languages = ART_LANGUAGES;
 
   private readonly video = viewChild.required<ElementRef<HTMLVideoElement>>('video');
@@ -148,6 +172,9 @@ export class CardScanner implements OnInit, OnDestroy {
    */
   private lastHitKey: string | null = null;
   private sawEmpty = false;
+  /** Rahmen seit dem letzten Treffer wirklich leer (nicht nur bewegt). */
+  private sawBlank = false;
+  private lastHitAt = 0;
   private readonly small = document.createElement('canvas');
   /** Der Ausschnitt in voller Kameraauflösung, für die Nahaufnahme der Ecke - wiederverwendet,
    *  Safari begrenzt den Speicher aller Canvas zusammen. */
@@ -155,6 +182,7 @@ export class CardScanner implements OnInit, OnDestroy {
   private scanCounter = 0;
 
   async ngOnInit(): Promise<void> {
+    if (this.samples.canUse()) void this.samples.countOld();
     void this.collection.ensureLoaded();
     const prepared = this.scan.prepare();
     try {
@@ -431,6 +459,7 @@ export class CardScanner implements OnInit, OnDestroy {
     // Karte reicht dagegen nicht: Das zählte sie ein zweites Mal - 17 der 22 gelöschten Treffer
     // der nächsten Testrunde waren solche Doppelten, meist 2-3 s nach dem ersten (05.11.2026).
     if (spread < MIN_CONTRAST || diff > MOTION) this.sawEmpty = true;
+    if (spread < MIN_CONTRAST) this.sawBlank = true;
     // Karte weg oder eine andere im Rahmen: der letzte Treffer sperrt nicht mehr.
     if (this.lastHit && (sinceHit > CHANGED || spread < MIN_CONTRAST)) this.lastHit = null;
     if (this.lastHit || spread < MIN_CONTRAST || diff > MOTION) return;
@@ -494,8 +523,10 @@ export class CardScanner implements OnInit, OnDestroy {
       // Nur der Druck, nicht Foil: Schwankt die Foil-Erkennung zwischen zwei Versuchen, ist es
       // trotzdem dieselbe Karte. Und ohne Zeitgrenze - eine liegende Karte bleibt dieselbe.
       const key = hit.print.scryfallId;
-      if (key === this.lastHitKey && !this.sawEmpty) {
+      const tooSoon = !this.sawBlank && Date.now() - this.lastHitAt < SAME_PRINT_MS;
+      if (key === this.lastHitKey && (!this.sawEmpty || tooSoon)) {
         this.lastHit = gray;
+        this.sawEmpty = false;
         this.status.set('saved');
         return;
       }
@@ -507,7 +538,9 @@ export class CardScanner implements OnInit, OnDestroy {
       }
       this.lastHit = gray;
       this.lastHitKey = key;
+      this.lastHitAt = Date.now();
       this.sawEmpty = false;
+      this.sawBlank = false;
       this.missStreak = 0;
       this.missAlerted = false;
       // Hell = Ecke gelesen und Foil eindeutig; tief = nur über das Bild erkannt oder Foil unklar,

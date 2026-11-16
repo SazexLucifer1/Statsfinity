@@ -92,6 +92,64 @@ export class ScanSampleService {
     }
   }
 
+  /** Eigene Proben von vor `OLD_SAMPLES_BEFORE` - null, solange nicht gezählt. */
+  readonly oldCount = signal<number | null>(null);
+  readonly deleting = signal(false);
+
+  async countOld(): Promise<void> {
+    const uid = this.auth.currentUser()?.id;
+    if (!uid || !this.available()) return;
+    const { count, error } = await supabase
+      .from('scan_samples')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', uid)
+      .lt('created_at', OLD_SAMPLES_BEFORE);
+    if (!error) this.oldCount.set(count ?? 0);
+  }
+
+  /**
+   * Löscht die eigenen Proben von vor `OLD_SAMPLES_BEFORE`: erst die Bilder im Bucket, dann die
+   * Zeilen - nur die, deren Bilder wirklich weg sind, sonst lägen Bilder ohne Verzeichnis im Bucket.
+   * Nur Proben: Die Sammlung (collection_cards) hat damit nichts zu tun. Gibt die Zahl gelöschter
+   * Proben zurück, -1 wenn der Bucket nichts löschen ließ (Migration
+   * sql/scan-proben-loeschen-2026-11-15.sql fehlt).
+   */
+  async deleteOld(): Promise<number> {
+    const uid = this.auth.currentUser()?.id;
+    if (!uid || this.deleting()) return 0;
+    this.deleting.set(true);
+    let deleted = 0;
+    try {
+      for (;;) {
+        const { data, error } = await supabase
+          .from('scan_samples')
+          .select('id, image_path, corner_path')
+          .eq('user_id', uid)
+          .lt('created_at', OLD_SAMPLES_BEFORE)
+          .order('created_at')
+          .limit(100);
+        if (error || !data?.length) break;
+        const paths = data.flatMap((r) =>
+          [r.image_path, r.corner_path].filter((p): p is string => !!p),
+        );
+        const removed = await supabase.storage.from(BUCKET).remove(paths);
+        if (removed.error) break;
+        const gone = new Set((removed.data ?? []).map((o) => o.name));
+        // Ohne Lese-Recht auf die Bilder löscht Supabase still nichts.
+        if (gone.size === 0) return deleted > 0 ? deleted : -1;
+        const ids = data.filter((r) => gone.has(r.image_path)).map((r) => r.id);
+        const { error: rowError } = await supabase.from('scan_samples').delete().in('id', ids);
+        if (rowError || ids.length === 0) break;
+        deleted += ids.length;
+        this.oldCount.update((n) => (n == null ? n : Math.max(0, n - ids.length)));
+      }
+      return deleted;
+    } finally {
+      this.deleting.set(false);
+      void this.countOld();
+    }
+  }
+
   /** Korrektur aus der Trefferliste nachtragen (wird mit vorhandenen Angaben zusammengeführt). */
   async correct(id: string | undefined, patch: Record<string, unknown>): Promise<void> {
     if (!id || !this.available()) return;
@@ -135,6 +193,11 @@ export class ScanSampleService {
 
 const STORAGE_KEY = 'scanSamplesEnabled';
 const BUCKET = 'scan-samples';
+/**
+ * Proben davor gehören zu älteren Fassungen des Scanners und lassen sich löschen (Wunsch des
+ * Users, 15.11.2026, ~1,2 MB je Probe): Live-Gang des Scanner-Updates aus PR #403.
+ */
+export const OLD_SAMPLES_BEFORE = '2026-11-08T14:42:51Z';
 
 function readEnabled(): boolean {
   try {
