@@ -5,6 +5,7 @@ import { DeckCommentService } from '../deck-comment.service';
 import { DeckService } from '../deck.service';
 import { DeckViewerService } from '../deck-viewer.service';
 import { FriendsService } from '../friends.service';
+import { FeedbackReply, FeedbackService } from '../feedback.service';
 import { ProfileService } from '../profile.service';
 import { I18nService } from '../i18n.service';
 import { PlayerAvatar } from '../player-avatar/player-avatar';
@@ -35,6 +36,7 @@ export class CommentInbox {
   private readonly viewer = inject(DeckViewerService);
 
   readonly friends = inject(FriendsService);
+  readonly feedback = inject(FeedbackService);
   private readonly profileService = inject(ProfileService);
 
   readonly offen = signal(false);
@@ -43,18 +45,28 @@ export class CommentInbox {
   private manuell = false;
 
   /** Ungelesene Kommentare plus offene Freundesanfragen - dieselbe Zahl wie an der Tab-Leiste. */
-  readonly badgeCount = computed(() => this.inbox.unreadCount() + this.friends.incoming().length);
-  readonly sichtbar = computed(() => this.inbox.verfuegbar() || this.friends.incoming().length > 0);
+  readonly badgeCount = computed(
+    () =>
+      this.inbox.unreadCount() + this.friends.incoming().length + this.feedback.replyUnreadCount(),
+  );
+  readonly sichtbar = computed(
+    () =>
+      this.inbox.verfuegbar() ||
+      this.friends.incoming().length > 0 ||
+      this.feedback.replyUnreadCount() > 0,
+  );
 
   constructor() {
     // Beim Betreten des Profils den Zähler auffrischen - man kommt oft genau deswegen hierher.
     void this.inbox.refreshCount();
     void this.friends.refresh();
+    void this.feedback.refreshReplyCount();
 
     effect(() => {
       if (this.friends.incoming().length > 0 && !this.manuell && !this.offen()) {
         this.offen.set(true);
         void this.inbox.loadEntries();
+        void this.feedback.loadReplies();
       }
     });
   }
@@ -63,7 +75,12 @@ export class CommentInbox {
     this.manuell = true;
     const naechster = !this.offen();
     this.offen.set(naechster);
-    if (naechster) await this.inbox.loadEntries();
+    if (naechster) await Promise.all([this.inbox.loadEntries(), this.feedback.loadReplies()]);
+  }
+
+  /** Antwort auf eigenes Feedback antippen: nur als gelesen markieren, es gibt nichts zu öffnen. */
+  readReply(reply: FeedbackReply): void {
+    void this.feedback.markReplyRead(reply);
   }
 
   openProfile(userId: string): void {

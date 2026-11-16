@@ -19,6 +19,15 @@ export const feedback = {
     'feedback.noneFound': 'Keine Einträge gefunden.',
     'feedback.markDone': 'Als erledigt markieren',
     'feedback.markOpen': 'Wieder öffnen',
+    'feedback.reply.title': 'Als erledigt markieren',
+    'feedback.reply.hint':
+      '{{name}} bekommt diese Nachricht ins Postfach im Profil. Du kannst den Text für diese Nachricht ändern.',
+    'feedback.reply.default':
+      'Hallo {{name}}, danke für dein Feedback! Wir haben es gehört und umgesetzt. Vielen Dank, dass du hilfst, Statsfinity besser zu machen.',
+    'feedback.reply.send': 'Nachricht senden & erledigt',
+    'feedback.reply.sending': 'Sende …',
+    'feedback.reply.withoutMessage': 'Ohne Nachricht erledigt',
+    'feedback.reply.sent': 'Antwort gesendet',
   },
   en: {
     // --- Feedback / bug report ---
@@ -39,5 +48,14 @@ export const feedback = {
     'feedback.noneFound': 'No entries found.',
     'feedback.markDone': 'Mark as done',
     'feedback.markOpen': 'Reopen',
+    'feedback.reply.title': 'Mark as done',
+    'feedback.reply.hint':
+      '{{name}} will get this message in their inbox on the profile page. You can change the text for this message.',
+    'feedback.reply.default':
+      'Hi {{name}}, thanks for your feedback! We heard you and it has been implemented. Thank you for helping make Statsfinity better.',
+    'feedback.reply.send': 'Send message & mark done',
+    'feedback.reply.sending': 'Sending …',
+    'feedback.reply.withoutMessage': 'Mark done without message',
+    'feedback.reply.sent': 'Reply sent',
   },
 };
