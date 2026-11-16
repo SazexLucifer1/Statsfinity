@@ -1598,8 +1598,19 @@
       </label>
 
       @if (viewer.edit.artworkOptions().length > 0) {
+        <!-- Standardländer haben über 700 Drucke - suchen nach dem Set-Kürzel unten links auf der Karte, Setname, Nummer oder Jahr. -->
+        <input
+          class="glass-input artwork-picker-search"
+          type="search"
+          [placeholder]="viewer.i18n.t('deckView.artworkSearchPlaceholder')"
+          [value]="viewer.edit.artworkFilter()"
+          (input)="viewer.edit.artworkFilter.set($any($event.target).value)"
+        />
+        <p class="hint">
+          {{ viewer.i18n.t('deckView.artworkCount', { shown: viewer.edit.filteredArtworkOptions().length, total: viewer.edit.artworkOptions().length }) }}
+        </p>
         <div class="artwork-picker-grid">
-          @for (option of viewer.edit.artworkOptions(); track option.id) {
+          @for (option of viewer.edit.filteredArtworkOptions(); track option.id) {
             <button
               class="artwork-picker-tile"
               [disabled]="viewer.edit.artworkPickerBusy()"
@@ -1607,6 +1618,7 @@
             >
               <img [src]="option.imageUrl" [alt]="option.setName" loading="lazy" />
               <span class="hint">{{ option.setName }}</span>
+              <span class="hint artwork-picker-code">{{ option.setCode.toUpperCase() }} · {{ option.collectorNumber }}</span>
             </button>
           }
         </div>

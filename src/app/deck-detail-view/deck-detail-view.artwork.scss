@@ -1,0 +1,86 @@
+@use '../../styles/breakpoints' as bp;
+
+// Artwork-Auswahl (Dialog beim Bearbeiten einer Karte). Eigene Datei wegen des Style-Budgets von
+// 12 kB je Stylesheet, wie deck-detail-view.bracket.scss.
+
+.artwork-picker-sheet {
+  width: min(94vw, 480px);
+  max-width: 480px;
+  max-height: 88dvh;
+  overflow-y: auto;
+}
+
+.artwork-upload-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  margin: 8px 0;
+
+  input[type='file'] {
+    display: none;
+  }
+}
+
+.artwork-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin: 10px 0;
+}
+
+.artwork-picker-search {
+  width: 100%;
+  margin-top: 4px;
+}
+
+// Desktop: breiter, damit mehr Drucke auf einen Blick passen.
+@include bp.up(md) {
+  .artwork-picker-sheet {
+    width: min(94vw, 1100px);
+    max-width: 1100px;
+  }
+
+  .artwork-picker-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
+}
+
+.artwork-picker-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  overflow: hidden;
+  text-align: center;
+
+  img {
+    width: 100%;
+    aspect-ratio: 63 / 88;
+    object-fit: cover;
+    display: block;
+  }
+
+  .hint {
+    padding: 2px 4px 6px;
+  }
+
+  .artwork-picker-code {
+    padding-top: 0;
+    font-size: 0.7rem;
+    opacity: 0.7;
+  }
+
+  &:active {
+    background: rgba(255, 255, 255, 0.14);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+}
