@@ -35,6 +35,7 @@ import { CardDataService } from '../card-data.service';
 import { I18nService } from '../i18n.service';
 import { ArtLanguageService } from '../art-language.service';
 import { ART_LANGUAGES, ArtLang } from '../art-languages';
+import { ScanSampleService } from '../scan-sample.service';
 import { FeedbackService } from '../feedback.service';
 import { DialogService } from '../dialog.service';
 import { CardImage } from '../card-image/card-image';
@@ -120,6 +121,7 @@ export class ProfileTab {
   private readonly cardData = inject(CardDataService);
   readonly i18n = inject(I18nService);
   readonly feedback = inject(FeedbackService);
+  readonly scanSamples = inject(ScanSampleService);
   private readonly dialog = inject(DialogService);
 
   readonly deckListRef = viewChild<DeckList>('deckListRef');
@@ -783,6 +785,23 @@ export class ProfileTab {
       feedbackLoadTriggered = true;
       this.feedback.loadEntries();
     });
+    // Developer: wie viele alte Scan-Proben sich löschen lassen.
+    effect(() => {
+      if (this.scanSamples.canUse() && this.scanSamples.oldCount() === null)
+        void this.scanSamples.countOld();
+    });
+  }
+
+  async deleteOldScanSamples(): Promise<void> {
+    const count = this.scanSamples.oldCount() ?? 0;
+    if (!(await this.dialog.confirm(this.i18n.t('collection.scanner.deleteOldConfirm', { count }))))
+      return;
+    const n = await this.scanSamples.deleteOld();
+    await this.dialog.alert(
+      n < 0
+        ? this.i18n.t('collection.scanner.deleteOldBlocked')
+        : this.i18n.t('collection.scanner.deleteOldDone', { count: n }),
+    );
   }
 
   /** Kartenname (lowercase) -> Scryfall-Daten oder null (nicht gefunden). Füllt die "Commander ohne

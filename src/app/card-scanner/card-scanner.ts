@@ -116,22 +116,6 @@ export class CardScanner implements OnInit, OnDestroy {
 
   readonly closed = output<void>();
 
-  /** Alte Scan-Proben löschen: erster Tipp fragt nach, zweiter löscht (Dialoge liegen unter dem Scanner). */
-  readonly confirmDelete = signal(false);
-  readonly sampleNote = signal<string | null>(null);
-  async deleteOldSamples(): Promise<void> {
-    if (!this.confirmDelete()) {
-      this.confirmDelete.set(true);
-      return;
-    }
-    this.confirmDelete.set(false);
-    const n = await this.samples.deleteOld();
-    this.sampleNote.set(
-      n < 0
-        ? this.i18n.t('collection.scanner.deleteOldBlocked')
-        : this.i18n.t('collection.scanner.deleteOldDone', { count: n }),
-    );
-  }
   readonly languages = ART_LANGUAGES;
 
   private readonly video = viewChild.required<ElementRef<HTMLVideoElement>>('video');
@@ -182,7 +166,6 @@ export class CardScanner implements OnInit, OnDestroy {
   private scanCounter = 0;
 
   async ngOnInit(): Promise<void> {
-    if (this.samples.canUse()) void this.samples.countOld();
     void this.collection.ensureLoaded();
     const prepared = this.scan.prepare();
     try {
