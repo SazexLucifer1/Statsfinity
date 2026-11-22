@@ -20,5 +20,10 @@
         </button>
       }
     }
+    @if (editableCustom(); as name) {
+      <button type="button" class="glass-button small idea-button" (click)="editCustom($event, name)">
+        <app-icon name="pencil" /> {{ i18n.t('match.customCommander.edit') }}
+      </button>
+    }
   </div>
 }

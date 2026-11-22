@@ -40,6 +40,21 @@ export class CardImageLookupService {
     setTimeout(() => void this.flush(), 0);
   }
 
+  /**
+   * Bild zu einem Namen verwerfen und neu laden - nach dem Bearbeiten eines eigenen Commanders
+   * (CustomCommanderService), sonst zeigten die Listen bis zum Neuladen das alte Bild.
+   */
+  refresh(name: string): void {
+    const key = CardImageLookupService.key(name);
+    this.requested.delete(key);
+    this.entries.update((current) => {
+      const next = new Map(current);
+      next.delete(key);
+      return next;
+    });
+    this.request(name);
+  }
+
   private async flush(): Promise<void> {
     this.scheduled = false;
     const names = [...this.pending];
