@@ -1,5 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { AuthService } from './auth.service';
+import { ProfileService } from './profile.service';
 import { normalizeCardName } from './array-utils';
 import { CustomCommander } from './models';
 import type { ScryfallCard } from './scryfall.service';
@@ -25,6 +26,7 @@ export const CUSTOM_COMMANDER_COLORS = ['W', 'U', 'B', 'R', 'G'] as const;
 @Injectable({ providedIn: 'root' })
 export class CustomCommanderService {
   private readonly auth = inject(AuthService);
+  private readonly profiles = inject(ProfileService);
 
   /** false, sobald die Tabelle fehlt (Migration noch nicht gelaufen) - dann verschwindet alles still. */
   readonly available = signal(true);
@@ -39,7 +41,7 @@ export class CustomCommanderService {
   readonly draftPreview = signal<string | null>(null);
   readonly busy = signal(false);
   readonly errorKey = signal<string | null>(null);
-  private onCreated: ((name: string) => void) | null = null;
+  private onSaved: ((name: string) => void) | null = null;
 
   private static readonly BUCKET = 'custom-commander-images';
   private static readonly MAX_BILD_BYTES = 5 * 1024 * 1024;
@@ -129,23 +131,72 @@ export class CustomCommanderService {
     return result;
   }
 
-  // --- Anlegen ---
+  // --- Anlegen und Bearbeiten ---
+
+  /** Gesetzt = der Dialog bearbeitet diesen Commander, sonst legt er einen neuen an. */
+  readonly editing = signal<CustomCommander | null>(null);
+  /** Bisheriges Bild beim Bearbeiten; null nach "Bild entfernen". */
+  readonly draftImageUrl = signal<string | null>(null);
+
+  /**
+   * Darf der angemeldete Nutzer diesen eigenen Commander ändern? Ersteller und Developer
+   * (sql/eigene-commander-bearbeiten-2026-11-22.sql) - die Datenbank prüft dasselbe noch einmal.
+   */
+  canEdit(name: string | null | undefined): boolean {
+    const custom = this.find(name);
+    const uid = this.auth.currentUser()?.id;
+    if (!custom || !uid) return false;
+    return custom.createdBy === uid || this.profiles.profile()?.isDeveloper === true;
+  }
+
+  find(name: string | null | undefined): CustomCommander | null {
+    if (!name) return null;
+    const key = CustomCommanderService.key(name);
+    return this.all().find((c) => CustomCommanderService.key(c.name) === key) ?? null;
+  }
 
   /** Öffnet den Dialog; `onCreated` bekommt den gespeicherten Namen (z. B. um ihn gleich auszuwählen). */
   openCreate(prefillName: string, onCreated: (name: string) => void): void {
+    this.editing.set(null);
     this.draftName.set(prefillName.trim());
     this.draftColors.set(new Set());
+    this.draftImageUrl.set(null);
     this.setFile(null);
     this.errorKey.set(null);
-    this.onCreated = onCreated;
+    this.onSaved = onCreated;
     this.dialogOpen.set(true);
     void this.ensureLoaded();
+  }
+
+  /**
+   * Öffnet den Dialog für einen bestehenden Commander - nach Überarbeitung der Karte (neues Bild,
+   * andere Farben). Der Name bleibt fest, weil Partien und Statistiken daran hängen.
+   * `onSaved` bekommt den Namen nach dem Speichern (z. B. um Kartenbilder neu zu laden).
+   */
+  openEdit(name: string, onSaved?: (name: string) => void): void {
+    const custom = this.find(name);
+    if (!custom || !this.canEdit(name)) return;
+    this.editing.set(custom);
+    this.draftName.set(custom.name);
+    this.draftColors.set(new Set(custom.colorIdentity));
+    this.draftImageUrl.set(custom.imageUrl);
+    this.setFile(null);
+    this.errorKey.set(null);
+    this.onSaved = onSaved ?? null;
+    this.dialogOpen.set(true);
   }
 
   close(): void {
     this.dialogOpen.set(false);
     this.setFile(null);
-    this.onCreated = null;
+    this.editing.set(null);
+    this.onSaved = null;
+  }
+
+  /** "Bild entfernen": neues und bisheriges Bild. */
+  clearImage(): void {
+    this.setFile(null);
+    this.draftImageUrl.set(null);
   }
 
   toggleColor(color: string): void {
@@ -173,6 +224,34 @@ export class CustomCommanderService {
     this.draftPreview.set(file ? URL.createObjectURL(file) : null);
   }
 
+  /** Lädt das gewählte Bild hoch; undefined = kein neues Bild, null = Fehler (errorKey gesetzt). */
+  private async uploadDraftFile(uid: string): Promise<string | null | undefined> {
+    const file = this.draftFile();
+    if (!file) return undefined;
+    const ext =
+      (file.name.split('.').pop() ?? 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+    const path = `${uid}/${crypto.randomUUID()}.${ext}`;
+    const { error } = await supabase.storage
+      .from(CustomCommanderService.BUCKET)
+      .upload(path, file, { contentType: file.type });
+    if (error) {
+      console.error('Konnte Commander-Bild nicht hochladen:', error);
+      this.errorKey.set('match.customCommander.uploadFailed');
+      return null;
+    }
+    return supabase.storage.from(CustomCommanderService.BUCKET).getPublicUrl(path).data.publicUrl;
+  }
+
+  private static fromRow(data: Record<string, unknown>): CustomCommander {
+    return {
+      id: data['id'] as string,
+      name: data['name'] as string,
+      colorIdentity: (data['color_identity'] as string[] | null) ?? [],
+      imageUrl: (data['image_url'] as string | null) ?? null,
+      createdBy: data['created_by'] as string,
+    };
+  }
+
   async save(): Promise<void> {
     const name = this.draftName().trim().replace(/\s+/g, ' ');
     const uid = this.auth.currentUser()?.id;
@@ -181,69 +260,76 @@ export class CustomCommanderService {
     this.busy.set(true);
     this.errorKey.set(null);
     try {
-      await this.ensureLoaded();
-      if (this.isCustom(name)) {
-        this.errorKey.set('match.customCommander.exists');
-        return;
-      }
-      // Ein Name, den es als echte Karte gibt, würde in Statistik und Kartenbild mit dieser
-      // vermischt - die echte Karte gewinnt beim Nachschlagen, der eigene Commander wäre unsichtbar.
-      const { data: real } = await supabase
-        .from('scryfall_cards')
-        .select('name')
-        .eq('front_name_normalized', CustomCommanderService.key(name))
-        .limit(1);
-      if (real && real.length > 0) {
-        this.errorKey.set('match.customCommander.realCard');
-        return;
-      }
-
-      let imageUrl: string | null = null;
-      const file = this.draftFile();
-      if (file) {
-        const ext =
-          (file.name.split('.').pop() ?? 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
-        const path = `${uid}/${crypto.randomUUID()}.${ext}`;
-        const { error: uploadError } = await supabase.storage
-          .from(CustomCommanderService.BUCKET)
-          .upload(path, file, { contentType: file.type });
-        if (uploadError) {
-          console.error('Konnte Commander-Bild nicht hochladen:', uploadError);
-          this.errorKey.set('match.customCommander.uploadFailed');
-          return;
-        }
-        imageUrl = supabase.storage.from(CustomCommanderService.BUCKET).getPublicUrl(path)
-          .data.publicUrl;
-      }
-
-      const colors = CUSTOM_COMMANDER_COLORS.filter((c) => this.draftColors().has(c));
-      const { data, error } = await supabase
-        .from('custom_commanders')
-        .insert({ name, color_identity: colors, image_url: imageUrl, created_by: uid })
-        .select('id, name, color_identity, image_url, created_by')
-        .single();
-      if (error || !data) {
-        console.error('Konnte eigenen Commander nicht speichern:', error);
-        this.errorKey.set(
-          error?.code === '23505'
-            ? 'match.customCommander.exists'
-            : 'match.customCommander.saveFailed',
-        );
-        return;
-      }
-      const created: CustomCommander = {
-        id: data.id,
-        name: data.name,
-        colorIdentity: data.color_identity ?? [],
-        imageUrl: data.image_url ?? null,
-        createdBy: data.created_by,
-      };
-      this.all.update((list) => [...list, created].sort((a, b) => a.name.localeCompare(b.name)));
-      const callback = this.onCreated;
+      const editing = this.editing();
+      const saved = editing ? await this.saveEdit(editing, uid) : await this.saveNew(name, uid);
+      if (!saved) return;
+      this.all.update((list) =>
+        [...list.filter((c) => c.id !== saved.id), saved].sort((a, b) =>
+          a.name.localeCompare(b.name),
+        ),
+      );
+      const callback = this.onSaved;
       this.close();
-      callback?.(created.name);
+      callback?.(saved.name);
     } finally {
       this.busy.set(false);
     }
+  }
+
+  private async saveEdit(editing: CustomCommander, uid: string): Promise<CustomCommander | null> {
+    const uploaded = await this.uploadDraftFile(uid);
+    if (uploaded === null) return null;
+    const imageUrl = uploaded ?? this.draftImageUrl();
+    const colors = CUSTOM_COMMANDER_COLORS.filter((c) => this.draftColors().has(c));
+    // Ohne Recht liefert Postgres keinen Fehler, sondern ändert einfach nichts - daher .select().
+    const { data, error } = await supabase
+      .from('custom_commanders')
+      .update({ color_identity: colors, image_url: imageUrl })
+      .eq('id', editing.id)
+      .select('id, name, color_identity, image_url, created_by');
+    if (error || !data || data.length === 0) {
+      console.error('Konnte eigenen Commander nicht ändern:', error);
+      this.errorKey.set('match.customCommander.saveFailed');
+      return null;
+    }
+    return CustomCommanderService.fromRow(data[0] as Record<string, unknown>);
+  }
+
+  private async saveNew(name: string, uid: string): Promise<CustomCommander | null> {
+    await this.ensureLoaded();
+    if (this.isCustom(name)) {
+      this.errorKey.set('match.customCommander.exists');
+      return null;
+    }
+    // Ein Name, den es als echte Karte gibt, würde in Statistik und Kartenbild mit dieser
+    // vermischt - die echte Karte gewinnt beim Nachschlagen, der eigene Commander wäre unsichtbar.
+    const { data: real } = await supabase
+      .from('scryfall_cards')
+      .select('name')
+      .eq('front_name_normalized', CustomCommanderService.key(name))
+      .limit(1);
+    if (real && real.length > 0) {
+      this.errorKey.set('match.customCommander.realCard');
+      return null;
+    }
+
+    const uploaded = await this.uploadDraftFile(uid);
+    if (uploaded === null) return null;
+    const colors = CUSTOM_COMMANDER_COLORS.filter((c) => this.draftColors().has(c));
+    const { data, error } = await supabase
+      .from('custom_commanders')
+      .insert({ name, color_identity: colors, image_url: uploaded ?? null, created_by: uid })
+      .select('id, name, color_identity, image_url, created_by')
+      .single();
+    if (error || !data) {
+      console.error('Konnte eigenen Commander nicht speichern:', error);
+      this.errorKey.set(
+        error?.code === '23505'
+          ? 'match.customCommander.exists'
+          : 'match.customCommander.saveFailed',
+      );
+      return null;
+    }
+    return CustomCommanderService.fromRow(data as Record<string, unknown>);
   }
 }

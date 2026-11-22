@@ -1487,6 +1487,11 @@
                     <button class="deck-card-tag-toggle" (click)="viewer.edit.openTagEditor(card)" [attr.aria-label]="viewer.i18n.t('deckView.editOwnTags')">
                       <app-icon name="tag" />
                     </button>
+                    @if (card.isCommander && customCommanders.canEdit(card.cardName)) {
+                      <button (click)="editCustomCommander(card.cardName)" [attr.aria-label]="viewer.i18n.t('match.customCommander.edit')">
+                        <app-icon name="pencil" />
+                      </button>
+                    }
                   </div>
                 }
               </div>

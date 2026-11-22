@@ -1,3 +1,5 @@
+import { CustomCommanderService } from '../custom-commander.service';
+import { CardImageLookupService } from '../card-image-lookup.service';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { CurrencyPipe, DatePipe, DecimalPipe, NgTemplateOutlet, PercentPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -73,6 +75,37 @@ export class DeckDetailView {
   private readonly banlist = inject(BanlistService);
   private readonly variantService = inject(DeckVariantService);
   readonly sectionCollapse = inject(DeckSectionCollapseService);
+  readonly customCommanders = inject(CustomCommanderService);
+  private readonly imageLookup = inject(CardImageLookupService);
+
+  /**
+   * Eigenen Commander bearbeiten (Ersteller oder Developer, CustomCommanderService). Die Datenbank
+   * zieht das neue Bild in alle Decks nach, die noch das alte zeigen - hier wird nur das offene Deck
+   * gleich mitgezogen, damit man das Ergebnis ohne Neuladen sieht.
+   */
+  editCustomCommander(cardName: string): void {
+    const oldImage = this.customCommanders.find(cardName)?.imageUrl ?? null;
+    this.customCommanders.openEdit(cardName, (name) => {
+      this.imageLookup.refresh(name);
+      const updated = this.customCommanders.find(name);
+      if (!updated) return;
+      const key = name.toLowerCase();
+      this.viewer.state.viewingDeckCards.update((cards) =>
+        cards.map((c) =>
+          c.cardName.toLowerCase() === key && (c.imageUrl ?? null) === oldImage
+            ? { ...c, imageUrl: updated.imageUrl }
+            : c,
+        ),
+      );
+      this.viewer.state.viewingCardDetails.update((details) => {
+        const card = details.get(key);
+        if (!card) return details;
+        const next = new Map(details);
+        next.set(key, { ...card, imageUrl: updated.imageUrl ?? undefined, colorIdentity: [...updated.colorIdentity] });
+        return next;
+      });
+    });
+  }
 
   /**
    * Umschalter zwischen verknüpften Varianten oben in der Ansicht (Wunsch des Users, 26.10.2026):

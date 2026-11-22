@@ -1,8 +1,13 @@
 @if (service.dialogOpen()) {
   <div class="options-menu-overlay custom-commander-overlay" (click)="service.close()">
     <div class="options-menu-sheet custom-commander-sheet" (click)="$event.stopPropagation()">
-      <h3>{{ i18n.t('match.customCommander.title') }}</h3>
-      <p class="hint">{{ i18n.t('match.customCommander.hint') }}</p>
+      @if (service.editing()) {
+        <h3>{{ i18n.t('match.customCommander.editTitle') }}</h3>
+        <p class="hint">{{ i18n.t('match.customCommander.editHint') }}</p>
+      } @else {
+        <h3>{{ i18n.t('match.customCommander.title') }}</h3>
+        <p class="hint">{{ i18n.t('match.customCommander.hint') }}</p>
+      }
 
       <label class="hint" for="custom-commander-name">{{
         i18n.t('match.customCommander.name')
@@ -12,6 +17,7 @@
         class="glass-input"
         type="text"
         maxlength="120"
+        [disabled]="!!service.editing()"
         [ngModel]="service.draftName()"
         (ngModelChange)="service.draftName.set($event)"
       />
@@ -36,11 +42,17 @@
 
       <span class="hint">{{ i18n.t('match.customCommander.image') }}</span>
       <div class="image-row">
-        @if (service.draftPreview(); as preview) {
+        @if (service.draftPreview() ?? service.draftImageUrl(); as preview) {
           <img class="preview" [src]="preview" alt="" />
-          <button type="button" class="glass-button" (click)="service.setFile(null)">
-            {{ i18n.t('match.customCommander.removeImage') }}
-          </button>
+          <div class="image-actions">
+            <label class="glass-button file-button">
+              {{ i18n.t('match.customCommander.replaceImage') }}
+              <input type="file" accept="image/*" (change)="onFile($event)" />
+            </label>
+            <button type="button" class="glass-button" (click)="service.clearImage()">
+              {{ i18n.t('match.customCommander.removeImage') }}
+            </button>
+          </div>
         } @else {
           <label class="glass-button file-button">
             {{ i18n.t('match.customCommander.chooseImage') }}
@@ -63,11 +75,13 @@
           [disabled]="service.busy() || !service.draftName().trim()"
           (click)="service.save()"
         >
-          {{
-            service.busy()
-              ? i18n.t('match.customCommander.saving')
-              : i18n.t('match.customCommander.save')
-          }}
+          @if (service.busy()) {
+            {{ i18n.t('match.customCommander.saving') }}
+          } @else if (service.editing()) {
+            {{ i18n.t('match.customCommander.saveEdit') }}
+          } @else {
+            {{ i18n.t('match.customCommander.save') }}
+          }
         </button>
       </div>
     </div>
