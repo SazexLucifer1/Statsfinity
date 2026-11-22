@@ -1,3 +1,4 @@
+import { CustomCommanderService } from './custom-commander.service';
 import { Injectable, inject } from '@angular/core';
 import { supabase } from './supabase.client';
 import { chunk, normalizeCardName } from './array-utils';
@@ -65,6 +66,7 @@ export interface ComboSuggestionRow {
 @Injectable({ providedIn: 'root' })
 export class CardDataService {
   private readonly scryfall = inject(ScryfallService);
+  private readonly customCommanders = inject(CustomCommanderService);
 
   /** Spalten, aus denen sich ein vollständiges ScryfallCard zusammensetzen lässt (siehe toCard()). */
   private static readonly KARTEN_SPALTEN =
@@ -214,8 +216,14 @@ export class CardDataService {
       }
     }
 
+    // Selbst erstellte Commander (CustomCommanderService) kennt Scryfall nicht - erst dort
+    // nachsehen, sonst ginge jeder eigene Commander live an Scryfall und käme leer zurück.
+    let fehlend = unique.filter((name) => !result.has(name.toLowerCase()));
+    if (fehlend.length > 0) {
+      for (const [key, card] of await this.customCommanders.cardsFor(fehlend)) result.set(key, card);
+      fehlend = fehlend.filter((name) => !result.has(name.toLowerCase()));
+    }
     // Was der nächtliche Abgleich noch nicht kennt (frische Spoiler), kommt weiterhin live dazu.
-    const fehlend = unique.filter((name) => !result.has(name.toLowerCase()));
     if (fehlend.length > 0) {
       for (const [key, card] of await this.scryfall.findCardsBulk(fehlend, failed)) {
         result.set(key, card);
@@ -243,6 +251,10 @@ export class CardDataService {
       const karte = this.toCard(data[0] as unknown as Record<string, unknown>);
       return (await this.scryfall.inKartensprache([karte]))[0];
     }
+    // Vor Scryfalls Fuzzy-Suche: die fände zu einem eigenen Commander womöglich eine echte Karte
+    // mit ähnlichem Namen.
+    const custom = (await this.customCommanders.cardsFor([cardName])).get(cardName.trim().toLowerCase());
+    if (custom) return custom;
     return this.scryfall.findCard(cardName);
   }
 

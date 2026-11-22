@@ -2,9 +2,19 @@ import { Injectable, inject } from '@angular/core';
 import { sleep, normalizeCardName } from './array-utils';
 import { ColorSelection } from './color-filter-match';
 import { ArtLanguageService } from './art-language.service';
+import { CustomCommanderService } from './custom-commander.service';
 import { ArtLang } from './art-languages';
 import { DeckFormat, SCRYFALL_FORMAT } from './models';
 import { supabase } from './supabase.client';
+
+/**
+ * Eigene (selbst erstellte) Commander zuerst - die tippt man gezielt, und unter zwölf
+ * Scryfall-Treffern fände man sie sonst nicht. Doppelte Namen nur einmal.
+ */
+function mitEigenenCommandern(custom: string[], scryfall: string[]): string[] {
+  const seen = new Set(custom.map((n) => n.toLowerCase()));
+  return [...custom, ...scryfall.filter((n) => !seen.has(n.toLowerCase()))].slice(0, 12);
+}
 
 export interface ScryfallCard {
   name: string;
@@ -127,6 +137,7 @@ export function printSearchQuery(search: PrintSearch | undefined): string[] {
 @Injectable({ providedIn: 'root' })
 export class ScryfallService {
   private readonly artLang = inject(ArtLanguageService);
+  private readonly customCommanders = inject(CustomCommanderService);
 
   private cachedSets: ScryfallSet[] | null = null;
 
@@ -240,6 +251,11 @@ export class ScryfallService {
    * zusätzlich über gedruckte Namen (Deutsch); geliefert wird der englische Name.
    */
   async autocomplete(query: string): Promise<string[]> {
+    const [custom, scryfall] = await Promise.all([this.customCommanders.search(query), this.autocompleteScryfall(query)]);
+    return mitEigenenCommandern(custom, scryfall);
+  }
+
+  private async autocompleteScryfall(query: string): Promise<string[]> {
     if (query.trim().length < 2) return [];
     try {
       const english =
@@ -259,6 +275,14 @@ export class ScryfallService {
    * zweiten Commander.
    */
   async autocompleteSecondCommander(query: string): Promise<string[]> {
+    const [custom, scryfall] = await Promise.all([
+      this.customCommanders.search(query),
+      this.autocompleteSecondCommanderScryfall(query),
+    ]);
+    return mitEigenenCommandern(custom, scryfall);
+  }
+
+  private async autocompleteSecondCommanderScryfall(query: string): Promise<string[]> {
     if (query.trim().length < 2) return [];
     try {
       const english =

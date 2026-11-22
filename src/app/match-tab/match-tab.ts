@@ -30,6 +30,7 @@ import { LifeChart } from '../ui/life-chart/life-chart';
 import { Cube, GroupCubeList, LifeLog } from '../models';
 import { FriendsService } from '../friends.service';
 import { ProfileService } from '../profile.service';
+import { CustomCommanderService } from '../custom-commander.service';
 
 /** Ein einzelnes Spiel oder eine zu einer Karte zusammengefasste BO3-Turnierpartie (2-3 Einzelspiele) im Verlauf. */
 export type HistoryRow =
@@ -56,6 +57,7 @@ export class MatchTab {
   readonly session = inject(GameSessionService);
   readonly groupService = inject(GroupService);
   readonly auth = inject(AuthService);
+  readonly customCommanders = inject(CustomCommanderService);
   private readonly scryfall = inject(ScryfallService);
   private readonly cardData = inject(CardDataService);
   private readonly deckService = inject(DeckService);
@@ -296,6 +298,36 @@ export class MatchTab {
 
   clearCommander(playerName: string): void {
     this.session.clearCommander(playerName);
+  }
+
+  /**
+   * Selbst erstellter Commander, den Scryfall nicht kennt (CustomCommanderService): Dialog mit dem
+   * Getippten vorbelegt, danach gleich für den Spieler bzw. den Bearbeiten-Entwurf ausgewählt.
+   */
+  /** Angebot "als eigenen Commander anlegen", sobald etwas getippt ist, das nicht schon genau so vorgeschlagen wird. */
+  canCreateCustom(query: string): boolean {
+    const q = query.trim();
+    if (q.length < 2 || !this.customCommanders.available() || !this.auth.currentUser()) return false;
+    const lower = q.toLowerCase();
+    return ![...this.suggestions(), ...this.commanderEditSuggestions()].some((s) => s.toLowerCase() === lower);
+  }
+
+  createCustomCommander(target: 'search' | 'edit'): void {
+    if (target === 'search') {
+      const slot = this.searchTarget();
+      if (!slot) return;
+      this.customCommanders.openCreate(this.searchQuery(), (name) => {
+        this.searchTarget.set(slot);
+        this.assignSearchResult(name);
+      });
+    } else {
+      const slot = this.commanderEditTarget();
+      if (!slot) return;
+      this.customCommanders.openCreate(this.commanderEditQuery(), (name) => {
+        this.commanderEditTarget.set(slot);
+        this.assignCommanderEditResult(name);
+      });
+    }
   }
 
   assignPartnerCommander(playerName: string, commander: string): void {

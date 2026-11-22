@@ -1,0 +1,70 @@
+// Liegt über dem Dialog "Leeres Deck anlegen", aus dem er ebenfalls geöffnet wird.
+.custom-commander-overlay {
+  z-index: 760;
+}
+
+.custom-commander-sheet {
+  width: min(94vw, 380px);
+  max-width: 380px;
+}
+
+.color-row {
+  display: flex;
+  gap: var(--sp-2, 8px);
+}
+
+.color-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  background: rgba(255, 255, 255, 0.06);
+  color: inherit;
+  font-size: 1.4rem;
+  opacity: 0.45;
+  cursor: pointer;
+
+  &.active {
+    opacity: 1;
+    border-color: currentColor;
+  }
+}
+
+.image-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3, 12px);
+}
+
+.preview {
+  width: 88px;
+  aspect-ratio: 488 / 680;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.file-button {
+  position: relative;
+  overflow: hidden;
+
+  input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp-2, 8px);
+}
+
+.small {
+  font-size: 0.8rem;
+  margin: 0;
+}

@@ -289,3 +289,17 @@ export interface DeckStats {
  * Artwork des Decks". Nur für mehrfach vorhandene Karten (Standardländer, Nazgûl, Seven Dwarves, …).
  */
 export type DeckCopyArtworks = Record<string, (string | null)[]>;
+
+/**
+ * Selbst erstellter Commander, den es bei Scryfall nicht gibt (sql/eigene-commander-2026-11-22.sql).
+ * Partien und Statistiken rechnen wie bei jeder Karte nur mit dem Namen; Farben und Bild ersetzen,
+ * was die App sonst bei Scryfall nachschlägt (siehe CustomCommanderService).
+ */
+export interface CustomCommander {
+  id: string;
+  name: string;
+  /** Teilmenge von W/U/B/R/G, leer = farblos. */
+  colorIdentity: string[];
+  imageUrl: string | null;
+  createdBy: string;
+}

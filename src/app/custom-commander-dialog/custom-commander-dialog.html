@@ -1,0 +1,75 @@
+@if (service.dialogOpen()) {
+  <div class="options-menu-overlay custom-commander-overlay" (click)="service.close()">
+    <div class="options-menu-sheet custom-commander-sheet" (click)="$event.stopPropagation()">
+      <h3>{{ i18n.t('match.customCommander.title') }}</h3>
+      <p class="hint">{{ i18n.t('match.customCommander.hint') }}</p>
+
+      <label class="hint" for="custom-commander-name">{{
+        i18n.t('match.customCommander.name')
+      }}</label>
+      <input
+        id="custom-commander-name"
+        class="glass-input"
+        type="text"
+        maxlength="120"
+        [ngModel]="service.draftName()"
+        (ngModelChange)="service.draftName.set($event)"
+      />
+
+      <span class="hint">{{ i18n.t('match.customCommander.colors') }}</span>
+      <div class="color-row">
+        @for (c of colors; track c) {
+          <button
+            type="button"
+            class="color-toggle"
+            [class.active]="service.draftColors().has(c)"
+            [attr.aria-pressed]="service.draftColors().has(c)"
+            (click)="service.toggleColor(c)"
+          >
+            <app-mana-symbol [symbol]="c" [label]="i18n.t('pip.' + c)" />
+          </button>
+        }
+      </div>
+      @if (service.draftColors().size === 0) {
+        <p class="hint small">{{ i18n.t('match.customCommander.colorless') }}</p>
+      }
+
+      <span class="hint">{{ i18n.t('match.customCommander.image') }}</span>
+      <div class="image-row">
+        @if (service.draftPreview(); as preview) {
+          <img class="preview" [src]="preview" alt="" />
+          <button type="button" class="glass-button" (click)="service.setFile(null)">
+            {{ i18n.t('match.customCommander.removeImage') }}
+          </button>
+        } @else {
+          <label class="glass-button file-button">
+            {{ i18n.t('match.customCommander.chooseImage') }}
+            <input type="file" accept="image/*" (change)="onFile($event)" />
+          </label>
+        }
+      </div>
+
+      @if (service.errorKey(); as key) {
+        <p class="error">{{ i18n.t(key) }}</p>
+      }
+
+      <div class="actions">
+        <button type="button" class="glass-button" (click)="service.close()">
+          {{ i18n.t('dialog.cancel') }}
+        </button>
+        <button
+          type="button"
+          class="glass-button primary"
+          [disabled]="service.busy() || !service.draftName().trim()"
+          (click)="service.save()"
+        >
+          {{
+            service.busy()
+              ? i18n.t('match.customCommander.saving')
+              : i18n.t('match.customCommander.save')
+          }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
