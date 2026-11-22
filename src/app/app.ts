@@ -14,6 +14,7 @@ import { CubeView } from './cube-view/cube-view';
 import { CubeService } from './cube.service';
 import { GoldfishTracker } from './goldfish-tracker/goldfish-tracker';
 import { DeckImportDialogs } from './deck-import-dialogs/deck-import-dialogs';
+import { CustomCommanderDialog } from './custom-commander-dialog/custom-commander-dialog';
 import { DeckPdfDialog } from './deck-pdf-dialog/deck-pdf-dialog';
 import { ManualDeckLinkDialog } from './manual-deck-link-dialog/manual-deck-link-dialog';
 import { CardPreviewDialog } from './card-preview-dialog/card-preview-dialog';
@@ -59,6 +60,7 @@ import { APP_VERSION, APP_COMMIT } from './version';
     CubeView,
     GoldfishTracker,
     DeckImportDialogs,
+    CustomCommanderDialog,
     DeckPdfDialog,
     ManualDeckLinkDialog,
     CardPreviewDialog,

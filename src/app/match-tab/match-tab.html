@@ -171,10 +171,13 @@
                 autofocus
               />
               <button class="icon-button" (click)="closeSearch()" [attr.aria-label]="i18n.t('match.closeSearch')">✕</button>
-              @if (suggestions().length > 0) {
+              @if (suggestions().length > 0 || canCreateCustom(searchQuery())) {
                 <ul class="suggestions">
                   @for (s of suggestions(); track s) {
-                    <li><button (click)="assignSearchResult(s)">{{ s }}</button></li>
+                    <li><button (click)="assignSearchResult(s)">{{ s }}@if (customCommanders.isCustom(s)) { <span class="custom-badge">{{ i18n.t('match.customCommander.badge') }}</span> }</button></li>
+                  }
+                  @if (canCreateCustom(searchQuery())) {
+                    <li><button class="custom-commander-create" (click)="createCustomCommander('search')">＋ {{ i18n.t('match.customCommander.create', { name: searchQuery().trim() }) }}</button></li>
                   }
                 </ul>
               }
@@ -208,10 +211,13 @@
                   autofocus
                 />
                 <button class="icon-button" (click)="closeSearch()" [attr.aria-label]="i18n.t('match.closeSearch')">✕</button>
-                @if (suggestions().length > 0) {
+                @if (suggestions().length > 0 || canCreateCustom(searchQuery())) {
                   <ul class="suggestions">
                     @for (s of suggestions(); track s) {
-                      <li><button (click)="assignSearchResult(s)">{{ s }}</button></li>
+                      <li><button (click)="assignSearchResult(s)">{{ s }}@if (customCommanders.isCustom(s)) { <span class="custom-badge">{{ i18n.t('match.customCommander.badge') }}</span> }</button></li>
+                    }
+                    @if (canCreateCustom(searchQuery())) {
+                      <li><button class="custom-commander-create" (click)="createCustomCommander('search')">＋ {{ i18n.t('match.customCommander.create', { name: searchQuery().trim() }) }}</button></li>
                     }
                   </ul>
                 }
@@ -620,10 +626,13 @@
                 autofocus
               />
               <button class="icon-button" (click)="closeCommanderEdit()" [attr.aria-label]="i18n.t('match.closeSearch')">✕</button>
-              @if (commanderEditSuggestions().length > 0) {
+              @if (commanderEditSuggestions().length > 0 || canCreateCustom(commanderEditQuery())) {
                 <ul class="suggestions">
                   @for (s of commanderEditSuggestions(); track s) {
-                    <li><button (click)="assignCommanderEditResult(s)">{{ s }}</button></li>
+                    <li><button (click)="assignCommanderEditResult(s)">{{ s }}@if (customCommanders.isCustom(s)) { <span class="custom-badge">{{ i18n.t('match.customCommander.badge') }}</span> }</button></li>
+                  }
+                  @if (canCreateCustom(commanderEditQuery())) {
+                    <li><button class="custom-commander-create" (click)="createCustomCommander('edit')">＋ {{ i18n.t('match.customCommander.create', { name: commanderEditQuery().trim() }) }}</button></li>
                   }
                 </ul>
               }
@@ -656,10 +665,13 @@
                   autofocus
                 />
                 <button class="icon-button" (click)="closeCommanderEdit()" [attr.aria-label]="i18n.t('match.closeSearch')">✕</button>
-                @if (commanderEditSuggestions().length > 0) {
+                @if (commanderEditSuggestions().length > 0 || canCreateCustom(commanderEditQuery())) {
                   <ul class="suggestions">
                     @for (s of commanderEditSuggestions(); track s) {
-                      <li><button (click)="assignCommanderEditResult(s)">{{ s }}</button></li>
+                      <li><button (click)="assignCommanderEditResult(s)">{{ s }}@if (customCommanders.isCustom(s)) { <span class="custom-badge">{{ i18n.t('match.customCommander.badge') }}</span> }</button></li>
+                    }
+                    @if (canCreateCustom(commanderEditQuery())) {
+                      <li><button class="custom-commander-create" (click)="createCustomCommander('edit')">＋ {{ i18n.t('match.customCommander.create', { name: commanderEditQuery().trim() }) }}</button></li>
                     }
                   </ul>
                 }

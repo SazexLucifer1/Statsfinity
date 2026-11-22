@@ -1326,3 +1326,24 @@ h3 {
   justify-content: space-between;
   gap: var(--sp-2);
 }
+
+// --- Eigene Commander (custom-commander.service.ts) in Commander-Vorschlagslisten ---
+//
+// Global, weil dieselben zwei Zeilen im Match-Tab und im Dialog "Leeres Deck anlegen" stehen; das
+// Match-Tab-Stylesheet liegt nahe am Budget.
+.custom-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  vertical-align: middle;
+  background: rgba(140, 200, 255, 0.18);
+  color: #bfe0ff;
+}
+
+.custom-commander-create {
+  border-top: 1px solid rgba(255, 255, 255, 0.12) !important;
+  color: #bfe0ff !important;
+  font-style: italic;
+}

@@ -130,10 +130,17 @@
         [ngModel]="importService.newDeckCommanderQuery()"
         (ngModelChange)="importService.onNewDeckCommanderInput($event)"
       />
-      @if (importService.newDeckCommanderSuggestions().length > 0) {
+      @if (importService.newDeckCommanderSuggestions().length > 0 || canCreateCustom()) {
         <ul class="commander-suggestions">
           @for (s of importService.newDeckCommanderSuggestions(); track s) {
-            <li (click)="importService.selectNewDeckCommander(s)">{{ s }}</li>
+            <li (click)="importService.selectNewDeckCommander(s)">
+              {{ s }}@if (customCommanders.isCustom(s)) { <span class="custom-badge">{{ importService.i18n.t('match.customCommander.badge') }}</span> }
+            </li>
+          }
+          @if (canCreateCustom()) {
+            <li class="custom-commander-create" (click)="createCustom()">
+              ＋ {{ importService.i18n.t('match.customCommander.create', { name: importService.newDeckCommanderQuery().trim() }) }}
+            </li>
           }
         </ul>
       }
