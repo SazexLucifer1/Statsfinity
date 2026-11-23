@@ -40,18 +40,6 @@
     </div>
   }
 
-  <!-- Ranked oder frei: nur, wenn die Gruppe das Rangsystem nutzt (Schalter des Gruppenleiters). -->
-  @if (!session.friendMode() && groupService.rankedEnabled() && mtg.isRankedAvailable()) {
-    <div class="segmented block ranked-toggle" data-tutorial="match-ranked" role="group" [attr.aria-label]="i18n.t('match.rankedAria')">
-      <button [class.active]="session.isRanked()" (click)="session.isRanked.set(true)">
-        {{ i18n.t('match.ranked') }}
-      </button>
-      <button [class.active]="!session.isRanked()" (click)="session.isRanked.set(false)">
-        {{ i18n.t('match.casual') }}
-      </button>
-    </div>
-  }
-
   <!-- Einzelspiel oder Best of 3: bei Best of 3 startet nach jedem gespeicherten Spiel das
        nächste mit denselben Spielern, bis jemand zwei Siege hat. -->
   <div class="segmented block series-toggle" data-tutorial="match-series" role="group" [attr.aria-label]="i18n.t('match.seriesAria')">
@@ -100,12 +88,9 @@
   }
   <div class="chip-row">
     @for (player of mtg.allPlayers(); track player) {
-      @let tier = rankTierFor(player, session.mode(), session.format());
       <button
         class="glass-chip avatar-chip"
         [class.active]="isSelected(player)"
-        [class.rank-tinted]="!!tier"
-        [style]="rankVars(tier)"
         (click)="togglePlayer(player)"
       >
         <app-player-avatar [url]="mtg.playerAvatars()[player] ?? null" />
@@ -485,11 +470,6 @@
       <span class="match-log-date"
         >{{ match.date | date: 'dd.MM.yyyy, HH:mm' }}@if (matchDuration(match); as duration) { · {{ duration }}}</span
       >
-      <!-- Nur "Frei" wird markiert - Ranked ist der Normalfall und bräuchte an jeder Karte ein
-           Etikett, das nichts sagt. Turnierspiele sind ohnehin nie Ranked. -->
-      @if (groupService.rankedEnabled() && match.isRanked === false && !match.tournamentMatchId) {
-        <span class="glass-chip small">{{ i18n.t('match.casual') }}</span>
-      }
       <!-- Freundesspiele haben keine Gruppenrechte; Korrekturen dort gibt es (noch) nicht. -->
       @if (
         !session.friendMode() &&
@@ -558,22 +538,6 @@
 
     @if (editingResultMatchId() === match.id) {
   <div class="winner-edit">
-    @if (
-      groupService.hasPermission('match.editResult') &&
-      groupService.rankedEnabled() &&
-      mtg.isRankedAvailable() &&
-      !match.tournamentMatchId
-    ) {
-      <p class="hint">{{ i18n.t('match.rankedEditHint') }}</p>
-      <div class="segmented" role="group" [attr.aria-label]="i18n.t('match.rankedAria')">
-        <button [class.active]="match.isRanked !== false" (click)="mtg.setMatchRanked(match.id, true)">
-          {{ i18n.t('match.ranked') }}
-        </button>
-        <button [class.active]="match.isRanked === false" (click)="mtg.setMatchRanked(match.id, false)">
-          {{ i18n.t('match.casual') }}
-        </button>
-      </div>
-    }
     @if (groupService.hasPermission('match.editResult')) {
       <p class="hint">{{ i18n.t('match.whoWon') }}</p>
       <div class="chip-row">

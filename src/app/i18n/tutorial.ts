@@ -23,9 +23,6 @@ export const tutorial = {
     'tutorial.match.friends.title': 'Gruppe oder Freunde',
     'tutorial.match.friends.text':
       'Mit „Freunde“ spielst du eine Partie ohne Gruppe - mit deinen Freunden aus dem Profil (und Gästen ohne Account). Solche Partien zählen in deinem Profil und in der Freunde-Rangliste, nie in der Gruppenstatistik.',
-    'tutorial.match.ranked.title': 'Ranked oder Frei',
-    'tutorial.match.ranked.text':
-      'Nutzt deine Gruppe das Rangsystem, legst du hier fest, ob die Partie für die Ränge (LP) zählt. Freie Partien landen trotzdem in der Statistik. Nachträglich umstellen lässt sich das im Match-Verlauf.',
     'tutorial.match.series.title': 'Einzelspiel oder Best of 3',
     'tutorial.match.series.text':
       'Bei Best of 3 startet nach jedem gespeicherten Spiel automatisch das nächste mit denselben Spielern, bis jemand zwei Siege hat.',
@@ -49,7 +46,7 @@ export const tutorial = {
       'Für Partien, die ohne Handy am Tisch gespielt wurden: gleiche Auswahl wie oben, dann nur noch Sieger und Datum eintragen - ganz ohne Tracker.',
     'tutorial.match.history.title': 'Match-Verlauf',
     'tutorial.match.history.text':
-      'Die vergangenen Partien der Gruppe mit Siegern, Decks und - bei Ranked-Partien - den gewonnenen oder verlorenen LP. Live getrackte Partien zeigen dazu Dauer, Startspieler (▶) und die Lebenspunkte-Kurve. Mit den entsprechenden Rechten korrigierst du hier den Sieger, stellst Ranked/Frei um oder löschst ein Match.',
+      'Die vergangenen Partien der Gruppe mit Siegern und Decks. Live getrackte Partien zeigen dazu Dauer, Startspieler (▶) und die Lebenspunkte-Kurve. Mit den entsprechenden Rechten korrigierst du hier den Sieger oder löschst ein Match.',
 
     // --- Suche-Tab ---
     'tutorial.search.intro.title': 'Suche',
@@ -133,7 +130,7 @@ export const tutorial = {
       'Alle Gruppen, in denen du Mitglied bist. Hier setzt du die aktive Gruppe und lädst neue Mitglieder ein. Das ⋮-Menü jeder Gruppe zeigt die Mitglieder und bietet „Gruppe verlassen“.',
     'tutorial.group.leader.title': 'Für Gruppenleiter',
     'tutorial.group.leader.text':
-      'Als Leiter findest du im ⋮-Menü zusätzlich: Rechte der Mitglieder, das Rangsystem an- oder ausschalten, Sichtbarkeit der Spielmodi, die Qualifikationsschwelle für die Ranglisten sowie Umbenennen und Löschen.',
+      'Als Leiter findest du im ⋮-Menü zusätzlich: Rechte der Mitglieder, Sichtbarkeit der Spielmodi, die Qualifikationsschwelle für die Ranglisten sowie Umbenennen und Löschen.',
     'tutorial.group.players.title': 'Spieler',
     'tutorial.group.players.text':
       'Lege die Spieler-Namen für Matches an - auch für Leute ohne eigenen Account. Ein Tipp auf einen Namen öffnet sein Profil, über das ⋮-Menü verknüpfst du ihn mit einem beigetretenen Account, benennst ihn um oder löschst ihn.',
@@ -144,16 +141,13 @@ export const tutorial = {
     // --- Profil-Tab (eigenes Profil) ---
     'tutorial.profile.intro.title': 'Profil-Tab',
     'tutorial.profile.intro.text':
-      'Dein persönlicher Bereich: Profil, Rang, Decks und deine eigenen Statistiken.',
+      'Dein persönlicher Bereich: Profil, Decks und deine eigenen Statistiken.',
     'tutorial.profile.inbox.title': 'Postfach',
     'tutorial.profile.inbox.text':
       'Neue Kommentare auf deine Decks und Antworten auf deine Kommentare. Ein Tipp springt direkt zum Kommentar im Deck.',
     'tutorial.profile.header.title': 'Profilbild, Name & Kartensprache',
     'tutorial.profile.header.text':
       'Tippe auf das Profilbild, um ein neues hochzuladen, und auf den Stift, um deinen Namen zu ändern. Darunter stehen deine Gruppen und die Sprache, in der Kartenbilder gezeigt werden.',
-    'tutorial.profile.rank.title': 'Dein Rang',
-    'tutorial.profile.rank.text':
-      'Dein Rang aus einer Gruppe mit Rangsystem. Wähle Gruppe, Modus und Format, deren Rang auf deinem Profil erscheinen soll - der Rahmen um dein Profil färbt sich passend.',
     'tutorial.profile.favorites.title': 'Lieblings-Commander',
     'tutorial.profile.favorites.text':
       'Bis zu drei Commander, die auf deinem Profil angezeigt werden - zeig, womit du am liebsten spielst.',
@@ -182,7 +176,7 @@ export const tutorial = {
     // --- Profil-Tab (fremdes Profil) ---
     'tutorial.profileView.intro.title': 'Profil eines Spielers',
     'tutorial.profileView.intro.text':
-      'Du siehst das Profil eines anderen Spielers - mit Profilbild, Rang (falls ihr in derselben Gruppe mit Rangsystem seid) und Lieblings-Commandern.',
+      'Du siehst das Profil eines anderen Spielers - mit Profilbild und Lieblings-Commandern.',
     'tutorial.profileView.friend.title': 'Freundschaft & Bilanz',
     'tutorial.profileView.friend.text':
       'Hier fragst du die Freundschaft an (oder beendest sie) und siehst, wie eure gemeinsamen Partien ausgegangen sind - über alle Gruppen und Freundesspiele.',
@@ -326,9 +320,6 @@ export const tutorial = {
     'tutorial.match.friends.title': 'Group or friends',
     'tutorial.match.friends.text':
       'With “Friends” you play a game without a group - with your friends from your profile (and guests without an account). Such games count on your profile and in the friends leaderboard, never in group stats.',
-    'tutorial.match.ranked.title': 'Ranked or casual',
-    'tutorial.match.ranked.text':
-      'If your group uses the ranked system, decide here whether the game counts towards ranks (LP). Casual games still count in the stats. You can switch this later in the match history.',
     'tutorial.match.series.title': 'Single game or best of 3',
     'tutorial.match.series.text':
       'With best of 3, the next game with the same players starts automatically after each saved game, until someone has two wins.',
@@ -352,7 +343,7 @@ export const tutorial = {
       'For games played without a phone at the table: same selection as above, then just enter the winner and date - no tracker needed.',
     'tutorial.match.history.title': 'Match history',
     'tutorial.match.history.text':
-      "Your group's past games with winners, decks and - for ranked games - the LP won or lost. Live-tracked games also show duration, starting player (▶) and the life chart. With the right permissions you can correct the winner, switch ranked/casual or delete a match here.",
+      "Your group's past games with winners and decks. Live-tracked games also show duration, starting player (▶) and the life chart. With the right permissions you can correct the winner or delete a match here.",
 
     // --- Search tab ---
     'tutorial.search.intro.title': 'Search',
@@ -435,7 +426,7 @@ export const tutorial = {
       "All groups you're a member of. Set the active group here and invite new members. Each group's ⋮ menu shows its members and offers “Leave group”.",
     'tutorial.group.leader.title': 'For group leaders',
     'tutorial.group.leader.text':
-      'As the leader, the ⋮ menu additionally has: member permissions, turning the ranked system on or off, visibility of game modes, the qualification threshold for the rankings, as well as rename and delete.',
+      'As the leader, the ⋮ menu additionally has: member permissions, visibility of game modes, the qualification threshold for the rankings, as well as rename and delete.',
     'tutorial.group.players.title': 'Players',
     'tutorial.group.players.text':
       "Add the player names used in matches - even for people without their own account. Tap a name to open their profile; via the ⋮ menu you link them to a member's account, rename or delete them.",
@@ -445,16 +436,13 @@ export const tutorial = {
 
     // --- Profile tab (own profile) ---
     'tutorial.profile.intro.title': 'Profile tab',
-    'tutorial.profile.intro.text': 'Your personal area: profile, rank, decks and your own stats.',
+    'tutorial.profile.intro.text': 'Your personal area: profile, decks and your own stats.',
     'tutorial.profile.inbox.title': 'Inbox',
     'tutorial.profile.inbox.text':
       'New comments on your decks and replies to your comments. Tap one to jump straight to it in the deck.',
     'tutorial.profile.header.title': 'Picture, name & card language',
     'tutorial.profile.header.text':
       'Tap your profile picture to upload a new one and the pencil to change your name. Below are your groups and the language card images are shown in.',
-    'tutorial.profile.rank.title': 'Your rank',
-    'tutorial.profile.rank.text':
-      'Your rank from a group with the ranked system. Choose the group, mode and format whose rank appears on your profile - the frame around your profile takes on its colour.',
     'tutorial.profile.favorites.title': 'Favourite commanders',
     'tutorial.profile.favorites.text':
       'Up to three commanders shown on your profile - show what you like to play most.',
@@ -483,7 +471,7 @@ export const tutorial = {
     // --- Profile tab (someone else's profile) ---
     'tutorial.profileView.intro.title': "A player's profile",
     'tutorial.profileView.intro.text':
-      "You're looking at another player's profile - with picture, rank (if you share a group with the ranked system) and favourite commanders.",
+      "You're looking at another player's profile - with picture and favourite commanders.",
     'tutorial.profileView.friend.title': 'Friendship & record',
     'tutorial.profileView.friend.text':
       'Send a friend request here (or end the friendship) and see how your shared games went - across all groups and friend games.',

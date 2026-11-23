@@ -141,8 +141,7 @@
 
   @if (selectedPlayer(); as selected) {
     <div class="chip-row">
-      @let selectedTier = rankTierFor(selected);
-      <span class="glass-chip avatar-chip active" [class.rank-tinted]="!!selectedTier" [style]="rankVars(selectedTier)">
+      <span class="glass-chip avatar-chip active">
         <app-player-avatar [url]="mtg.playerAvatars()[selected] ?? null" />
         {{ selected }}
       </span>
@@ -161,8 +160,7 @@
     } @else {
       <ul class="player-picker-list">
         @for (player of filteredPlayersForDetail(); track player) {
-          @let tier = rankTierFor(player);
-          <li [class.rank-tinted]="!!tier" [style]="rankVars(tier)" (click)="selectPlayer(player)">
+          <li (click)="selectPlayer(player)">
             <app-player-avatar [url]="mtg.playerAvatars()[player] ?? null" />
             <span class="player-name">{{ player }}</span>
           </li>

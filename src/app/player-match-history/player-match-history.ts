@@ -13,8 +13,6 @@ import { CardDataService } from '../card-data.service';
 import { DeckService } from '../deck.service';
 import { DeckViewerService } from '../deck-viewer.service';
 import { Icon } from '../ui/icon/icon';
-import { lpChangesByMatch } from '../elo';
-import { GroupService } from '../group.service';
 
 /** Ein Teilnehmer eines Spiels, so wie ihn die Historie als Kachel zeigt. */
 export interface PlayerMatchEntry {
@@ -34,8 +32,6 @@ export interface PlayerMatchRow {
   match: Match;
   result: 'win' | 'loss' | 'draw';
   placement: number | null;
-  /** LP-Änderung der Person in dieser Partie (elo.ts), null = Partie ist nicht gewertet. */
-  lpChange: number | null;
   /** ALLE Teilnehmer inklusive der eigenen Person, in der Reihenfolge des Matches. */
   participants: PlayerMatchEntry[];
 }
@@ -60,7 +56,6 @@ export class PlayerMatchHistory {
   private readonly cardData = inject(CardDataService);
   private readonly deckService = inject(DeckService);
   private readonly deckViewer = inject(DeckViewerService);
-  private readonly groupService = inject(GroupService);
 
   /** Spielername, dessen Partien gezeigt werden - null, solange das Profil noch keinen kennt. */
   readonly playerName = input.required<string | null>();
@@ -98,19 +93,6 @@ export class PlayerMatchHistory {
     const quelle =
       extern ??
       (freunde.length > 0 ? [...eigene, ...freunde].sort((a, b) => b.match.date.localeCompare(a.match.date)) : eigene);
-    // Über die GANZE Quelle gerechnet, nicht über die gefilterten Zeilen - die LP einer Partie
-    // hängen an allem, was davor gespielt wurde, auch an Partien anderer Jahre. Nur für die eigene
-    // Gruppe mit Rangsystem: Ränge sind Gruppensache, öffentliche Matches (extern) zeigen keine LP.
-    const lp =
-      !extern && this.groupService.canSeeRankedHere()
-        ? lpChangesByMatch(
-            this.groupService.seasonMatches(
-              eigene.map((q) => q.match),
-              this.groupService.groupId(),
-            ),
-          )
-        : new Map<string, Map<string, number>>();
-
     const rows: PlayerMatchRow[] = [];
     for (const { match, selfName: name } of quelle) {
       // Dieselbe Grenze wie im Match-Tab: alte Excel-Importe bleiben in der Statistik, aber aus
@@ -130,7 +112,6 @@ export class PlayerMatchHistory {
             ? 'win'
             : 'loss',
         placement: me.placement ?? null,
-        lpChange: lp.has(match.id) ? Math.round(lp.get(match.id)!.get(name) ?? 0) : null,
         participants: match.players.map((p) => ({
           name: p.name,
           isSelf: p.name === name,

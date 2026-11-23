@@ -139,32 +139,5 @@
       [allMatches]="allMatchesForReview()"
       [profileIds]="profileIds()"
     />
-
-    <section class="glass-card">
-      <app-info-toggle [label]="i18n.t('stats.friends.infoAria')">
-        <h2 info-title>{{ i18n.t('stats.friends.eloTitle') }}</h2>
-        <p class="hint">{{ i18n.t('stats.friends.eloInfo') }}</p>
-      </app-info-toggle>
-      @if (elo().length === 0) {
-        <p class="hint">{{ i18n.t('stats.friends.eloEmpty') }}</p>
-      } @else {
-        <ol class="ranking">
-          @for (e of elo(); track e.name; let i = $index) {
-            <li>
-              <span class="pos">{{ i + 1 }}.</span>
-              <span class="name">{{ e.name }}</span>
-              <span class="rate">{{
-                e.provisional
-                  ? i18n.t('profile.friends.placement', { games: e.games })
-                  : e.lp + ' LP'
-              }}</span>
-              <span class="detail">{{
-                i18n.t('stats.friends.winsOfGames', { wins: e.wins, games: e.games })
-              }}</span>
-            </li>
-          }
-        </ol>
-      }
-    </section>
   }
 }

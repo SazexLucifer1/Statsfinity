@@ -98,7 +98,6 @@ export function mapMatchRow(row: any): Match {
     tournamentMatchId: row.tournament_match_id ?? undefined,
     tournamentGameNumber: row.tournament_game_number ?? undefined,
     countsInGeneralStats: row.counts_in_general_stats ?? true,
-    isRanked: row.is_ranked ?? true,
     startedAt: row.started_at ?? undefined,
     winCondition: row.win_condition ?? undefined,
     winTurn: row.win_turn ?? undefined,

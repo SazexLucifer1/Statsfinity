@@ -50,8 +50,6 @@ function stableStringify(value: unknown): string {
 export interface LiveSessionState {
   mode: GameMode;
   format: DeckFormat | null;
-  /** Ranked oder freies Match (Match.isRanked); fehlt bei Sessions von vor diesem Feature -> Ranked. */
-  isRanked?: boolean;
   /** Panel-Key mit Monarch- bzw. Initiative-Marke; fehlen bei älteren Sessions -> niemand. */
   monarchKey?: string | null;
   initiativeKey?: string | null;
@@ -154,11 +152,6 @@ export class GameSessionService {
   readonly mode = signal<GameMode>('Normal');
   /** Gespieltes MTG-Format, kombiniert mit mode - null nur bei mode 'Spezialevent' (siehe setMode()). */
   readonly format = signal<DeckFormat | null>('Commander');
-  /**
-   * Ranked oder freies Match - nur wählbar, wenn die Gruppe Ranked spielt
-   * (GroupService.rankedEnabled); sonst ohnehin egal, weil nicht gerechnet wird. Standard Ranked.
-   */
-  readonly isRanked = signal(true);
   readonly selectedPlayers = signal<MatchPlayer[]>([]);
   readonly winner = signal<string | null>(null);
   /**
@@ -229,7 +222,6 @@ export class GameSessionService {
   private readonly syncSnapshot = computed<LiveSessionState>(() => ({
     mode: this.mode(),
     format: this.format(),
-    isRanked: this.isRanked(),
     monarchKey: this.monarchKey(),
     initiativeKey: this.initiativeKey(),
     counters: this.counters(),
@@ -780,7 +772,6 @@ export class GameSessionService {
 
   private applySyncSnapshot(state: LiveSessionState): void {
     this.mode.set(state.mode);
-    this.isRanked.set(state.isRanked ?? true);
     this.monarchKey.set(state.monarchKey ?? null);
     this.initiativeKey.set(state.initiativeKey ?? null);
     this.counters.set(state.counters ?? {});
@@ -1297,7 +1288,6 @@ export class GameSessionService {
             : undefined,
         tournamentMatchId,
         countsInGeneralStats: this.activeTournamentCountsInStats(),
-        isRanked: this.isRanked(),
         friendGame: this.friendMode(),
         startedAt: this.startedAt() ?? undefined,
         lifeLog: this.buildLifeLog(),
@@ -1341,7 +1331,6 @@ export class GameSessionService {
           this.mode() === 'Draft' && draftSet
             ? { id: draftSet.id, code: draftSet.code, name: draftSet.name, releasedAt: draftSet.releasedAt }
             : undefined,
-        isRanked: this.isRanked(),
         friendGame: this.friendMode(),
         playedAt: playedAt.toISOString(),
       });
@@ -1372,7 +1361,6 @@ export class GameSessionService {
     const setup = {
       mode: this.mode(),
       format: this.format(),
-      isRanked: this.isRanked(),
       players: this.selectedPlayers().map(({ turnOrder: _, eliminatedBy: __, ...p }) => p),
       cubeId: this.selectedCubeId(),
       draftSet: this.selectedDraftSet(),
@@ -1383,7 +1371,6 @@ export class GameSessionService {
     this.deadMessageMap.set({});
     this.mode.set(setup.mode);
     this.format.set(setup.format);
-    this.isRanked.set(setup.isRanked);
     this.selectedPlayers.set(setup.players);
     this.selectedCubeId.set(setup.cubeId);
     this.selectedDraftSet.set(setup.draftSet);
@@ -1449,7 +1436,6 @@ export class GameSessionService {
     this.selectedDraftSet.set(null);
     this.mode.set('Normal');
     this.format.set('Commander');
-    this.isRanked.set(true);
     this.counters.set({});
     this.series.set(null);
     this.bestOfThree.set(false);

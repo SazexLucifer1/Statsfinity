@@ -24,52 +24,6 @@ export class GroupService {
     () => this.myGroups().find((g) => g.id === this.groupId())?.role === 'owner'
   );
 
-  /**
-   * Spielt die Gruppe mit Elo-Rangsystem (groups.ranked_enabled, sql/ranked-gruppe-2026-09-30.sql)?
-   * Eigene Abfrage statt Teil von loadMyGroups(): fehlt die Spalte noch, soll nur der Schalter
-   * verschwinden, nicht die ganze Gruppenliste. Ohne Eintrag gilt "an" (der Standard).
-   */
-  private readonly rankedEnabledByGroup = signal<Map<string, boolean>>(new Map());
-  /** false, solange die Migration fehlt - dann gibt es keinen Schalter, Ranked bleibt an. */
-  readonly rankedSettingAvailable = signal(true);
-
-  isRankedGroup(groupId: string | null): boolean {
-    if (!groupId) return false;
-    return this.rankedEnabledByGroup().get(groupId) ?? true;
-  }
-
-  /** Ranked in der aktuell aktiven Gruppe? */
-  readonly rankedEnabled = computed(() => this.isRankedGroup(this.groupId()));
-
-  /**
-   * Wer die Wertung sehen darf: alle, solange das Rangsystem an ist - ist es aus, nur der
-   * Gruppenleiter (Wunsch des Users, 06.10.2026: im Hintergrund weiterrechnen, nur nicht
-   * zeigen). Gerechnet wird ohnehin immer, Partien werden weiter als Ranked gespeichert.
-   */
-  canSeeRanked(groupId: string | null): boolean {
-    return !!groupId && (this.isRankedGroup(groupId) || this.isOwnerOf(groupId));
-  }
-  readonly canSeeRankedHere = computed(() => this.canSeeRanked(this.groupId()));
-
-  /**
-   * Start der laufenden Saison je Gruppe (groups.ranked_since, sql/ranked-saison-2026-10-06.sql):
-   * nur Partien ab diesem Zeitpunkt zählen für die Elo. Fehlt die Spalte, zählt alles.
-   */
-  private readonly rankedSinceByGroup = signal<Map<string, string | null>>(new Map());
-  readonly rankedSeasonAvailable = signal(true);
-
-  rankedSince(groupId: string | null): string | null {
-    return groupId ? (this.rankedSinceByGroup().get(groupId) ?? null) : null;
-  }
-
-  /** Partien der laufenden Saison dieser Gruppe - vor jeder Elo-Rechnung anwenden. */
-  seasonMatches<T extends { date: string }>(matches: readonly T[], groupId: string | null): T[] {
-    const since = this.rankedSince(groupId);
-    if (!since) return [...matches];
-    const start = new Date(since).getTime();
-    return matches.filter((m) => new Date(m.date).getTime() >= start);
-  }
-
   /** Name der aktuell aktiven Gruppe, oder null solange keine Gruppe aktiv ist (z.B. beim ersten
    * Laden) - fürs Gruppen-Tab, damit z.B. der "Spieler"-Abschnitt erkennbar zeigt, für welche
    * Gruppe er gerade gilt (relevant sobald jemand Mitglied in mehreren Gruppen ist). */
@@ -154,7 +108,6 @@ export class GroupService {
       }));
 
     this.myGroups.set(groups);
-    void this.loadRankedEnabled(groups.map((g) => g.id));
 
     // Die eigenen Rechte ergeben sich jetzt aus der zugewiesenen Rolle (group_roles.permissions)
     // statt aus einzeln vergebenen Rechten (siehe loadGroupRoles/createRole/assignRole) - der
@@ -565,70 +518,6 @@ export class GroupService {
       avatarUrl: row.profiles?.avatar_url ?? null,
       customRoleId: row.custom_role_id ?? null,
     }));
-  }
-
-
-  private async loadRankedEnabled(groupIds: string[]): Promise<void> {
-    if (groupIds.length === 0 || !this.rankedSettingAvailable()) return;
-    const { data, error } = await supabase
-      .from('groups')
-      .select('id, ranked_enabled')
-      .in('id', groupIds);
-    if (error) {
-      if (error.code === '42703') {
-        console.warn('Spalte groups.ranked_enabled fehlt noch - sql/ranked-gruppe-2026-09-30.sql im Supabase-SQL-Editor ausführen.');
-        this.rankedSettingAvailable.set(false);
-      } else {
-        console.error('Konnte Ranked-Einstellung nicht laden:', error);
-      }
-      return;
-    }
-    this.rankedEnabledByGroup.set(
-      new Map((data ?? []).map((row: { id: string; ranked_enabled: boolean }) => [row.id, row.ranked_enabled !== false]))
-    );
-    void this.loadRankedSince(groupIds);
-  }
-
-  private async loadRankedSince(groupIds: string[]): Promise<void> {
-    if (!this.rankedSeasonAvailable()) return;
-    const { data, error } = await supabase.from('groups').select('id, ranked_since').in('id', groupIds);
-    if (error) {
-      if (error.code === '42703') {
-        console.warn('Spalte groups.ranked_since fehlt noch - sql/ranked-saison-2026-10-06.sql im Supabase-SQL-Editor ausführen.');
-        this.rankedSeasonAvailable.set(false);
-      } else {
-        console.error('Konnte Saisonstart nicht laden:', error);
-      }
-      return;
-    }
-    this.rankedSinceByGroup.set(
-      new Map((data ?? []).map((row: { id: string; ranked_since: string | null }) => [row.id, row.ranked_since])),
-    );
-  }
-
-  /** Neue Saison: ab jetzt zählen nur noch neue Partien - nur der Gruppenleiter. */
-  async startNewRankedSeason(groupId: string): Promise<string | null> {
-    if (!this.isOwnerOf(groupId)) return null;
-    const now = new Date().toISOString();
-    const { error } = await supabase.from('groups').update({ ranked_since: now }).eq('id', groupId);
-    if (error) {
-      console.error('Konnte Saison nicht neu starten:', error);
-      return null;
-    }
-    this.rankedSinceByGroup.update((map) => new Map(map).set(groupId, now));
-    return now;
-  }
-
-  /** Rangsystem der Gruppe an/aus - nur der Gruppenleiter (Host). */
-  async setRankedEnabled(groupId: string, enabled: boolean): Promise<boolean> {
-    if (!this.isOwnerOf(groupId)) return false;
-    const { error } = await supabase.from('groups').update({ ranked_enabled: enabled }).eq('id', groupId);
-    if (error) {
-      console.error('Konnte Ranked-Einstellung nicht speichern:', error);
-      return false;
-    }
-    this.rankedEnabledByGroup.update((map) => new Map(map).set(groupId, enabled));
-    return true;
   }
 
   async renameGroup(groupId: string, name: string): Promise<boolean> {

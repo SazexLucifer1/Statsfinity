@@ -7,11 +7,8 @@ import { DeckService } from '../deck.service';
 import { NavigationService } from '../navigation.service';
 import { PlayerAvatar } from '../player-avatar/player-avatar';
 import { I18nService } from '../i18n.service';
-import { RankedBadgeService } from '../ranked-badge.service';
 import { DialogService } from '../dialog.service';
 import { GAME_MODES, GameMode } from '../models';
-import { RankTier, rankTiersFor } from '../elo';
-import { rankStyle } from '../ui/rank-badge/rank-badge';
 import { GROUP_PERMISSION_CATEGORIES, GroupPermission, GroupRole } from '../group-permissions';
 import { OverflowMenu } from '../ui/overflow-menu/overflow-menu';
 import { Icon } from '../ui/icon/icon';
@@ -30,29 +27,6 @@ export class GroupTab {
   private readonly navigation = inject(NavigationService);
   readonly i18n = inject(I18nService);
   private readonly dialog = inject(DialogService);
-  private readonly rankedBadges = inject(RankedBadgeService);
-
-  /**
-   * Rangfarbe der Spielerkarten - der Standard-Rang (Normal + Commander) der aktiven Gruppe, weil
-   * der Gruppen-Tab keine Modus- oder Format-Auswahl hat. Nur mit eingeschaltetem Rangsystem.
-   */
-  private readonly rankTiers = computed<Map<string, RankTier>>(() =>
-    this.groupService.rankedEnabled()
-      ? rankTiersFor(
-          this.groupService.seasonMatches(this.mtg.history(), this.groupService.groupId()),
-          'Normal',
-          'Commander',
-        )
-      : new Map(),
-  );
-
-  rankTierFor(player: string): RankTier | null {
-    return this.rankTiers().get(player) ?? null;
-  }
-
-  rankVars(tier: RankTier | null): Record<string, string> | null {
-    return rankStyle(tier);
-  }
 
   // --- Gruppen erstellen/wechseln ---
 
@@ -634,36 +608,6 @@ export class GroupTab {
   readonly editingRoleId = signal<string | null>(null);
   readonly roleNameDraft = signal('');
   readonly rolePermissionsDraft = signal<Set<GroupPermission>>(new Set());
-
-  /**
-   * Rangsystem der Gruppe an/aus (nur Gruppenleiter). Beim Ausschalten geht nichts verloren -
-   * die Wertung wird ohnehin nicht gespeichert, sondern aus den Partien gerechnet, und kommt beim
-   * Wiedereinschalten unverändert zurück. Das sagt die Rückfrage auch.
-   */
-  async toggleRanked(groupId: string): Promise<void> {
-    const enabled = this.groupService.isRankedGroup(groupId);
-    const message = this.i18n.t(enabled ? 'group.rankedConfirmOff' : 'group.rankedConfirmOn');
-    if (!(await this.dialog.confirm(message))) return;
-    await this.groupService.setRankedEnabled(groupId, !enabled);
-  }
-
-  /** Rangliste neu starten, ohne Abzeichen - nur Gruppenleiter. */
-  async resetRanked(groupId: string): Promise<void> {
-    if (!(await this.dialog.confirm(this.i18n.t('group.rankedResetConfirm')))) return;
-    const ok = await this.groupService.startNewRankedSeason(groupId);
-    await this.dialog.alert(this.i18n.t(ok ? 'group.rankedResetDone' : 'group.rankedSeasonFailed'));
-  }
-
-  /** Saison beenden: Abzeichen für alle mit fertigem Rang, dann Neustart - nur Gruppenleiter. */
-  async endRankedSeason(groupId: string, groupName: string): Promise<void> {
-    if (!(await this.dialog.confirm(this.i18n.t('group.rankedEndSeasonConfirm')))) return;
-    const count = await this.rankedBadges.endSeason(groupId, groupName);
-    await this.dialog.alert(
-      count === null
-        ? this.i18n.t('group.rankedSeasonFailed')
-        : this.i18n.t('group.rankedEndSeasonDone', { count }),
-    );
-  }
 
   async openPermissionsDialog(groupId: string): Promise<void> {
     this.permissionsGroupId.set(groupId);

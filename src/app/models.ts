@@ -215,12 +215,6 @@ export interface Match {
    * Match-Verlauf sichtbar, da es ja wirklich gespielt wurde.
    */
   countsInGeneralStats: boolean;
-  /**
-   * Ranked (zählt für die Elo-Wertung der Gruppe, siehe elo.ts) oder freies Match - beim Start
-   * gewählt (matches.is_ranked, sql/ranked-gruppe-2026-09-30.sql). Fehlt der Wert (Migration
-   * ausstehend, alte Zeilen), gilt das Match als Ranked. Turnierspiele zählen nie.
-   */
-  isRanked?: boolean;
   /** Start der Partie im Tracker (matches.started_at); Dauer = date - startedAt. Fehlt = unbekannt. */
   startedAt?: string;
   /** Siegart (matches.win_condition). Fehlt = unbekannt. */

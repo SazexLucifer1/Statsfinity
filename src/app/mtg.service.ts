@@ -23,7 +23,6 @@ const MATCH_HISTORY_SELECT = `
   tournament_match_id,
   tournament_game_number,
   counts_in_general_stats,
-  is_ranked,
   started_at,
   win_condition,
   win_turn,
@@ -57,24 +56,8 @@ function isMissingGameFormatError(error: { code?: string; message?: string } | n
   return error.code === '42703' || (error.message ?? '').includes('game_format');
 }
 
-/**
- * Fehlt matches.is_ranked noch (sql/ranked-gruppe-2026-09-30.sql)? Dann einmal je Sitzung ohne sie
- * laden und speichern - alle Partien gelten dann als Ranked, wie vor der Migration.
- */
-let isRankedSpalteVerfuegbar = true;
-
-function isMissingIsRankedError(error: { code?: string; message?: string } | null): boolean {
-  if (!error || !isRankedSpalteVerfuegbar) return false;
-  if (error.code !== '42703' && error.code !== 'PGRST204') return false;
-  if (!(error.message ?? '').includes('is_ranked')) return false;
-  console.warn('Spalte matches.is_ranked fehlt noch - sql/ranked-gruppe-2026-09-30.sql im Supabase-SQL-Editor ausführen. Bis dahin zählen alle Partien als Ranked.');
-  isRankedSpalteVerfuegbar = false;
-  return true;
-}
-
-function ohneIsRanked(select: string): string {
-  const ohne = isRankedSpalteVerfuegbar ? select : select.replace('  is_ranked,\n', '');
-  return ohnePerformance(ohneRauswurf(ohnePartieVerlauf(ohne)));
+function ohneFehlendeSpalten(select: string): string {
+  return ohnePerformance(ohneRauswurf(ohnePartieVerlauf(select)));
 }
 
 /**
@@ -845,24 +828,23 @@ export class MtgService {
     run: (select: string) => PromiseLike<{ data: any[] | null; error: any }>,
     label: string
   ): Promise<any[] | null> {
-    let first = await run(ohneIsRanked(MATCH_HISTORY_SELECT));
+    let first = await run(ohneFehlendeSpalten(MATCH_HISTORY_SELECT));
     // Mehrere neuere Spalten können fehlen - jede schaltet sich beim ersten Fehler einmal selbst ab.
     for (
       let i = 0;
       i < 4 &&
-      (isMissingIsRankedError(first.error) ||
-        isMissingPartieVerlaufError(first.error) ||
+      (isMissingPartieVerlaufError(first.error) ||
         isMissingRauswurfError(first.error) ||
         isMissingPerformanceError(first.error));
       i++
     ) {
-      first = await run(ohneIsRanked(MATCH_HISTORY_SELECT));
+      first = await run(ohneFehlendeSpalten(MATCH_HISTORY_SELECT));
     }
     if (!first.error) return first.data ?? [];
 
     if (isMissingGameFormatError(first.error)) {
       console.warn(`${label}: Spalte game_format fehlt noch (SQL-Migration ausstehend), lade ohne sie.`);
-      const retry = await run(ohneIsRanked(MATCH_HISTORY_SELECT_WITHOUT_FORMAT));
+      const retry = await run(ohneFehlendeSpalten(MATCH_HISTORY_SELECT_WITHOUT_FORMAT));
       if (!retry.error) return retry.data ?? [];
       console.error(label, retry.error);
       return null;
@@ -927,21 +909,6 @@ export class MtgService {
     const matches = (rows ?? []).map((row: any) => mapMatchRow(row));
     this.friendHistory.set(matches);
     return matches;
-  }
-
-  /** Spielername eines Accounts in einer (nicht unbedingt aktiven) eigenen Gruppe, oder null. */
-  async playerNameInGroup(groupId: string, userId: string): Promise<string | null> {
-    const { data, error } = await supabase
-      .from('players')
-      .select('display_name')
-      .eq('group_id', groupId)
-      .eq('user_id', userId)
-      .maybeSingle();
-    if (error) {
-      console.error('Konnte Spielernamen nicht laden:', error);
-      return null;
-    }
-    return (data?.display_name as string | undefined) ?? null;
   }
 
   /**
@@ -1040,8 +1007,6 @@ export class MtgService {
       tournamentMatchId?: string;
       /** Default true (normale Matches zählen immer) - siehe Match.countsInGeneralStats. */
       countsInGeneralStats?: boolean;
-      /** Default true; Turnierspiele werden immer als frei gespeichert - siehe Match.isRanked. */
-      isRanked?: boolean;
       /** Lebenspunkte-Verlauf aus dem Tracker (matches.life_log) - nur gespeichert, nie lokal gehalten. */
       lifeLog?: LifeLog;
       /** Nachgetragene Partie: wann sie gespielt wurde (sonst setzt die Datenbank "jetzt"). */
@@ -1059,9 +1024,6 @@ export class MtgService {
     // Die automatische Deck-Zuordnung sucht in der Gruppe - ein Freundesspiel hat keine.
     const players = friendGame ? match.players : await this.resolveAutoDeckLinks(match.players, match.mode);
 
-    // Ranked ist Gruppensache; Freundesspiele zählen nie für die Elo einer Gruppe.
-    const isRanked = !friendGame && !match.tournamentMatchId && (match.isRanked ?? true);
-
     // Neue Siegarten (sql/siegarten-erweitert-2026-10-21.sql): Fehlt die Migration, lehnt die
     // Prüfregel sie ab (23514) - dann lieber "Anderes" speichern als die ganze Partie verlieren.
     let winCondition = match.winCondition ?? null;
@@ -1071,7 +1033,6 @@ export class MtgService {
       supabase
         .from('matches')
         .insert({
-          ...(isRankedSpalteVerfuegbar ? { is_ranked: isRanked } : {}),
           group_id: groupId,
           game_mode: match.mode,
           game_format: match.format ?? null,
@@ -1100,9 +1061,7 @@ export class MtgService {
         .single();
     // Fehlt eine der neueren Spalten, schaltet der Versuch sie ab und der nächste läuft ohne.
     let { data: matchRow, error: matchError } = await insertMatch();
-    if (isMissingIsRankedError(matchError)) ({ data: matchRow, error: matchError } = await insertMatch());
     if (isMissingPartieVerlaufError(matchError)) ({ data: matchRow, error: matchError } = await insertMatch());
-    if (isMissingIsRankedError(matchError)) ({ data: matchRow, error: matchError } = await insertMatch());
     if (isMissingPerformanceError(matchError)) ({ data: matchRow, error: matchError } = await insertMatch());
     if (
       matchError?.code === '23514' &&
@@ -1190,7 +1149,6 @@ export class MtgService {
       id: matchRow.id,
       date: matchRow.played_at,
       countsInGeneralStats: match.countsInGeneralStats ?? true,
-      isRanked,
       winCondition: performanceVerfuegbar ? match.winCondition : undefined,
       winTurn: performanceVerfuegbar ? match.winTurn : undefined,
       note: (performanceVerfuegbar && match.note?.trim()) || undefined,
@@ -1206,26 +1164,6 @@ export class MtgService {
     if (friendGame) this.friendHistory.update((matches) => [full, ...matches]);
     else this.history.update((matches) => [full, ...matches]);
     return matchRow.id;
-  }
-
-  /**
-   * Ranked/frei nachträglich umschalten - die Kontrolle des Gruppenleiters bzw. aller, die
-   * Ergebnisse bearbeiten dürfen (match.editResult), z. B. für ein versehentlich als Ranked
-   * gestartetes Spaßspiel. Turnierspiele bleiben immer frei.
-   */
-  async setMatchRanked(matchId: string, isRanked: boolean): Promise<void> {
-    if (!this.groupService.hasPermission('match.editResult') || !isRankedSpalteVerfuegbar) return;
-    const { error } = await supabase.from('matches').update({ is_ranked: isRanked }).eq('id', matchId);
-    if (error) {
-      if (!isMissingIsRankedError(error)) console.error('Konnte Ranked/Frei nicht speichern:', error);
-      return;
-    }
-    this.history.update((matches) => matches.map((m) => (m.id === matchId ? { ...m, isRanked } : m)));
-  }
-
-  /** Ob Ranked/Frei gespeichert werden kann (Migration gelaufen). */
-  isRankedAvailable(): boolean {
-    return isRankedSpalteVerfuegbar;
   }
 
   /**
