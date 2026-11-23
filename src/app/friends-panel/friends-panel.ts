@@ -5,10 +5,8 @@ import { InfoToggle } from '../ui/info-toggle/info-toggle';
 import { I18nService } from '../i18n.service';
 import { DialogService } from '../dialog.service';
 import { ProfileService } from '../profile.service';
-import { MtgService } from '../mtg.service';
 import { NavigationService } from '../navigation.service';
 import { FriendActivity, FriendOverall, FriendsService, ProfileHit } from '../friends.service';
-import { divisionLabel, eloRanking, rankFromLp } from '../elo';
 import { gameModeLabel } from '../match-utils';
 import { DeckFormat, GameMode } from '../models';
 import { PlayerAvatar } from '../player-avatar/player-avatar';
@@ -33,7 +31,6 @@ export class FriendsPanel {
   readonly friends = inject(FriendsService);
   private readonly dialog = inject(DialogService);
   private readonly profileService = inject(ProfileService);
-  private readonly mtg = inject(MtgService);
   private readonly navigation = inject(NavigationService);
   private readonly cubes = inject(CubeService);
 
@@ -92,16 +89,6 @@ export class FriendsPanel {
   );
   readonly belowMin = computed(() => this.overall().filter((o) => o.games < this.MIN_GAMES));
 
-  /**
-   * Elo unter Freunden: nur aus Freundesspielen, mit derselben Rechnung wie in der Gruppe.
-   * Freundesspiele sind nie "Ranked" einer Gruppe - hier zählen sie trotzdem, es ist ja eine
-   * eigene Wertung.
-   */
-  readonly friendElo = computed(() => {
-    const matches = this.mtg.friendHistory().map((m) => ({ ...m, isRanked: true }));
-    return eloRanking(matches, 'Normal' as GameMode).sort((a, b) => b.lp - a.lp);
-  });
-
   constructor() {
     effect(() => {
       const tab = this.tab();
@@ -116,14 +103,8 @@ export class FriendsPanel {
           this.overall.set(o);
           this.overallLoaded.set(true);
         });
-        this.mtg.loadFriendMatches();
       }
     });
-  }
-
-  rankLabel(lp: number): string {
-    const rank = rankFromLp(lp);
-    return `${this.i18n.t('profile.rank.tier.' + rank.tier)} ${divisionLabel(rank.division)}`.trim();
   }
 
   activityModeLabel(a: FriendActivity): string {

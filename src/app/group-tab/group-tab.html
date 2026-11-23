@@ -55,21 +55,6 @@
                 @if (group.role === 'owner') {
                   <button class="glass-button" (click)="openPermissionsDialog(group.id)">{{ i18n.t('group.permissions') }}</button>
                 }
-                <!-- Rangsystem an/aus: allein Sache des Gruppenleiters, deshalb kein eigenes Recht. -->
-                @if (group.role === 'owner' && groupService.rankedSettingAvailable()) {
-                  <button class="glass-button" (click)="toggleRanked(group.id)">
-                    {{ i18n.t(groupService.isRankedGroup(group.id) ? 'group.rankedTurnOff' : 'group.rankedTurnOn') }}
-                  </button>
-                }
-                <!-- Saison: Neustart bzw. Abschluss mit Abzeichen (sql/ranked-saison-2026-10-06.sql). -->
-                @if (group.role === 'owner' && groupService.rankedSeasonAvailable()) {
-                  <button class="glass-button" (click)="endRankedSeason(group.id, group.name)">
-                    {{ i18n.t('group.rankedEndSeason') }}
-                  </button>
-                  <button class="glass-button danger" (click)="resetRanked(group.id)">
-                    {{ i18n.t('group.rankedReset') }}
-                  </button>
-                }
                 @if (groupService.hasPermissionFor(group.id, 'stats.visibility')) {
                   <button class="glass-button" (click)="openVisibilityDialog(group.id)">{{ i18n.t('group.visibility') }}</button>
                 }
@@ -314,8 +299,7 @@
   } @else {
     <ul class="player-list player-grid">
       @for (player of mtg.allPlayers(); track player) {
-        @let tier = rankTierFor(player);
-        <li [class.rank-tinted]="!!tier" [style]="rankVars(tier)">
+        <li>
           @if (editingPlayer() === player) {
             <input
               class="glass-input"

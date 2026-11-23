@@ -1,8 +1,6 @@
 /** Übersetzungen: match. Beide Sprachen bewusst nebeneinander - wer eine ändert, sieht die andere. */
 export const match = {
   de: {
-    'match.ranked': 'Ranked',
-    'match.casual': 'Frei',
     'match.durationMinutes': '{{min}} Min.',
     'match.durationHours': '{{h}} Std. {{min}} Min.',
     'match.winTurnShort': 'Zug {{turn}}',
@@ -15,7 +13,7 @@ export const match = {
     'match.playWithGroup': 'Gruppe',
     'match.playWithFriends': 'Freunde',
     'match.noFriendsYet': 'Noch keine Freunde. Im Profil unter „Freunde“ kannst du welche hinzufügen.',
-    'match.friendGameHint': 'Freundesspiele gehören zu keiner Gruppe: Sie erscheinen bei allen Mitspielern im Profil und in der Freunde-Rangliste, aber nicht in Gruppenstatistik oder Elo. Der Tracker läuft dabei nur auf diesem Gerät.',
+    'match.friendGameHint': 'Freundesspiele gehören zu keiner Gruppe: Sie erscheinen bei allen Mitspielern im Profil und in der Freunde-Rangliste, aber nicht in der Gruppenstatistik. Der Tracker läuft dabei nur auf diesem Gerät.',
     'match.me': 'Ich',
     'match.showLifeCurve': 'Lebenspunkte-Verlauf',
     'match.hideLifeCurve': 'Verlauf ausblenden',
@@ -28,8 +26,6 @@ export const match = {
     'match.backfillSave': 'Partie speichern',
     'match.backfillSaved': 'Partie nachgetragen.',
     'match.backfillFuture': 'Das Datum liegt in der Zukunft.',
-    'match.rankedAria': 'Ranked oder freies Match',
-    'match.rankedEditHint': 'Zählt dieses Match für die Ränge?',
     // --- Match-Tab: Neues Match ---
     'match.newMatch': 'Neues Match',
     'match.gameMode': 'Spielmodus',
@@ -189,8 +185,6 @@ export const match = {
     'game.deadFallback': 'TOT',
   },
   en: {
-    'match.ranked': 'Ranked',
-    'match.casual': 'Casual',
     'match.durationMinutes': '{{min}} min',
     'match.durationHours': '{{h}} h {{min}} min',
     'match.winTurnShort': 'Turn {{turn}}',
@@ -203,7 +197,7 @@ export const match = {
     'match.playWithGroup': 'Group',
     'match.playWithFriends': 'Friends',
     'match.noFriendsYet': 'No friends yet. Add some in your profile under “Friends”.',
-    'match.friendGameHint': 'Friend games belong to no group: they show up in every participant’s profile and in the friends leaderboard, but not in group stats or Elo. The tracker only runs on this device.',
+    'match.friendGameHint': 'Friend games belong to no group: they show up in every participant’s profile and in the friends leaderboard, but not in group stats. The tracker only runs on this device.',
     'match.me': 'Me',
     'match.showLifeCurve': 'Life total history',
     'match.hideLifeCurve': 'Hide history',
@@ -216,8 +210,6 @@ export const match = {
     'match.backfillSave': 'Save game',
     'match.backfillSaved': 'Game logged.',
     'match.backfillFuture': 'That date is in the future.',
-    'match.rankedAria': 'Ranked or casual match',
-    'match.rankedEditHint': 'Does this match count towards the ranks?',
     // --- Match tab: New match ---
     'match.newMatch': 'New Match',
     'match.gameMode': 'Game Mode',

@@ -192,7 +192,7 @@ export class PersonalStats {
     return [...years].sort((a, b) => b - a);
   });
 
-  /** Für den Match-Verlauf: in der Gruppe dessen eigene Quelle (mit LP), sonst diese Partien. */
+  /** Für den Match-Verlauf: in der Gruppe dessen eigene Quelle, sonst diese Partien. */
   readonly historyEntries = computed(() => {
     if (this.effectiveScope() === 'group') return null;
     const name = this.person().name;

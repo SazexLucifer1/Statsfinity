@@ -1,6 +1,6 @@
 @if (profileService.viewingUserId()) {
 <div class="profile-grid">
-  <section class="glass-card span-full" [class.rank-frame]="!!rankFrameStyle()" [style]="rankFrameStyle()">
+  <section class="glass-card span-full">
     @if (profileService.viewingBusy()) {
       <p class="hint">{{ i18n.t('profile.loadingProfile') }}</p>
       <button class="glass-button small" (click)="profileService.stopViewingProfile()">{{ i18n.t('profile.backToMyProfile') }}</button>
@@ -26,10 +26,6 @@
           <button class="glass-button small" (click)="profileService.stopViewingProfile()">{{ i18n.t('profile.backToMyProfile') }}</button>
         </div>
       </div>
-      @if (rankGroupId()) {
-        <app-profile-rank [entry]="rankEntry()" [mode]="rankChoice().mode" [format]="rankChoice().format" [groupName]="rankGroupName()" />
-      }
-
       @if (profileService.viewingUserId(); as viewedUserId) {
         <app-friend-status [userId]="viewedUserId" [name]="viewed.displayName" />
       }
@@ -62,11 +58,6 @@
       <button class="glass-button small" (click)="profileService.stopViewingProfile()">{{ i18n.t('profile.backToMyProfile') }}</button>
     }
   </section>
-
-  <!-- Saison-Abzeichen: für alle sichtbar, auch ohne Login (sql/ranked-saison-2026-10-06.sql). -->
-  @if (profileService.viewingUserId(); as badgeUserId) {
-    <app-ranked-badges [userId]="badgeUserId" />
-  }
 
   <!-- Sammlung eines Freundes, nur lesen. RLS gibt sie nur Freunden heraus - für alle anderen
        bleibt die Liste leer und der Abschnitt verschwindet. -->
@@ -132,7 +123,7 @@
 } @else if (profileService.viewingPlayerId(); as npcPlayerId) {
 
 <div class="profile-grid">
-<section class="glass-card span-full" [class.rank-frame]="!!rankFrameStyle()" [style]="rankFrameStyle()">
+<section class="glass-card span-full">
   <div class="viewing-profile-header-row">
     <div class="avatar-row">
       <div class="avatar-circle">
@@ -150,10 +141,6 @@
       <button class="glass-button small" (click)="profileService.stopViewingProfile()">{{ i18n.t('profile.backToMyProfile') }}</button>
     </div>
   </div>
-  @if (rankGroupId()) {
-        <app-profile-rank [entry]="rankEntry()" [mode]="rankChoice().mode" [format]="rankChoice().format" [groupName]="rankGroupName()" />
-      }
-
   @if (viewingNpcFavoriteCommanders().length > 0 || groupService.hasPermission('npc.favoriteCommanders')) {
     <div class="favorite-commanders-col" data-tutorial="profile-favorites">
       <div class="section-header-row">
@@ -232,7 +219,7 @@
      nichts zu tun. -->
 <app-comment-inbox data-tutorial="profile-inbox" />
 
-<section class="glass-card span-full" [class.rank-frame]="!!rankFrameStyle()" [style]="rankFrameStyle()">
+<section class="glass-card span-full">
     <div class="profile-main-row">
       <div class="profile-left" data-tutorial="profile-header">
         <h2>{{ i18n.t('profile.myProfile') }}</h2>
@@ -346,27 +333,6 @@
         </div>
       </div>
 
-      <!-- Eigene Rasterzelle statt in .profile-left: dort ist neben den Icon-Knöpfen auf dem Handy
-           kaum Platz, der Rang bräche Wort für Wort um. -->
-      @if (profileService.profile() && rankGroupId()) {
-        <app-profile-rank
-          class="profile-rank-cell"
-          data-tutorial="profile-rank"
-          [entry]="rankEntry()"
-          [mode]="rankChoice().mode"
-          [format]="rankChoice().format"
-          [modes]="rankModes()"
-          [formats]="rankFormats()"
-          [groups]="rankableGroups()"
-          [groupId]="rankGroupId()"
-          [groupName]="rankGroupName()"
-          [editable]="true"
-          (modeChange)="setRankMode($event)"
-          (formatChange)="setRankFormat($event)"
-          (groupChange)="setRankGroup($event)"
-        />
-      }
-
       <div class="favorite-commanders-col" data-tutorial="profile-favorites">
         <h3>{{ i18n.t(mtg.myPlayerName() === 'Adrian' ? 'profile.myFavoriteGliederAdrian' : 'profile.myFavoriteCommanders') }}</h3>
         <div class="favorite-commanders-row">
@@ -402,10 +368,6 @@
     </div>
 
   </section>
-
-  @if (profileService.profile()?.id; as badgeUserId) {
-    <app-ranked-badges [userId]="badgeUserId" />
-  }
 
   <!-- Statistik- und Deck-Bereich. Steht als ng-template auf oberster Ebene, weil ihn die
        Developer-Vollansicht eines FREMDEN Profils unverändert mitbenutzt - eine zweite, von Hand

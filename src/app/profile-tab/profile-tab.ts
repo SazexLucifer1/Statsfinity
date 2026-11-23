@@ -1,4 +1,3 @@
-import { RankedBadges } from '../ranked-badges/ranked-badges';
 import { CollectionPanel } from '../collection-panel/collection-panel';
 import { CollectionService } from '../collection.service';
 import { CubeService } from '../cube.service';
@@ -8,11 +7,8 @@ import { Component, computed, effect, inject, signal, viewChild } from '@angular
 import { FormsModule } from '@angular/forms';
 import { DatePipe, DecimalPipe, NgTemplateOutlet } from '@angular/common';
 import QRCode from 'qrcode';
-import { ProfileService, RankChoice } from '../profile.service';
-import { DECK_FORMATS, DeckFormat, GAME_MODES, GameMode, Match } from '../models';
-import { EloEntry, eloRanking, rankFromLp, ratedFormatsFor } from '../elo';
-import { ProfileRank } from '../profile-rank/profile-rank';
-import { rankStyle } from '../ui/rank-badge/rank-badge';
+import { ProfileService } from '../profile.service';
+import { Match } from '../models';
 import { MtgService } from '../mtg.service';
 import { GroupService } from '../group.service';
 import { DeckList } from '../deck-list/deck-list';
@@ -82,10 +78,8 @@ import { FriendStatus } from '../friend-status/friend-status';
     PlayerMatchHistory,
     Icon,
     CommentInbox,
-    ProfileRank,
     FriendsPanel,
     FriendStatus,
-    RankedBadges,
     CardThumb,
     CollectionPanel,
   ],
@@ -154,145 +148,6 @@ export class ProfileTab {
     const playerId = this.profileService.viewingPlayerId();
     return playerId ? { kind: 'player', playerId } : null;
   });
-
-  // --- Elo-Rang (elo.ts): Abzeichen im Kopf, Rahmen und Profilbild in Rangfarbe ---
-
-  /** Gewählter Modus des eigenen Profils bzw. des angesehenen Accounts (NPCs: immer Standard). */
-  private readonly ownRankChoice = signal<RankChoice>(ProfileService.DEFAULT_RANK_CHOICE);
-  private readonly viewedRankChoice = signal<RankChoice>(ProfileService.DEFAULT_RANK_CHOICE);
-  readonly rankChoice = computed<RankChoice>(() => {
-    if (this.profileService.viewingUserId()) return this.viewedRankChoice();
-    if (this.profileService.viewingPlayerId()) return ProfileService.DEFAULT_RANK_CHOICE;
-    return this.ownRankChoice();
-  });
-
-  /**
-   * Der Rang ist Gruppensache und nicht öffentlich: gerechnet wird über die Partien genau EINER
-   * Gruppe mit eingeschaltetem Rangsystem, die der Betrachter selbst sehen darf. Eigenes Profil:
-   * die gewählte Gruppe (Auswahlfeld), sonst die aktive. Fremdes Profil: dessen gewählte Gruppe,
-   * sofern der Betrachter darin Mitglied ist (sonst liefert profile_rank_choice() null), ersatzweise
-   * die aktive Gruppe, wenn beide darin spielen. NPC: die aktive Gruppe. Sonst kein Rang.
-   */
-  readonly rankableGroups = computed(() =>
-    this.groupService.myGroups().filter((g) => this.groupService.isRankedGroup(g.id)),
-  );
-
-  readonly rankGroupId = computed<string | null>(() => {
-    const active = this.groupService.groupId();
-    const activeRanked = this.groupService.isRankedGroup(active) ? active : null;
-    if (this.profileService.viewingPlayerId()) return activeRanked;
-    const chosen = this.rankChoice().groupId;
-    if (this.profileService.viewingUserId()) {
-      if (chosen && this.groupService.isRankedGroup(chosen)) return chosen;
-      return activeRanked && this.profileHistoryName() ? activeRanked : null;
-    }
-    if (chosen && this.rankableGroups().some((g) => g.id === chosen)) return chosen;
-    return activeRanked ?? this.rankableGroups()[0]?.id ?? null;
-  });
-
-  readonly rankGroupName = computed(
-    () => this.groupService.myGroups().find((g) => g.id === this.rankGroupId())?.name ?? null,
-  );
-
-  /** Partien und Spielername einer anderen als der aktiven Gruppe, nachgeladen (siehe Konstruktor). */
-  private readonly otherGroupRankData = signal<{
-    groupId: string;
-    userId: string;
-    matches: Match[];
-    playerName: string | null;
-  } | null>(null);
-
-  private readonly rankMatches = computed<Match[]>(() => {
-    const groupId = this.rankGroupId();
-    if (!groupId) return [];
-    // Nur die laufende Saison (groups.ranked_since) - ein Neustart beginnt bei allen von vorn.
-    if (groupId === this.groupService.groupId())
-      return this.groupService.seasonMatches(this.mtg.history(), groupId);
-    const other = this.otherGroupRankData();
-    return other?.groupId === groupId
-      ? this.groupService.seasonMatches(other.matches, groupId)
-      : [];
-  });
-  private readonly rankPlayerName = computed<string | null>(() => {
-    const groupId = this.rankGroupId();
-    if (!groupId) return null;
-    if (groupId === this.groupService.groupId()) return this.profileHistoryName();
-    const other = this.otherGroupRankData();
-    return other?.groupId === groupId ? other.playerName : null;
-  });
-
-  /** Account, dessen Rang gerade gezeigt wird (eigener oder angesehener); null bei NPCs. */
-  private readonly rankUserId = computed<string | null>(() =>
-    this.profileService.viewingPlayerId()
-      ? null
-      : (this.profileService.viewingUserId() ?? this.profileService.profile()?.id ?? null),
-  );
-
-  /** Modi, in denen der Spieler gewertet ist, plus der gewählte; in der Reihenfolge von GAME_MODES. */
-  readonly rankModes = computed<GameMode[]>(() => {
-    const name = this.rankPlayerName();
-    const matches = this.rankMatches();
-    return GAME_MODES.filter(
-      (m) =>
-        m === this.rankChoice().mode ||
-        (!!name && eloRanking(matches, m).some((e) => e.name === name)),
-    );
-  });
-
-  /**
-   * Alle Formate zur Auswahl - auch die ohne Partien, die zeigen dann "Nicht eingerankt". Nur für
-   * einen Modus ohne Format (Spezialevent, format null) gibt es nichts zu wählen.
-   */
-  readonly rankFormats = computed<DeckFormat[]>(() =>
-    this.rankChoice().format === null ? [] : DECK_FORMATS,
-  );
-
-  readonly rankEntry = computed<EloEntry | null>(() => {
-    const name = this.rankPlayerName();
-    if (!name) return null;
-    const { mode, format } = this.rankChoice();
-    return eloRanking(this.rankMatches(), mode, { format }).find((e) => e.name === name) ?? null;
-  });
-
-  /** CSS-Variablen für den Rahmen um den Profilkopf; null = ungewertet/Einstufung, normaler Rahmen. */
-  readonly rankFrameStyle = computed(() => {
-    const e = this.rankEntry();
-    return e && !e.provisional ? rankStyle(rankFromLp(e.lp).tier) : null;
-  });
-
-  /**
-   * Beim Moduswechsel bleibt das Format, wenn der Spieler darin auch in diesem Modus gewertet ist;
-   * sonst das erste Format, in dem er es ist (2HG wird z. B. selten Modern gespielt). Hat der
-   * Modus nur Partien ohne Format (Spezialevent), gilt null.
-   */
-  setRankMode(mode: GameMode): void {
-    const name = this.rankPlayerName();
-    const matches = this.rankMatches();
-    const current = this.rankChoice().format;
-    const rated = name ? ratedFormatsFor(matches, mode, name, DECK_FORMATS) : [];
-    const formatlos =
-      !!name &&
-      rated.length === 0 &&
-      eloRanking(matches, mode, { format: null }).some((e) => e.name === name);
-    const format =
-      current && rated.includes(current)
-        ? current
-        : (rated[0] ?? (formatlos ? null : (current ?? ProfileService.DEFAULT_RANK_CHOICE.format)));
-    this.saveRankChoice({ ...this.rankChoice(), mode, format });
-  }
-
-  setRankFormat(format: DeckFormat): void {
-    this.saveRankChoice({ ...this.rankChoice(), format });
-  }
-
-  setRankGroup(groupId: string): void {
-    this.saveRankChoice({ ...this.rankChoice(), groupId });
-  }
-
-  private saveRankChoice(choice: RankChoice): void {
-    this.ownRankChoice.set(choice);
-    void this.profileService.saveRankChoice(choice);
-  }
 
   // --- Developer-Vollansicht eines fremden Profils ---
 
@@ -644,40 +499,6 @@ export class ProfileTab {
     effect(() => {
       this.profileService.viewingUserId();
       this.foreignListTab.set('decks');
-    });
-
-    // Rang aus einer anderen als der aktiven Gruppe: deren Partien und den Spielernamen des
-    // Accounts dort nachladen (mtg.history() kennt nur die aktive Gruppe).
-    effect(() => {
-      const groupId = this.rankGroupId();
-      const userId = this.rankUserId();
-      if (!groupId || !userId || groupId === this.groupService.groupId()) return;
-      const current = this.otherGroupRankData();
-      if (current?.groupId === groupId && current.userId === userId) return;
-      void Promise.all([
-        this.mtg.loadMatchesForGroups([groupId]),
-        this.mtg.playerNameInGroup(groupId, userId),
-      ]).then(([matches, playerName]) => {
-        if (this.rankGroupId() !== groupId || this.rankUserId() !== userId) return;
-        this.otherGroupRankData.set({ groupId, userId, matches, playerName });
-      });
-    });
-
-    effect(() => {
-      const userId = this.profileService.profile()?.id;
-      if (!userId) return;
-      void this.profileService.loadRankChoice(userId).then((choice) => {
-        if (this.profileService.profile()?.id === userId) this.ownRankChoice.set(choice);
-      });
-    });
-
-    effect(() => {
-      const userId = this.profileService.viewingUserId();
-      this.viewedRankChoice.set(ProfileService.DEFAULT_RANK_CHOICE);
-      if (!userId) return;
-      void this.profileService.loadRankChoice(userId).then((choice) => {
-        if (this.profileService.viewingUserId() === userId) this.viewedRankChoice.set(choice);
-      });
     });
 
     effect(() => {

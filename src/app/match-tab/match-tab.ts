@@ -13,8 +13,6 @@ import { I18nService } from '../i18n.service';
 import { TournamentService } from '../tournament.service';
 import { DialogService } from '../dialog.service';
 import { GAME_MODES, TEAM_OPTIONS, Match, MatchPlayer, LIVE_TRACKING_START_DATE, DECK_FORMATS, DeckFormat, GameMode } from '../models';
-import { RankTier, rankTiersFor } from '../elo';
-import { rankStyle } from '../ui/rank-badge/rank-badge';
 import { ARCHENEMY_OTHERS, DRAW, isPlayerWinner, teamMemberLabel, gameModeLabel } from '../match-utils';
 import { CardImage } from '../card-image/card-image';
 import { BracketBadge } from '../ui/bracket-badge/bracket-badge';
@@ -66,37 +64,6 @@ export class MatchTab {
   readonly tournament = inject(TournamentService);
   private readonly dialog = inject(DialogService);
   private readonly deckViewer = inject(DeckViewerService);
-
-  /**
-   * Rangfarbe für die Ringe um die Profilbilder - nur in einer Gruppe mit Rangsystem. Je Modus
-   * und Format gerechnet (bei der Spielerauswahl der gerade eingestellte, im Verlauf der des
-   * jeweiligen Matches) und je Kombination einmal zwischengespeichert, bis sich der Verlauf ändert.
-   */
-  private readonly rankTierCache = computed(() => {
-    this.mtg.history();
-    return new Map<string, Map<string, RankTier>>();
-  });
-
-  /** CSS-Variablen der Rangfarbe für einen Spieler-Chip (Klasse .rank-tinted in styles.scss). */
-  rankVars(tier: RankTier | null): Record<string, string> | null {
-    return rankStyle(tier);
-  }
-
-  rankTierFor(name: string, mode: GameMode, format: DeckFormat | null): RankTier | null {
-    if (!this.groupService.rankedEnabled()) return null;
-    const cache = this.rankTierCache();
-    const key = `${mode}|${format ?? ''}`;
-    let tiers = cache.get(key);
-    if (!tiers) {
-      tiers = rankTiersFor(
-        this.groupService.seasonMatches(this.mtg.history(), this.groupService.groupId()),
-        mode,
-        format,
-      );
-      cache.set(key, tiers);
-    }
-    return tiers.get(name) ?? null;
-  }
 
   openTournamentPanel(): void {
     this.tournament.openPanel();

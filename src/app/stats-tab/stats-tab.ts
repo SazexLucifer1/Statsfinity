@@ -26,8 +26,6 @@ import {
 import { I18nService } from '../i18n.service';
 import { TournamentHistory } from '../tournament-history/tournament-history';
 import { isImportLossDuplicate, isPlayerWinner as isMatchWinner } from '../match-utils';
-import { RankTier, rankTiersFor, ratedModes } from '../elo';
-import { rankStyle } from '../ui/rank-badge/rank-badge';
 import { InfoToggle } from '../ui/info-toggle/info-toggle';
 import { Meter } from '../ui/meter/meter';
 import { Pager } from '../ui/pager/pager';
@@ -315,50 +313,6 @@ export class StatsTab {
   commanderBackImage(name: string | undefined): string | null {
     if (!name) return null;
     return this.cardDetails()[name.toLowerCase()]?.backImageUrl ?? null;
-  }
-
-  // --- Elo-Wertung je Spielmodus (elo.ts) - über alle live erfassten Partien, ohne Jahresfilter ---
-
-  // Wie der Rang im Profil je Modus UND Format: dem Format-Filter oben folgend ("Alle" = alle
-  // Formate eines Modus gemeinsam). Ein Modern-Sieg soll keinen Commander-Rang verschieben.
-  // Nur in einer Gruppe mit eingeschaltetem Rangsystem (Schalter des Gruppenleiters).
-  /** Partien der laufenden Ranked-Saison (groups.ranked_since) - Grundlage aller Elo-Werte hier. */
-  private readonly seasonMatches = computed(() =>
-    this.groupService.seasonMatches(this.viewedMatches(), this.effectiveViewedGroupId()),
-  );
-  readonly eloModes = computed(() =>
-    !this.groupService.canSeeRanked(this.effectiveViewedGroupId())
-      ? []
-      : ratedModes(
-          this.applyFormatFilter(this.seasonMatches()),
-          GAME_MODES.filter((m) => this.canViewMode(m)),
-        ),
-  );
-  /** Modus der Rangfarben im Tab: der erste gewertete (meist Normal). Eine Elo-Liste gibt es hier
-   *  nicht mehr (Wunsch des Users, 21.10.2026) - den Rang sieht jeder im eigenen Profil. */
-  readonly eloMode = computed(() => this.eloModes()[0] ?? null);
-
-  /**
-   * Rangfarbe für die Ringe um die Profilbilder im ganzen Tab - der erste gewertete Modus
-   * (meist Normal) und das Format aus dem Filter oben. Leer ohne Rangsystem in der Gruppe.
-   */
-  private readonly rankTiers = computed<Map<string, RankTier>>(() => {
-    if (!this.groupService.isRankedGroup(this.effectiveViewedGroupId())) return new Map();
-    const format = this.selectedFormat();
-    return rankTiersFor(
-      this.seasonMatches(),
-      this.eloMode() ?? 'Normal',
-      format === 'Alle' ? undefined : format,
-    );
-  });
-
-  rankTierFor(name: string): RankTier | null {
-    return this.rankTiers().get(name) ?? null;
-  }
-
-  /** CSS-Variablen der Rangfarbe für eine Spielerkachel (Klasse .rank-tinted in styles.scss). */
-  rankVars(tier: RankTier | null): Record<string, string> | null {
-    return rankStyle(tier);
   }
 
   // --- Sortierung der Ranglisten (Logik in rank-sort.ts, geteilt mit GlobalStats) ---

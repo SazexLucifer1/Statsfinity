@@ -259,10 +259,6 @@ export const stats = {
       '{{games}} gemeinsame Partien, {{other}} davon hat jemand anderes gewonnen',
     'stats.friends.commandersTitle': 'Meistgespielte Commander',
     'stats.friends.commandersEmpty': 'Keine Partien mit Commander in diesem Zeitraum.',
-    'stats.friends.eloTitle': 'Elo unter Freunden',
-    'stats.friends.eloInfo':
-      'Nur aus Freundesspielen (Match-Tab → „Freunde“), gerechnet wie das Rangsystem einer Gruppe. Gruppenpartien zählen hier nicht - sonst würden Runden mit ganz anderen Gegnern vermischt.',
-    'stats.friends.eloEmpty': 'Noch keine Freundesspiele in diesem Zeitraum.',
     'stats.groupSwitcherHint':
       'Gruppe wählen – gilt für die ganze Statistik und auch für neue Matches.',
     'stats.globalDecksAndCommandersHint':
@@ -549,10 +545,6 @@ export const stats = {
     'stats.friends.vsGames': '{{games}} shared games, {{other}} of them won by someone else',
     'stats.friends.commandersTitle': 'Most played commanders',
     'stats.friends.commandersEmpty': 'No games with a commander in this period.',
-    'stats.friends.eloTitle': 'Elo among friends',
-    'stats.friends.eloInfo':
-      "Only from friend games (Match tab → “Friends”), calculated like a group's ranking system. Group games do not count here - otherwise rounds with completely different opponents would be mixed.",
-    'stats.friends.eloEmpty': 'No friend games in this period yet.',
     'stats.groupSwitcherHint': 'Choose a group – applies to all stats and to new matches too.',
     'stats.globalDecksAndCommandersHint':
       'Across every player on the whole website - no player names (those would otherwise expose people from groups you’re not in). The winrate ranking only counts decks/commanders with 10+ games, otherwise a single 100% game would top the list.',

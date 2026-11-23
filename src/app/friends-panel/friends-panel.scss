@@ -234,13 +234,6 @@ h3 {
 
 // Desktop: Listen in Spalten statt einer schmalen Säule über die volle Breite.
 @include bp.up(md) {
-  .ranking-columns {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--sp-6);
-    align-items: start;
-  }
-
   .people,
   .news {
     display: grid;

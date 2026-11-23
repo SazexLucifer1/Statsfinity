@@ -5,7 +5,7 @@ import { AuthService } from '../auth.service';
 import { ProfileService } from '../profile.service';
 import { FriendsService } from '../friends.service';
 import { MtgService } from '../mtg.service';
-import { GameMode, Match } from '../models';
+import { Match } from '../models';
 import {
   PersonMatches,
   commanderRecords,
@@ -13,7 +13,6 @@ import {
   mergePeopleMatches,
   peopleRecords,
 } from '../match-insights';
-import { eloRanking } from '../elo';
 import { MatchInsights } from '../match-insights/match-insights';
 import { PlayerAvatar } from '../player-avatar/player-avatar';
 import { Meter } from '../ui/meter/meter';
@@ -57,7 +56,6 @@ export class FriendsStats {
 
   readonly loading = signal(true);
   private readonly allMatches = signal<Match[]>([]);
-  private readonly friendGames = signal<Match[]>([]);
 
   readonly people = computed<Person[]>(() => {
     const me = this.auth.currentUser();
@@ -130,12 +128,6 @@ export class FriendsStats {
     this.records().filter((r) => r.games > 0 && r.games < this.MIN_GAMES),
   );
 
-  /** Elo nur aus Freundesspielen - gruppenübergreifend würden fremde Runden vermischt. */
-  readonly elo = computed(() => {
-    const matches = this.filter(this.friendGames()).map((m) => ({ ...m, isRanked: true }));
-    return eloRanking(matches, 'Normal' as GameMode).sort((a, b) => b.lp - a.lp);
-  });
-
   readonly myName = computed(() => this.people().find((p) => p.isMe)?.name ?? null);
 
   readonly headToHead = computed(() => {
@@ -175,12 +167,6 @@ export class FriendsStats {
       name: p.name,
       entries: entries[i] ?? [],
     }));
-    this.friendGames.set(
-      mergePeopleMatches(
-        sources.map((s) => ({ ...s, entries: [] })),
-        friendGames,
-      ),
-    );
     this.allMatches.set(mergePeopleMatches(sources, friendGames));
     this.loading.set(false);
   }

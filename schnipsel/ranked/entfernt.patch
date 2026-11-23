@@ -1,0 +1,2094 @@
+diff --git a/src/app/friends-panel/friends-panel.html b/src/app/friends-panel/friends-panel.html
+index f232bdb..1c4c12f 100644
+--- a/src/app/friends-panel/friends-panel.html
++++ b/src/app/friends-panel/friends-panel.html
+@@ -212,74 +212,41 @@
+         @if (!overallLoaded()) {
+           <p class="hint">{{ i18n.t('profile.friends.loading') }}</p>
+         } @else {
+-          <!-- Auf breiten Bildschirmen nebeneinander, auf dem Handy untereinander. -->
+-          <div class="ranking-columns">
+-            <div>
+-              <app-info-toggle [label]="i18n.t('profile.friends.rankingInfoAria')">
+-                <h3 info-title>{{ i18n.t('profile.friends.rankingWinRate') }}</h3>
+-                <p class="hint">
+-                  {{ i18n.t('profile.friends.rankingWinRateHint', { min: MIN_GAMES }) }}
+-                </p>
+-              </app-info-toggle>
+-              @if (winRateRanking().length === 0) {
+-                <p class="hint">{{ i18n.t('profile.friends.rankingEmpty') }}</p>
+-              }
+-              <ol class="ranking">
+-                @for (r of winRateRanking(); track r.userId; let i = $index) {
+-                  <li>
+-                    <span class="pos">{{ i + 1 }}.</span>
+-                    <button class="person" (click)="openProfile(r.userId)">
+-                      <app-player-avatar [url]="r.avatarUrl" /> {{ r.displayName }}
+-                    </button>
+-                    <span class="rate">{{ r.winRate.toFixed(0) }} %</span>
+-                    <span class="detail">{{
+-                      i18n.t('profile.friends.winsOfGames', { wins: r.wins, games: r.games })
+-                    }}</span>
+-                    <app-meter [value]="r.winRate" />
+-                  </li>
+-                }
+-              </ol>
+-              @if (belowMin().length > 0) {
+-                <p class="hint">
+-                  {{
+-                    i18n.t('profile.friends.belowMin', {
+-                      names: belowMin()
+-                        .map((b) => b.displayName)
+-                        .join(', '),
+-                    })
+-                  }}
+-                </p>
+-              }
+-            </div>
+-            <div>
+-              <app-info-toggle [label]="i18n.t('profile.friends.rankingInfoAria')">
+-                <h3 info-title>{{ i18n.t('profile.friends.rankingElo') }}</h3>
+-                <p class="hint">{{ i18n.t('profile.friends.rankingEloHint') }}</p>
+-              </app-info-toggle>
+-              @if (friendElo().length === 0) {
+-                <p class="hint">{{ i18n.t('profile.friends.eloEmpty') }}</p>
+-              }
+-              <ol class="ranking">
+-                @for (e of friendElo(); track e.name; let i = $index) {
+-                  <li>
+-                    <span class="pos">{{ i + 1 }}.</span>
+-                    <span class="name">{{ e.name }}</span>
+-                    <span class="rate">{{
+-                      e.provisional
+-                        ? i18n.t('profile.friends.placement', { games: e.games })
+-                        : e.lp + ' LP'
+-                    }}</span>
+-                    <span class="detail"
+-                      >{{ e.provisional ? '' : rankLabel(e.lp) + ' · '
+-                      }}{{
+-                        i18n.t('profile.friends.winsOfGames', { wins: e.wins, games: e.games })
+-                      }}</span
+-                    >
+-                  </li>
+-                }
+-              </ol>
+-            </div>
+-          </div>
++          <app-info-toggle [label]="i18n.t('profile.friends.rankingInfoAria')">
++            <h3 info-title>{{ i18n.t('profile.friends.rankingWinRate') }}</h3>
++            <p class="hint">
++              {{ i18n.t('profile.friends.rankingWinRateHint', { min: MIN_GAMES }) }}
++            </p>
++          </app-info-toggle>
++          @if (winRateRanking().length === 0) {
++            <p class="hint">{{ i18n.t('profile.friends.rankingEmpty') }}</p>
++          }
++          <ol class="ranking">
++            @for (r of winRateRanking(); track r.userId; let i = $index) {
++              <li>
++                <span class="pos">{{ i + 1 }}.</span>
++                <button class="person" (click)="openProfile(r.userId)">
++                  <app-player-avatar [url]="r.avatarUrl" /> {{ r.displayName }}
++                </button>
++                <span class="rate">{{ r.winRate.toFixed(0) }} %</span>
++                <span class="detail">{{
++                  i18n.t('profile.friends.winsOfGames', { wins: r.wins, games: r.games })
++                }}</span>
++                <app-meter [value]="r.winRate" />
++              </li>
++            }
++          </ol>
++          @if (belowMin().length > 0) {
++            <p class="hint">
++              {{
++                i18n.t('profile.friends.belowMin', {
++                  names: belowMin()
++                    .map((b) => b.displayName)
++                    .join(', '),
++                })
++              }}
++            </p>
++          }
+         }
+       }
+     }
+diff --git a/src/app/friends-panel/friends-panel.scss b/src/app/friends-panel/friends-panel.scss
+index 965f30b..d88129c 100644
+--- a/src/app/friends-panel/friends-panel.scss
++++ b/src/app/friends-panel/friends-panel.scss
+@@ -234,13 +234,6 @@ h3 {
+ 
+ // Desktop: Listen in Spalten statt einer schmalen Säule über die volle Breite.
+ @include bp.up(md) {
+-  .ranking-columns {
+-    display: grid;
+-    grid-template-columns: 1fr 1fr;
+-    gap: var(--sp-6);
+-    align-items: start;
+-  }
+-
+   .people,
+   .news {
+     display: grid;
+diff --git a/src/app/friends-panel/friends-panel.ts b/src/app/friends-panel/friends-panel.ts
+index 4137c51..fd194cd 100644
+--- a/src/app/friends-panel/friends-panel.ts
++++ b/src/app/friends-panel/friends-panel.ts
+@@ -5,10 +5,8 @@ import { InfoToggle } from '../ui/info-toggle/info-toggle';
+ import { I18nService } from '../i18n.service';
+ import { DialogService } from '../dialog.service';
+ import { ProfileService } from '../profile.service';
+-import { MtgService } from '../mtg.service';
+ import { NavigationService } from '../navigation.service';
+ import { FriendActivity, FriendOverall, FriendsService, ProfileHit } from '../friends.service';
+-import { divisionLabel, eloRanking, rankFromLp } from '../elo';
+ import { gameModeLabel } from '../match-utils';
+ import { DeckFormat, GameMode } from '../models';
+ import { PlayerAvatar } from '../player-avatar/player-avatar';
+@@ -33,7 +31,6 @@ export class FriendsPanel {
+   readonly friends = inject(FriendsService);
+   private readonly dialog = inject(DialogService);
+   private readonly profileService = inject(ProfileService);
+-  private readonly mtg = inject(MtgService);
+   private readonly navigation = inject(NavigationService);
+   private readonly cubes = inject(CubeService);
+ 
+@@ -92,16 +89,6 @@ export class FriendsPanel {
+   );
+   readonly belowMin = computed(() => this.overall().filter((o) => o.games < this.MIN_GAMES));
+ 
+-  /**
+-   * Elo unter Freunden: nur aus Freundesspielen, mit derselben Rechnung wie in der Gruppe.
+-   * Freundesspiele sind nie "Ranked" einer Gruppe - hier zählen sie trotzdem, es ist ja eine
+-   * eigene Wertung.
+-   */
+-  readonly friendElo = computed(() => {
+-    const matches = this.mtg.friendHistory().map((m) => ({ ...m, isRanked: true }));
+-    return eloRanking(matches, 'Normal' as GameMode).sort((a, b) => b.lp - a.lp);
+-  });
+-
+   constructor() {
+     effect(() => {
+       const tab = this.tab();
+@@ -116,16 +103,10 @@ export class FriendsPanel {
+           this.overall.set(o);
+           this.overallLoaded.set(true);
+         });
+-        this.mtg.loadFriendMatches();
+       }
+     });
+   }
+ 
+-  rankLabel(lp: number): string {
+-    const rank = rankFromLp(lp);
+-    return `${this.i18n.t('profile.rank.tier.' + rank.tier)} ${divisionLabel(rank.division)}`.trim();
+-  }
+-
+   activityModeLabel(a: FriendActivity): string {
+     return a.gameMode
+       ? gameModeLabel(a.gameMode as GameMode, (a.gameFormat as DeckFormat) ?? null)
+diff --git a/src/app/friends-stats/friends-stats.html b/src/app/friends-stats/friends-stats.html
+index 41f76c8..d1a344c 100644
+--- a/src/app/friends-stats/friends-stats.html
++++ b/src/app/friends-stats/friends-stats.html
+@@ -139,32 +139,5 @@
+       [allMatches]="allMatchesForReview()"
+       [profileIds]="profileIds()"
+     />
+-
+-    <section class="glass-card">
+-      <app-info-toggle [label]="i18n.t('stats.friends.infoAria')">
+-        <h2 info-title>{{ i18n.t('stats.friends.eloTitle') }}</h2>
+-        <p class="hint">{{ i18n.t('stats.friends.eloInfo') }}</p>
+-      </app-info-toggle>
+-      @if (elo().length === 0) {
+-        <p class="hint">{{ i18n.t('stats.friends.eloEmpty') }}</p>
+-      } @else {
+-        <ol class="ranking">
+-          @for (e of elo(); track e.name; let i = $index) {
+-            <li>
+-              <span class="pos">{{ i + 1 }}.</span>
+-              <span class="name">{{ e.name }}</span>
+-              <span class="rate">{{
+-                e.provisional
+-                  ? i18n.t('profile.friends.placement', { games: e.games })
+-                  : e.lp + ' LP'
+-              }}</span>
+-              <span class="detail">{{
+-                i18n.t('stats.friends.winsOfGames', { wins: e.wins, games: e.games })
+-              }}</span>
+-            </li>
+-          }
+-        </ol>
+-      }
+-    </section>
+   }
+ }
+diff --git a/src/app/friends-stats/friends-stats.ts b/src/app/friends-stats/friends-stats.ts
+index 37d85e1..2506066 100644
+--- a/src/app/friends-stats/friends-stats.ts
++++ b/src/app/friends-stats/friends-stats.ts
+@@ -5,7 +5,7 @@ import { AuthService } from '../auth.service';
+ import { ProfileService } from '../profile.service';
+ import { FriendsService } from '../friends.service';
+ import { MtgService } from '../mtg.service';
+-import { GameMode, Match } from '../models';
++import { Match } from '../models';
+ import {
+   PersonMatches,
+   commanderRecords,
+@@ -13,7 +13,6 @@ import {
+   mergePeopleMatches,
+   peopleRecords,
+ } from '../match-insights';
+-import { eloRanking } from '../elo';
+ import { MatchInsights } from '../match-insights/match-insights';
+ import { PlayerAvatar } from '../player-avatar/player-avatar';
+ import { Meter } from '../ui/meter/meter';
+@@ -57,7 +56,6 @@ export class FriendsStats {
+ 
+   readonly loading = signal(true);
+   private readonly allMatches = signal<Match[]>([]);
+-  private readonly friendGames = signal<Match[]>([]);
+ 
+   readonly people = computed<Person[]>(() => {
+     const me = this.auth.currentUser();
+@@ -130,12 +128,6 @@ export class FriendsStats {
+     this.records().filter((r) => r.games > 0 && r.games < this.MIN_GAMES),
+   );
+ 
+-  /** Elo nur aus Freundesspielen - gruppenübergreifend würden fremde Runden vermischt. */
+-  readonly elo = computed(() => {
+-    const matches = this.filter(this.friendGames()).map((m) => ({ ...m, isRanked: true }));
+-    return eloRanking(matches, 'Normal' as GameMode).sort((a, b) => b.lp - a.lp);
+-  });
+-
+   readonly myName = computed(() => this.people().find((p) => p.isMe)?.name ?? null);
+ 
+   readonly headToHead = computed(() => {
+@@ -175,12 +167,6 @@ export class FriendsStats {
+       name: p.name,
+       entries: entries[i] ?? [],
+     }));
+-    this.friendGames.set(
+-      mergePeopleMatches(
+-        sources.map((s) => ({ ...s, entries: [] })),
+-        friendGames,
+-      ),
+-    );
+     this.allMatches.set(mergePeopleMatches(sources, friendGames));
+     this.loading.set(false);
+   }
+diff --git a/src/app/game-session.service.ts b/src/app/game-session.service.ts
+index 5b16f7c..947da76 100644
+--- a/src/app/game-session.service.ts
++++ b/src/app/game-session.service.ts
+@@ -50,8 +50,6 @@ function stableStringify(value: unknown): string {
+ export interface LiveSessionState {
+   mode: GameMode;
+   format: DeckFormat | null;
+-  /** Ranked oder freies Match (Match.isRanked); fehlt bei Sessions von vor diesem Feature -> Ranked. */
+-  isRanked?: boolean;
+   /** Panel-Key mit Monarch- bzw. Initiative-Marke; fehlen bei älteren Sessions -> niemand. */
+   monarchKey?: string | null;
+   initiativeKey?: string | null;
+@@ -154,11 +152,6 @@ export class GameSessionService {
+   readonly mode = signal<GameMode>('Normal');
+   /** Gespieltes MTG-Format, kombiniert mit mode - null nur bei mode 'Spezialevent' (siehe setMode()). */
+   readonly format = signal<DeckFormat | null>('Commander');
+-  /**
+-   * Ranked oder freies Match - nur wählbar, wenn die Gruppe Ranked spielt
+-   * (GroupService.rankedEnabled); sonst ohnehin egal, weil nicht gerechnet wird. Standard Ranked.
+-   */
+-  readonly isRanked = signal(true);
+   readonly selectedPlayers = signal<MatchPlayer[]>([]);
+   readonly winner = signal<string | null>(null);
+   /**
+@@ -229,7 +222,6 @@ export class GameSessionService {
+   private readonly syncSnapshot = computed<LiveSessionState>(() => ({
+     mode: this.mode(),
+     format: this.format(),
+-    isRanked: this.isRanked(),
+     monarchKey: this.monarchKey(),
+     initiativeKey: this.initiativeKey(),
+     counters: this.counters(),
+@@ -780,7 +772,6 @@ export class GameSessionService {
+ 
+   private applySyncSnapshot(state: LiveSessionState): void {
+     this.mode.set(state.mode);
+-    this.isRanked.set(state.isRanked ?? true);
+     this.monarchKey.set(state.monarchKey ?? null);
+     this.initiativeKey.set(state.initiativeKey ?? null);
+     this.counters.set(state.counters ?? {});
+@@ -1297,7 +1288,6 @@ export class GameSessionService {
+             : undefined,
+         tournamentMatchId,
+         countsInGeneralStats: this.activeTournamentCountsInStats(),
+-        isRanked: this.isRanked(),
+         friendGame: this.friendMode(),
+         startedAt: this.startedAt() ?? undefined,
+         lifeLog: this.buildLifeLog(),
+@@ -1341,7 +1331,6 @@ export class GameSessionService {
+           this.mode() === 'Draft' && draftSet
+             ? { id: draftSet.id, code: draftSet.code, name: draftSet.name, releasedAt: draftSet.releasedAt }
+             : undefined,
+-        isRanked: this.isRanked(),
+         friendGame: this.friendMode(),
+         playedAt: playedAt.toISOString(),
+       });
+@@ -1372,7 +1361,6 @@ export class GameSessionService {
+     const setup = {
+       mode: this.mode(),
+       format: this.format(),
+-      isRanked: this.isRanked(),
+       players: this.selectedPlayers().map(({ turnOrder: _, eliminatedBy: __, ...p }) => p),
+       cubeId: this.selectedCubeId(),
+       draftSet: this.selectedDraftSet(),
+@@ -1383,7 +1371,6 @@ export class GameSessionService {
+     this.deadMessageMap.set({});
+     this.mode.set(setup.mode);
+     this.format.set(setup.format);
+-    this.isRanked.set(setup.isRanked);
+     this.selectedPlayers.set(setup.players);
+     this.selectedCubeId.set(setup.cubeId);
+     this.selectedDraftSet.set(setup.draftSet);
+@@ -1449,7 +1436,6 @@ export class GameSessionService {
+     this.selectedDraftSet.set(null);
+     this.mode.set('Normal');
+     this.format.set('Commander');
+-    this.isRanked.set(true);
+     this.counters.set({});
+     this.series.set(null);
+     this.bestOfThree.set(false);
+diff --git a/src/app/group-tab/group-tab.html b/src/app/group-tab/group-tab.html
+index 4c183c8..0f8e1c4 100644
+--- a/src/app/group-tab/group-tab.html
++++ b/src/app/group-tab/group-tab.html
+@@ -55,21 +55,6 @@
+                 @if (group.role === 'owner') {
+                   <button class="glass-button" (click)="openPermissionsDialog(group.id)">{{ i18n.t('group.permissions') }}</button>
+                 }
+-                <!-- Rangsystem an/aus: allein Sache des Gruppenleiters, deshalb kein eigenes Recht. -->
+-                @if (group.role === 'owner' && groupService.rankedSettingAvailable()) {
+-                  <button class="glass-button" (click)="toggleRanked(group.id)">
+-                    {{ i18n.t(groupService.isRankedGroup(group.id) ? 'group.rankedTurnOff' : 'group.rankedTurnOn') }}
+-                  </button>
+-                }
+-                <!-- Saison: Neustart bzw. Abschluss mit Abzeichen (sql/ranked-saison-2026-10-06.sql). -->
+-                @if (group.role === 'owner' && groupService.rankedSeasonAvailable()) {
+-                  <button class="glass-button" (click)="endRankedSeason(group.id, group.name)">
+-                    {{ i18n.t('group.rankedEndSeason') }}
+-                  </button>
+-                  <button class="glass-button danger" (click)="resetRanked(group.id)">
+-                    {{ i18n.t('group.rankedReset') }}
+-                  </button>
+-                }
+                 @if (groupService.hasPermissionFor(group.id, 'stats.visibility')) {
+                   <button class="glass-button" (click)="openVisibilityDialog(group.id)">{{ i18n.t('group.visibility') }}</button>
+                 }
+@@ -314,8 +299,7 @@
+   } @else {
+     <ul class="player-list player-grid">
+       @for (player of mtg.allPlayers(); track player) {
+-        @let tier = rankTierFor(player);
+-        <li [class.rank-tinted]="!!tier" [style]="rankVars(tier)">
++        <li>
+           @if (editingPlayer() === player) {
+             <input
+               class="glass-input"
+diff --git a/src/app/group-tab/group-tab.scss b/src/app/group-tab/group-tab.scss
+index 915360c..11ca425 100644
+--- a/src/app/group-tab/group-tab.scss
++++ b/src/app/group-tab/group-tab.scss
+@@ -285,18 +285,9 @@ a {
+   }
+ }
+ 
+-// Handy: Spieler mit Rang tragen einen Rahmen in Rangfarbe (.rank-tinted, styles.scss). In der
+-// einspaltigen Liste stieß der als eckiger Kasten direkt an Profilbild und Knopf. Deshalb haben
+-// alle Zeilen innen etwas Luft (sonst stünden Namen mit und ohne Rang versetzt), und nur die
+-// gerahmten bekommen runde Ecken und Abstand zur Nachbarzeile.
++// Handy: Zeilen innen etwas Luft, damit Profilbild und Knopf nicht am Rand kleben.
+ .player-list.player-grid li {
+   padding: 10px var(--sp-4);
+-
+-  &.rank-tinted {
+-    border: 1px solid;
+-    border-radius: var(--r-lg);
+-    margin: var(--sp-2) 0;
+-  }
+ }
+ 
+ // Ab Tablet passen mehrere Einträge nebeneinander - dasselbe Muster wie die Deck-Liste im Profil
+@@ -314,11 +305,6 @@ a {
+       border-radius: var(--r-lg);
+       background: rgba(255, 255, 255, 0.05);
+       border: 1px solid var(--glass-border);
+-
+-      // Im Raster sorgt schon der Spaltenabstand für Luft.
+-      &.rank-tinted {
+-        margin: 0;
+-      }
+     }
+   }
+ }
+diff --git a/src/app/group-tab/group-tab.ts b/src/app/group-tab/group-tab.ts
+index 5cba97b..e1b55a2 100644
+--- a/src/app/group-tab/group-tab.ts
++++ b/src/app/group-tab/group-tab.ts
+@@ -7,11 +7,8 @@ import { DeckService } from '../deck.service';
+ import { NavigationService } from '../navigation.service';
+ import { PlayerAvatar } from '../player-avatar/player-avatar';
+ import { I18nService } from '../i18n.service';
+-import { RankedBadgeService } from '../ranked-badge.service';
+ import { DialogService } from '../dialog.service';
+ import { GAME_MODES, GameMode } from '../models';
+-import { RankTier, rankTiersFor } from '../elo';
+-import { rankStyle } from '../ui/rank-badge/rank-badge';
+ import { GROUP_PERMISSION_CATEGORIES, GroupPermission, GroupRole } from '../group-permissions';
+ import { OverflowMenu } from '../ui/overflow-menu/overflow-menu';
+ import { Icon } from '../ui/icon/icon';
+@@ -30,29 +27,6 @@ export class GroupTab {
+   private readonly navigation = inject(NavigationService);
+   readonly i18n = inject(I18nService);
+   private readonly dialog = inject(DialogService);
+-  private readonly rankedBadges = inject(RankedBadgeService);
+-
+-  /**
+-   * Rangfarbe der Spielerkarten - der Standard-Rang (Normal + Commander) der aktiven Gruppe, weil
+-   * der Gruppen-Tab keine Modus- oder Format-Auswahl hat. Nur mit eingeschaltetem Rangsystem.
+-   */
+-  private readonly rankTiers = computed<Map<string, RankTier>>(() =>
+-    this.groupService.rankedEnabled()
+-      ? rankTiersFor(
+-          this.groupService.seasonMatches(this.mtg.history(), this.groupService.groupId()),
+-          'Normal',
+-          'Commander',
+-        )
+-      : new Map(),
+-  );
+-
+-  rankTierFor(player: string): RankTier | null {
+-    return this.rankTiers().get(player) ?? null;
+-  }
+-
+-  rankVars(tier: RankTier | null): Record<string, string> | null {
+-    return rankStyle(tier);
+-  }
+ 
+   // --- Gruppen erstellen/wechseln ---
+ 
+@@ -635,36 +609,6 @@ export class GroupTab {
+   readonly roleNameDraft = signal('');
+   readonly rolePermissionsDraft = signal<Set<GroupPermission>>(new Set());
+ 
+-  /**
+-   * Rangsystem der Gruppe an/aus (nur Gruppenleiter). Beim Ausschalten geht nichts verloren -
+-   * die Wertung wird ohnehin nicht gespeichert, sondern aus den Partien gerechnet, und kommt beim
+-   * Wiedereinschalten unverändert zurück. Das sagt die Rückfrage auch.
+-   */
+-  async toggleRanked(groupId: string): Promise<void> {
+-    const enabled = this.groupService.isRankedGroup(groupId);
+-    const message = this.i18n.t(enabled ? 'group.rankedConfirmOff' : 'group.rankedConfirmOn');
+-    if (!(await this.dialog.confirm(message))) return;
+-    await this.groupService.setRankedEnabled(groupId, !enabled);
+-  }
+-
+-  /** Rangliste neu starten, ohne Abzeichen - nur Gruppenleiter. */
+-  async resetRanked(groupId: string): Promise<void> {
+-    if (!(await this.dialog.confirm(this.i18n.t('group.rankedResetConfirm')))) return;
+-    const ok = await this.groupService.startNewRankedSeason(groupId);
+-    await this.dialog.alert(this.i18n.t(ok ? 'group.rankedResetDone' : 'group.rankedSeasonFailed'));
+-  }
+-
+-  /** Saison beenden: Abzeichen für alle mit fertigem Rang, dann Neustart - nur Gruppenleiter. */
+-  async endRankedSeason(groupId: string, groupName: string): Promise<void> {
+-    if (!(await this.dialog.confirm(this.i18n.t('group.rankedEndSeasonConfirm')))) return;
+-    const count = await this.rankedBadges.endSeason(groupId, groupName);
+-    await this.dialog.alert(
+-      count === null
+-        ? this.i18n.t('group.rankedSeasonFailed')
+-        : this.i18n.t('group.rankedEndSeasonDone', { count }),
+-    );
+-  }
+-
+   async openPermissionsDialog(groupId: string): Promise<void> {
+     this.permissionsGroupId.set(groupId);
+     this.permissionsBusy.set(true);
+diff --git a/src/app/group.service.ts b/src/app/group.service.ts
+index 5a6e1e4..ad92e67 100644
+--- a/src/app/group.service.ts
++++ b/src/app/group.service.ts
+@@ -24,52 +24,6 @@ export class GroupService {
+     () => this.myGroups().find((g) => g.id === this.groupId())?.role === 'owner'
+   );
+ 
+-  /**
+-   * Spielt die Gruppe mit Elo-Rangsystem (groups.ranked_enabled, sql/ranked-gruppe-2026-09-30.sql)?
+-   * Eigene Abfrage statt Teil von loadMyGroups(): fehlt die Spalte noch, soll nur der Schalter
+-   * verschwinden, nicht die ganze Gruppenliste. Ohne Eintrag gilt "an" (der Standard).
+-   */
+-  private readonly rankedEnabledByGroup = signal<Map<string, boolean>>(new Map());
+-  /** false, solange die Migration fehlt - dann gibt es keinen Schalter, Ranked bleibt an. */
+-  readonly rankedSettingAvailable = signal(true);
+-
+-  isRankedGroup(groupId: string | null): boolean {
+-    if (!groupId) return false;
+-    return this.rankedEnabledByGroup().get(groupId) ?? true;
+-  }
+-
+-  /** Ranked in der aktuell aktiven Gruppe? */
+-  readonly rankedEnabled = computed(() => this.isRankedGroup(this.groupId()));
+-
+-  /**
+-   * Wer die Wertung sehen darf: alle, solange das Rangsystem an ist - ist es aus, nur der
+-   * Gruppenleiter (Wunsch des Users, 06.10.2026: im Hintergrund weiterrechnen, nur nicht
+-   * zeigen). Gerechnet wird ohnehin immer, Partien werden weiter als Ranked gespeichert.
+-   */
+-  canSeeRanked(groupId: string | null): boolean {
+-    return !!groupId && (this.isRankedGroup(groupId) || this.isOwnerOf(groupId));
+-  }
+-  readonly canSeeRankedHere = computed(() => this.canSeeRanked(this.groupId()));
+-
+-  /**
+-   * Start der laufenden Saison je Gruppe (groups.ranked_since, sql/ranked-saison-2026-10-06.sql):
+-   * nur Partien ab diesem Zeitpunkt zählen für die Elo. Fehlt die Spalte, zählt alles.
+-   */
+-  private readonly rankedSinceByGroup = signal<Map<string, string | null>>(new Map());
+-  readonly rankedSeasonAvailable = signal(true);
+-
+-  rankedSince(groupId: string | null): string | null {
+-    return groupId ? (this.rankedSinceByGroup().get(groupId) ?? null) : null;
+-  }
+-
+-  /** Partien der laufenden Saison dieser Gruppe - vor jeder Elo-Rechnung anwenden. */
+-  seasonMatches<T extends { date: string }>(matches: readonly T[], groupId: string | null): T[] {
+-    const since = this.rankedSince(groupId);
+-    if (!since) return [...matches];
+-    const start = new Date(since).getTime();
+-    return matches.filter((m) => new Date(m.date).getTime() >= start);
+-  }
+-
+   /** Name der aktuell aktiven Gruppe, oder null solange keine Gruppe aktiv ist (z.B. beim ersten
+    * Laden) - fürs Gruppen-Tab, damit z.B. der "Spieler"-Abschnitt erkennbar zeigt, für welche
+    * Gruppe er gerade gilt (relevant sobald jemand Mitglied in mehreren Gruppen ist). */
+@@ -154,7 +108,6 @@ export class GroupService {
+       }));
+ 
+     this.myGroups.set(groups);
+-    void this.loadRankedEnabled(groups.map((g) => g.id));
+ 
+     // Die eigenen Rechte ergeben sich jetzt aus der zugewiesenen Rolle (group_roles.permissions)
+     // statt aus einzeln vergebenen Rechten (siehe loadGroupRoles/createRole/assignRole) - der
+@@ -567,70 +520,6 @@ export class GroupService {
+     }));
+   }
+ 
+-
+-  private async loadRankedEnabled(groupIds: string[]): Promise<void> {
+-    if (groupIds.length === 0 || !this.rankedSettingAvailable()) return;
+-    const { data, error } = await supabase
+-      .from('groups')
+-      .select('id, ranked_enabled')
+-      .in('id', groupIds);
+-    if (error) {
+-      if (error.code === '42703') {
+-        console.warn('Spalte groups.ranked_enabled fehlt noch - sql/ranked-gruppe-2026-09-30.sql im Supabase-SQL-Editor ausführen.');
+-        this.rankedSettingAvailable.set(false);
+-      } else {
+-        console.error('Konnte Ranked-Einstellung nicht laden:', error);
+-      }
+-      return;
+-    }
+-    this.rankedEnabledByGroup.set(
+-      new Map((data ?? []).map((row: { id: string; ranked_enabled: boolean }) => [row.id, row.ranked_enabled !== false]))
+-    );
+-    void this.loadRankedSince(groupIds);
+-  }
+-
+-  private async loadRankedSince(groupIds: string[]): Promise<void> {
+-    if (!this.rankedSeasonAvailable()) return;
+-    const { data, error } = await supabase.from('groups').select('id, ranked_since').in('id', groupIds);
+-    if (error) {
+-      if (error.code === '42703') {
+-        console.warn('Spalte groups.ranked_since fehlt noch - sql/ranked-saison-2026-10-06.sql im Supabase-SQL-Editor ausführen.');
+-        this.rankedSeasonAvailable.set(false);
+-      } else {
+-        console.error('Konnte Saisonstart nicht laden:', error);
+-      }
+-      return;
+-    }
+-    this.rankedSinceByGroup.set(
+-      new Map((data ?? []).map((row: { id: string; ranked_since: string | null }) => [row.id, row.ranked_since])),
+-    );
+-  }
+-
+-  /** Neue Saison: ab jetzt zählen nur noch neue Partien - nur der Gruppenleiter. */
+-  async startNewRankedSeason(groupId: string): Promise<string | null> {
+-    if (!this.isOwnerOf(groupId)) return null;
+-    const now = new Date().toISOString();
+-    const { error } = await supabase.from('groups').update({ ranked_since: now }).eq('id', groupId);
+-    if (error) {
+-      console.error('Konnte Saison nicht neu starten:', error);
+-      return null;
+-    }
+-    this.rankedSinceByGroup.update((map) => new Map(map).set(groupId, now));
+-    return now;
+-  }
+-
+-  /** Rangsystem der Gruppe an/aus - nur der Gruppenleiter (Host). */
+-  async setRankedEnabled(groupId: string, enabled: boolean): Promise<boolean> {
+-    if (!this.isOwnerOf(groupId)) return false;
+-    const { error } = await supabase.from('groups').update({ ranked_enabled: enabled }).eq('id', groupId);
+-    if (error) {
+-      console.error('Konnte Ranked-Einstellung nicht speichern:', error);
+-      return false;
+-    }
+-    this.rankedEnabledByGroup.update((map) => new Map(map).set(groupId, enabled));
+-    return true;
+-  }
+-
+   async renameGroup(groupId: string, name: string): Promise<boolean> {
+     if (!this.hasPermissionFor(groupId, 'group.rename')) return false;
+ 
+diff --git a/src/app/i18n/deck.ts b/src/app/i18n/deck.ts
+index 75cea93..fd86e78 100644
+--- a/src/app/i18n/deck.ts
++++ b/src/app/i18n/deck.ts
+@@ -7,7 +7,7 @@ export const deck = {
+     'deck.manualRecord.draws': 'Unentschieden',
+     'deck.manualRecord.add': 'Alte Bilanz nachtragen',
+     'deck.manualRecord.edit': 'ändern',
+-    'deck.manualRecord.editHint': 'Bilanz aus der Zeit vor Statsfinity. Sie zählt nur hier am Deck, nicht in Ranglisten oder Elo - dafür fehlen Gegner und Datum.',
++    'deck.manualRecord.editHint': 'Bilanz aus der Zeit vor Statsfinity. Sie zählt nur hier am Deck, nicht in Ranglisten - dafür fehlen Gegner und Datum.',
+     'deck.manualRecord.line': 'Nachgetragen: {{wins}} S · {{losses}} N · {{draws}} U',
+     'deck.manualRecord.total': 'Gesamt mit Nachtrag: {{wins}} Siege in {{games}} Partien ({{rate}} %)',
+     'deck.importDeck': 'Deck importieren',
+@@ -289,7 +289,7 @@ export const deck = {
+     'deck.manualRecord.draws': 'Draws',
+     'deck.manualRecord.add': 'Add past record',
+     'deck.manualRecord.edit': 'edit',
+-    'deck.manualRecord.editHint': 'Record from before Statsfinity. It only counts here on the deck, not in rankings or Elo - opponents and dates are missing.',
++    'deck.manualRecord.editHint': 'Record from before Statsfinity. It only counts here on the deck, not in rankings - opponents and dates are missing.',
+     'deck.manualRecord.line': 'Logged manually: {{wins}} W · {{losses}} L · {{draws}} D',
+     'deck.manualRecord.total': 'Total incl. manual record: {{wins}} wins in {{games}} games ({{rate}}%)',
+     'deck.importDeck': 'Import deck',
+diff --git a/src/app/i18n/group.ts b/src/app/i18n/group.ts
+index db32e71..fd2e3c4 100644
+--- a/src/app/i18n/group.ts
++++ b/src/app/i18n/group.ts
+@@ -1,21 +1,6 @@
+ /** Übersetzungen: group. Beide Sprachen bewusst nebeneinander - wer eine ändert, sieht die andere. */
+ export const group = {
+   de: {
+-    'group.rankedTurnOff': 'Ranked-System ausschalten',
+-    'group.rankedTurnOn': 'Ranked-System einschalten',
+-    'group.rankedConfirmOff':
+-      'Ranked-System für diese Gruppe ausschalten? Ränge, LP und die Auswahl Ranked/Frei verschwinden für alle Mitglieder. Im Hintergrund läuft die Wertung weiter – du als Gruppenleiter siehst sie im Statistik-Tab, und beim Wiedereinschalten ist sie für alle wieder da.',
+-    'group.rankedReset': 'Rangliste zurücksetzen',
+-    'group.rankedResetConfirm':
+-      'Rangliste dieser Gruppe zurücksetzen? Alle starten neu bei Silber V, ab jetzt zählen nur neue Partien. Die Partien selbst bleiben in der Statistik. Abzeichen gibt es dabei keine – dafür „Saison beenden“.',
+-    'group.rankedResetDone': 'Die Rangliste startet neu.',
+-    'group.rankedEndSeason': 'Saison beenden',
+-    'group.rankedEndSeasonConfirm':
+-      'Saison beenden? Jeder mit Konto und fertiger Einstufung bekommt für jede Wertung (Modus + Format) ein dauerhaftes Abzeichen mit Endrang und LP in sein Profil. Danach startet die Rangliste neu bei Silber V.',
+-    'group.rankedEndSeasonDone': 'Saison beendet: {{count}} Abzeichen vergeben, die neue Saison läuft.',
+-    'group.rankedSeasonFailed': 'Das hat nicht geklappt. Ist sql/ranked-saison-2026-10-06.sql schon ausgeführt?',
+-    'group.rankedConfirmOn':
+-      'Ranked-System für diese Gruppe einschalten? Alle Ranked-Partien der Gruppe zählen dann für die Ränge, auch die bisherigen.',
+     // --- Gruppen-Tab ---
+     'group.myGroups': 'Meine Gruppen',
+     'group.createNewGroup': 'Neue Gruppe erstellen',
+@@ -176,21 +161,6 @@ export const group = {
+     'group.defaultPlayerName': 'Spieler',
+   },
+   en: {
+-    'group.rankedTurnOff': 'Turn off ranked system',
+-    'group.rankedTurnOn': 'Turn on ranked system',
+-    'group.rankedConfirmOff':
+-      'Turn off the ranked system for this group? Ranks, LP and the ranked/casual choice disappear for all members. The ranking keeps running in the background – as group leader you see it in the stats tab, and it is back for everyone when you turn it on again.',
+-    'group.rankedReset': 'Reset leaderboard',
+-    'group.rankedResetConfirm':
+-      'Reset this group\'s leaderboard? Everyone starts again at Silver V, from now on only new games count. The games themselves stay in the stats. No badges are awarded – use “End season” for that.',
+-    'group.rankedResetDone': 'The leaderboard starts over.',
+-    'group.rankedEndSeason': 'End season',
+-    'group.rankedEndSeasonConfirm':
+-      'End the season? Everyone with an account and finished placement gets a permanent badge with final rank and LP in their profile for each ranking (mode + format). Then the leaderboard starts over at Silver V.',
+-    'group.rankedEndSeasonDone': 'Season ended: {{count}} badges awarded, the new season is running.',
+-    'group.rankedSeasonFailed': 'That did not work. Has sql/ranked-saison-2026-10-06.sql been run yet?',
+-    'group.rankedConfirmOn':
+-      'Turn on the ranked system for this group? All ranked games of the group count towards the ranks, including past ones.',
+     // --- Group tab ---
+     'group.myGroups': 'My Groups',
+     'group.createNewGroup': 'Create new group',
+diff --git a/src/app/i18n/match.ts b/src/app/i18n/match.ts
+index 4d13863..3a44963 100644
+--- a/src/app/i18n/match.ts
++++ b/src/app/i18n/match.ts
+@@ -1,8 +1,6 @@
+ /** Übersetzungen: match. Beide Sprachen bewusst nebeneinander - wer eine ändert, sieht die andere. */
+ export const match = {
+   de: {
+-    'match.ranked': 'Ranked',
+-    'match.casual': 'Frei',
+     'match.durationMinutes': '{{min}} Min.',
+     'match.durationHours': '{{h}} Std. {{min}} Min.',
+     'match.winTurnShort': 'Zug {{turn}}',
+@@ -15,7 +13,7 @@ export const match = {
+     'match.playWithGroup': 'Gruppe',
+     'match.playWithFriends': 'Freunde',
+     'match.noFriendsYet': 'Noch keine Freunde. Im Profil unter „Freunde“ kannst du welche hinzufügen.',
+-    'match.friendGameHint': 'Freundesspiele gehören zu keiner Gruppe: Sie erscheinen bei allen Mitspielern im Profil und in der Freunde-Rangliste, aber nicht in Gruppenstatistik oder Elo. Der Tracker läuft dabei nur auf diesem Gerät.',
++    'match.friendGameHint': 'Freundesspiele gehören zu keiner Gruppe: Sie erscheinen bei allen Mitspielern im Profil und in der Freunde-Rangliste, aber nicht in der Gruppenstatistik. Der Tracker läuft dabei nur auf diesem Gerät.',
+     'match.me': 'Ich',
+     'match.showLifeCurve': 'Lebenspunkte-Verlauf',
+     'match.hideLifeCurve': 'Verlauf ausblenden',
+@@ -28,8 +26,6 @@ export const match = {
+     'match.backfillSave': 'Partie speichern',
+     'match.backfillSaved': 'Partie nachgetragen.',
+     'match.backfillFuture': 'Das Datum liegt in der Zukunft.',
+-    'match.rankedAria': 'Ranked oder freies Match',
+-    'match.rankedEditHint': 'Zählt dieses Match für die Ränge?',
+     // --- Match-Tab: Neues Match ---
+     'match.newMatch': 'Neues Match',
+     'match.gameMode': 'Spielmodus',
+@@ -189,8 +185,6 @@ export const match = {
+     'game.deadFallback': 'TOT',
+   },
+   en: {
+-    'match.ranked': 'Ranked',
+-    'match.casual': 'Casual',
+     'match.durationMinutes': '{{min}} min',
+     'match.durationHours': '{{h}} h {{min}} min',
+     'match.winTurnShort': 'Turn {{turn}}',
+@@ -203,7 +197,7 @@ export const match = {
+     'match.playWithGroup': 'Group',
+     'match.playWithFriends': 'Friends',
+     'match.noFriendsYet': 'No friends yet. Add some in your profile under “Friends”.',
+-    'match.friendGameHint': 'Friend games belong to no group: they show up in every participant’s profile and in the friends leaderboard, but not in group stats or Elo. The tracker only runs on this device.',
++    'match.friendGameHint': 'Friend games belong to no group: they show up in every participant’s profile and in the friends leaderboard, but not in group stats. The tracker only runs on this device.',
+     'match.me': 'Me',
+     'match.showLifeCurve': 'Life total history',
+     'match.hideLifeCurve': 'Hide history',
+@@ -216,8 +210,6 @@ export const match = {
+     'match.backfillSave': 'Save game',
+     'match.backfillSaved': 'Game logged.',
+     'match.backfillFuture': 'That date is in the future.',
+-    'match.rankedAria': 'Ranked or casual match',
+-    'match.rankedEditHint': 'Does this match count towards the ranks?',
+     // --- Match tab: New match ---
+     'match.newMatch': 'New Match',
+     'match.gameMode': 'Game Mode',
+diff --git a/src/app/i18n/profile.ts b/src/app/i18n/profile.ts
+index e3f585d..82a55bf 100644
+--- a/src/app/i18n/profile.ts
++++ b/src/app/i18n/profile.ts
+@@ -35,42 +35,12 @@ export const profile = {
+     'profile.friends.rankingWinRateHint': 'Du und deine Freunde über alle Partien aus allen Gruppen und Freundesspielen, ab {{min}} Partien.',
+     'profile.friends.rankingEmpty': 'Noch niemand mit genug Partien.',
+     'profile.friends.belowMin': 'Noch zu wenige Partien: {{names}}',
+-    'profile.friends.rankingElo': 'Elo unter Freunden',
+-    'profile.friends.rankingEloHint': 'Nur aus Freundesspielen, gerechnet wie das Rangsystem einer Gruppe.',
+     'profile.friends.rankingInfoAria': 'Wie wird die Rangliste gerechnet?',
+-    'profile.friends.eloEmpty': 'Noch keine Freundesspiele. Im Match-Tab oben auf „Freunde“ umschalten.',
+-    'profile.friends.placement': 'Einstufung {{games}}/10',
+     'profile.friends.winsOfGames': '{{wins}} / {{games}} Siege',
+     'profile.friends.you': 'Du',
+     'profile.friends.others': 'Andere/Unentschieden',
+     'profile.friends.h2h': 'Du gegen {{name}}: {{mine}} : {{theirs}} in {{games}} gemeinsamen Partien',
+     'profile.friends.h2hNone': 'Du und {{name}} habt noch keine gemeinsame Partie.',
+-    'profile.rank.infoAria': 'Wie das Rangsystem funktioniert',
+-    'profile.rank.info':
+-      'Der Rang gilt je Gruppe, Spielmodus und Format – gewertet werden nur Ranked-Partien dieser Gruppe. Die ersten 10 Partien sind die Einstufung: Jeder startet in der Mitte bei Silber V, die Einstufungspartien zählen stärker, und erst danach steht fest, wo man einsteigt – das kann auch Holz oder Gold sein. Jeder Rang hat fünf Divisionen (V bis I) zu je 100 LP: Holz, Eisen, Bronze, Silber, Gold, Platin, Diamant und ganz oben Infinity. Ein Sieg gegen gleich starke Gegner bringt rund 50 LP, gegen einen stärkeren Tisch mehr, gegen einen schwächeren weniger. Wer nicht gewinnt, verliert – egal ob Zweiter oder Letzter, gleich viel: Es zählt nur der Sieg, und gegen einen starken Sieger verliert man weniger als gegen einen schwachen. Dazu kommen 5 LP für jede gewertete Partie: Wer im Commander-Pod im Schnitt jedes vierte Spiel gewinnt, steigt langsam auf.',
+-    'profile.rank.tier.wood': 'Holz',
+-    'profile.rank.tier.iron': 'Eisen',
+-    'profile.rank.tier.bronze': 'Bronze',
+-    'profile.rank.tier.silver': 'Silber',
+-    'profile.rank.tier.gold': 'Gold',
+-    'profile.rank.tier.platinum': 'Platin',
+-    'profile.rank.tier.diamond': 'Diamant',
+-    'profile.rank.tier.infinity': 'Infinity',
+-    'profile.rank.unranked': 'Nicht eingerankt',
+-    'profile.rank.unrankedHint': 'Noch keine Spiele in {{mode}} – der Rang erscheint nach 10 gewerteten Partien.',
+-    'profile.rank.lp': '{{lp}} LP',
+-    'profile.badges.title': 'Saison-Abzeichen',
+-    'profile.badges.infoAria': 'Was sind Saison-Abzeichen?',
+-    'profile.badges.info': 'Der Endrang am Ende einer Ranked-Saison, je Wertung (Spielmodus + Format). Der Gruppenleiter beendet eine Saison im Gruppen-Tab, danach startet die Rangliste neu - die Abzeichen bleiben dauerhaft.',
+-    'profile.rank.toNext': 'Noch {{lp}} LP bis {{next}}',
+-    'profile.rank.detail': '{{games}} Partien · {{wins}} Siege · Bestwert {{peak}}',
+-    'profile.rank.placement': 'Einstufung {{games}}/{{total}}',
+-    'profile.rank.inPlacement': 'In Einstufung',
+-    'profile.rank.placementHint': 'Noch {{left}} Partien bis zum Rang · {{wins}} Siege bisher',
+-    'profile.rank.modeAria': 'Spielmodus für den Rang',
+-    'profile.rank.formatAria': 'Format für den Rang',
+-    'profile.rank.groupAria': 'Gruppe für den Rang',
+-    'profile.rank.modeLabel': 'Rang in {{mode}}',
+     'profile.artLanguage': 'Sprache der Kartenbilder',
+     'profile.artLanguageInfoAria': 'Was bewirkt diese Einstellung?',
+     'profile.artLanguageHint':
+@@ -600,42 +570,12 @@ export const profile = {
+     'profile.friends.rankingWinRateHint': 'You and your friends across all games from all groups and friend games, from {{min}} games.',
+     'profile.friends.rankingEmpty': 'Nobody with enough games yet.',
+     'profile.friends.belowMin': 'Not enough games yet: {{names}}',
+-    'profile.friends.rankingElo': 'Elo among friends',
+-    'profile.friends.rankingEloHint': 'Only from friend games, calculated like a group’s ranking system.',
+     'profile.friends.rankingInfoAria': 'How is the leaderboard calculated?',
+-    'profile.friends.eloEmpty': 'No friend games yet. Switch to “Friends” at the top of the Match tab.',
+-    'profile.friends.placement': 'Placement {{games}}/10',
+     'profile.friends.winsOfGames': '{{wins}} / {{games}} wins',
+     'profile.friends.you': 'You',
+     'profile.friends.others': 'Others/draw',
+     'profile.friends.h2h': 'You vs {{name}}: {{mine}} : {{theirs}} in {{games}} games together',
+     'profile.friends.h2hNone': 'You and {{name}} have no game together yet.',
+-    'profile.rank.infoAria': 'How the rank system works',
+-    'profile.rank.info':
+-      'Ranks are per group, game mode and format – only ranked games of that group count. The first 10 games are placements: everyone starts in the middle at Silver V, placement games count more, and only after them is it settled where you enter – that can be Wood or Gold, too. Each rank has five divisions (V to I) of 100 LP each: Wood, Iron, Bronze, Silver, Gold, Platinum, Diamond and, at the top, Infinity. A win against equally strong opponents earns about 50 LP, more against a stronger table, less against a weaker one. Everyone who does not win loses the same, whether second or last: only the win counts, and losing to a strong winner costs less than losing to a weak one. On top of that, every rated game adds 5 LP: winning one game in four in a Commander pod slowly moves you up.',
+-    'profile.rank.tier.wood': 'Wood',
+-    'profile.rank.tier.iron': 'Iron',
+-    'profile.rank.tier.bronze': 'Bronze',
+-    'profile.rank.tier.silver': 'Silver',
+-    'profile.rank.tier.gold': 'Gold',
+-    'profile.rank.tier.platinum': 'Platinum',
+-    'profile.rank.tier.diamond': 'Diamond',
+-    'profile.rank.tier.infinity': 'Infinity',
+-    'profile.rank.unranked': 'Not ranked',
+-    'profile.rank.unrankedHint': 'No games in {{mode}} yet – the rank appears after 10 rated games.',
+-    'profile.rank.lp': '{{lp}} LP',
+-    'profile.badges.title': 'Season badges',
+-    'profile.badges.infoAria': 'What are season badges?',
+-    'profile.badges.info': 'The final rank at the end of a ranked season, per ranking (game mode + format). The group leader ends a season in the group tab, then the leaderboard starts over - the badges stay permanently.',
+-    'profile.rank.toNext': '{{lp}} LP to {{next}}',
+-    'profile.rank.detail': '{{games}} games · {{wins}} wins · peak {{peak}}',
+-    'profile.rank.placement': 'Placements {{games}}/{{total}}',
+-    'profile.rank.inPlacement': 'In placements',
+-    'profile.rank.placementHint': '{{left}} games until your rank · {{wins}} wins so far',
+-    'profile.rank.modeAria': 'Game mode for the rank',
+-    'profile.rank.formatAria': 'Format for the rank',
+-    'profile.rank.groupAria': 'Group for the rank',
+-    'profile.rank.modeLabel': 'Rank in {{mode}}',
+     // --- Profile tab ---
+     'profile.artLanguage': 'Card image language',
+     'profile.artLanguageInfoAria': 'What does this setting do?',
+diff --git a/src/app/i18n/stats.ts b/src/app/i18n/stats.ts
+index 2300b63..1472b83 100644
+--- a/src/app/i18n/stats.ts
++++ b/src/app/i18n/stats.ts
+@@ -259,10 +259,6 @@ export const stats = {
+       '{{games}} gemeinsame Partien, {{other}} davon hat jemand anderes gewonnen',
+     'stats.friends.commandersTitle': 'Meistgespielte Commander',
+     'stats.friends.commandersEmpty': 'Keine Partien mit Commander in diesem Zeitraum.',
+-    'stats.friends.eloTitle': 'Elo unter Freunden',
+-    'stats.friends.eloInfo':
+-      'Nur aus Freundesspielen (Match-Tab → „Freunde“), gerechnet wie das Rangsystem einer Gruppe. Gruppenpartien zählen hier nicht - sonst würden Runden mit ganz anderen Gegnern vermischt.',
+-    'stats.friends.eloEmpty': 'Noch keine Freundesspiele in diesem Zeitraum.',
+     'stats.groupSwitcherHint':
+       'Gruppe wählen – gilt für die ganze Statistik und auch für neue Matches.',
+     'stats.globalDecksAndCommandersHint':
+@@ -549,10 +545,6 @@ export const stats = {
+     'stats.friends.vsGames': '{{games}} shared games, {{other}} of them won by someone else',
+     'stats.friends.commandersTitle': 'Most played commanders',
+     'stats.friends.commandersEmpty': 'No games with a commander in this period.',
+-    'stats.friends.eloTitle': 'Elo among friends',
+-    'stats.friends.eloInfo':
+-      "Only from friend games (Match tab → “Friends”), calculated like a group's ranking system. Group games do not count here - otherwise rounds with completely different opponents would be mixed.",
+-    'stats.friends.eloEmpty': 'No friend games in this period yet.',
+     'stats.groupSwitcherHint': 'Choose a group – applies to all stats and to new matches too.',
+     'stats.globalDecksAndCommandersHint':
+       'Across every player on the whole website - no player names (those would otherwise expose people from groups you’re not in). The winrate ranking only counts decks/commanders with 10+ games, otherwise a single 100% game would top the list.',
+diff --git a/src/app/i18n/tutorial.ts b/src/app/i18n/tutorial.ts
+index 0a1ee40..4c5e655 100644
+--- a/src/app/i18n/tutorial.ts
++++ b/src/app/i18n/tutorial.ts
+@@ -23,9 +23,6 @@ export const tutorial = {
+     'tutorial.match.friends.title': 'Gruppe oder Freunde',
+     'tutorial.match.friends.text':
+       'Mit „Freunde“ spielst du eine Partie ohne Gruppe - mit deinen Freunden aus dem Profil (und Gästen ohne Account). Solche Partien zählen in deinem Profil und in der Freunde-Rangliste, nie in der Gruppenstatistik.',
+-    'tutorial.match.ranked.title': 'Ranked oder Frei',
+-    'tutorial.match.ranked.text':
+-      'Nutzt deine Gruppe das Rangsystem, legst du hier fest, ob die Partie für die Ränge (LP) zählt. Freie Partien landen trotzdem in der Statistik. Nachträglich umstellen lässt sich das im Match-Verlauf.',
+     'tutorial.match.series.title': 'Einzelspiel oder Best of 3',
+     'tutorial.match.series.text':
+       'Bei Best of 3 startet nach jedem gespeicherten Spiel automatisch das nächste mit denselben Spielern, bis jemand zwei Siege hat.',
+@@ -49,7 +46,7 @@ export const tutorial = {
+       'Für Partien, die ohne Handy am Tisch gespielt wurden: gleiche Auswahl wie oben, dann nur noch Sieger und Datum eintragen - ganz ohne Tracker.',
+     'tutorial.match.history.title': 'Match-Verlauf',
+     'tutorial.match.history.text':
+-      'Die vergangenen Partien der Gruppe mit Siegern, Decks und - bei Ranked-Partien - den gewonnenen oder verlorenen LP. Live getrackte Partien zeigen dazu Dauer, Startspieler (▶) und die Lebenspunkte-Kurve. Mit den entsprechenden Rechten korrigierst du hier den Sieger, stellst Ranked/Frei um oder löschst ein Match.',
++      'Die vergangenen Partien der Gruppe mit Siegern und Decks. Live getrackte Partien zeigen dazu Dauer, Startspieler (▶) und die Lebenspunkte-Kurve. Mit den entsprechenden Rechten korrigierst du hier den Sieger oder löschst ein Match.',
+ 
+     // --- Suche-Tab ---
+     'tutorial.search.intro.title': 'Suche',
+@@ -133,7 +130,7 @@ export const tutorial = {
+       'Alle Gruppen, in denen du Mitglied bist. Hier setzt du die aktive Gruppe und lädst neue Mitglieder ein. Das ⋮-Menü jeder Gruppe zeigt die Mitglieder und bietet „Gruppe verlassen“.',
+     'tutorial.group.leader.title': 'Für Gruppenleiter',
+     'tutorial.group.leader.text':
+-      'Als Leiter findest du im ⋮-Menü zusätzlich: Rechte der Mitglieder, das Rangsystem an- oder ausschalten, Sichtbarkeit der Spielmodi, die Qualifikationsschwelle für die Ranglisten sowie Umbenennen und Löschen.',
++      'Als Leiter findest du im ⋮-Menü zusätzlich: Rechte der Mitglieder, Sichtbarkeit der Spielmodi, die Qualifikationsschwelle für die Ranglisten sowie Umbenennen und Löschen.',
+     'tutorial.group.players.title': 'Spieler',
+     'tutorial.group.players.text':
+       'Lege die Spieler-Namen für Matches an - auch für Leute ohne eigenen Account. Ein Tipp auf einen Namen öffnet sein Profil, über das ⋮-Menü verknüpfst du ihn mit einem beigetretenen Account, benennst ihn um oder löschst ihn.',
+@@ -144,16 +141,13 @@ export const tutorial = {
+     // --- Profil-Tab (eigenes Profil) ---
+     'tutorial.profile.intro.title': 'Profil-Tab',
+     'tutorial.profile.intro.text':
+-      'Dein persönlicher Bereich: Profil, Rang, Decks und deine eigenen Statistiken.',
++      'Dein persönlicher Bereich: Profil, Decks und deine eigenen Statistiken.',
+     'tutorial.profile.inbox.title': 'Postfach',
+     'tutorial.profile.inbox.text':
+       'Neue Kommentare auf deine Decks und Antworten auf deine Kommentare. Ein Tipp springt direkt zum Kommentar im Deck.',
+     'tutorial.profile.header.title': 'Profilbild, Name & Kartensprache',
+     'tutorial.profile.header.text':
+       'Tippe auf das Profilbild, um ein neues hochzuladen, und auf den Stift, um deinen Namen zu ändern. Darunter stehen deine Gruppen und die Sprache, in der Kartenbilder gezeigt werden.',
+-    'tutorial.profile.rank.title': 'Dein Rang',
+-    'tutorial.profile.rank.text':
+-      'Dein Rang aus einer Gruppe mit Rangsystem. Wähle Gruppe, Modus und Format, deren Rang auf deinem Profil erscheinen soll - der Rahmen um dein Profil färbt sich passend.',
+     'tutorial.profile.favorites.title': 'Lieblings-Commander',
+     'tutorial.profile.favorites.text':
+       'Bis zu drei Commander, die auf deinem Profil angezeigt werden - zeig, womit du am liebsten spielst.',
+@@ -182,7 +176,7 @@ export const tutorial = {
+     // --- Profil-Tab (fremdes Profil) ---
+     'tutorial.profileView.intro.title': 'Profil eines Spielers',
+     'tutorial.profileView.intro.text':
+-      'Du siehst das Profil eines anderen Spielers - mit Profilbild, Rang (falls ihr in derselben Gruppe mit Rangsystem seid) und Lieblings-Commandern.',
++      'Du siehst das Profil eines anderen Spielers - mit Profilbild und Lieblings-Commandern.',
+     'tutorial.profileView.friend.title': 'Freundschaft & Bilanz',
+     'tutorial.profileView.friend.text':
+       'Hier fragst du die Freundschaft an (oder beendest sie) und siehst, wie eure gemeinsamen Partien ausgegangen sind - über alle Gruppen und Freundesspiele.',
+@@ -326,9 +320,6 @@ export const tutorial = {
+     'tutorial.match.friends.title': 'Group or friends',
+     'tutorial.match.friends.text':
+       'With “Friends” you play a game without a group - with your friends from your profile (and guests without an account). Such games count on your profile and in the friends leaderboard, never in group stats.',
+-    'tutorial.match.ranked.title': 'Ranked or casual',
+-    'tutorial.match.ranked.text':
+-      'If your group uses the ranked system, decide here whether the game counts towards ranks (LP). Casual games still count in the stats. You can switch this later in the match history.',
+     'tutorial.match.series.title': 'Single game or best of 3',
+     'tutorial.match.series.text':
+       'With best of 3, the next game with the same players starts automatically after each saved game, until someone has two wins.',
+@@ -352,7 +343,7 @@ export const tutorial = {
+       'For games played without a phone at the table: same selection as above, then just enter the winner and date - no tracker needed.',
+     'tutorial.match.history.title': 'Match history',
+     'tutorial.match.history.text':
+-      "Your group's past games with winners, decks and - for ranked games - the LP won or lost. Live-tracked games also show duration, starting player (▶) and the life chart. With the right permissions you can correct the winner, switch ranked/casual or delete a match here.",
++      "Your group's past games with winners and decks. Live-tracked games also show duration, starting player (▶) and the life chart. With the right permissions you can correct the winner or delete a match here.",
+ 
+     // --- Search tab ---
+     'tutorial.search.intro.title': 'Search',
+@@ -435,7 +426,7 @@ export const tutorial = {
+       "All groups you're a member of. Set the active group here and invite new members. Each group's ⋮ menu shows its members and offers “Leave group”.",
+     'tutorial.group.leader.title': 'For group leaders',
+     'tutorial.group.leader.text':
+-      'As the leader, the ⋮ menu additionally has: member permissions, turning the ranked system on or off, visibility of game modes, the qualification threshold for the rankings, as well as rename and delete.',
++      'As the leader, the ⋮ menu additionally has: member permissions, visibility of game modes, the qualification threshold for the rankings, as well as rename and delete.',
+     'tutorial.group.players.title': 'Players',
+     'tutorial.group.players.text':
+       "Add the player names used in matches - even for people without their own account. Tap a name to open their profile; via the ⋮ menu you link them to a member's account, rename or delete them.",
+@@ -445,16 +436,13 @@ export const tutorial = {
+ 
+     // --- Profile tab (own profile) ---
+     'tutorial.profile.intro.title': 'Profile tab',
+-    'tutorial.profile.intro.text': 'Your personal area: profile, rank, decks and your own stats.',
++    'tutorial.profile.intro.text': 'Your personal area: profile, decks and your own stats.',
+     'tutorial.profile.inbox.title': 'Inbox',
+     'tutorial.profile.inbox.text':
+       'New comments on your decks and replies to your comments. Tap one to jump straight to it in the deck.',
+     'tutorial.profile.header.title': 'Picture, name & card language',
+     'tutorial.profile.header.text':
+       'Tap your profile picture to upload a new one and the pencil to change your name. Below are your groups and the language card images are shown in.',
+-    'tutorial.profile.rank.title': 'Your rank',
+-    'tutorial.profile.rank.text':
+-      'Your rank from a group with the ranked system. Choose the group, mode and format whose rank appears on your profile - the frame around your profile takes on its colour.',
+     'tutorial.profile.favorites.title': 'Favourite commanders',
+     'tutorial.profile.favorites.text':
+       'Up to three commanders shown on your profile - show what you like to play most.',
+@@ -483,7 +471,7 @@ export const tutorial = {
+     // --- Profile tab (someone else's profile) ---
+     'tutorial.profileView.intro.title': "A player's profile",
+     'tutorial.profileView.intro.text':
+-      "You're looking at another player's profile - with picture, rank (if you share a group with the ranked system) and favourite commanders.",
++      "You're looking at another player's profile - with picture and favourite commanders.",
+     'tutorial.profileView.friend.title': 'Friendship & record',
+     'tutorial.profileView.friend.text':
+       'Send a friend request here (or end the friendship) and see how your shared games went - across all groups and friend games.',
+diff --git a/src/app/match-tab/match-tab.html b/src/app/match-tab/match-tab.html
+index 6482abc..9f311fe 100644
+--- a/src/app/match-tab/match-tab.html
++++ b/src/app/match-tab/match-tab.html
+@@ -40,18 +40,6 @@
+     </div>
+   }
+ 
+-  <!-- Ranked oder frei: nur, wenn die Gruppe das Rangsystem nutzt (Schalter des Gruppenleiters). -->
+-  @if (!session.friendMode() && groupService.rankedEnabled() && mtg.isRankedAvailable()) {
+-    <div class="segmented block ranked-toggle" data-tutorial="match-ranked" role="group" [attr.aria-label]="i18n.t('match.rankedAria')">
+-      <button [class.active]="session.isRanked()" (click)="session.isRanked.set(true)">
+-        {{ i18n.t('match.ranked') }}
+-      </button>
+-      <button [class.active]="!session.isRanked()" (click)="session.isRanked.set(false)">
+-        {{ i18n.t('match.casual') }}
+-      </button>
+-    </div>
+-  }
+-
+   <!-- Einzelspiel oder Best of 3: bei Best of 3 startet nach jedem gespeicherten Spiel das
+        nächste mit denselben Spielern, bis jemand zwei Siege hat. -->
+   <div class="segmented block series-toggle" data-tutorial="match-series" role="group" [attr.aria-label]="i18n.t('match.seriesAria')">
+@@ -100,12 +88,9 @@
+   }
+   <div class="chip-row">
+     @for (player of mtg.allPlayers(); track player) {
+-      @let tier = rankTierFor(player, session.mode(), session.format());
+       <button
+         class="glass-chip avatar-chip"
+         [class.active]="isSelected(player)"
+-        [class.rank-tinted]="!!tier"
+-        [style]="rankVars(tier)"
+         (click)="togglePlayer(player)"
+       >
+         <app-player-avatar [url]="mtg.playerAvatars()[player] ?? null" />
+@@ -485,11 +470,6 @@
+       <span class="match-log-date"
+         >{{ match.date | date: 'dd.MM.yyyy, HH:mm' }}@if (matchDuration(match); as duration) { · {{ duration }}}</span
+       >
+-      <!-- Nur "Frei" wird markiert - Ranked ist der Normalfall und bräuchte an jeder Karte ein
+-           Etikett, das nichts sagt. Turnierspiele sind ohnehin nie Ranked. -->
+-      @if (groupService.rankedEnabled() && match.isRanked === false && !match.tournamentMatchId) {
+-        <span class="glass-chip small">{{ i18n.t('match.casual') }}</span>
+-      }
+       <!-- Freundesspiele haben keine Gruppenrechte; Korrekturen dort gibt es (noch) nicht. -->
+       @if (
+         !session.friendMode() &&
+@@ -558,22 +538,6 @@
+ 
+     @if (editingResultMatchId() === match.id) {
+   <div class="winner-edit">
+-    @if (
+-      groupService.hasPermission('match.editResult') &&
+-      groupService.rankedEnabled() &&
+-      mtg.isRankedAvailable() &&
+-      !match.tournamentMatchId
+-    ) {
+-      <p class="hint">{{ i18n.t('match.rankedEditHint') }}</p>
+-      <div class="segmented" role="group" [attr.aria-label]="i18n.t('match.rankedAria')">
+-        <button [class.active]="match.isRanked !== false" (click)="mtg.setMatchRanked(match.id, true)">
+-          {{ i18n.t('match.ranked') }}
+-        </button>
+-        <button [class.active]="match.isRanked === false" (click)="mtg.setMatchRanked(match.id, false)">
+-          {{ i18n.t('match.casual') }}
+-        </button>
+-      </div>
+-    }
+     @if (groupService.hasPermission('match.editResult')) {
+       <p class="hint">{{ i18n.t('match.whoWon') }}</p>
+       <div class="chip-row">
+diff --git a/src/app/match-tab/match-tab.scss b/src/app/match-tab/match-tab.scss
+index 9493a1a..74c5227 100644
+--- a/src/app/match-tab/match-tab.scss
++++ b/src/app/match-tab/match-tab.scss
+@@ -393,11 +393,6 @@
+   }
+ }
+ 
+-// Ranked/Frei unter Modus und Format beim Match-Start.
+-.ranked-toggle {
+-  margin-top: var(--sp-4);
+-}
+-
+ /* Startspieler: kleines Abspielzeichen hinter dem Namen, in der Farbe des Namens. */
+ .match-log-starter {
+   flex-shrink: 0;
+diff --git a/src/app/match-tab/match-tab.ts b/src/app/match-tab/match-tab.ts
+index 5d5e636..b38290a 100644
+--- a/src/app/match-tab/match-tab.ts
++++ b/src/app/match-tab/match-tab.ts
+@@ -13,8 +13,6 @@ import { I18nService } from '../i18n.service';
+ import { TournamentService } from '../tournament.service';
+ import { DialogService } from '../dialog.service';
+ import { GAME_MODES, TEAM_OPTIONS, Match, MatchPlayer, LIVE_TRACKING_START_DATE, DECK_FORMATS, DeckFormat, GameMode } from '../models';
+-import { RankTier, rankTiersFor } from '../elo';
+-import { rankStyle } from '../ui/rank-badge/rank-badge';
+ import { ARCHENEMY_OTHERS, DRAW, isPlayerWinner, teamMemberLabel, gameModeLabel } from '../match-utils';
+ import { CardImage } from '../card-image/card-image';
+ import { BracketBadge } from '../ui/bracket-badge/bracket-badge';
+@@ -67,37 +65,6 @@ export class MatchTab {
+   private readonly dialog = inject(DialogService);
+   private readonly deckViewer = inject(DeckViewerService);
+ 
+-  /**
+-   * Rangfarbe für die Ringe um die Profilbilder - nur in einer Gruppe mit Rangsystem. Je Modus
+-   * und Format gerechnet (bei der Spielerauswahl der gerade eingestellte, im Verlauf der des
+-   * jeweiligen Matches) und je Kombination einmal zwischengespeichert, bis sich der Verlauf ändert.
+-   */
+-  private readonly rankTierCache = computed(() => {
+-    this.mtg.history();
+-    return new Map<string, Map<string, RankTier>>();
+-  });
+-
+-  /** CSS-Variablen der Rangfarbe für einen Spieler-Chip (Klasse .rank-tinted in styles.scss). */
+-  rankVars(tier: RankTier | null): Record<string, string> | null {
+-    return rankStyle(tier);
+-  }
+-
+-  rankTierFor(name: string, mode: GameMode, format: DeckFormat | null): RankTier | null {
+-    if (!this.groupService.rankedEnabled()) return null;
+-    const cache = this.rankTierCache();
+-    const key = `${mode}|${format ?? ''}`;
+-    let tiers = cache.get(key);
+-    if (!tiers) {
+-      tiers = rankTiersFor(
+-        this.groupService.seasonMatches(this.mtg.history(), this.groupService.groupId()),
+-        mode,
+-        format,
+-      );
+-      cache.set(key, tiers);
+-    }
+-    return tiers.get(name) ?? null;
+-  }
+-
+   openTournamentPanel(): void {
+     this.tournament.openPanel();
+   }
+diff --git a/src/app/match-utils.ts b/src/app/match-utils.ts
+index e7b7356..67a81dc 100644
+--- a/src/app/match-utils.ts
++++ b/src/app/match-utils.ts
+@@ -98,7 +98,6 @@ export function mapMatchRow(row: any): Match {
+     tournamentMatchId: row.tournament_match_id ?? undefined,
+     tournamentGameNumber: row.tournament_game_number ?? undefined,
+     countsInGeneralStats: row.counts_in_general_stats ?? true,
+-    isRanked: row.is_ranked ?? true,
+     startedAt: row.started_at ?? undefined,
+     winCondition: row.win_condition ?? undefined,
+     winTurn: row.win_turn ?? undefined,
+diff --git a/src/app/models.ts b/src/app/models.ts
+index 71a7e85..23f0c8d 100644
+--- a/src/app/models.ts
++++ b/src/app/models.ts
+@@ -215,12 +215,6 @@ export interface Match {
+    * Match-Verlauf sichtbar, da es ja wirklich gespielt wurde.
+    */
+   countsInGeneralStats: boolean;
+-  /**
+-   * Ranked (zählt für die Elo-Wertung der Gruppe, siehe elo.ts) oder freies Match - beim Start
+-   * gewählt (matches.is_ranked, sql/ranked-gruppe-2026-09-30.sql). Fehlt der Wert (Migration
+-   * ausstehend, alte Zeilen), gilt das Match als Ranked. Turnierspiele zählen nie.
+-   */
+-  isRanked?: boolean;
+   /** Start der Partie im Tracker (matches.started_at); Dauer = date - startedAt. Fehlt = unbekannt. */
+   startedAt?: string;
+   /** Siegart (matches.win_condition). Fehlt = unbekannt. */
+diff --git a/src/app/mtg.service.ts b/src/app/mtg.service.ts
+index 9463638..9054690 100644
+--- a/src/app/mtg.service.ts
++++ b/src/app/mtg.service.ts
+@@ -23,7 +23,6 @@ const MATCH_HISTORY_SELECT = `
+   tournament_match_id,
+   tournament_game_number,
+   counts_in_general_stats,
+-  is_ranked,
+   started_at,
+   win_condition,
+   win_turn,
+@@ -57,24 +56,8 @@ function isMissingGameFormatError(error: { code?: string; message?: string } | n
+   return error.code === '42703' || (error.message ?? '').includes('game_format');
+ }
+ 
+-/**
+- * Fehlt matches.is_ranked noch (sql/ranked-gruppe-2026-09-30.sql)? Dann einmal je Sitzung ohne sie
+- * laden und speichern - alle Partien gelten dann als Ranked, wie vor der Migration.
+- */
+-let isRankedSpalteVerfuegbar = true;
+-
+-function isMissingIsRankedError(error: { code?: string; message?: string } | null): boolean {
+-  if (!error || !isRankedSpalteVerfuegbar) return false;
+-  if (error.code !== '42703' && error.code !== 'PGRST204') return false;
+-  if (!(error.message ?? '').includes('is_ranked')) return false;
+-  console.warn('Spalte matches.is_ranked fehlt noch - sql/ranked-gruppe-2026-09-30.sql im Supabase-SQL-Editor ausführen. Bis dahin zählen alle Partien als Ranked.');
+-  isRankedSpalteVerfuegbar = false;
+-  return true;
+-}
+-
+-function ohneIsRanked(select: string): string {
+-  const ohne = isRankedSpalteVerfuegbar ? select : select.replace('  is_ranked,\n', '');
+-  return ohnePerformance(ohneRauswurf(ohnePartieVerlauf(ohne)));
++function ohneFehlendeSpalten(select: string): string {
++  return ohnePerformance(ohneRauswurf(ohnePartieVerlauf(select)));
+ }
+ 
+ /**
+@@ -845,24 +828,23 @@ export class MtgService {
+     run: (select: string) => PromiseLike<{ data: any[] | null; error: any }>,
+     label: string
+   ): Promise<any[] | null> {
+-    let first = await run(ohneIsRanked(MATCH_HISTORY_SELECT));
++    let first = await run(ohneFehlendeSpalten(MATCH_HISTORY_SELECT));
+     // Mehrere neuere Spalten können fehlen - jede schaltet sich beim ersten Fehler einmal selbst ab.
+     for (
+       let i = 0;
+       i < 4 &&
+-      (isMissingIsRankedError(first.error) ||
+-        isMissingPartieVerlaufError(first.error) ||
++      (isMissingPartieVerlaufError(first.error) ||
+         isMissingRauswurfError(first.error) ||
+         isMissingPerformanceError(first.error));
+       i++
+     ) {
+-      first = await run(ohneIsRanked(MATCH_HISTORY_SELECT));
++      first = await run(ohneFehlendeSpalten(MATCH_HISTORY_SELECT));
+     }
+     if (!first.error) return first.data ?? [];
+ 
+     if (isMissingGameFormatError(first.error)) {
+       console.warn(`${label}: Spalte game_format fehlt noch (SQL-Migration ausstehend), lade ohne sie.`);
+-      const retry = await run(ohneIsRanked(MATCH_HISTORY_SELECT_WITHOUT_FORMAT));
++      const retry = await run(ohneFehlendeSpalten(MATCH_HISTORY_SELECT_WITHOUT_FORMAT));
+       if (!retry.error) return retry.data ?? [];
+       console.error(label, retry.error);
+       return null;
+@@ -929,21 +911,6 @@ export class MtgService {
+     return matches;
+   }
+ 
+-  /** Spielername eines Accounts in einer (nicht unbedingt aktiven) eigenen Gruppe, oder null. */
+-  async playerNameInGroup(groupId: string, userId: string): Promise<string | null> {
+-    const { data, error } = await supabase
+-      .from('players')
+-      .select('display_name')
+-      .eq('group_id', groupId)
+-      .eq('user_id', userId)
+-      .maybeSingle();
+-    if (error) {
+-      console.error('Konnte Spielernamen nicht laden:', error);
+-      return null;
+-    }
+-    return (data?.display_name as string | undefined) ?? null;
+-  }
+-
+   /**
+    * Wie loadHistory() für mehrere Gruppen, gibt die Matches zurück statt history() zu ändern
+    * (Stats-Tab, fremde Gruppe).
+@@ -1040,8 +1007,6 @@ export class MtgService {
+       tournamentMatchId?: string;
+       /** Default true (normale Matches zählen immer) - siehe Match.countsInGeneralStats. */
+       countsInGeneralStats?: boolean;
+-      /** Default true; Turnierspiele werden immer als frei gespeichert - siehe Match.isRanked. */
+-      isRanked?: boolean;
+       /** Lebenspunkte-Verlauf aus dem Tracker (matches.life_log) - nur gespeichert, nie lokal gehalten. */
+       lifeLog?: LifeLog;
+       /** Nachgetragene Partie: wann sie gespielt wurde (sonst setzt die Datenbank "jetzt"). */
+@@ -1059,9 +1024,6 @@ export class MtgService {
+     // Die automatische Deck-Zuordnung sucht in der Gruppe - ein Freundesspiel hat keine.
+     const players = friendGame ? match.players : await this.resolveAutoDeckLinks(match.players, match.mode);
+ 
+-    // Ranked ist Gruppensache; Freundesspiele zählen nie für die Elo einer Gruppe.
+-    const isRanked = !friendGame && !match.tournamentMatchId && (match.isRanked ?? true);
+-
+     // Neue Siegarten (sql/siegarten-erweitert-2026-10-21.sql): Fehlt die Migration, lehnt die
+     // Prüfregel sie ab (23514) - dann lieber "Anderes" speichern als die ganze Partie verlieren.
+     let winCondition = match.winCondition ?? null;
+@@ -1071,7 +1033,6 @@ export class MtgService {
+       supabase
+         .from('matches')
+         .insert({
+-          ...(isRankedSpalteVerfuegbar ? { is_ranked: isRanked } : {}),
+           group_id: groupId,
+           game_mode: match.mode,
+           game_format: match.format ?? null,
+@@ -1100,9 +1061,7 @@ export class MtgService {
+         .single();
+     // Fehlt eine der neueren Spalten, schaltet der Versuch sie ab und der nächste läuft ohne.
+     let { data: matchRow, error: matchError } = await insertMatch();
+-    if (isMissingIsRankedError(matchError)) ({ data: matchRow, error: matchError } = await insertMatch());
+     if (isMissingPartieVerlaufError(matchError)) ({ data: matchRow, error: matchError } = await insertMatch());
+-    if (isMissingIsRankedError(matchError)) ({ data: matchRow, error: matchError } = await insertMatch());
+     if (isMissingPerformanceError(matchError)) ({ data: matchRow, error: matchError } = await insertMatch());
+     if (
+       matchError?.code === '23514' &&
+@@ -1190,7 +1149,6 @@ export class MtgService {
+       id: matchRow.id,
+       date: matchRow.played_at,
+       countsInGeneralStats: match.countsInGeneralStats ?? true,
+-      isRanked,
+       winCondition: performanceVerfuegbar ? match.winCondition : undefined,
+       winTurn: performanceVerfuegbar ? match.winTurn : undefined,
+       note: (performanceVerfuegbar && match.note?.trim()) || undefined,
+@@ -1208,26 +1166,6 @@ export class MtgService {
+     return matchRow.id;
+   }
+ 
+-  /**
+-   * Ranked/frei nachträglich umschalten - die Kontrolle des Gruppenleiters bzw. aller, die
+-   * Ergebnisse bearbeiten dürfen (match.editResult), z. B. für ein versehentlich als Ranked
+-   * gestartetes Spaßspiel. Turnierspiele bleiben immer frei.
+-   */
+-  async setMatchRanked(matchId: string, isRanked: boolean): Promise<void> {
+-    if (!this.groupService.hasPermission('match.editResult') || !isRankedSpalteVerfuegbar) return;
+-    const { error } = await supabase.from('matches').update({ is_ranked: isRanked }).eq('id', matchId);
+-    if (error) {
+-      if (!isMissingIsRankedError(error)) console.error('Konnte Ranked/Frei nicht speichern:', error);
+-      return;
+-    }
+-    this.history.update((matches) => matches.map((m) => (m.id === matchId ? { ...m, isRanked } : m)));
+-  }
+-
+-  /** Ob Ranked/Frei gespeichert werden kann (Migration gelaufen). */
+-  isRankedAvailable(): boolean {
+-    return isRankedSpalteVerfuegbar;
+-  }
+-
+   /**
+    * Platzierungen (1 = Sieger, ...) nachtragen - reine Zusatzinfo, winner_name bleibt unberührt.
+    */
+diff --git a/src/app/personal-stats/personal-stats.ts b/src/app/personal-stats/personal-stats.ts
+index 80daffc..2adf14d 100644
+--- a/src/app/personal-stats/personal-stats.ts
++++ b/src/app/personal-stats/personal-stats.ts
+@@ -192,7 +192,7 @@ export class PersonalStats {
+     return [...years].sort((a, b) => b - a);
+   });
+ 
+-  /** Für den Match-Verlauf: in der Gruppe dessen eigene Quelle (mit LP), sonst diese Partien. */
++  /** Für den Match-Verlauf: in der Gruppe dessen eigene Quelle, sonst diese Partien. */
+   readonly historyEntries = computed(() => {
+     if (this.effectiveScope() === 'group') return null;
+     const name = this.person().name;
+diff --git a/src/app/player-match-history/player-match-history.html b/src/app/player-match-history/player-match-history.html
+index c8243f0..01f499b 100644
+--- a/src/app/player-match-history/player-match-history.html
++++ b/src/app/player-match-history/player-match-history.html
+@@ -33,14 +33,6 @@
+           }
+           <span class="match-log-date">{{ row.match.date | date: 'dd.MM.yyyy, HH:mm' }}</span>
+           <span class="match-log-verdict">
+-            @if (row.lpChange !== null) {
+-              <span
+-                class="match-log-lp"
+-                [class.up]="row.lpChange > 0"
+-                [class.down]="row.lpChange < 0"
+-                >{{ row.lpChange > 0 ? '+' : '' }}{{ row.lpChange }} LP</span
+-              >
+-            }
+             @if (row.placement) {
+               <span
+                 class="match-log-place"
+diff --git a/src/app/player-match-history/player-match-history.scss b/src/app/player-match-history/player-match-history.scss
+index 1cc3eeb..3c32140 100644
+--- a/src/app/player-match-history/player-match-history.scss
++++ b/src/app/player-match-history/player-match-history.scss
+@@ -4,18 +4,3 @@
+ .history-summary {
+   margin-bottom: var(--sp-5);
+ }
+-
+-/* LP-Änderung der Partie (Elo-Rang im Profil) - gehört nur hierher, nicht in den Match-Tab. */
+-.match-log-lp {
+-  font-size: 0.78rem;
+-  font-weight: 700;
+-  opacity: 0.85;
+-
+-  &.up {
+-    color: var(--success);
+-  }
+-
+-  &.down {
+-    color: var(--danger);
+-  }
+-}
+diff --git a/src/app/player-match-history/player-match-history.ts b/src/app/player-match-history/player-match-history.ts
+index 9507d03..72d413e 100644
+--- a/src/app/player-match-history/player-match-history.ts
++++ b/src/app/player-match-history/player-match-history.ts
+@@ -13,8 +13,6 @@ import { CardDataService } from '../card-data.service';
+ import { DeckService } from '../deck.service';
+ import { DeckViewerService } from '../deck-viewer.service';
+ import { Icon } from '../ui/icon/icon';
+-import { lpChangesByMatch } from '../elo';
+-import { GroupService } from '../group.service';
+ 
+ /** Ein Teilnehmer eines Spiels, so wie ihn die Historie als Kachel zeigt. */
+ export interface PlayerMatchEntry {
+@@ -34,8 +32,6 @@ export interface PlayerMatchRow {
+   match: Match;
+   result: 'win' | 'loss' | 'draw';
+   placement: number | null;
+-  /** LP-Änderung der Person in dieser Partie (elo.ts), null = Partie ist nicht gewertet. */
+-  lpChange: number | null;
+   /** ALLE Teilnehmer inklusive der eigenen Person, in der Reihenfolge des Matches. */
+   participants: PlayerMatchEntry[];
+ }
+@@ -60,7 +56,6 @@ export class PlayerMatchHistory {
+   private readonly cardData = inject(CardDataService);
+   private readonly deckService = inject(DeckService);
+   private readonly deckViewer = inject(DeckViewerService);
+-  private readonly groupService = inject(GroupService);
+ 
+   /** Spielername, dessen Partien gezeigt werden - null, solange das Profil noch keinen kennt. */
+   readonly playerName = input.required<string | null>();
+@@ -98,19 +93,6 @@ export class PlayerMatchHistory {
+     const quelle =
+       extern ??
+       (freunde.length > 0 ? [...eigene, ...freunde].sort((a, b) => b.match.date.localeCompare(a.match.date)) : eigene);
+-    // Über die GANZE Quelle gerechnet, nicht über die gefilterten Zeilen - die LP einer Partie
+-    // hängen an allem, was davor gespielt wurde, auch an Partien anderer Jahre. Nur für die eigene
+-    // Gruppe mit Rangsystem: Ränge sind Gruppensache, öffentliche Matches (extern) zeigen keine LP.
+-    const lp =
+-      !extern && this.groupService.canSeeRankedHere()
+-        ? lpChangesByMatch(
+-            this.groupService.seasonMatches(
+-              eigene.map((q) => q.match),
+-              this.groupService.groupId(),
+-            ),
+-          )
+-        : new Map<string, Map<string, number>>();
+-
+     const rows: PlayerMatchRow[] = [];
+     for (const { match, selfName: name } of quelle) {
+       // Dieselbe Grenze wie im Match-Tab: alte Excel-Importe bleiben in der Statistik, aber aus
+@@ -130,7 +112,6 @@ export class PlayerMatchHistory {
+             ? 'win'
+             : 'loss',
+         placement: me.placement ?? null,
+-        lpChange: lp.has(match.id) ? Math.round(lp.get(match.id)!.get(name) ?? 0) : null,
+         participants: match.players.map((p) => ({
+           name: p.name,
+           isSelf: p.name === name,
+diff --git a/src/app/profile-tab/profile-tab.html b/src/app/profile-tab/profile-tab.html
+index 3280ea5..ec0f96e 100644
+--- a/src/app/profile-tab/profile-tab.html
++++ b/src/app/profile-tab/profile-tab.html
+@@ -1,6 +1,6 @@
+ @if (profileService.viewingUserId()) {
+ <div class="profile-grid">
+-  <section class="glass-card span-full" [class.rank-frame]="!!rankFrameStyle()" [style]="rankFrameStyle()">
++  <section class="glass-card span-full">
+     @if (profileService.viewingBusy()) {
+       <p class="hint">{{ i18n.t('profile.loadingProfile') }}</p>
+       <button class="glass-button small" (click)="profileService.stopViewingProfile()">{{ i18n.t('profile.backToMyProfile') }}</button>
+@@ -26,10 +26,6 @@
+           <button class="glass-button small" (click)="profileService.stopViewingProfile()">{{ i18n.t('profile.backToMyProfile') }}</button>
+         </div>
+       </div>
+-      @if (rankGroupId()) {
+-        <app-profile-rank [entry]="rankEntry()" [mode]="rankChoice().mode" [format]="rankChoice().format" [groupName]="rankGroupName()" />
+-      }
+-
+       @if (profileService.viewingUserId(); as viewedUserId) {
+         <app-friend-status [userId]="viewedUserId" [name]="viewed.displayName" />
+       }
+@@ -63,11 +59,6 @@
+     }
+   </section>
+ 
+-  <!-- Saison-Abzeichen: für alle sichtbar, auch ohne Login (sql/ranked-saison-2026-10-06.sql). -->
+-  @if (profileService.viewingUserId(); as badgeUserId) {
+-    <app-ranked-badges [userId]="badgeUserId" />
+-  }
+-
+   <!-- Sammlung eines Freundes, nur lesen. RLS gibt sie nur Freunden heraus - für alle anderen
+        bleibt die Liste leer und der Abschnitt verschwindet. -->
+   @if (profileService.viewingUserId(); as collectionUserId) {
+@@ -132,7 +123,7 @@
+ } @else if (profileService.viewingPlayerId(); as npcPlayerId) {
+ 
+ <div class="profile-grid">
+-<section class="glass-card span-full" [class.rank-frame]="!!rankFrameStyle()" [style]="rankFrameStyle()">
++<section class="glass-card span-full">
+   <div class="viewing-profile-header-row">
+     <div class="avatar-row">
+       <div class="avatar-circle">
+@@ -150,10 +141,6 @@
+       <button class="glass-button small" (click)="profileService.stopViewingProfile()">{{ i18n.t('profile.backToMyProfile') }}</button>
+     </div>
+   </div>
+-  @if (rankGroupId()) {
+-        <app-profile-rank [entry]="rankEntry()" [mode]="rankChoice().mode" [format]="rankChoice().format" [groupName]="rankGroupName()" />
+-      }
+-
+   @if (viewingNpcFavoriteCommanders().length > 0 || groupService.hasPermission('npc.favoriteCommanders')) {
+     <div class="favorite-commanders-col" data-tutorial="profile-favorites">
+       <div class="section-header-row">
+@@ -232,7 +219,7 @@
+      nichts zu tun. -->
+ <app-comment-inbox data-tutorial="profile-inbox" />
+ 
+-<section class="glass-card span-full" [class.rank-frame]="!!rankFrameStyle()" [style]="rankFrameStyle()">
++<section class="glass-card span-full">
+     <div class="profile-main-row">
+       <div class="profile-left" data-tutorial="profile-header">
+         <h2>{{ i18n.t('profile.myProfile') }}</h2>
+@@ -346,27 +333,6 @@
+         </div>
+       </div>
+ 
+-      <!-- Eigene Rasterzelle statt in .profile-left: dort ist neben den Icon-Knöpfen auf dem Handy
+-           kaum Platz, der Rang bräche Wort für Wort um. -->
+-      @if (profileService.profile() && rankGroupId()) {
+-        <app-profile-rank
+-          class="profile-rank-cell"
+-          data-tutorial="profile-rank"
+-          [entry]="rankEntry()"
+-          [mode]="rankChoice().mode"
+-          [format]="rankChoice().format"
+-          [modes]="rankModes()"
+-          [formats]="rankFormats()"
+-          [groups]="rankableGroups()"
+-          [groupId]="rankGroupId()"
+-          [groupName]="rankGroupName()"
+-          [editable]="true"
+-          (modeChange)="setRankMode($event)"
+-          (formatChange)="setRankFormat($event)"
+-          (groupChange)="setRankGroup($event)"
+-        />
+-      }
+-
+       <div class="favorite-commanders-col" data-tutorial="profile-favorites">
+         <h3>{{ i18n.t(mtg.myPlayerName() === 'Adrian' ? 'profile.myFavoriteGliederAdrian' : 'profile.myFavoriteCommanders') }}</h3>
+         <div class="favorite-commanders-row">
+@@ -403,10 +369,6 @@
+ 
+   </section>
+ 
+-  @if (profileService.profile()?.id; as badgeUserId) {
+-    <app-ranked-badges [userId]="badgeUserId" />
+-  }
+-
+   <!-- Statistik- und Deck-Bereich. Steht als ng-template auf oberster Ebene, weil ihn die
+        Developer-Vollansicht eines FREMDEN Profils unverändert mitbenutzt - eine zweite, von Hand
+        nachgepflegte Kopie desselben Markups wäre schon nach der ersten Änderung eine andere
+diff --git a/src/app/profile-tab/profile-tab.scss b/src/app/profile-tab/profile-tab.scss
+index 8c8cc93..e49f7a9 100644
+--- a/src/app/profile-tab/profile-tab.scss
++++ b/src/app/profile-tab/profile-tab.scss
+@@ -103,16 +103,10 @@
+   border-radius: 14px;
+ }
+ 
+-.profile-rank-cell {
+-  grid-column: 1 / -1;
+-  grid-row: 2;
+-  margin-top: 0;
+-}
+-
+ .favorite-commanders-col {
+-  // Handy: eigene Zeile über die volle Breite, unter Überschrift, Icon-Spalte und Rang.
++  // Handy: eigene Zeile über die volle Breite, unter Überschrift und Icon-Spalte.
+   grid-column: 1 / -1;
+-  grid-row: 3;
++  grid-row: 2;
+   min-width: 0;
+   display: flex;
+   flex-direction: column;
+@@ -193,13 +187,6 @@
+     grid-row: 1;
+   }
+ 
+-  // Desktop: waagerecht unter den Lieblingscommandern statt in der schmalen linken Spalte.
+-  .profile-rank-cell {
+-    grid-column: 2 / -1;
+-    grid-row: 2;
+-    align-self: start;
+-  }
+-
+   .header-icon-col {
+     grid-column: 3;
+     grid-row: 1;
+diff --git a/src/app/profile-tab/profile-tab.ts b/src/app/profile-tab/profile-tab.ts
+index 74be56c..8e9bf1f 100644
+--- a/src/app/profile-tab/profile-tab.ts
++++ b/src/app/profile-tab/profile-tab.ts
+@@ -1,4 +1,3 @@
+-import { RankedBadges } from '../ranked-badges/ranked-badges';
+ import { CollectionPanel } from '../collection-panel/collection-panel';
+ import { CollectionService } from '../collection.service';
+ import { CubeService } from '../cube.service';
+@@ -8,11 +7,8 @@ import { Component, computed, effect, inject, signal, viewChild } from '@angular
+ import { FormsModule } from '@angular/forms';
+ import { DatePipe, DecimalPipe, NgTemplateOutlet } from '@angular/common';
+ import QRCode from 'qrcode';
+-import { ProfileService, RankChoice } from '../profile.service';
+-import { DECK_FORMATS, DeckFormat, GAME_MODES, GameMode, Match } from '../models';
+-import { EloEntry, eloRanking, rankFromLp, ratedFormatsFor } from '../elo';
+-import { ProfileRank } from '../profile-rank/profile-rank';
+-import { rankStyle } from '../ui/rank-badge/rank-badge';
++import { ProfileService } from '../profile.service';
++import { Match } from '../models';
+ import { MtgService } from '../mtg.service';
+ import { GroupService } from '../group.service';
+ import { DeckList } from '../deck-list/deck-list';
+@@ -82,10 +78,8 @@ import { FriendStatus } from '../friend-status/friend-status';
+     PlayerMatchHistory,
+     Icon,
+     CommentInbox,
+-    ProfileRank,
+     FriendsPanel,
+     FriendStatus,
+-    RankedBadges,
+     CardThumb,
+     CollectionPanel,
+   ],
+@@ -155,145 +149,6 @@ export class ProfileTab {
+     return playerId ? { kind: 'player', playerId } : null;
+   });
+ 
+-  // --- Elo-Rang (elo.ts): Abzeichen im Kopf, Rahmen und Profilbild in Rangfarbe ---
+-
+-  /** Gewählter Modus des eigenen Profils bzw. des angesehenen Accounts (NPCs: immer Standard). */
+-  private readonly ownRankChoice = signal<RankChoice>(ProfileService.DEFAULT_RANK_CHOICE);
+-  private readonly viewedRankChoice = signal<RankChoice>(ProfileService.DEFAULT_RANK_CHOICE);
+-  readonly rankChoice = computed<RankChoice>(() => {
+-    if (this.profileService.viewingUserId()) return this.viewedRankChoice();
+-    if (this.profileService.viewingPlayerId()) return ProfileService.DEFAULT_RANK_CHOICE;
+-    return this.ownRankChoice();
+-  });
+-
+-  /**
+-   * Der Rang ist Gruppensache und nicht öffentlich: gerechnet wird über die Partien genau EINER
+-   * Gruppe mit eingeschaltetem Rangsystem, die der Betrachter selbst sehen darf. Eigenes Profil:
+-   * die gewählte Gruppe (Auswahlfeld), sonst die aktive. Fremdes Profil: dessen gewählte Gruppe,
+-   * sofern der Betrachter darin Mitglied ist (sonst liefert profile_rank_choice() null), ersatzweise
+-   * die aktive Gruppe, wenn beide darin spielen. NPC: die aktive Gruppe. Sonst kein Rang.
+-   */
+-  readonly rankableGroups = computed(() =>
+-    this.groupService.myGroups().filter((g) => this.groupService.isRankedGroup(g.id)),
+-  );
+-
+-  readonly rankGroupId = computed<string | null>(() => {
+-    const active = this.groupService.groupId();
+-    const activeRanked = this.groupService.isRankedGroup(active) ? active : null;
+-    if (this.profileService.viewingPlayerId()) return activeRanked;
+-    const chosen = this.rankChoice().groupId;
+-    if (this.profileService.viewingUserId()) {
+-      if (chosen && this.groupService.isRankedGroup(chosen)) return chosen;
+-      return activeRanked && this.profileHistoryName() ? activeRanked : null;
+-    }
+-    if (chosen && this.rankableGroups().some((g) => g.id === chosen)) return chosen;
+-    return activeRanked ?? this.rankableGroups()[0]?.id ?? null;
+-  });
+-
+-  readonly rankGroupName = computed(
+-    () => this.groupService.myGroups().find((g) => g.id === this.rankGroupId())?.name ?? null,
+-  );
+-
+-  /** Partien und Spielername einer anderen als der aktiven Gruppe, nachgeladen (siehe Konstruktor). */
+-  private readonly otherGroupRankData = signal<{
+-    groupId: string;
+-    userId: string;
+-    matches: Match[];
+-    playerName: string | null;
+-  } | null>(null);
+-
+-  private readonly rankMatches = computed<Match[]>(() => {
+-    const groupId = this.rankGroupId();
+-    if (!groupId) return [];
+-    // Nur die laufende Saison (groups.ranked_since) - ein Neustart beginnt bei allen von vorn.
+-    if (groupId === this.groupService.groupId())
+-      return this.groupService.seasonMatches(this.mtg.history(), groupId);
+-    const other = this.otherGroupRankData();
+-    return other?.groupId === groupId
+-      ? this.groupService.seasonMatches(other.matches, groupId)
+-      : [];
+-  });
+-  private readonly rankPlayerName = computed<string | null>(() => {
+-    const groupId = this.rankGroupId();
+-    if (!groupId) return null;
+-    if (groupId === this.groupService.groupId()) return this.profileHistoryName();
+-    const other = this.otherGroupRankData();
+-    return other?.groupId === groupId ? other.playerName : null;
+-  });
+-
+-  /** Account, dessen Rang gerade gezeigt wird (eigener oder angesehener); null bei NPCs. */
+-  private readonly rankUserId = computed<string | null>(() =>
+-    this.profileService.viewingPlayerId()
+-      ? null
+-      : (this.profileService.viewingUserId() ?? this.profileService.profile()?.id ?? null),
+-  );
+-
+-  /** Modi, in denen der Spieler gewertet ist, plus der gewählte; in der Reihenfolge von GAME_MODES. */
+-  readonly rankModes = computed<GameMode[]>(() => {
+-    const name = this.rankPlayerName();
+-    const matches = this.rankMatches();
+-    return GAME_MODES.filter(
+-      (m) =>
+-        m === this.rankChoice().mode ||
+-        (!!name && eloRanking(matches, m).some((e) => e.name === name)),
+-    );
+-  });
+-
+-  /**
+-   * Alle Formate zur Auswahl - auch die ohne Partien, die zeigen dann "Nicht eingerankt". Nur für
+-   * einen Modus ohne Format (Spezialevent, format null) gibt es nichts zu wählen.
+-   */
+-  readonly rankFormats = computed<DeckFormat[]>(() =>
+-    this.rankChoice().format === null ? [] : DECK_FORMATS,
+-  );
+-
+-  readonly rankEntry = computed<EloEntry | null>(() => {
+-    const name = this.rankPlayerName();
+-    if (!name) return null;
+-    const { mode, format } = this.rankChoice();
+-    return eloRanking(this.rankMatches(), mode, { format }).find((e) => e.name === name) ?? null;
+-  });
+-
+-  /** CSS-Variablen für den Rahmen um den Profilkopf; null = ungewertet/Einstufung, normaler Rahmen. */
+-  readonly rankFrameStyle = computed(() => {
+-    const e = this.rankEntry();
+-    return e && !e.provisional ? rankStyle(rankFromLp(e.lp).tier) : null;
+-  });
+-
+-  /**
+-   * Beim Moduswechsel bleibt das Format, wenn der Spieler darin auch in diesem Modus gewertet ist;
+-   * sonst das erste Format, in dem er es ist (2HG wird z. B. selten Modern gespielt). Hat der
+-   * Modus nur Partien ohne Format (Spezialevent), gilt null.
+-   */
+-  setRankMode(mode: GameMode): void {
+-    const name = this.rankPlayerName();
+-    const matches = this.rankMatches();
+-    const current = this.rankChoice().format;
+-    const rated = name ? ratedFormatsFor(matches, mode, name, DECK_FORMATS) : [];
+-    const formatlos =
+-      !!name &&
+-      rated.length === 0 &&
+-      eloRanking(matches, mode, { format: null }).some((e) => e.name === name);
+-    const format =
+-      current && rated.includes(current)
+-        ? current
+-        : (rated[0] ?? (formatlos ? null : (current ?? ProfileService.DEFAULT_RANK_CHOICE.format)));
+-    this.saveRankChoice({ ...this.rankChoice(), mode, format });
+-  }
+-
+-  setRankFormat(format: DeckFormat): void {
+-    this.saveRankChoice({ ...this.rankChoice(), format });
+-  }
+-
+-  setRankGroup(groupId: string): void {
+-    this.saveRankChoice({ ...this.rankChoice(), groupId });
+-  }
+-
+-  private saveRankChoice(choice: RankChoice): void {
+-    this.ownRankChoice.set(choice);
+-    void this.profileService.saveRankChoice(choice);
+-  }
+-
+   // --- Developer-Vollansicht eines fremden Profils ---
+ 
+   /** Ob überhaupt ein fremdes Profil angesehen wird (Account oder NPC) statt des eigenen. */
+@@ -646,40 +501,6 @@ export class ProfileTab {
+       this.foreignListTab.set('decks');
+     });
+ 
+-    // Rang aus einer anderen als der aktiven Gruppe: deren Partien und den Spielernamen des
+-    // Accounts dort nachladen (mtg.history() kennt nur die aktive Gruppe).
+-    effect(() => {
+-      const groupId = this.rankGroupId();
+-      const userId = this.rankUserId();
+-      if (!groupId || !userId || groupId === this.groupService.groupId()) return;
+-      const current = this.otherGroupRankData();
+-      if (current?.groupId === groupId && current.userId === userId) return;
+-      void Promise.all([
+-        this.mtg.loadMatchesForGroups([groupId]),
+-        this.mtg.playerNameInGroup(groupId, userId),
+-      ]).then(([matches, playerName]) => {
+-        if (this.rankGroupId() !== groupId || this.rankUserId() !== userId) return;
+-        this.otherGroupRankData.set({ groupId, userId, matches, playerName });
+-      });
+-    });
+-
+-    effect(() => {
+-      const userId = this.profileService.profile()?.id;
+-      if (!userId) return;
+-      void this.profileService.loadRankChoice(userId).then((choice) => {
+-        if (this.profileService.profile()?.id === userId) this.ownRankChoice.set(choice);
+-      });
+-    });
+-
+-    effect(() => {
+-      const userId = this.profileService.viewingUserId();
+-      this.viewedRankChoice.set(ProfileService.DEFAULT_RANK_CHOICE);
+-      if (!userId) return;
+-      void this.profileService.loadRankChoice(userId).then((choice) => {
+-        if (this.profileService.viewingUserId() === userId) this.viewedRankChoice.set(choice);
+-      });
+-    });
+-
+     effect(() => {
+       const userId = this.profileService.viewingUserId();
+       const inMeinerGruppe = !!this.profileHistoryName();
+diff --git a/src/app/profile.service.ts b/src/app/profile.service.ts
+index 2224e17..a0f6e9a 100644
+--- a/src/app/profile.service.ts
++++ b/src/app/profile.service.ts
+@@ -3,7 +3,6 @@ import { supabase } from './supabase.client';
+ import { AuthService } from './auth.service';
+ import { NavigationService } from './navigation.service';
+ import { ArtLang, istArtLang } from './art-languages';
+-import { DECK_FORMATS, DeckFormat, GAME_MODES, GameMode } from './models';
+ 
+ export interface Profile {
+   id: string;
+@@ -26,17 +25,6 @@ export interface Profile {
+   isDeveloper: boolean;
+ }
+ 
+-/**
+- * Welcher Elo-Rang im Profil gezeigt wird: Gruppe, Modus und Format (null = Modus ohne Format).
+- * groupId null = die gerade aktive Gruppe; bei fremden Profilen auch dann null, wenn der Betrachter
+- * nicht in der gewählten Gruppe ist (der Rang ist Gruppensache, siehe profile_rank_choice()).
+- */
+-export interface RankChoice {
+-  mode: GameMode;
+-  format: DeckFormat | null;
+-  groupId: string | null;
+-}
+-
+ @Injectable({ providedIn: 'root' })
+ export class ProfileService {
+   private readonly auth = inject(AuthService);
+@@ -296,98 +284,6 @@ export class ProfileService {
+     return true;
+   }
+ 
+-  // --- Elo-Rang: welcher Modus und welches Format im Profil gezeigt wird
+-  //     (sql/elo-rang-modus-2026-09-29.sql) ---
+-
+-  /** Standard, solange nichts gewählt ist: Modus Normal, Format Commander. */
+-  static readonly DEFAULT_RANK_CHOICE: RankChoice = { mode: 'Normal', format: 'Commander', groupId: null };
+-  private static readonly RANK_CHOICE_KEY = 'statsfinity.rankChoice';
+-  /** Einmal je Sitzung umgelegt, wenn die Migration fehlt - danach nur noch der Gerätewert. */
+-  private static rankChoiceVerfuegbar = true;
+-  private static rankGruppeVerfuegbar = true;
+-
+-  /**
+-   * Gewählte Rang-Kombination eines Accounts - eigenes wie fremdes Profil, auch ohne Login (über
+-   * die SECURITY-DEFINER-Funktion profile_rank_choice()). Fehlt die Migration, gilt fürs eigene
+-   * Profil der Wert aus dem localStorage, für fremde der Standard.
+-   */
+-  async loadRankChoice(userId: string): Promise<RankChoice> {
+-    const lokal = userId === this.profile()?.id ? ProfileService.lokaleRankChoice() : null;
+-    const rueckfall = lokal ?? ProfileService.DEFAULT_RANK_CHOICE;
+-    if (!ProfileService.rankChoiceVerfuegbar) return rueckfall;
+-
+-    const { data, error } = await supabase.rpc('profile_rank_choice', { p_user_id: userId });
+-    if (error) {
+-      if (error.code === 'PGRST202' || error.code === '42883') {
+-        console.warn('Funktion profile_rank_choice fehlt noch - sql/elo-rang-modus-2026-09-29.sql im Supabase-SQL-Editor ausführen. Die Rang-Auswahl gilt solange nur auf diesem Gerät.');
+-        ProfileService.rankChoiceVerfuegbar = false;
+-      } else {
+-        console.error('Konnte Rang-Auswahl nicht laden:', error);
+-      }
+-      return rueckfall;
+-    }
+-    const zeile = (
+-      (data as { rank_mode: unknown; rank_format: unknown; rank_group_id?: unknown }[] | null) ?? []
+-    )[0];
+-    return zeile
+-      ? ProfileService.pruefeRankChoice(
+-          zeile.rank_mode,
+-          zeile.rank_format,
+-          // Ältere Fassung der Funktion kennt die Gruppe noch nicht - dann gilt der Gerätewert.
+-          'rank_group_id' in zeile ? zeile.rank_group_id : (lokal?.groupId ?? null),
+-        )
+-      : rueckfall;
+-  }
+-
+-  /** Speichert die Rang-Auswahl am eigenen Account und immer auch auf dem Gerät. */
+-  async saveRankChoice(choice: RankChoice): Promise<void> {
+-    try {
+-      localStorage.setItem(ProfileService.RANK_CHOICE_KEY, JSON.stringify(choice));
+-    } catch {
+-      // Privater Modus o. ä. - dann eben nur am Account.
+-    }
+-    const current = this.profile();
+-    if (!current || !ProfileService.rankChoiceVerfuegbar) return;
+-    const { error } = await supabase
+-      .from('profiles')
+-      .update({ rank_mode: choice.mode, rank_format: choice.format, ...(ProfileService.rankGruppeVerfuegbar ? { rank_group_id: choice.groupId } : {}) })
+-      .eq('id', current.id);
+-    // Fehlt nur die neuere Spalte rank_group_id (sql/ranked-gruppe-2026-09-30.sql), gilt die
+-    // Gruppenwahl eben nur auf dem Gerät - Modus und Format werden trotzdem gespeichert.
+-    if (error && (error.message ?? '').includes('rank_group_id')) {
+-      ProfileService.rankGruppeVerfuegbar = false;
+-      return this.saveRankChoice(choice);
+-    }
+-    if (error) {
+-      if (error.code === '42703' || error.code === 'PGRST204') ProfileService.rankChoiceVerfuegbar = false;
+-      else console.error('Konnte Rang-Auswahl nicht speichern:', error);
+-    }
+-  }
+-
+-  private static lokaleRankChoice(): RankChoice | null {
+-    try {
+-      const wert = JSON.parse(localStorage.getItem(ProfileService.RANK_CHOICE_KEY) ?? 'null');
+-      return wert ? ProfileService.pruefeRankChoice(wert.mode, wert.format, wert.groupId) : null;
+-    } catch {
+-      return null;
+-    }
+-  }
+-
+-  /** Unbekannte Werte (alte Formatliste, Tippfehler von Hand) fallen auf den Standard zurück. */
+-  private static pruefeRankChoice(mode: unknown, format: unknown, groupId: unknown): RankChoice {
+-    const d = ProfileService.DEFAULT_RANK_CHOICE;
+-    return {
+-      groupId: typeof groupId === 'string' ? groupId : null,
+-      mode: typeof mode === 'string' && (GAME_MODES as string[]).includes(mode) ? (mode as GameMode) : d.mode,
+-      format:
+-        format === null
+-          ? null
+-          : typeof format === 'string' && (DECK_FORMATS as string[]).includes(format)
+-            ? (format as DeckFormat)
+-            : d.format,
+-    };
+-  }
+-
+   /** Speichert die bevorzugte Sprache am Account, damit sie geräteübergreifend gilt. */
+   async updateLanguage(language: 'de' | 'en'): Promise<boolean> {
+     const current = this.profile();
+diff --git a/src/app/stats-tab/stats-tab.html b/src/app/stats-tab/stats-tab.html
+index 13886a8..39383de 100644
+--- a/src/app/stats-tab/stats-tab.html
++++ b/src/app/stats-tab/stats-tab.html
+@@ -141,8 +141,7 @@
+ 
+   @if (selectedPlayer(); as selected) {
+     <div class="chip-row">
+-      @let selectedTier = rankTierFor(selected);
+-      <span class="glass-chip avatar-chip active" [class.rank-tinted]="!!selectedTier" [style]="rankVars(selectedTier)">
++      <span class="glass-chip avatar-chip active">
+         <app-player-avatar [url]="mtg.playerAvatars()[selected] ?? null" />
+         {{ selected }}
+       </span>
+@@ -161,8 +160,7 @@
+     } @else {
+       <ul class="player-picker-list">
+         @for (player of filteredPlayersForDetail(); track player) {
+-          @let tier = rankTierFor(player);
+-          <li [class.rank-tinted]="!!tier" [style]="rankVars(tier)" (click)="selectPlayer(player)">
++          <li (click)="selectPlayer(player)">
+             <app-player-avatar [url]="mtg.playerAvatars()[player] ?? null" />
+             <span class="player-name">{{ player }}</span>
+           </li>
+diff --git a/src/app/stats-tab/stats-tab.ts b/src/app/stats-tab/stats-tab.ts
+index 1032776..30daff9 100644
+--- a/src/app/stats-tab/stats-tab.ts
++++ b/src/app/stats-tab/stats-tab.ts
+@@ -26,8 +26,6 @@ import {
+ import { I18nService } from '../i18n.service';
+ import { TournamentHistory } from '../tournament-history/tournament-history';
+ import { isImportLossDuplicate, isPlayerWinner as isMatchWinner } from '../match-utils';
+-import { RankTier, rankTiersFor, ratedModes } from '../elo';
+-import { rankStyle } from '../ui/rank-badge/rank-badge';
+ import { InfoToggle } from '../ui/info-toggle/info-toggle';
+ import { Meter } from '../ui/meter/meter';
+ import { Pager } from '../ui/pager/pager';
+@@ -317,50 +315,6 @@ export class StatsTab {
+     return this.cardDetails()[name.toLowerCase()]?.backImageUrl ?? null;
+   }
+ 
+-  // --- Elo-Wertung je Spielmodus (elo.ts) - über alle live erfassten Partien, ohne Jahresfilter ---
+-
+-  // Wie der Rang im Profil je Modus UND Format: dem Format-Filter oben folgend ("Alle" = alle
+-  // Formate eines Modus gemeinsam). Ein Modern-Sieg soll keinen Commander-Rang verschieben.
+-  // Nur in einer Gruppe mit eingeschaltetem Rangsystem (Schalter des Gruppenleiters).
+-  /** Partien der laufenden Ranked-Saison (groups.ranked_since) - Grundlage aller Elo-Werte hier. */
+-  private readonly seasonMatches = computed(() =>
+-    this.groupService.seasonMatches(this.viewedMatches(), this.effectiveViewedGroupId()),
+-  );
+-  readonly eloModes = computed(() =>
+-    !this.groupService.canSeeRanked(this.effectiveViewedGroupId())
+-      ? []
+-      : ratedModes(
+-          this.applyFormatFilter(this.seasonMatches()),
+-          GAME_MODES.filter((m) => this.canViewMode(m)),
+-        ),
+-  );
+-  /** Modus der Rangfarben im Tab: der erste gewertete (meist Normal). Eine Elo-Liste gibt es hier
+-   *  nicht mehr (Wunsch des Users, 21.10.2026) - den Rang sieht jeder im eigenen Profil. */
+-  readonly eloMode = computed(() => this.eloModes()[0] ?? null);
+-
+-  /**
+-   * Rangfarbe für die Ringe um die Profilbilder im ganzen Tab - der erste gewertete Modus
+-   * (meist Normal) und das Format aus dem Filter oben. Leer ohne Rangsystem in der Gruppe.
+-   */
+-  private readonly rankTiers = computed<Map<string, RankTier>>(() => {
+-    if (!this.groupService.isRankedGroup(this.effectiveViewedGroupId())) return new Map();
+-    const format = this.selectedFormat();
+-    return rankTiersFor(
+-      this.seasonMatches(),
+-      this.eloMode() ?? 'Normal',
+-      format === 'Alle' ? undefined : format,
+-    );
+-  });
+-
+-  rankTierFor(name: string): RankTier | null {
+-    return this.rankTiers().get(name) ?? null;
+-  }
+-
+-  /** CSS-Variablen der Rangfarbe für eine Spielerkachel (Klasse .rank-tinted in styles.scss). */
+-  rankVars(tier: RankTier | null): Record<string, string> | null {
+-    return rankStyle(tier);
+-  }
+-
+   // --- Sortierung der Ranglisten (Logik in rank-sort.ts, geteilt mit GlobalStats) ---
+ 
+   readonly playerSortMode = signal<RankSortMode>('winRate');
+diff --git a/src/app/tutorial.service.ts b/src/app/tutorial.service.ts
+index 3f10ae3..b330328 100644
+--- a/src/app/tutorial.service.ts
++++ b/src/app/tutorial.service.ts
+@@ -49,7 +49,6 @@ const TUTORIALS: TutorialDef[] = [
+       step('tab-bar', 'match.navBar'),
+       step('match-mode', 'match.mode'),
+       step('match-friend-toggle', 'match.friends'),
+-      step('match-ranked', 'match.ranked'),
+       step('match-series', 'match.series'),
+       step('match-tournament', 'match.tournament'),
+       step('match-players-heading', 'match.players'),
+@@ -114,7 +113,6 @@ const TUTORIALS: TutorialDef[] = [
+       step(null, 'profile.intro'),
+       step('profile-inbox', 'profile.inbox'),
+       step('profile-header', 'profile.header'),
+-      step('profile-rank', 'profile.rank'),
+       step('profile-favorites', 'profile.favorites'),
+       step('profile-icons', 'profile.icons'),
+       step('profile-view-toggle', 'profile.viewToggle'),
+diff --git a/src/styles.scss b/src/styles.scss
+index fc9e454..bc6c2c4 100644
+--- a/src/styles.scss
++++ b/src/styles.scss
+@@ -1273,38 +1273,6 @@ h3 {
+   vertical-align: -0.1em;
+ }
+ 
+-// Elo-Rang im Profil (profile-tab, profile-rank): Rahmen um den Profilkopf und Ring ums
+-// Profilbild in der Rangfarbe. Die Farben kommen als --rank-light/--rank-dark aus rankStyle() in
+-// ui/rank-badge - die einzige Farbtabelle der Ränge, damit Rahmen und Abzeichen zusammenpassen.
+-// Global statt im Profil-Stylesheet, weil das am Style-Budget steht; die dreifache Klasse schlägt
+-// den Rand, den .avatar-circle im Profil-Tab selbst setzt.
+-.glass-card.rank-frame {
+-  border: 2px solid var(--rank-light);
+-  box-shadow:
+-    0 0 0 1px var(--rank-dark),
+-    0 0 26px color-mix(in srgb, var(--rank-light) 38%, transparent),
+-    0 8px 30px rgba(0, 0, 0, 0.35),
+-    inset 0 1px 0 var(--glass-highlight);
+-
+-  .avatar-circle.avatar-circle {
+-    border: 3px solid var(--rank-light);
+-    box-shadow:
+-      0 0 0 2px var(--rank-dark),
+-      0 0 18px color-mix(in srgb, var(--rank-light) 55%, transparent);
+-  }
+-}
+-
+-// Rangfarbe für Chips und Karten eines Spielers (Match-Tab: Spielerauswahl, Gruppen-Tab:
+-// Spielerliste). Farben wie oben über rankStyle() als --rank-light/--rank-dark. !important, weil
+-// die Komponenten ihre eigenen Ränder mit höherer Spezifität setzen (.glass-chip.active,
+-// .player-list.player-grid li) - der Rang soll dort immer sichtbar bleiben.
+-.rank-tinted {
+-  border-color: var(--rank-light) !important;
+-  box-shadow:
+-    inset 0 0 0 1px var(--rank-dark),
+-    0 0 10px color-mix(in srgb, var(--rank-light) 35%, transparent) !important;
+-}
+-
+ // Statistik-Dashboards (Statistik-Tab, Persönlich): Die Kästen kommen auch aus eingebetteten
+ // Bausteinen (match-insights, performance-stats sind display: contents) - deshalb hier global statt
+ // in den Komponenten, deren Stilkapselung die fremden Kästen nicht erreicht. Engere Abstände, weil

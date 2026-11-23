@@ -1,0 +1,33 @@
+// Aus src/styles.scss entfernt (Ranked-System ausgebaut, 23.11.2026).
+
+// Elo-Rang im Profil (profile-tab, profile-rank): Rahmen um den Profilkopf und Ring ums
+// Profilbild in der Rangfarbe. Die Farben kommen als --rank-light/--rank-dark aus rankStyle() in
+// ui/rank-badge - die einzige Farbtabelle der Ränge, damit Rahmen und Abzeichen zusammenpassen.
+// Global statt im Profil-Stylesheet, weil das am Style-Budget steht; die dreifache Klasse schlägt
+// den Rand, den .avatar-circle im Profil-Tab selbst setzt.
+.glass-card.rank-frame {
+  border: 2px solid var(--rank-light);
+  box-shadow:
+    0 0 0 1px var(--rank-dark),
+    0 0 26px color-mix(in srgb, var(--rank-light) 38%, transparent),
+    0 8px 30px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 var(--glass-highlight);
+
+  .avatar-circle.avatar-circle {
+    border: 3px solid var(--rank-light);
+    box-shadow:
+      0 0 0 2px var(--rank-dark),
+      0 0 18px color-mix(in srgb, var(--rank-light) 55%, transparent);
+  }
+}
+
+// Rangfarbe für Chips und Karten eines Spielers (Match-Tab: Spielerauswahl, Gruppen-Tab:
+// Spielerliste). Farben wie oben über rankStyle() als --rank-light/--rank-dark. !important, weil
+// die Komponenten ihre eigenen Ränder mit höherer Spezifität setzen (.glass-chip.active,
+// .player-list.player-grid li) - der Rang soll dort immer sichtbar bleiben.
+.rank-tinted {
+  border-color: var(--rank-light) !important;
+  box-shadow:
+    inset 0 0 0 1px var(--rank-dark),
+    0 0 10px color-mix(in srgb, var(--rank-light) 35%, transparent) !important;
+}
