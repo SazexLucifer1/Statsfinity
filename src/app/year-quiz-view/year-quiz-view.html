@@ -1,0 +1,501 @@
+<div class="quiz-view">
+  <div class="view-header">
+    <button type="button" class="glass-button small back" (click)="close()">
+      ‹ {{ i18n.t('quiz.back') }}
+    </button>
+    <h2>{{ quizService.quiz()?.title ?? i18n.t('quiz.title') }}</h2>
+  </div>
+
+  @if (quizService.error(); as err) {
+    <p class="glass-card hint error">{{ err === 'duplicate' ? i18n.t('quiz.duplicate') : err }}</p>
+  }
+
+  @if (!quizService.available()) {
+    <p class="glass-card hint">{{ i18n.t('quiz.unavailable') }}</p>
+  } @else if (!groups.groupId()) {
+    <p class="glass-card hint">{{ i18n.t('quiz.noGroup') }}</p>
+  } @else if (quizService.loading()) {
+    <p class="hint">{{ i18n.t('quiz.loading') }}</p>
+  } @else if (showSetup()) {
+    <!-- ===== Erstellen ===== -->
+    <section class="glass-card">
+      <app-info-toggle [label]="i18n.t('quiz.setup.infoAria')">
+        <h3 info-title>{{ i18n.t('quiz.setup.title') }}</h3>
+        <p class="hint">{{ i18n.t('quiz.setup.info') }}</p>
+      </app-info-toggle>
+      <div class="setup-fields">
+        <label>
+          <span>{{ i18n.t('quiz.setup.year') }}</span>
+          <select class="glass-input" [ngModel]="year()" (ngModelChange)="year.set(+$event)">
+            @for (y of years(); track y) {
+              <option [value]="y">{{ y }}</option>
+            }
+          </select>
+        </label>
+        <label class="grow">
+          <span>{{ i18n.t('quiz.setup.quizTitle') }}</span>
+          <input
+            class="glass-input"
+            [ngModel]="title()"
+            (ngModelChange)="title.set($event)"
+            maxlength="60"
+          />
+        </label>
+      </div>
+      <button type="button" class="glass-button small" (click)="regenerate()">
+        <app-icon name="shuffle" /> {{ i18n.t('quiz.setup.regenerate') }}
+      </button>
+    </section>
+
+    <section class="glass-card">
+      @if (rows().length === 0) {
+        <p class="hint">{{ i18n.t('quiz.setup.noQuestions') }}</p>
+      }
+      <ol class="draft-list">
+        @for (row of rows(); track $index; let i = $index) {
+          <li [class.off]="!row.include">
+            <label class="draft-head">
+              <input type="checkbox" [checked]="row.include" (change)="toggleRow(i)" />
+              <span class="q-text">{{ row.question.text }}</span>
+            </label>
+            <ul class="draft-options">
+              @for (o of row.question.options; track $index; let oi = $index) {
+                <li [class.correct]="oi === row.question.correct">{{ letters[oi] }}: {{ o }}</li>
+              }
+            </ul>
+            @if (row.question.kind === 'custom') {
+              <button type="button" class="glass-button small danger" (click)="removeRow(i)">
+                <app-icon name="trash" /> {{ i18n.t('quiz.custom.remove') }}
+              </button>
+            }
+          </li>
+        }
+      </ol>
+    </section>
+
+    <section class="glass-card">
+      <h3>{{ i18n.t('quiz.custom.title') }}</h3>
+      <input
+        class="glass-input"
+        [placeholder]="i18n.t('quiz.custom.question')"
+        [ngModel]="customText()"
+        (ngModelChange)="customText.set($event)"
+        maxlength="200"
+      />
+      @for (o of customOptions(); track $index; let oi = $index) {
+        <div class="custom-option">
+          <input
+            class="glass-input"
+            [placeholder]="i18n.t('quiz.custom.option', { n: oi + 1 })"
+            [ngModel]="o"
+            (ngModelChange)="setCustomOption(oi, $event)"
+            maxlength="80"
+          />
+          <label class="correct-pick">
+            <input
+              type="radio"
+              name="custom-correct"
+              [checked]="customCorrect() === oi"
+              (change)="customCorrect.set(oi)"
+            />
+            {{ i18n.t('quiz.custom.correct') }}
+          </label>
+        </div>
+      }
+      <p class="hint">{{ i18n.t('quiz.custom.hint') }}</p>
+      <button type="button" class="glass-button" [disabled]="!customValid()" (click)="addCustom()">
+        <app-icon name="plus" /> {{ i18n.t('quiz.custom.add') }}
+      </button>
+    </section>
+
+    <div class="actions">
+      <span class="hint">{{ i18n.t('quiz.setup.selected', { n: selectedCount() }) }}</span>
+      @if (creating()) {
+        <button type="button" class="glass-button" (click)="creating.set(false)">
+          {{ i18n.t('quiz.back') }}
+        </button>
+      }
+      <button
+        type="button"
+        class="glass-button primary"
+        [disabled]="selectedCount() === 0 || busy()"
+        (click)="create()"
+      >
+        {{ i18n.t('quiz.setup.create') }}
+      </button>
+    </div>
+  } @else if (quizService.quiz(); as quiz) {
+    @switch (quiz.status) {
+      <!-- ===== Lobby ===== -->
+      @case ('lobby') {
+        <section class="glass-card">
+          <h3>{{ i18n.t('quiz.lobby.title') }} ({{ quizService.participants().length }})</h3>
+          <p class="hint">{{ i18n.t('quiz.lobby.questions', { n: quiz.questions.length }) }}</p>
+          @if (quizService.participants().length === 0) {
+            <p class="hint">{{ i18n.t('quiz.lobby.empty') }}</p>
+          }
+          <ul class="participants">
+            @for (p of quizService.participants(); track p.name) {
+              <li>
+                <span>{{ p.name }}</span>
+                @if (!p.userId) {
+                  <small class="tag">{{ i18n.t('quiz.lobby.noPhone') }}</small>
+                }
+                @if (quizService.isHost()) {
+                  <button
+                    type="button"
+                    class="icon-button"
+                    [attr.aria-label]="i18n.t('quiz.custom.remove')"
+                    (click)="run(() => quizService.removeParticipant(p.name))"
+                  >
+                    <app-icon name="trash" />
+                  </button>
+                }
+              </li>
+            }
+          </ul>
+        </section>
+      }
+
+      <!-- ===== Frage / Auflösung ===== -->
+      @case ('question') {}
+      @case ('reveal') {}
+
+      <!-- ===== Prüfen ===== -->
+      @case ('review') {
+        @if (quizService.isHost()) {
+          <section class="glass-card">
+            <app-info-toggle [label]="i18n.t('quiz.review.infoAria')">
+              <h3 info-title>{{ i18n.t('quiz.review.title') }}</h3>
+              <p class="hint">{{ i18n.t('quiz.review.info') }}</p>
+            </app-info-toggle>
+            <div class="review-scroll">
+              <table class="review-table">
+                <thead>
+                  <tr>
+                    <th></th>
+                    @for (q of quiz.questions; track $index; let qi = $index) {
+                      <th [title]="q.text">{{ i18n.t('quiz.review.question', { n: qi + 1 }) }}</th>
+                    }
+                    <th>{{ i18n.t('quiz.review.points') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (p of quizService.participants(); track p.name) {
+                    <tr>
+                      <th>{{ p.name }}</th>
+                      @for (q of quiz.questions; track $index; let qi = $index) {
+                        <td
+                          [class.right]="
+                            answerOf(p.name, qi) !== null &&
+                            answerOf(p.name, qi) === quizService.solutions()[qi]
+                          "
+                          [class.wrong]="
+                            answerOf(p.name, qi) !== null &&
+                            answerOf(p.name, qi) !== quizService.solutions()[qi]
+                          "
+                        >
+                          <select
+                            [ngModel]="answerOf(p.name, qi) ?? ''"
+                            (ngModelChange)="setReviewAnswer(p.name, qi, $event)"
+                          >
+                            <option value="">{{ i18n.t('quiz.review.noAnswer') }}</option>
+                            @for (o of q.options; track $index; let oi = $index) {
+                              <option [value]="oi">{{ letters[oi] }}</option>
+                            }
+                          </select>
+                        </td>
+                      }
+                      <td class="points">{{ scores().get(p.name) ?? 0 }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            <ol class="legend">
+              @for (q of quiz.questions; track $index; let qi = $index) {
+                <li>
+                  <strong>{{ i18n.t('quiz.review.question', { n: qi + 1 }) }}</strong>
+                  {{ q.text }} -
+                  <span class="correct-text"
+                    >{{ letters[quizService.solutions()[qi]] }}:
+                    {{ q.options[quizService.solutions()[qi]] }}</span
+                  >
+                </li>
+              }
+            </ol>
+          </section>
+        } @else {
+          <p class="glass-card hint">{{ i18n.t('quiz.review.waiting') }}</p>
+        }
+      }
+
+      <!-- ===== Ergebnis ===== -->
+      @case ('finished') {
+        <section class="glass-card">
+          <h3>{{ i18n.t('quiz.result.title') }}</h3>
+          <app-podium [entries]="podium()" shape="avatar" [interactive]="false" />
+          <ol class="ranking">
+            @for (r of ranking(); track r.name) {
+              <li [class.me]="r.name === quizService.me()?.name">
+                <span class="place">{{ i18n.t('quiz.result.place', { n: r.place }) }}</span>
+                <span class="name">{{ r.name }}</span>
+                <span class="pts">{{ i18n.t('quiz.result.points', { n: r.points }) }}</span>
+              </li>
+            }
+          </ol>
+        </section>
+
+        <section class="glass-card">
+          <app-info-toggle [label]="i18n.t('quiz.pods.infoAria')">
+            <h3 info-title>{{ i18n.t('quiz.pods.title') }}</h3>
+            <p class="hint">{{ i18n.t('quiz.pods.info') }}</p>
+          </app-info-toggle>
+          <div class="segmented pod-count">
+            @for (n of [1, 2, 3, 4]; track n) {
+              <button type="button" [class.active]="podCount() === n" (click)="podCount.set(n)">
+                {{ n }}
+              </button>
+            }
+          </div>
+          <div class="pods">
+            @for (pod of pods(); track $index; let pi = $index) {
+              <div class="pod">
+                <h4>{{ i18n.t('quiz.pods.pod', { n: pi + 1 }) }} ({{ pod.length }})</h4>
+                <ol>
+                  @for (name of pod; track name; let first = $first) {
+                    <li>
+                      {{ name }}
+                      @if (first) {
+                        <small class="tag">{{ i18n.t('quiz.pods.firstPick') }}</small>
+                      }
+                    </li>
+                  }
+                </ol>
+              </div>
+            }
+          </div>
+        </section>
+
+        <section class="glass-card">
+          <h3>{{ i18n.t('quiz.result.solutions') }}</h3>
+          <ol class="legend">
+            @for (q of quiz.questions; track $index; let qi = $index) {
+              <li>
+                {{ q.text }} -
+                @if (quiz.revealed[qi] !== null && quiz.revealed[qi] !== undefined) {
+                  <span class="correct-text">{{ q.options[quiz.revealed[qi]!] }}</span>
+                }
+              </li>
+            }
+          </ol>
+        </section>
+
+        @if (quizService.isHost()) {
+          <div class="actions">
+            <button
+              type="button"
+              class="glass-button"
+              (click)="run(() => quizService.backToReview())"
+            >
+              {{ i18n.t('quiz.result.reopen') }}
+            </button>
+            <button type="button" class="glass-button danger" (click)="remove()">
+              <app-icon name="trash" /> {{ i18n.t('quiz.result.delete') }}
+            </button>
+            <button type="button" class="glass-button primary" (click)="newQuiz()">
+              {{ i18n.t('quiz.result.newQuiz') }}
+            </button>
+          </div>
+        }
+      }
+    }
+
+    <!-- Frage und Auflösung teilen sich ein Layout -->
+    @if ((quiz.status === 'question' || quiz.status === 'reveal') && current(); as q) {
+      <section class="glass-card question-card">
+        <p class="counter">
+          {{
+            i18n.t('quiz.question.counter', {
+              n: quiz.currentIndex + 1,
+              total: quiz.questions.length,
+            })
+          }}
+        </p>
+        <p class="question-text">{{ q.text }}</p>
+        <div class="options">
+          @for (o of q.options; track $index; let oi = $index) {
+            <button
+              type="button"
+              class="option"
+              [class.chosen]="myChoice() === oi"
+              [class.correct]="
+                currentCorrect() === oi && (quiz.status === 'reveal' || quizService.isHost())
+              "
+              [class.revealed]="quiz.status === 'reveal'"
+              [disabled]="quiz.status !== 'question' || !quizService.me()"
+              (click)="answer(oi)"
+            >
+              <span class="letter">{{ letters[oi] }}</span>
+              <span class="option-text">{{ o }}</span>
+              @if (quiz.status === 'reveal') {
+                <span class="votes">{{ i18n.t('quiz.question.votes', { n: votes(oi) }) }}</span>
+              }
+            </button>
+          }
+        </div>
+
+        @if (quiz.status === 'question') {
+          <p class="hint">
+            {{
+              i18n.t('quiz.question.answered', {
+                n: currentAnswers().length,
+                total: quizService.participants().length,
+              })
+            }}
+          </p>
+          @if (quizService.me()) {
+            @if (myChoice() !== null) {
+              <p class="hint">{{ i18n.t('quiz.question.yourAnswer') }}</p>
+            }
+          } @else {
+            <p class="hint">{{ i18n.t('quiz.question.notJoined') }}</p>
+          }
+        } @else if (quizService.me()) {
+          <p class="verdict" [class.ok]="myChoice() !== null && myChoice() === currentCorrect()">
+            @if (myChoice() === null) {
+              {{ i18n.t('quiz.question.none') }}
+            } @else if (myChoice() === currentCorrect()) {
+              {{ i18n.t('quiz.question.right') }}
+            } @else {
+              {{ i18n.t('quiz.question.wrong') }}
+            }
+          </p>
+        }
+      </section>
+    }
+
+    <!-- Mitmachen (Lobby und während des Quiz - Nachzügler) -->
+    @if (quiz.status !== 'review' && quiz.status !== 'finished') {
+      <section class="glass-card">
+        @if (quizService.me(); as me) {
+          <p class="hint">{{ i18n.t('quiz.lobby.joined', { name: me.name }) }}</p>
+          @if (quiz.status === 'lobby') {
+            <button
+              type="button"
+              class="glass-button small"
+              (click)="run(() => quizService.leave())"
+            >
+              {{ i18n.t('quiz.lobby.leave') }}
+            </button>
+          }
+        } @else {
+          <div class="inline-form">
+            <input
+              class="glass-input"
+              [placeholder]="i18n.t('quiz.lobby.joinName')"
+              [ngModel]="joinName()"
+              (ngModelChange)="joinName.set($event)"
+              maxlength="40"
+            />
+            <button
+              type="button"
+              class="glass-button primary"
+              [disabled]="!joinName().trim() || busy()"
+              (click)="join()"
+            >
+              {{ i18n.t('quiz.lobby.join') }}
+            </button>
+          </div>
+        }
+
+        @if (quizService.isHost()) {
+          <h4>{{ i18n.t('quiz.lobby.addOffline') }}</h4>
+          <div class="inline-form">
+            <input
+              class="glass-input"
+              [ngModel]="offlineName()"
+              (ngModelChange)="offlineName.set($event)"
+              maxlength="40"
+              (keyup.enter)="addOffline()"
+            />
+            <button
+              type="button"
+              class="glass-button"
+              [disabled]="!offlineName().trim() || busy()"
+              (click)="addOffline()"
+            >
+              {{ i18n.t('quiz.lobby.add') }}
+            </button>
+          </div>
+          <p class="hint">{{ i18n.t('quiz.lobby.addOfflineHint') }}</p>
+        }
+      </section>
+    }
+
+    <!-- Steuerung des Quizmasters -->
+    @if (quizService.isHost()) {
+      <div class="actions host-actions">
+        @switch (quiz.status) {
+          @case ('lobby') {
+            <button type="button" class="glass-button danger" (click)="remove()">
+              <app-icon name="trash" /> {{ i18n.t('quiz.result.delete') }}
+            </button>
+            <button
+              type="button"
+              class="glass-button primary"
+              [disabled]="busy()"
+              (click)="run(() => quizService.start())"
+            >
+              {{ i18n.t('quiz.lobby.start') }}
+            </button>
+          }
+          @case ('question') {
+            <button
+              type="button"
+              class="glass-button primary"
+              [disabled]="busy()"
+              (click)="run(() => quizService.reveal())"
+            >
+              {{ i18n.t('quiz.question.reveal') }}
+            </button>
+          }
+          @case ('reveal') {
+            <button
+              type="button"
+              class="glass-button primary"
+              [disabled]="busy()"
+              (click)="run(() => quizService.next())"
+            >
+              {{
+                quiz.currentIndex + 1 >= quiz.questions.length
+                  ? i18n.t('quiz.question.toReview')
+                  : i18n.t('quiz.question.next')
+              }}
+            </button>
+          }
+          @case ('review') {
+            <button
+              type="button"
+              class="glass-button primary"
+              [disabled]="busy()"
+              (click)="run(() => quizService.finish())"
+            >
+              {{ i18n.t('quiz.review.finish') }}
+            </button>
+          }
+        }
+      </div>
+    } @else if (quiz.status === 'lobby') {
+      <p class="hint">{{ i18n.t('quiz.lobby.waiting') }}</p>
+    }
+
+    @if (quiz.status === 'finished' && !quizService.isHost()) {
+      <div class="actions">
+        <button type="button" class="glass-button" (click)="newQuiz()">
+          {{ i18n.t('quiz.setup.createOwn') }}
+        </button>
+      </div>
+    }
+  }
+</div>

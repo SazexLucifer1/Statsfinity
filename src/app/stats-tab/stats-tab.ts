@@ -49,6 +49,7 @@ import {
 import { Podium, PodiumEntry } from '../ui/podium/podium';
 import { GlobalStats } from '../global-stats/global-stats';
 import { Icon } from '../ui/icon/icon';
+import { YearQuizService } from '../year-quiz.service';
 import { MatchInsights } from '../match-insights/match-insights';
 import { PerformanceStats } from '../performance-stats/performance-stats';
 import { FriendsStats } from '../friends-stats/friends-stats';
@@ -122,6 +123,7 @@ interface CombinedRankEntry {
 export class StatsTab {
   readonly mtg = inject(MtgService);
   readonly groupService = inject(GroupService);
+  readonly yearQuiz = inject(YearQuizService);
   readonly auth = inject(AuthService);
   readonly friends = inject(FriendsService);
   private readonly cardData = inject(CardDataService);

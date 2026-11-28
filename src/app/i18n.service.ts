@@ -10,6 +10,7 @@ import { group } from './i18n/group';
 import { ingame } from './i18n/ingame';
 import { match } from './i18n/match';
 import { profile } from './i18n/profile';
+import { quiz } from './i18n/quiz';
 import { search } from './i18n/search';
 import { stats } from './i18n/stats';
 import { tournament } from './i18n/tournament';
@@ -33,6 +34,7 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     ...ingame.de,
     ...match.de,
     ...profile.de,
+    ...quiz.de,
     ...search.de,
     ...stats.de,
     ...tournament.de,
@@ -48,6 +50,7 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     ...ingame.en,
     ...match.en,
     ...profile.en,
+    ...quiz.en,
     ...search.en,
     ...stats.en,
     ...tournament.en,
