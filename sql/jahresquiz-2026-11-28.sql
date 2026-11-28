@@ -157,7 +157,15 @@ create policy year_quiz_answers_update on public.year_quiz_answers
     )
   ) with check (
     year_quiz_host(quiz_id)
-    or year_quiz_open_question(quiz_id, question_index)
+    or (
+      year_quiz_open_question(quiz_id, question_index)
+      and exists (
+        select 1 from year_quiz_participants p
+        where p.quiz_id = year_quiz_answers.quiz_id
+          and p.name = year_quiz_answers.participant
+          and p.user_id = auth.uid()
+      )
+    )
   );
 
 drop policy if exists year_quiz_answers_delete on public.year_quiz_answers;
