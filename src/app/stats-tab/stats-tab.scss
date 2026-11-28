@@ -466,3 +466,28 @@
     align-items: start;
   }
 }
+
+.quiz-entry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+
+  h3 {
+    margin: 0;
+  }
+
+  .hint {
+    margin: 4px 0 0;
+  }
+}
+
+.quiz-running {
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  background: #7fe0a0;
+  color: #10261a;
+}

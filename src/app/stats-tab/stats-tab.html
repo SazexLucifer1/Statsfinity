@@ -50,6 +50,24 @@
 
 } @else {
 
+<!-- Jahresquiz (year-quiz-view/): auch für Spieler, deren Statistik gesperrt ist - mitspielen darf jeder. -->
+@if (groupService.groupId() && yearQuiz.available()) {
+<section class="glass-card quiz-entry">
+  <div>
+    <h3>
+      {{ i18n.t('quiz.open') }}
+      @if (yearQuiz.running()) {
+      <small class="quiz-running">{{ i18n.t('quiz.runningBadge') }}</small>
+      }
+    </h3>
+    <p class="hint">{{ i18n.t('quiz.openHint') }}</p>
+  </div>
+  <button type="button" class="glass-button" [class.primary]="yearQuiz.running()" (click)="yearQuiz.openView()">
+    <app-icon name="trophy" /> {{ i18n.t('quiz.open') }}
+  </button>
+</section>
+}
+
 @if (mtg.allModesHiddenForMe() && !groupService.isOwner()) {
 <section class="glass-card">
   <h2>{{ i18n.t('stats.title') }}</h2>

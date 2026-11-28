@@ -53,7 +53,7 @@
      In der Deck-Detailansicht ausgeblendet: sie ist eine eigene Seite, verlassen wird sie über
      "Zurück" bzw. die Zurück-Geste - die Leiste würde dort nur Platz kosten und über den Inhalt
      ragen. Der Tutorial-Schritt zur Leiste steckt im Intro-Rundgang, der ohne offenes Deck läuft. -->
-@if (!deckViewer.state.viewingDeck() && !collection.view() && !cubeService.view() && !ideas.view()) {
+@if (!deckViewer.state.viewingDeck() && !collection.view() && !cubeService.view() && !ideas.view() && !yearQuiz.view()) {
 <nav class="tab-bar" data-tutorial="tab-bar">
   @for (tab of tabs; track tab.id) {
   <button
@@ -118,6 +118,13 @@
   } @else if (ideas.view()) {
   <!-- Commander-Ideen, eigene Seite, damit sie im Profil keinen Platz nimmt. -->
   <app-commander-ideas-view />
+  } @else if (yearQuiz.view()) {
+  <!-- Jahresquiz (year-quiz-view/), eigene Seite aus dem Statistik-Tab, nachgeladen wie die Sammlung. -->
+  @defer {
+  <app-year-quiz-view />
+  } @loading (after 150ms) {
+  <p class="hint">{{ i18n.t('quiz.loading') }}</p>
+  }
   } @else if (tournament.panelExpanded()) {
   <app-tournament-panel />
   } @else {

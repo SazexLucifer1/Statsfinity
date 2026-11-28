@@ -8,6 +8,7 @@ import { ingame } from './ingame';
 import { match } from './match';
 import { profile } from './profile';
 import { search } from './search';
+import { quiz } from './quiz';
 import { stats } from './stats';
 import { tournament } from './tournament';
 import { tutorial } from './tutorial';
@@ -71,6 +72,7 @@ const MODULES = {
       'pip',
     ],
   },
+  quiz: { table: quiz, prefixes: ['quiz'] },
   stats: { table: stats, prefixes: ['stats'] },
   tournament: { table: tournament, prefixes: ['tournament', 'tournamentHistory'] },
   tutorial: { table: tutorial, prefixes: ['tutorial'] },
